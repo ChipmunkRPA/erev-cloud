@@ -31,6 +31,26 @@ def test_real_engine_targeted_changes_keep_fixed_consideration(
     )
     output = compute(bundle)
     book = output.books[0]
+    from erev_api.domain.reports import rpo_estimate_changes
+
+    events = frozenset(
+        event.event_key
+        for event in bundle.events
+        if event.event_type == "ESTIMATE_CHANGED" and event.effective_date > date(2026, 1, 1)
+    )
+    changes = rpo_estimate_changes.allocations(book.trace, events)
+    assert changes is not None
+    assert sum(changes.values()) == Decimal(target_amount)
+    assert rpo_estimate_changes.allocations(book.trace, events | {"absent"}) is None
+    share = next(
+        node
+        for node in book.trace.nodes
+        if node.measure.startswith("tp_share@") and Decimal(node.value) != 0
+    )
+    incomplete = replace(
+        book.trace, nodes=tuple(node for node in book.trace.nodes if node != share)
+    )
+    assert rpo_estimate_changes.allocations(incomplete, events) is None
     eligibility = {
         item.version_key: item.allocation_target == "OBLIGATIONS"
         and item.parameters.get("allocation_criteria_evidence") not in (None, "")
@@ -455,3 +475,66 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
     assert result.lines["LATE_EVENTS"] == 0
     assert result.lines["CLOSING"] == 100 - final_revenue
     assert result.lines["UNEXPLAINED"] == 0
+
+
+@pytest.mark.parametrize(
+    "closing,estimate,modification", [(150, 20, 30), (100, 20, -20), (90, -20, 10)]
+)
+def test_mixed_modification_and_estimate_uses_retained_event_shares(
+    closing: int, estimate: int, modification: int
+) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+
+    vid, next_vid, oid, cid, eid, gid = (uuid4() for _ in range(6))
+    before, end = date(2026, 1, 31), date(2026, 2, 28)
+    first = rpo._Version(vid, gid, 1, True, date(2026, 1, 1), frozenset())
+    second = rpo._Version(
+        next_vid, gid, 2, True, end, frozenset({"CONTRACT_AMENDED", "ESTIMATE_CHANGED"})
+    )
+    old = rpo._Ob(
+        oid,
+        vid,
+        oid,
+        cid,
+        "C",
+        "O",
+        "Service",
+        None,
+        None,
+        None,
+        eid,
+        "E",
+        "USD",
+        "POINT_IN_TIME",
+        date(2028, 12, 31),
+        date(2026, 1, 1),
+        Decimal(100),
+        False,
+    )
+    new = replace(old, version_id=next_vid, allocated=Decimal(closing))
+    at = ObligationAt(
+        *(Decimal(0) for _ in range(7)),
+        Decimal(100),
+        "UNSATISFIED",
+        None,
+        None,
+    )
+    store = rpo.Store(
+        {gid: (first, second)},
+        {vid: (old,), next_vid: (new,)},
+        {cid: (first, second)},
+        {
+            (vid, before): {oid: at},
+            (vid, end): {oid: at},
+            (next_vid, before): {oid: at},
+            (next_vid, end): {oid: replace(at, awaiting=Decimal(closing))},
+        },
+    )
+    (unknown,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert unknown.lines["UNEXPLAINED"] == closing - 100
+    assert unknown.lines["MODIFICATIONS"] == unknown.lines["VC_ESTIMATE_CHANGES"] == 0
+    store.estimate_allocations[next_vid] = {"C/O": Decimal(estimate)}
+    (known,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert known.lines["VC_ESTIMATE_CHANGES"] == estimate
+    assert known.lines["MODIFICATIONS"] == modification
+    assert known.lines["UNEXPLAINED"] == 0

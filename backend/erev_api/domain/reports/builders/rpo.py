@@ -106,7 +106,7 @@ from uuid import UUID
 
 from erev_engine.dates import add_months, month_ends_between
 from erev_engine.formulas import rpo_bands
-from erev_engine.stages.s01_canonicalize import obligation_subject_key
+from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -128,6 +128,7 @@ from erev_api.domain.reports import (
     elections,
     rpo_currency,
     rpo_duration,
+    rpo_estimate_changes,
     rpo_quotas,
     tie_outs,
 )
@@ -283,6 +284,7 @@ class _Version:
     known_at: datetime | None = None
     # (contract, the effective date of its earliest ``ENTRY_EVENTS`` cause of this version)
     entries: tuple[tuple[UUID, date], ...] = ()
+    estimate_events: frozenset[str] = frozenset()
 
 
 @dataclass(slots=True)
@@ -339,6 +341,8 @@ class Store:
 
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     original_ends: dict[UUID, Mapping[str, date]] = field(default_factory=dict)
+
+    estimate_allocations: dict[UUID, Mapping[str, Decimal]] = field(default_factory=dict)
 
     def version_at(self, contract_id: UUID, day: date) -> _Version | None:
         """The version a contract is read from at ``day``: the last one of its chain effective
@@ -405,6 +409,7 @@ def load(
         {UUID(str(item)) for row in rows for item in row["cause_event_ids"] or ()}, key=str
     )
     events: dict[UUID, tuple[str, date]] = {}
+    estimate_keys: dict[UUID, str] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -413,11 +418,20 @@ def load(
                 contract_event.c.event_type,
                 contract_event.c.effective_date,
                 contract_event.c.contract_id,
+                contract_event.c.stream_version,
+                contract.c.external_id,
                 contract_event.c.payload["book"].as_string().label("admitted_book"),
-            ).where(contract_event.c.id.in_(event_ids))
+            )
+            .join(contract, contract.c.id == contract_event.c.contract_id)
+            .where(contract_event.c.id.in_(event_ids))
         ).mappings():
             kind = str(getattr(found["event_type"], "value", found["event_type"]))
             events[UUID(str(found["id"]))] = (kind, found["effective_date"])
+            if kind == "ESTIMATE_CHANGED":
+                estimate_keys[UUID(str(found["id"]))] = (
+                    f"{contract_subject_key(str(found['external_id']))}/"
+                    f"EV-{int(found['stream_version']):06d}"
+                )
             if kind in ENTRY_EVENTS and (
                 kind != CRITERIA_MET or found["admitted_book"] == book_code
             ):
@@ -455,6 +469,11 @@ def load(
                 causes=frozenset(kind for kind, _ in causes),
                 known_at=row["known_at"],
                 entries=tuple(sorted(entries.items(), key=lambda pair: str(pair[0]))),
+                estimate_events=frozenset(
+                    estimate_keys[UUID(str(item))]
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in estimate_keys
+                ),
             )
         )
     version_ids = [UUID(str(row["id"])) for row in rows]
@@ -788,6 +807,19 @@ def measure(
             if version is not None:
                 wanted.setdefault(version.id, set()).update(measured_days)
     store.cuts.update(cuts.obligations_at(session, wanted))
+    for chain in store.versions.values():
+        for version in chain:
+            if (
+                version.id not in wanted
+                or not version.estimate_events
+                or not any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
+            ):
+                continue
+            trace = trace_store.load_trace(session, version.id)
+            if trace is not None:
+                changes = rpo_estimate_changes.allocations(trace, version.estimate_events)
+                if changes is not None:
+                    store.estimate_allocations[version.id] = changes
     if applied is not None and any("POL-197" in values for values in applied.values()):
         if book_code is None:
             raise Problem("validation-failed", "Original RPO terms require retained source access.")
@@ -1151,6 +1183,19 @@ def _obligation_lines(
             # It cannot also make a fixed amendment ambiguous or explain an otherwise
             # unsupported fixed change. Competing remaining cause lines stay unexplained.
             line = next(iter(causes)) if len(causes) == 1 else None
+            changes = store.estimate_allocations.get(version.id)
+            if (
+                causes == {"MODIFICATIONS", "VC_ESTIMATE_CHANGES"}
+                and changes is not None
+                and current is not None
+                and ("USAGE_REPORTED" not in version.causes or realised_is_separate)
+            ):
+                estimate_change = changes.get(
+                    obligation_subject_key(current.external_id, current.obligation_key), ZERO
+                )
+                lines["VC_ESTIMATE_CHANGES"] += estimate_change
+                delta -= estimate_change
+                line = "MODIFICATIONS"
         if line is not None:
             lines[line] += delta
             if current is None and line == "CANCELLATIONS":

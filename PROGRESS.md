@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Event-backed mixed RPO changes — October 20, 2026
+
+- Mixed modification/estimate versions now split original estimate-event allocations into
+  VC_ESTIMATE_CHANGES and the remaining modification amount. Every event's shares must sum to
+  its retained price delta; missing/non-routed events or incomplete shares stay unexplained.
+- Signed changes and offsetting zero-net changes are covered. Dated usage remains separately
+  attributed. Other competing cause sets and fully batched first-entry decomposition remain open.
+- 32 targeted tests pass, including real engine estimate traces and missing-share rejection.
+  DB currency/rate replay, lint and types pass. Migration 0210 matches catalogue. No deployment.
+
+
 ## RPO cancellation and re-entry segments — October 20, 2026
 
 - Revenue and late restatement are now measured within each retained disclosure segment.

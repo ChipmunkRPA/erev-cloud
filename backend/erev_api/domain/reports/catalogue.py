@@ -773,6 +773,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fx_rate",
             "fx_rate_set",
             "fx_rate_set_version",
+            "calc_trace",
             "obligation_version",
             "contract_version",
             "contract_computation",
@@ -788,6 +789,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "obligation_version.contract_id = contract.id",
             "contract_event.contract_id = contract.id",
             "combination_group_member.contract_id = contract.id",
+            "calc_trace.contract_version_id = contract_version.id; "
+            "estimate-event shares reconcile to original tp_delta nodes",
         ),
         filters=(
             _SCOPE,
@@ -802,6 +805,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "retained cancelled-version revenue separates period recognition and late restatement",
             "cancellation and re-entry histories use separate disclosure segments; "
             "re-entry admits remaining RPO and revenue excludes changes while outside disclosure",
+            "mixed modification and estimate changes use original event-specific estimate shares "
+            "reconciled to each price delta; unsupported or incomplete evidence stays unexplained",
             _as_locked("RPO_ROLLFORWARD"),
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
