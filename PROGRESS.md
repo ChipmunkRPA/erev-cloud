@@ -6,6 +6,21 @@
 
 
 
+## Immutable deal preview retention — October 19, 2026
+
+- Added retain service under a tenant/preview advisory lock. Every attempt rechecks scenario
+  permission and entity currency. A matching existing record returns only after proposal and
+  input/result fingerprints verify; reuse of an identity with changed input is refused.
+- First execution resolves the scratch bundle and its reference index, uses the DRY_RUN engine,
+  and stores the proposal plus complete engine bundle, full canonical result, both hashes,
+  registered release ID and standard pinned_refs. Exactly one deal_preview.run audit is added.
+  No commit occurs inside the service; the future worker owns attempt fencing and commit.
+- Real database verification passes saved SSP references, exact request retention, repeated
+  result identity, one audit and changed-proposal refusal alongside scratch rollback checks.
+  Python lint/types pass. No production contract/customer survives the enclosing commit.
+- Asynchronous request/worker wiring, authorized read APIs, user-facing result projection,
+  scenario save and SF-18 UI remain unimplemented. No deployment or accounting-signoff claim.
+
 ## Deal preview authorized bundle assembly — October 19, 2026
 
 - Added deal_bundle booking conversion and assembly: resolve the active contracting entity,
@@ -223,31 +238,6 @@
 - Seven focused selector/toolbar checks pass with TypeScript/ESLint. Populated close-variance
   acceptance, remaining report workflows and independent accounting sign-off are still open.
   No deployment.
-
-## Migration report record selector — October 19, 2026
-
-- Migration report parameters now offer searchable authorized records by migration number,
-  mode, status and cutover date, with cursor-based loading of older batches. Choosing a record
-  writes its exact ID into the existing report parameter flow.
-- A saved ID outside loaded pages is retained. Readers without migration.run do not request
-  migration metadata and retain the manual parameter field; locked parameters remain disabled.
-  List loading, errors/retry and empty workspaces have explicit states.
-- Eight focused selector/toolbar checks pass, covering older-page selection, retained IDs and
-  permission gating, plus TypeScript/ESLint. Other report selectors, populated accounting
-  acceptance and independent sign-off remain open. No deployment.
-
-## Retained migration comparison lines — October 19, 2026
-
-- Reconciled migration details now display retained contract/obligation comparison lines,
-  legacy and eRev values, difference, tolerance, within-tolerance result, deviation reference
-  and exception identifier. Decimal strings are preserved without guessing a currency or
-  rounding small differences. The grid is available under migration read permission.
-- Added an outside-tolerance filter using the authoritative flag, not nonzero difference.
-  The query is scoped by batch, record version and filter; empty results and read errors
-  remain distinct. Report exports continue through the report-authorized viewer links.
-- Fifteen focused migration screen checks pass, including exact decimal rendering and a
-  nonzero-but-within-tolerance case; TypeScript and ESLint pass. Populated accounting
-  acceptance, other report workflows and independent sign-off remain open. No deployment.
 
 ## Outstanding release verification
 

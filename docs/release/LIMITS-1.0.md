@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal retention update (October 19): an idempotent domain service retains canonical
+proposal/bundle/result evidence, engine release, reference pins and one run audit. It verifies
+existing hashes and rejects changed input under the same identity. Worker/request/read APIs,
+result projection, scenario save and UI remain absent; this service is not yet user-accessible.
+
+
 Current deal bundle update (October 19): authorized proposal assembly now reuses ordinary
 booking and reference-resolution rules inside a rolled-back scratch transaction. Successful
 and failed assembly retain no temporary contracts/customers/audits; synthetic input identity

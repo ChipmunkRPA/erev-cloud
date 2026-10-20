@@ -21,8 +21,9 @@ from erev_api.uow import UnitOfWork
 class _Captured(Exception):
     """Internal sentinel: successful assembly must still roll back its scratch booking."""
 
-    def __init__(self, bundle: InputBundle) -> None:
+    def __init__(self, bundle: InputBundle, index: bundles.BundleIndex) -> None:
         self.bundle = bundle
+        self.index = index
 
 
 def booking(proposal: DealInputIn, preview_id: UUID) -> ContractBookedV1:
@@ -65,25 +66,16 @@ def booking(proposal: DealInputIn, preview_id: UUID) -> ContractBookedV1:
     )
 
 
-def build(uow: UnitOfWork, proposal: DealInputIn, preview_id: UUID) -> InputBundle:
+def resolve(
+    uow: UnitOfWork, proposal: DealInputIn, preview_id: UUID
+) -> tuple[InputBundle, bundles.BundleIndex]:
     """Authorize the entity before internal assembly, then roll back rows and audit buffers.
 
     The snapshot returned by ``bundles.build`` contains resolved natural keys and configuration
     values, not references to the temporary rows. It remains usable after rollback. No compute
     persistence/file/job helpers run inside this scratch transaction.
     """
-    entity = uow.session.execute(
-        select(legal_entity.c.id, legal_entity.c.functional_currency).where(
-            legal_entity.c.code == proposal.entity_code,
-            legal_entity.c.tenant_id == uow.principal.tenant_id,
-            legal_entity.c.is_active.is_(True),
-        )
-    ).one_or_none()
-    if entity is None:
-        raise Problem("not-found", "The proposed contracting entity is unavailable.")
-    require_for_entity(uow.ctx, "scenario.use", entity.id)
-    if proposal.lines[0].price.currency != entity.functional_currency.strip():
-        raise Problem("validation-failed", "Deal prices must use the entity's functional currency.")
+    authorize(uow, proposal)
     body = booking(proposal, preview_id)
     # Enter system context before the savepoint so rollback cannot invalidate its restoration.
     with uow.as_system():
@@ -107,6 +99,27 @@ def build(uow: UnitOfWork, proposal: DealInputIn, preview_id: UUID) -> InputBund
                     payload=bundles.engine_payload(payload),
                     payload_sha256=sha256_hex(payload),
                 )
-                raise _Captured(replace(bundle, events=(event,)))
+                raise _Captured(
+                    replace(bundle, events=(event,)), bundles.index(uow.session, bundle)
+                )
         except _Captured as captured:
-            return captured.bundle
+            return captured.bundle, captured.index
+
+
+def authorize(uow: UnitOfWork, proposal: DealInputIn) -> None:
+    entity = uow.session.execute(
+        select(legal_entity.c.id, legal_entity.c.functional_currency).where(
+            legal_entity.c.code == proposal.entity_code,
+            legal_entity.c.tenant_id == uow.principal.tenant_id,
+            legal_entity.c.is_active.is_(True),
+        )
+    ).one_or_none()
+    if entity is None:
+        raise Problem("not-found", "The proposed contracting entity is unavailable.")
+    require_for_entity(uow.ctx, "scenario.use", entity.id)
+    if proposal.lines[0].price.currency != entity.functional_currency.strip():
+        raise Problem("validation-failed", "Deal prices must use the entity's functional currency.")
+
+
+def build(uow: UnitOfWork, proposal: DealInputIn, preview_id: UUID) -> InputBundle:
+    return resolve(uow, proposal, preview_id)[0]

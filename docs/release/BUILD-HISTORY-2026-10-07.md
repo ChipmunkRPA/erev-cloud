@@ -8358,3 +8358,28 @@ cleanup in the shared database session kernel was also repaired and regression-t
   in the report toolbar. Profile, promotion and other migration UI gaps remain separate work.
 - Twenty-three focused migration checks, TypeScript and ESLint pass. Full populated accounting
   acceptance and independent sign-off remain outstanding; no deployment or readiness claim.
+
+## Retained migration comparison lines — October 19, 2026
+
+- Reconciled migration details now display retained contract/obligation comparison lines,
+  legacy and eRev values, difference, tolerance, within-tolerance result, deviation reference
+  and exception identifier. Decimal strings are preserved without guessing a currency or
+  rounding small differences. The grid is available under migration read permission.
+- Added an outside-tolerance filter using the authoritative flag, not nonzero difference.
+  The query is scoped by batch, record version and filter; empty results and read errors
+  remain distinct. Report exports continue through the report-authorized viewer links.
+- Fifteen focused migration screen checks pass, including exact decimal rendering and a
+  nonzero-but-within-tolerance case; TypeScript and ESLint pass. Populated accounting
+  acceptance, other report workflows and independent sign-off remain open. No deployment.
+
+## Migration report record selector — October 19, 2026
+
+- Migration report parameters now offer searchable authorized records by migration number,
+  mode, status and cutover date, with cursor-based loading of older batches. Choosing a record
+  writes its exact ID into the existing report parameter flow.
+- A saved ID outside loaded pages is retained. Readers without migration.run do not request
+  migration metadata and retain the manual parameter field; locked parameters remain disabled.
+  List loading, errors/retry and empty workspaces have explicit states.
+- Eight focused selector/toolbar checks pass, covering older-page selection, retained IDs and
+  permission gating, plus TypeScript/ESLint. Other report selectors, populated accounting
+  acceptance and independent sign-off remain open. No deployment.

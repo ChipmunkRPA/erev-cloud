@@ -6575,6 +6575,18 @@ def test_deal_preview_bundle_leaves_no_contract_or_audit(
         assert before == [
             uow.session.scalar(select(func.count()).select_from(table)) for table in tables
         ]
+        from erev_api.domain.forecast import deal_preview as retained
+
+        saved = retained.retain(uow, proposal, identity)
+        assert saved["pinned_refs"]["ssp_book_version_ids"]
+        assert saved["input"]["proposal"] == proposal.model_dump(mode="json")
+        audit_count = len(uow.audit_events)
+        assert audit_count == len(audits) + 1
+        assert retained.retain(uow, proposal, identity)["result_sha256"] == saved["result_sha256"]
+        assert len(uow.audit_events) == audit_count
+        changed = proposal.model_copy(update={"customer_name": "Different proposed buyer"})
+        with pytest.raises(Problem, match="retained preview"):
+            retained.retain(uow, changed, identity)
         uow.commit()
     with world.place.uow() as uow:
         assert before == [
