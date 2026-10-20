@@ -8634,3 +8634,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Scenario save, user-facing allocation/range/indicator projection and SF-18 UI still need
   implementation. Tamsin accounting acceptance, broader release verification and independent
   sign-off remain open. No deployment.
+
+## Deal preview report presentation — October 19, 2026
+
+- Detail reads now expose typed allocation rows, SSP bounds/range position, selected SSP,
+  weights and adjustments, per-book transaction/allocation totals, material-right and variable
+  consideration indicators, and revenue grouped by entity/period/subject. Only REVENUE
+  schedules contribute; billing and costs are excluded. Currency precision comes from retained
+  input evidence and all displayed money remains decimal strings.
+- Scheduled and awaiting-trigger totals explain previews whose revenue schedule is empty.
+  Projection uses hash-verified saved evidence, without resolving current configuration again.
+  OpenAPI and frontend types are regenerated.
+- Reporting remains a development priority. This completes only the result data layer; SF-18
+  screen, scenario save, actual-versus-forecast populated K11 and multi-contract K03/close
+  variance remain open. Tamsin acceptance and independent sign-off are also outstanding.
+  No deployment; direct main workflow.

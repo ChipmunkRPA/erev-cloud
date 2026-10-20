@@ -431,6 +431,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "lock_snapshot",
             "combination_group_member",
             "contract_computation",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "contract_version_balance.contract_version_id = contract_version.id",

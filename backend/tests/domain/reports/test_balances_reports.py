@@ -430,7 +430,9 @@ def test_foreign_contract_balances_use_dated_functional_targets(
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("currency_view", ["functional", "reporting"])
 def test_functional_balance_reads_locked_endpoint_and_reruns(
+    currency_view: str,
     app: FastAPI,
     keyring: KeyRing,
     clock: FrozenClock,
@@ -452,7 +454,7 @@ def test_functional_balance_reads_locked_endpoint_and_reruns(
             "entity_codes": [AVM_US],
             "book": "ASC606",
             "period_key": "FY2026-P08",
-            "currency_view": "functional",
+            "currency_view": currency_view,
         },
     )
     row = keyed(rows)[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
@@ -575,6 +577,89 @@ def test_functional_rollforward_invoice_uses_layer_carrying(
     from support import worlds
     from support.reference import post
 
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+
+
+@pytest.mark.slow
+def test_reporting_balances_translate_and_pin_closing_rates(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+) -> None:
+    from datetime import timedelta
+    from uuid import UUID
+
+    from support import close_run_worlds, worlds
+    from support.reference import approve, post
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root), reporting_currency="EUR"
+    )
+    listed = get(app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
+    assert listed.status_code == 200, listed.text
+    (closing_set,) = [
+        item for item in listed.json()["items"] if item["code"] == "AVM-RATES-CLOSING"
+    ]
+
+    def publish(rate: str) -> None:
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{closing_set['id']}/versions",
+            world.maya,
+            {
+                "coverage_from": "2026-08-01",
+                "coverage_to": "2026-08-31",
+                "rates": [
+                    {
+                        "base_currency": "USD",
+                        "quote_currency": "EUR",
+                        "period_key": "FY2026-P08",
+                        "rate": rate,
+                    }
+                ],
+            },
+        )
+        assert draft.status_code == 201, draft.text
+        submitted = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            world.maya,
+            {"comment": "Reporting rate"},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert submitted.status_code == 200, submitted.text
+        clock.advance(timedelta(minutes=1))
+        decided = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+        assert decided.status_code == 200, decided.text
+
+    publish("0.900001")
+    params = {
+        "entity_codes": [AVM_US],
+        "book": "ASC606",
+        "period_key": "FY2026-P08",
+        "currency_view": "reporting",
+    }
+    run, rows = report_run(world, "contract_balances", params)
+    row = keyed(rows)[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
+    assert row["unbilled_receivable"] == {"amount": "9945.01", "currency": "EUR"}
+    assert row["functional_currency"] == "USD"
+    assert D(row["closing_fx_rate"]) == D("0.900001")
+    assert tie(run, tie_outs.TO_BALANCES_EQ_ROLLFORWARD)["result"] == "PASS"
+    publish("0.8")
+    _, fresh_rows = report_run(world, "contract_balances", params)
+    assert keyed(fresh_rows)[row["row_key"]]["unbilled_receivable"] == {
+        "amount": "8840.00",
+        "currency": "EUR",
+    }
     started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
     assert started.status_code == 202, started.text
     finished = worlds.run_now(world, UUID(str(started.json()["id"])))

@@ -8,6 +8,10 @@ unbilled receivable, accounts receivable, refund liability (its own column, neve
 return asset, deposit liability, customer incentive asset, consideration payable, contract cost
 assets and loss provision. Without ``include_zero`` a contract with every balance 0 is omitted.
 One ``TOTAL:<ISO>`` row per currency; control totals per column and currency.
+Reporting view translates dated functional balances at the approved period-end rate into the
+tenant reporting currency. Rates and versions are retained for reruns; locked endpoints use
+their frozen cutoff. Displayed contract rows round at target currency precision and totals sum
+those rows. Balance and GL tie-outs remain explicitly in functional currency.
 
 Tie-outs: ``TO_BALANCES_EQ_ROLLFORWARD`` compares Σ contract liability, contract asset and unbilled
 receivable with the ``CLOSING`` line of the rollforward of ``period_key`` (CTL-030);
@@ -27,7 +31,13 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Final
 
-from erev_api.domain.reports import functional_balances, locked_ends, rollforward_gl, tie_outs
+from erev_api.domain.reports import (
+    functional_balances,
+    locked_ends,
+    reporting_currency,
+    rollforward_gl,
+    tie_outs,
+)
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -93,7 +103,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     functional = {item.id: item.functional_currency for item in found}
     view = str(params.parameters.get("currency_view") or "transaction")
-    if view == "functional":
+    if view in {"functional", "reporting"}:
         balances = functional_balances.read(
             session,
             params,
@@ -105,6 +115,18 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
     if view != "transaction" and any(row.currency != functional[row.entity_id] for row in balances):
         raise tie_outs.invalid("currency_view", rollforward.FUNCTIONAL_ONLY)
+    functional_rows = balances
+    translation = None
+    if view == "reporting":
+        translation = reporting_currency.closing(
+            session,
+            params,
+            tenant_id=uow.principal.tenant_id,
+            entities=found,
+            periods=at,
+            locked=ends,
+        )
+        balances = translation.balances(balances)
     include_zero = bool(params.parameters.get("include_zero", False))
     rows: list[dict[str, Any]] = []
     totals: dict[str, dict[str, Decimal]] = {}
@@ -119,6 +141,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "customer_name": row.customer_name,
                 "entity_code": row.entity_code,
                 "currency": row.currency,
+                **(
+                    {
+                        "functional_currency": translation.rates[row.entity_id]["base_currency"],
+                        "closing_fx_rate": translation.rates[row.entity_id]["rate"],
+                    }
+                    if translation is not None
+                    else {}
+                ),
                 **{name: tie_outs.money(amount, row.currency) for name, amount in values.items()},
             }
         )
@@ -141,9 +171,17 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         Column("customer_name", "Customer", "text"),
         Column("entity_code", "Entity", "code"),
         Column("currency", "Currency", "code"),
+        *(
+            (
+                Column("functional_currency", "Functional currency", "code"),
+                Column("closing_fx_rate", "Closing FX rate", "text"),
+            )
+            if translation is not None
+            else ()
+        ),
         *(Column(name, header, "money") for name, header in MEASURE_COLUMNS),
     )
-    control = {
+    control: dict[str, Any] = {
         name: tie_outs.by_currency(
             {code: values.get(name, ZERO) for code, values in totals.items()}
         )
@@ -167,23 +205,32 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params=params,
         contract_id=contract_id,
         documents=False,  # CTL-030 compares the CLOSING line: no flow of the path is read
-        functional=view == "functional",
+        functional=view in {"functional", "reporting"},
         locked=ends,
     )
+    balance_check = rollforward.balances_equal_tie(functional_rows, items)
+    gl_check = rollforward_gl.build(
+        session,
+        params,
+        entities=found,
+        periods=periods,
+        items=items,
+        book_code=book_code,
+        contract_id=contract_id,
+    )
+    if translation is not None:
+        control["reporting_currency"] = translation.currency
+        control["translation_rates"] = list(translation.rates.values())
+        control["tie_out_currency_basis"] = "functional"
+        balance_check.setdefault("details", []).append(
+            {"reason": "Compared in functional currency before reporting-currency translation."}
+        )
+        gl_check.setdefault("details", []).append(
+            {"reason": "GL comparison uses functional currency before translation."}
+        )
     return ReportData(
         columns=columns,
         rows=tuple(rows),
         control_totals=control,
-        tie_out_results=(
-            rollforward.balances_equal_tie(balances, items),
-            rollforward_gl.build(
-                session,
-                params,
-                entities=found,
-                periods=periods,
-                items=items,
-                book_code=book_code,
-                contract_id=contract_id,
-            ),
-        ),
+        tie_out_results=(balance_check, gl_check),
     )

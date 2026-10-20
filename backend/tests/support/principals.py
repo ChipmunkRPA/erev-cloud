@@ -85,6 +85,7 @@ def member(
     code: str | None = None,
     name: str = "lena",
     is_demo: bool = False,
+    reporting_currency: str = "USD",
 ) -> Member:
     """A provisioned tenant (a random code unless ``code`` is given) whose admin
     ``<name>@<code>.test`` has a password and an ACTIVE membership; ``is_demo`` gives the tenant
@@ -92,7 +93,12 @@ def member(
     code = code or f"t-{secrets.token_hex(6)}"
     email = f"{name}@{code}.test"
     result = tenant_factory(
-        keyring=keyring, clock=clock, code=code, admin_email=email, is_demo=is_demo
+        keyring=keyring,
+        clock=clock,
+        code=code,
+        admin_email=email,
+        is_demo=is_demo,
+        reporting_currency=reporting_currency,
     )
     tenant_id = tenant_id_of(result)
     with identity_session(request_id="tests-session-member") as db:

@@ -151,6 +151,7 @@ def tenant_factory(
     code: str | None = None,
     admin_email: str | None = None,
     is_demo: bool = False,
+    reporting_currency: str = "USD",
 ) -> TenantProvisionResult:
     """A fresh production tenant with a random code, provisioned by ``provision_tenant``; with
     ``is_demo`` it carries the demo marker."""
@@ -158,7 +159,7 @@ def tenant_factory(
     request = TenantProvisionRequest(
         code=tenant_code,
         display_name=f"Tenant {tenant_code}",
-        reporting_currency="USD",
+        reporting_currency=reporting_currency,
         is_demo=is_demo,
         admin_email=admin_email or f"admin@{tenant_code}.test",
     )

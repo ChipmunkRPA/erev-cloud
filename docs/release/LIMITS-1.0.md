@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current reporting-currency update (October 20): contract balances now translates functional
+balances at approved closing rates into the tenant reporting currency. Exact currency rounding,
+row totals, source rate/version retention and reruns after new rate publication are supported.
+Locked endpoints use their frozen cutoff for rate admission. Tie-outs remain explicitly functional.
+This supersedes the blanket reporting-currency limitation for contract balances only; reporting
+rollforwards still need opening/flow/closing translation and separate translation differences.
+Broader report coverage, multiple monetary liability layers and combined-contract attribution
+remain open. No deployment.
+
 Current functional rollforward update (October 20): contract balance rollforward now reads
 functional opening/closing targets and functional flows. Historical invoice layers supply billing
 in ERP and ENGINE modes; ENGINE billing must reproduce posted functional totals. Settlement FX

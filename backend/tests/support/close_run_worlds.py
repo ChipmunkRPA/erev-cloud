@@ -127,7 +127,12 @@ def _eur_rates(rate_type: str) -> list[dict[str, str]]:
 
 
 def eur_receivable(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    *,
+    reporting_currency: str = "USD",
 ) -> worlds.ReportWorld:
     """A EUR receivable of AVM-US (USD). Maya (Revenue Accountant, SSP Analyst), Priya (Revenue
     Reviewer, SSP Approver; MFA) and Marcus (Controller, SSP Approver, Tenant Admin; MFA) as in
@@ -138,7 +143,7 @@ def eur_receivable(
     2026; the append computes: revenue EUR 10,000.00 at the August rate 1.100000, USD 11,000.00,
     and nothing is invoiced — an unbilled receivable of EUR 10,000.00 at every later period end.
     """
-    maya_member = member(keyring, clock, name="maya")
+    maya_member = member(keyring, clock, name="maya", reporting_currency=reporting_currency)
     assign(maya_member, "revenue_accountant")
     maya = holding(app, maya_member, "ssp_analyst")
     approvers = {}

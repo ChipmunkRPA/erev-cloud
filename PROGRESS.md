@@ -6,6 +6,21 @@
 
 
 
+## Reporting-currency contract balances — October 20, 2026
+
+- Contract balances now translates dated functional balances into the tenant reporting currency
+  using approved closing rates. Rows show functional currency and the closing rate; totals sum
+  rounded contract rows. Currency precision uses exact rational half-up rounding.
+- Rate amounts, row/version IDs and cutoffs are retained for reruns. Locked endpoints select rates
+  at their frozen cutoff. Missing or ambiguous rates are refused; no runtime rate inversion or
+  triangulation is performed. Balance and GL comparisons remain explicitly functional.
+- Targeted API journey verifies USD 11,050 becomes EUR 9,945.01 at 0.900001; after publishing
+  0.8, a new report shows EUR 8,840 and the retained rerun reproduces the earlier rows.
+  Locked-period identity translation/rerun also passes; Python lint and types pass.
+- Remaining: reporting-currency movement reports need opening/flow/closing rate treatment and
+  explicit translation differences; broader report coverage, multi-layer FX and combined-contract
+  attribution remain open. This is an incremental feature completion, not four-workstream closure.
+
 ## Functional contract-balance movements — October 20, 2026
 
 - Contract balance rollforward now supports functional currency using dated engine balances,
@@ -215,21 +230,6 @@
   Scenario save, product-picker polish, revenue chart/period totals and real browser/accounting
   acceptance remain open. K11, multi-contract K03 and close variance remain Reporting priorities.
   No deployment; main-only publication.
-
-## Deal preview report presentation — October 19, 2026
-
-- Detail reads now expose typed allocation rows, SSP bounds/range position, selected SSP,
-  weights and adjustments, per-book transaction/allocation totals, material-right and variable
-  consideration indicators, and revenue grouped by entity/period/subject. Only REVENUE
-  schedules contribute; billing and costs are excluded. Currency precision comes from retained
-  input evidence and all displayed money remains decimal strings.
-- Scheduled and awaiting-trigger totals explain previews whose revenue schedule is empty.
-  Projection uses hash-verified saved evidence, without resolving current configuration again.
-  OpenAPI and frontend types are regenerated.
-- Reporting remains a development priority. This completes only the result data layer; SF-18
-  screen, scenario save, actual-versus-forecast populated K11 and multi-contract K03/close
-  variance remain open. Tamsin acceptance and independent sign-off are also outstanding.
-  No deployment; direct main workflow.
 
 ## Outstanding release verification
 
