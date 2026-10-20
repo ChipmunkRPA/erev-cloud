@@ -169,6 +169,9 @@ def test_the_table_asks_every_key_of_every_report_that_takes_a_lock(script: Modu
         for key in properties:
             if key in locked.ADMITTED_KEYS:
                 continue
+            if key == "currency_view" and code in {"revenue_waterfall", "contract_balances", "rpo"}:
+                assert cases[f"the lock with {key}"]["findings"] == []
+                continue
             (found,) = cases[f"the lock with {key}"]["findings"]
             assert found["field"] == f"parameters.{key}", (code, key)
         assert [item["field"] for item in cases["another entity"]["findings"]] == [

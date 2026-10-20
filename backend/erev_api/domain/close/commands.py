@@ -2321,6 +2321,7 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
                 cutoff,
                 frozen_at=cutoff,
                 registry=registry.datasets,
+                currency_variants=True,
                 scope_type=registry.scope,
                 engine=engine,
                 reader=freeze.held(reader),

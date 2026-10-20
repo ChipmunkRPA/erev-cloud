@@ -157,6 +157,7 @@ FIXTURE_HEADERS: dict[str, list[str]] = {
         "new_contracts",
         "modifications",
         "vc_estimate_changes",
+        "exemptions",
         "late_events",
         "revenue",
         "cancellations",

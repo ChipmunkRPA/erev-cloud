@@ -173,6 +173,7 @@ KEY_COLUMNS: Final[Mapping[str, KeySpec]] = {
             "new_contracts",
             "modifications",
             "vc_estimate_changes",
+            "exemptions",
             "late_events",  # ENGINE_SPEC_B S15-R-12 rev 1.161 (item RPT-RPO-ROLLFWD-1)
             "revenue",
             "cancellations",
@@ -348,7 +349,11 @@ def _column_change(
 
 
 def diff_dataset(
-    kind: str, previous: DatasetSide | None, current: DatasetSide | None
+    kind: str,
+    previous: DatasetSide | None,
+    current: DatasetSide | None,
+    *,
+    currency_view: str | None = None,
 ) -> dict[str, Any]:
     """One kind: hashes, row counts and the row-key comparison (S15-R-20; D-98 81)."""
     key_columns = key_columns_of(kind)
@@ -380,8 +385,28 @@ def diff_dataset(
             },
         )
         return out
-    before_headers, before_rows = _rows(previous.content)
-    after_headers, after_rows = _rows(current.content)
+    from erev_api.domain.reports import snapshot_views
+
+    before_headers, before_rows, _ = snapshot_views.select(previous.content, currency_view)
+    after_headers, after_rows, _ = snapshot_views.select(current.content, currency_view)
+    if currency_view is not None:
+        out["previous_row_count"] = len(before_rows)
+        out["current_row_count"] = len(after_rows)
+        out["changed"] = before_headers != after_headers or before_rows != after_rows
+    else:
+        old_views = snapshot_views.VIEW in snapshot_views.raw(previous.content)[0]
+        new_views = snapshot_views.VIEW in snapshot_views.raw(current.content)[0]
+        if old_views or new_views:
+            out["currency_views"] = {
+                view: {
+                    "previous_available": old_views,
+                    "current_available": new_views,
+                    "comparison": diff_dataset(kind, previous, current, currency_view=view)
+                    if old_views and new_views
+                    else None,
+                }
+                for view in ("functional", "reporting")
+            }
     headers = list(dict.fromkeys([*before_headers, *after_headers]))
     before = _keyed(kind, before_headers, before_rows, key_columns)
     after = _keyed(kind, after_headers, after_rows, key_columns)

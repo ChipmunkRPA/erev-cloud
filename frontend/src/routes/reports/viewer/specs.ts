@@ -334,6 +334,10 @@ export function datasetLock(context: ReportContext): NonNullable<Period["current
   return contextPeriod(context)?.dataset_lock ?? null;
 }
 
+export function supportsLockedCurrency(definition: ReportDefinition): boolean {
+  return ["revenue_waterfall", "contract_balances", "rpo"].includes(definition.code);
+}
+
 /**
  * The source of the view is the lock whose datasets stand for the context period: the address names
  * that lock and the report's runs take one. Only then does the view say "as locked", ask the lock's
@@ -413,8 +417,8 @@ export function parameterDefaults(
  *
  * An as-locked run (RV-04 rev 1.98; ENGINE_SPEC_B S15-R-19) is the lock's entity, book and period and
  * nothing else: the lock, the context's entity and book, each period key of the schema as the context
- * period, and a cutoff the address names. No `as_of`, no date, no `currency_view` and no `p.<key>` —
- * the frozen dataset carries no such selector, and the API refuses each by name.
+ * period, and a cutoff the address names. Supported reports may select a retained currency view.
+ * Other filters and date choices remain unavailable on frozen datasets.
  */
 export function runParameters(
   definition: ReportDefinition,
@@ -443,6 +447,11 @@ export function runParameters(
       }
     }
     parameters[LOCK_KEY] = context.snapshot;
+    if (supportsLockedCurrency(definition) && has("currency_view")) {
+      const view = values.currency_view || context.currencyView;
+      if (view) parameters.currency_view = view;
+    }
+
     if (definition.code === "disclosure_pack") {
       parameters.quarter = values.quarter !== "false";
     }

@@ -691,6 +691,16 @@ def freeze_waterfall(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
             "recognized_total": tie_outs.by_currency(recognised),
             "scheduled_total": tie_outs.by_currency(scheduled),
             "awaiting_trigger_total": tie_outs.by_currency(awaiting),
+            **(
+                {
+                    "translation_rates": list(found.translation_rates),
+                    "forecast_currency_basis": "as_of_closing_rate"
+                    if scope.currency_view != "transaction"
+                    else "transaction",
+                }
+                if scope.currency_view is not None
+                else {}
+            ),
         },
     )
     return _encode_scoped("WATERFALL", data, scope, drop_presentation_totals=False)
@@ -795,6 +805,16 @@ def freeze_rpo(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
             "total": tie_outs.by_currency(actual),
             "excluded_total": tie_outs.by_currency(excluded),
             "rpo_relief_elected": elected,
+            **(
+                {
+                    "translation_rates": list(run.translation_rates),
+                    "translation_basis": "as_of_closing_rate"
+                    if scope.currency_view != "transaction"
+                    else "transaction",
+                }
+                if scope.currency_view is not None
+                else {}
+            ),
         },
     )
     return _encode_scoped("RPO", data, scope, drop_presentation_totals=False)

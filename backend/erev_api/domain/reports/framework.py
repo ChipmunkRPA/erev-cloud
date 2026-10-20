@@ -2235,12 +2235,12 @@ def _render_locked(
     data: ReportData,
     style: str,
 ) -> _Rendered:
-    """The outputs of an as-locked run (S15-R-19 rev 1.31; RPS-SNAP A4 13.1): CSV is the frozen
-    file rendered through the export formula guard (``locked.export_csv`` by each column's DECLARED
-    kind — byte-identical to the frozen file, hash = ``file_sha256``, whenever no text cell begins
-    with a trigger; otherwise the served bytes' own hash, the frozen ``file_sha256`` staying the
-    dataset's identity) with the RV-02 manifest of the DELIVERED bytes; JSON, XLSX and PDF render
-    the frozen rows (text-kind columns) exactly as a live run renders its builder's rows."""
+    """Render retained rows with a manifest identifying delivered bytes and the frozen source.
+
+    CSV uses declared column kinds for the formula guard. Currency bundles export the selected
+    retained view; only unguarded legacy single-view CSVs match the complete frozen file hash.
+    JSON, XLSX and PDF use the same selected frozen rows.
+    """
     output_format = str(run["output_format"])
     if output_format == "CSV":
         # A4 13.1 (b) / Codex 1739 §3 (c): the guard follows each column's DECLARED kind, which the
@@ -2248,9 +2248,11 @@ def _render_locked(
         from erev_api.domain.reports import snapshots as registry
 
         kinds = registry.declared_kinds(
-            frozen.kind, locked.headers_of(frozen), frozen.control_totals
+            frozen.kind,
+            locked.headers_of(frozen, run["parameters"].get("currency_view")),
+            data.control_totals,
         )
-        content, sha256 = locked.export_csv(frozen, kinds)
+        content, sha256 = locked.export_csv(frozen, kinds, run["parameters"].get("currency_view"))
         stamp = _run_stamp(session, run, definition, output_sha256=sha256, style=style)
         manifest = manifest_output.manifest_bytes(
             stamp=stamp,
@@ -2615,7 +2617,7 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             frozen = locked.locked_dataset(
                 uow, report_code=str(run["report_code"]), lock_id=UUID(str(run["period_lock_id"]))
             )
-            data = locked.report_data(frozen)
+            data = locked.report_data(frozen, run["parameters"].get("currency_view"))
             jc.heartbeat()
             rendered = _render_locked(session, run, definition, frozen, data, style)
         elif str(run["report_code"]) == "disclosure_pack":
@@ -2848,8 +2850,24 @@ def _consistent_with_lock() -> Any:
     disclosure_admitted = pg_array(
         [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"quarter"})]
     )
+    from erev_api.domain.reports import snapshot_views
+
+    currency_admitted = pg_array(
+        [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"currency_view"})]
+    )
     parameters_admitted = or_(
         parameters.op("-")(admitted) == cast(literal("{}"), JSONB),
+        and_(
+            report_run.c.report_code.in_(
+                [
+                    code
+                    for code, kind in locked.SNAPSHOT_KIND_BY_REPORT.items()
+                    if kind in snapshot_views.KINDS
+                ]
+            ),
+            parameters.op("-")(currency_admitted) == cast(literal("{}"), JSONB),
+            parameters["currency_view"].astext.in_(snapshot_views.VIEWS),
+        ),
         and_(
             report_run.c.report_code == "disclosure_pack",
             parameters.op("-")(disclosure_admitted) == cast(literal("{}"), JSONB),

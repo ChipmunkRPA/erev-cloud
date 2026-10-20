@@ -20,7 +20,7 @@ import { periodLabel } from "../../../lib/api/queries/tenant";
 import { formatDate, NO_VALUE } from "../../../lib/format";
 import { hasMessage, t } from "../../../lib/i18n/t";
 import { TextField } from "../../contracts/drawers/common";
-import { parameterKeys, type ReportContext } from "./specs";
+import { parameterKeys, supportsLockedCurrency, type ReportContext } from "./specs";
 import { CloseLockParameter } from "./CloseLockParameter";
 import { MigrationParameter } from "./MigrationParameter";
 import { ReportFilters } from "./ReportFilters";
@@ -384,7 +384,7 @@ export function ParametersToolbar({
                 value={value === "" ? "transaction" : value}
                 onChange={(next) => onChange(key, next)}
                 error={error}
-                disabled={disabled}
+                disabled={disabled && !supportsLockedCurrency(definition)}
               />
             );
           default: {
@@ -464,7 +464,9 @@ export function ParametersToolbar({
     <>
       {toolbar}
       <p id={noteId} className="text-body-sm text-fg-2">
-        {unavailable}
+        {supportsLockedCurrency(definition)
+          ? t("reports.asLocked.currencyParameters")
+          : unavailable}
       </p>
     </>
   ) : (

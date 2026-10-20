@@ -8913,3 +8913,54 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Retained reports predating original-term evidence cannot silently reconstruct it from current
   data. Missing retained input/terms is refused; create a fresh report after source availability.
   No deployment; the four priority workstreams are not yet all complete.
+
+## Revenue waterfall currency views — October 20, 2026
+
+- Removed the foreign-contract refusal and the reporting-as-functional shortcut. Recognized
+  revenue uses posted functional amounts; reporting translates each contributing revenue line
+  using its posting period's approved average rate, preserving independent functional JE ties.
+- Scheduled and awaiting-trigger amounts are explicitly forecast translations at the as-of
+  period closing rate (transaction to functional, then functional to reporting). They do not
+  restate historical revenue or value deferred-revenue layers. Rates/version IDs and rounding
+  inputs are retained; future average rates are not required. Headers and cell details identify
+  the forecast basis, and displayed cell contributions sum to converted totals.
+- Necessary API checks cover EUR actual revenue, functional JE agreement, revised reporting
+  average rates versus retained reruns, GBP future schedules performed by a USD entity,
+  awaiting-trigger translation, and cell contributors. Existing cross-entity transaction
+  waterfall and row-identity checks pass; Python lint/types pass. No deployment.
+- RPO currency views, multi-layer FX attribution, combined-contract/group membership replay
+  and independent accounting acceptance remain outstanding. Locked snapshots retain their
+  existing transaction-currency schema; this change does not add alternate lock-dataset views.
+
+## Revenue disaggregation currency views — October 20, 2026
+
+- Fixed currency_view being ignored by revenue disaggregation. Functional view now reads posted
+  functional amounts; reporting view translates each posted functional revenue line at its own
+  posting period's approved average rate. Display totals sum the rounded line contributions.
+- Rates/version IDs are retained per entity/period; locked endpoints use frozen rate cutoffs.
+  Reporting journal tie-outs explicitly compare functional subledger and journal amounts before
+  translation. The general journal-revenue reader now supports functional amounts without
+  changing its default transaction behavior or retained run-membership rules.
+- Targeted API journey: EUR 10,000 transaction revenue is USD 11,000 functional revenue; changing
+  the reporting average to 0.8 yields EUR 8,800 in a fresh report while the original rerun keeps
+  EUR 10,000. Functional journal tie passes. Existing transaction disaggregation control passes;
+  Python lint/types pass. No deployment.
+- Revenue waterfall and RPO currency coverage remain separate unfinished work, along with the
+  previously documented multi-layer FX, combined-contract and difference-attribution gaps.
+
+## Targeted VC evidence through the platform — October 20, 2026
+
+- Fixed a missing production adapter path: the estimate element's allocation-criteria evidence
+  now enters the engine input during previews and computations. Editable version parameters
+  cannot replace or invent that evidence. The engine's existing POL-044 control is unchanged.
+- RPO later-share eligibility now reads the element's evidence alongside the named version,
+  rather than looking in version parameters where the product never saved that field.
+- Positive API journey approves two targeted bonus versions, computes each, then verifies fixed
+  consideration USD 132,000 remains disclosed while USD 20,000 is excluded. The witness uses the
+  explicitly published tenant POL-044 NOT_ENFORCED election, with reviewed constraint evidence.
+- Net time-band/cell contributors, snapshot producer rows and control totals, CSV export and
+  retained rerun agree. A partially exempt obligation freezes as one section-1 row carrying both
+  its net amount and exclusion metadata. Adapter checks also reject version-parameter overrides.
+- This closes the populated partial-exemption report/snapshot-producer/export gap for this path;
+  it does not assert a complete production lock workflow or all exemption combinations. Broader
+  revenue/RPO currency views and the other documented reporting gaps remain. No deployment.

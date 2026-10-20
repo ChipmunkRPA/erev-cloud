@@ -5867,6 +5867,7 @@
   "policies.version.withdrawn": "Withdrew {code} v{version}.",
   "reports.asLocked.current": "Showing current figures. {period} was locked on {at}.",
   "reports.asLocked.locked": "Showing {period} as locked on {at}.",
+  "reports.asLocked.currencyParameters": "Select a currency view retained at lock. Other filters are fixed; older locks may not contain alternate currency views.",
   "reports.asLocked.noParameters": "Figures as locked take no parameters. Show current figures to change them.",
   "reports.asLocked.notFrozen": "A period lock does not freeze this report.",
   "reports.asLocked.showCurrent": "Show current figures",

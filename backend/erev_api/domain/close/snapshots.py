@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from io import BytesIO
 from typing import TYPE_CHECKING, Any, Final
@@ -100,6 +100,7 @@ def freeze_datasets(
     scope_type: Callable[..., Any] | None = None,
     engine: dependencies.SnapshotEngine | None = None,
     reader: Callable[[UnitOfWork], AbstractContextManager[UnitOfWork]] | None = None,
+    currency_variants: bool | None = None,
 ) -> tuple[DatasetFile, ...]:
     """Freeze the twelve E-64 datasets of the period as of ``known_at`` (S15-R-18); refuse by name
     when the engine, the registry or any kind's builder is absent. ``frozen_at`` is the freeze
@@ -109,6 +110,8 @@ def freeze_datasets(
     given, so an older or injected scope type stays valid. Every builder reads through
     ``reader(uow)`` — in production ``freeze.system_unit``: the tenant's SYSTEM scope, read-only
     (R-94 (a)) — and ``uow`` stores the files."""
+    if currency_variants is None:
+        currency_variants = registry is None
     engine = engine or dependencies.snapshot_engine()
     if registry is None or scope_type is None:
         resolved = dependencies.snapshot_registry()
@@ -140,6 +143,19 @@ def freeze_datasets(
             freeze.allow_idle(source.session)
         for kind in engine.kinds:
             encoded = registry[kind](source, scope)
+            if currency_variants:
+                from erev_api.domain.reports import snapshot_views
+
+                if kind in snapshot_views.KINDS:
+                    variants = {"transaction": encoded}
+                    variants.update(
+                        {
+                            view: registry[kind](source, replace(scope, currency_view=view))
+                            for view in ("functional", "reporting")
+                        }
+                    )
+                    encoded = snapshot_views.pack(variants)
+
             if str(encoded.kind) != kind:
                 raise ValueError(f"the {kind} builder returned a {encoded.kind} dataset")
             row = store_file(

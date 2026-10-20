@@ -209,7 +209,9 @@ def _amount(cell: Any) -> str:
     return "" if cell is None else str(cell["amount"])
 
 
-def _frozen_by_registry(world: ReportWorld, lock_id: UUID) -> engine.Encoded:
+def _frozen_by_registry(
+    world: ReportWorld, lock_id: UUID, currency_view: str | None = None
+) -> engine.Encoded:
     """CLO-8c: the CONTRACT_BALANCES dataset OF RECORD, produced by the F-RPS registry adapter for
     the lock's scope at the lock instant (the wrapped real ``build`` without presentation totals —
     F-RPS's DB witness pins it equal to the live report); the registry writes nothing itself."""
@@ -222,6 +224,7 @@ def _frozen_by_registry(world: ReportWorld, lock_id: UUID) -> engine.Encoded:
                 book_code=scope.book_code,
                 period_id=scope.period_id,
                 known_at=uow.now,
+                currency_view=currency_view,
             ),
         )
         uow.commit()
@@ -1044,3 +1047,35 @@ def test_as_locked_run_on_the_august_lock_returns_the_wld_x_03_liability(
     assert run["status"] == "SUCCEEDED" and run["period_lock_id"] == str(lock_id)
     (k01,) = [row for row in rows if row["contract_external_id"] == K01]
     assert k01["contract_liability"] == "39708.49"  # WLD-X-03: the frozen text cell, not live
+
+
+def test_as_locked_currency_variants_read_retained_rows_and_export(
+    world: ReportWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.domain.reports import snapshot_views
+
+    lock_id = _lock_by_writer(world)
+    variants = {view: _frozen_by_registry(world, lock_id, view) for view in snapshot_views.VIEWS}
+    packed = snapshot_views.pack(variants)
+    _freeze(world, lock_id, packed)
+
+    def never(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("A frozen currency view must not rebuild live inputs")
+
+    monkeypatch.setattr(
+        framework, "BUILDERS", MappingProxyType({**framework.BUILDERS, CODE: never})
+    )
+    for view in snapshot_views.VIEWS:
+        parameters = {**BALANCES, "period_lock_id": str(lock_id), "currency_view": view}
+        run, rows = report_run(world, CODE, parameters)
+        assert run["parameters"]["currency_view"] == view
+        assert run["control_totals"]["currency_view"] == view
+        assert len(rows) == variants[view].row_count == 1
+        assert rows[0]["row_key"] == K01_ROW
+        assert rows[0]["contract_liability"] == "29944.11"
+        assert snapshot_views.VIEW not in rows[0]
+        exported, _ = report_run(world, CODE, parameters, output_format="CSV")
+        downloaded = get(world.app, f"{REPORT_RUNS}/{exported['id']}/output", world.maya)
+        assert downloaded.status_code == 200, downloaded.text
+        assert downloaded.content == variants[view].content
+        assert exported["output"]["sha256"] == variants[view].file_sha256

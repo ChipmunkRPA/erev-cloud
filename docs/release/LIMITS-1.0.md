@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Immutable currency views at lock — October 20, 2026
+
+- Public lock publication now retains transaction, functional and reporting variants for
+  waterfall, contract balances and RPO in one manifest-hashed machine CSV per dataset. Per-view
+  columns, controls and available rate evidence are authenticated inside that same file.
+- As-locked API, report viewer and exports select retained variants without live recomputation.
+  Old locks remain readable on their original basis and explicitly refuse missing alternatives.
+  Relock comparisons expose functional/reporting changes separately from transaction changes.
+- Necessary checks: actual public lock publication and populated K01 balances; retained API/CSV
+  selection with the live builder disabled; 62 focused Python checks and 94 frontend checks;
+  targeted lint, types and frontend compilation. No deployment.
+- Remaining: alternate-currency rollforward/disaggregation lock datasets and close-variance
+  integration, combined/late-carried liability FX, and other release limitations. This checkpoint
+  does not complete all four reporting workstreams or provide independent accounting sign-off.
+
 Current snapshot-currency update (October 20): snapshot producers can now explicitly select
 transaction/functional/reporting currency through their actual report schemas. Output controls
 record the chosen view and historical cutoff; omitted selection preserves existing defaults.

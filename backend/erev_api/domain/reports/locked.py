@@ -44,6 +44,7 @@ from sqlalchemy import select
 
 from erev_api.db.tables import legal_entity, lock_snapshot, period, period_lock
 from erev_api.domain.close import lock_records
+from erev_api.domain.reports import snapshot_views
 from erev_api.domain.reports.outputs import ROW_KEY, Column, ReportData
 from erev_api.domain.reports.outputs.csv import export_cell
 from erev_api.enums import LockKind
@@ -220,11 +221,20 @@ def _rows(content: bytes) -> tuple[list[str], list[dict[str, str]]]:
     return list(reader.fieldnames or []), rows
 
 
-def report_data(dataset: LockedDataset) -> ReportData:
+def currency_rows(
+    dataset: LockedDataset, currency_view: str | None = None
+) -> tuple[list[str], list[dict[str, str]], dict[str, Any] | None]:
+    try:
+        return snapshot_views.select(dataset.content, currency_view)
+    except (ValueError, TypeError, KeyError) as error:
+        raise LockedRefusal(str(error)) from error
+
+
+def report_data(dataset: LockedDataset, currency_view: str | None = None) -> ReportData:
     """The frozen rows as ``ReportData``: text-kind columns under the frozen header (the
     ``row_key`` column becomes each row's key, not a column), the snapshot's control totals and no
     tie-outs (the freeze evaluated them). ``LockedRefusal`` when the header lacks ``row_key``."""
-    headers, rows = _rows(dataset.content)
+    headers, rows, controls = currency_rows(dataset, currency_view)
     if ROW_KEY not in headers:
         raise LockedRefusal(
             KEY_MISSING.format(kind=dataset.kind, lock=dataset.lock_id, column=ROW_KEY)
@@ -238,7 +248,11 @@ def report_data(dataset: LockedDataset) -> ReportData:
         }
         for row in rows
     )
-    return ReportData(columns=columns, rows=keyed, control_totals=dict(dataset.control_totals))
+    return ReportData(
+        columns=columns,
+        rows=keyed,
+        control_totals=dict(dataset.control_totals) if controls is None else controls,
+    )
 
 
 def reconcile_selectors(
@@ -251,16 +265,19 @@ def reconcile_selectors(
 ) -> tuple[dict[str, Any], list[ProblemError]]:
     """The parameters an as-locked run persists, and the findings against the caller's ``given``
     (S15-R-19 rev 1.31, CLO8-SCOPE-R1): every explicit entity, book or period selector must equal
-    the lock's, omitted ones are derived from it, and no other parameter is admitted — the frozen
-    dataset carries no filter, dimension, view, band or as-of choice. The persisted parameters are
-    exactly the lock, ``known_at`` when given, and the lock-derived selectors the report defines."""
+    the lock's and omitted ones are derived from it. Supported currency bundles admit a retained
+    currency view; no other filter, dimension, band or as-of choice is admitted. Parameters
+    retain the lock, optional known_at/currency_view and lock-derived selectors."""
     errors: list[ProblemError] = []
 
     def refuse(key: str, message: str) -> None:
         errors.append(ProblemError(field=f"parameters.{key}", rule_id=RULE, message=message))
 
+    admitted = ADMITTED_KEYS | (
+        {"currency_view"} if kind in snapshot_views.KINDS and not disclosure else set()
+    )
     for key in sorted(given):
-        if key not in (ADMITTED_KEYS | {"quarter"} if disclosure else ADMITTED_KEYS):
+        if key not in (admitted | {"quarter"} if disclosure else admitted):
             refuse(key, NOT_A_LOCK_SELECTOR.format(key=key, kind=kind, lock=scope.lock_id))
     if "entity_codes" in given:
         codes = [str(code) for code in given["entity_codes"]]
@@ -276,6 +293,10 @@ def reconcile_selectors(
                 key, PERIOD_MISMATCH.format(key=key, period=scope.period_key, lock=scope.lock_id)
             )
     parameters: dict[str, Any] = {"period_lock_id": str(scope.lock_id)}
+    if "currency_view" in given and "currency_view" in admitted:
+        if given["currency_view"] not in snapshot_views.VIEWS:
+            refuse("currency_view", "Choose transaction, functional or reporting currency.")
+        parameters["currency_view"] = given["currency_view"]
     if "known_at" in given:
         parameters["known_at"] = given["known_at"]
     if "entity_codes" in properties:
@@ -302,6 +323,10 @@ def run_mismatch(run: Mapping[str, Any], scope: LockScope) -> str | None:
         return "book_code"
     parameters = dict(run["parameters"] or {})
     admitted = ADMITTED_KEYS
+    if snapshot_kind_of(str(run.get("report_code"))) in snapshot_views.KINDS:
+        admitted = admitted | {"currency_view"}
+        if parameters.get("currency_view", "transaction") not in snapshot_views.VIEWS:
+            return "parameters.currency_view"
     if run.get("report_code") == "disclosure_pack" and isinstance(parameters.get("quarter"), bool):
         admitted = admitted | {"quarter"}
     for key in sorted(parameters):
@@ -333,22 +358,24 @@ def _field(text: str) -> str:
     return text
 
 
-def headers_of(dataset: LockedDataset) -> list[str]:
+def headers_of(dataset: LockedDataset, currency_view: str | None = None) -> list[str]:
     """The frozen header row (the declared kinds of the export boundary are keyed by it)."""
-    return _rows(dataset.content)[0]
+    return currency_rows(dataset, currency_view)[0]
 
 
-def export_csv(dataset: LockedDataset, kinds: Mapping[str, str]) -> tuple[bytes, str]:
+def export_csv(
+    dataset: LockedDataset, kinds: Mapping[str, str], currency_view: str | None = None
+) -> tuple[bytes, str]:
     """The CSV OUTPUT of an as-locked run (RPS-SNAP A4 13.1; S15-R-19; Codex 1739 §3 (c)): the
     verified frozen rows re-serialised with the engine's field quoting and ``\n``, every cell
     guarded by its DECLARED DS-FMT-25 kind (``kinds``: header → column kind,
     ``csv_output.export_cell`` — text kinds guarded, machine kinds never; an undeclared header is
     text). The header row is
-    written as stored. Byte-identical to the frozen file — hence the hash equals ``file_sha256`` —
-    whenever no cell needs the guard; otherwise the served bytes' own hash. The stored artefact is
-    never altered: identity lives in the frozen bytes, the guard in the export."""
+    written in its retained order. Legacy single-view exports match the frozen file when no cell
+    needs the guard. Bundles export only the selected retained view, with its own delivered hash;
+    the original whole-file hash remains the source identity. The stored artefact is never altered."""
     verify(dataset)
-    headers, rows = _rows(dataset.content)
+    headers, rows, _ = currency_rows(dataset, currency_view)
     lines = [",".join(_field(header) for header in headers)]
     for row in rows:
         lines.append(

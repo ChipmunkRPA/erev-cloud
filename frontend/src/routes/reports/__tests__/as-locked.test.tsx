@@ -55,6 +55,8 @@ const CONTEXT = `entity=${LOCK.entity_code}&period=${LOCK.period_key}&book=${LOC
 const AS_LOCKED_SENTENCE = "Showing Aug 2026 as locked on 03 Sep 2026 09:14 UTC.";
 const CURRENT_SENTENCE = "Showing current figures. Aug 2026 was locked on 03 Sep 2026 09:14 UTC.";
 const NOT_FROZEN = "A period lock does not freeze this report.";
+const CURRENCY_PARAMETERS =
+  "Select a currency view retained at lock. Other filters are fixed; older locks may not contain alternate currency views.";
 const NO_PARAMETERS = "Figures as locked take no parameters. Show current figures to change them.";
 const AVM_US = {
   id: "0a1b2c3d-4e5f-4a6b-8c7d-000000000001",
@@ -438,7 +440,9 @@ const VIEWS = AS_LOCKED.definitions
   .filter((code) => !PACK_CODES.has(code) && code !== LEGACY_JE_SUMMARY);
 const WITH_DATASET = VIEWS.filter((code) => Object.hasOwn(AS_LOCKED.kinds, code));
 // The composed E-65 disclosure path has separate cases below and does not use this E-64 fake.
-const WITHOUT_DATASET = VIEWS.filter((code) => code !== "disclosure_pack" && !Object.hasOwn(AS_LOCKED.kinds, code));
+const WITHOUT_DATASET = VIEWS.filter(
+  (code) => code !== "disclosure_pack" && !Object.hasOwn(AS_LOCKED.kinds, code),
+);
 
 /**
  * SF-08:report of a frozen report on a locked August: as locked by default on the lock whose
@@ -467,8 +471,13 @@ async function expectAsLockedByDefault(code: string, periods: readonly Period[])
   const bar = screen.getByTestId("SF-08-filter-bar");
   const fields = fieldsOf(bar);
   expect(fields.length > 0).toBe(toolbarKeys(definition).length > 0);
-  expect(fields.filter((field) => !unavailable(field))).toEqual([]);
-  expect(noteOf(bar)).toBe(fields.length > 0 ? NO_PARAMETERS : null);
+  const currency = ["revenue_waterfall", "contract_balances", "rpo"].includes(definition.code);
+  expect(fields.filter((field) => !unavailable(field)).map((field) => field.id)).toEqual(
+    currency ? ["field-p-currency_view"] : [],
+  );
+  expect(noteOf(bar)).toBe(
+    fields.length > 0 ? (currency ? CURRENCY_PARAMETERS : NO_PARAMETERS) : null,
+  );
   // A range the bar shows is the lock's one period, not the default range of the report.
   expect(
     within(bar)
@@ -511,7 +520,7 @@ describe("RV-04 on a closed period: the reports with a lock dataset", () => {
     const fields = fieldsOf(bar);
     expect(fields.length).toBeGreaterThan(0);
     expect(fields.filter((field) => !unavailable(field))).toEqual([]);
-    expect(noteOf(bar)).toBe(NO_PARAMETERS);
+    expect(noteOf(bar)).toBe(CURRENCY_PARAMETERS);
     // The range the bar shows is the lock's period, not the fiscal year a lock does not hold.
     expect(within(bar).getByRole("combobox", { name: /^From/ }).textContent).toContain("Aug 2026");
     expect(within(bar).getByRole("combobox", { name: /^To/ }).textContent).toContain("Aug 2026");
@@ -526,7 +535,11 @@ describe("RV-04 on a closed period: the reports with a lock dataset", () => {
     open(`/reports/rpo?${CONTEXT}&known_at=2026-09-10T00:00:00Z&currency_view=functional`);
     expect(await screen.findByTestId("SF-08-run-stamp")).toBeTruthy();
     expect(served.posted.map((body) => body.parameters)).toEqual([
-      { ...ownSelectors(definition), known_at: "2026-09-10T00:00:00Z" },
+      {
+        ...ownSelectors(definition),
+        known_at: "2026-09-10T00:00:00Z",
+        currency_view: "functional",
+      },
     ]);
   });
 
@@ -674,12 +687,12 @@ describe("RV-04 on a closed period: the reports with a lock dataset", () => {
 });
 
 describe("RV-04 on a closed period: the reports without a lock dataset", () => {
-  it("are the forty-one other report views", () => {
-    expect(WITHOUT_DATASET).toHaveLength(41);
-    // Seventeen take the lock and the API has no dataset for it; twenty-four take none.
+  it("are the forty-three other report views", () => {
+    expect(WITHOUT_DATASET).toHaveLength(43);
+    // Sixteen take the lock and the API has no dataset for it; twenty-seven take none.
     expect(
       WITHOUT_DATASET.filter((code) => takes(definitionOf(code), "period_lock_id")),
-    ).toHaveLength(17);
+    ).toHaveLength(16);
   });
 
   it.each(WITHOUT_DATASET)(
@@ -768,7 +781,7 @@ describe("RV-04 on a permanently locked period: the lock the permanent lock seal
       ),
     ).toBeTruthy();
     const bar = screen.getByTestId("SF-04-filter-bar");
-    expect(noteOf(bar)).toBe(NO_PARAMETERS);
+    expect(noteOf(bar)).toBe(CURRENCY_PARAMETERS);
     expect(fieldsOf(bar).filter((field) => !unavailable(field))).toEqual([]);
     expect(await screen.findByTestId("SF-04-row-avm-us-sf-ord-10001-o1-fy2026-p08")).toBeTruthy();
   });
@@ -907,16 +920,47 @@ describe("RV-04 on a permanently locked period: the lock the permanent lock seal
   });
 });
 
-
 it("disclosure uses its lock cutoff and saved quarter inputs instead of the global current timestamp", () => {
   const definition = definitionOf("disclosure_pack");
   const context = {
-    entity: LOCK.entity_code, book: LOCK.book_code, periodKey: LOCK.period_key,
-    periods: PERIODS, snapshot: LOCK.id, knownAt: "2026-10-19T00:00:00Z", currencyView: null,
+    entity: LOCK.entity_code,
+    book: LOCK.book_code,
+    periodKey: LOCK.period_key,
+    periods: PERIODS,
+    snapshot: LOCK.id,
+    knownAt: "2026-10-19T00:00:00Z",
+    currencyView: null,
   };
   expect(hasLockDataset("disclosure_pack")).toBe(true);
   const parameters = runParameters(definition, context, {});
-  expect(parameters).toEqual({ entity_codes: [LOCK.entity_code], book: LOCK.book_code,
-    period_key: LOCK.period_key, period_lock_id: LOCK.id, quarter: true });
+  expect(parameters).toEqual({
+    entity_codes: [LOCK.entity_code],
+    book: LOCK.book_code,
+    period_key: LOCK.period_key,
+    period_lock_id: LOCK.id,
+    quarter: true,
+  });
   expect(runParameters(definition, context, { quarter: "false" }).quarter).toBe(false);
+});
+
+it("retained currency views are sent without widening the frozen period scope", () => {
+  const definition = definitionOf("contract_balances");
+  const context = {
+    entity: LOCK.entity_code,
+    book: LOCK.book_code,
+    periodKey: LOCK.period_key,
+    periods: PERIODS,
+    snapshot: LOCK.id,
+    knownAt: null,
+    currencyView: "functional",
+  };
+  expect(runParameters(definition, context, {}).currency_view).toBe("functional");
+  const parameters = runParameters(definition, context, {
+    currency_view: "reporting",
+    contract_external_id: "ignored",
+    from_period_key: "OTHER",
+  });
+  expect(parameters.currency_view).toBe("reporting");
+  expect(parameters.period_key).toBe(LOCK.period_key);
+  expect(parameters).not.toHaveProperty("contract_external_id");
 });

@@ -699,6 +699,14 @@ def test_lock_writes_certification_and_snapshots(world: CloseWorld, clock: Froze
             header_and_rows = sum(1 for _ in csv.reader(io.StringIO(data.decode("utf-8"))))
             assert int(snapshot["row_count"]) == header_and_rows - 1
             assert snapshot["report_run_id"] is None  # ruling Q-10
+            from erev_api.domain.reports import snapshot_views
+
+            if _value(snapshot["snapshot_kind"]) in snapshot_views.KINDS:
+                assert snapshot_views.VIEW in data.decode("utf-8").splitlines()[0]
+                for basis in snapshot_views.VIEWS:
+                    _, _, controls = snapshot_views.select(data, basis)
+                    assert controls is not None
+
             hashes[_value(snapshot["snapshot_kind"])] = expected
         head = session.execute(
             select(ledger_chain_head.c.last_chain_seq).where(ledger_chain_head.c.book_code == BOOK)
@@ -810,8 +818,13 @@ def test_contract_balances_snapshot_k01(
         ]
         data = _dataset_bytes(session, pellworth.place, UUID(str(snapshot["file_id"])))
     assert _sha256(data) == str(snapshot["file_sha256"])
-    (k01,) = [row for row in _dataset_rows(data) if row["contract_external_id"] == "SF-ORD-10001"]
-    assert Decimal(k01["contract_liability"]) == Decimal("39708.49")
+    from erev_api.domain.reports import snapshot_views
+
+    for view in snapshot_views.VIEWS:
+        _, rows, controls = snapshot_views.select(data, view)
+        (k01,) = [row for row in rows if row["contract_external_id"] == "SF-ORD-10001"]
+        assert Decimal(k01["contract_liability"]) == Decimal("39708.49")
+        assert controls is not None and controls["currency_view"] == view
 
 
 def test_lock_certifies_reconciliations(world: CloseWorld, clock: FrozenClock) -> None:

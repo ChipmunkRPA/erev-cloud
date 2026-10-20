@@ -527,7 +527,6 @@ def test_a_filter_or_view_on_an_as_locked_run_is_refused_by_name() -> None:
     for key, value in (
         ("contract_external_id", "SF-ORD-10001"),
         ("include_zero", True),
-        ("currency_view", "TRANSACTION"),
     ):
         _, errors = locked.reconcile_selectors(
             {**MATCHING, key: value}, SCOPE, BALANCES_PROPERTIES, kind=KIND
@@ -535,6 +534,16 @@ def test_a_filter_or_view_on_an_as_locked_run_is_refused_by_name() -> None:
         assert _findings(errors) == {
             f"parameters.{key}": locked.NOT_A_LOCK_SELECTOR.format(key=key, kind=KIND, lock=LOCK)
         }, key
+    _, errors = locked.reconcile_selectors(
+        {**MATCHING, "currency_view": "TRANSACTION"}, SCOPE, BALANCES_PROPERTIES, kind=KIND
+    )
+    assert _findings(errors) == {
+        "parameters.currency_view": "Choose transaction, functional or reporting currency."
+    }
+    selected, errors = locked.reconcile_selectors(
+        {**MATCHING, "currency_view": "functional"}, SCOPE, BALANCES_PROPERTIES, kind=KIND
+    )
+    assert not errors and selected["currency_view"] == "functional"
     _, errors = locked.reconcile_selectors(
         {"period_lock_id": str(LOCK), "as_of": "2026-09-30"},
         SCOPE,

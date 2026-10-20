@@ -8,8 +8,6 @@ a separate step: these endpoints are evidence, not a completed RPT-38 report.
 
 from __future__ import annotations
 
-import csv
-import io
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -76,8 +74,7 @@ def endpoints(source: FrozenClose) -> dict[MeasureKey, Endpoint]:
         if dataset.lock_id != source.scope.lock_id:
             raise _refuse("a monetary dataset belongs to another lock.")
         locked.verify(dataset)
-        reader = csv.DictReader(io.StringIO(dataset.content.decode("utf-8")))
-        headers = reader.fieldnames or []
+        headers, reader, _ = locked.currency_rows(dataset)
         required = {"row_key", "currency", *keys, *_VALUES[kind]}
         if len(headers) != len(set(headers)) or not required <= set(headers):
             raise _refuse(f"{kind} has missing or duplicated columns.")

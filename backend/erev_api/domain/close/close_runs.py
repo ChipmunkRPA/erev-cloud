@@ -1371,6 +1371,7 @@ def _dataset_freeze(uow: UnitOfWork, run: _Run) -> StepResult:
             cutoff,
             frozen_at=cutoff,
             registry=registry.datasets,
+            currency_variants=True,
             scope_type=registry.scope,
         )
     except registry.refusal as refused:
