@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## First-entry batch estimate attribution — October 20, 2026
+
+- Initial disclosure entry now separates later original estimate-event shares from NEW_CONTRACTS
+  into VC_ESTIMATE_CHANGES, including signed decreases. Event dates and shares come from the
+  original version's causes and retained trace; inception estimates remain part of entry.
+- This path requires complete shares, all later changes through the range end, and no competing
+  modification/cancellation. Earlier cuts before a batched fixed-price change still need dated
+  fixed-allocation/remainder evidence; this change does not repair those earlier balances.
+- 27 focused tests and the DB first-batch usage test pass; lint/types and migration 0212 checked.
+  No deployment or independent accounting sign-off.
+
+
 ## Explicit measurement-only estimate evidence — October 20, 2026
 
 - Stage 08 now retains whether an estimate changes measurement only, is absorbed at inception,

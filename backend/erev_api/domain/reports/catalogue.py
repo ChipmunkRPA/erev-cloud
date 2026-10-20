@@ -810,6 +810,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _as_locked("RPO_ROLLFORWARD"),
             "measurement-only estimate pins prove no allocation movement; inception estimates "
             "and legacy pins without an explicit effect are not assumed to have zero impact",
+            "first-entry batches separate later estimate-event shares from new contracts when all "
+            "changes fall within the range and no modification or cancellation competes",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

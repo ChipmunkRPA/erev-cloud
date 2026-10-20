@@ -371,6 +371,10 @@ def test_first_calculation_keeps_later_usage_out_of_earlier_rpo(
         },
     )
     assert waterfall["control_totals"] == {
+        "currency_view": "transaction",
+        "forecast_currency_basis": "transaction",
+        "tie_out_currency_basis": "transaction",
+        "translation_rates": [],
         "recognized_total": {"USD": f"{january_revenue:.2f}"},
         "scheduled_total": {"USD": f"{Decimal('80000.00') - january_revenue:.2f}"},
         "awaiting_trigger_total": {"USD": "0.00"},

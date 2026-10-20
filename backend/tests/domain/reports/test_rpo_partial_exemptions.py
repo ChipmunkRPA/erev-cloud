@@ -538,3 +538,82 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
     assert known.lines["VC_ESTIMATE_CHANGES"] == estimate
     assert known.lines["MODIFICATIONS"] == modification
     assert known.lines["UNEXPLAINED"] == 0
+
+
+@pytest.mark.parametrize("later_amount", ["200", "-50"])
+def test_first_entry_separates_later_original_estimate_events(later_amount: str) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+    from erev_api.domain.reports.rpo_estimate_changes import allocations
+
+    targeted = worlds.element("100", keys=["A"])
+    base = worlds.targeted_world(estimates=[targeted])
+    original = compute(base).books[0]
+    bundle = worlds.with_changes(
+        base,
+        [worlds.later_version(targeted, 2, date(2026, 2, 1), later_amount)],
+        memo_on=date(2026, 2, 28),
+    )
+    book = compute(bundle).books[0]
+    vid, cid, eid, gid = (uuid4() for _ in range(4))
+    entry, before, end = date(2026, 1, 1), date(2025, 12, 31), date(2026, 2, 28)
+    estimates = tuple(
+        (event.event_key, event.effective_date)
+        for event in bundle.events
+        if event.event_type == "ESTIMATE_CHANGED"
+    )
+    version = rpo._Version(
+        vid,
+        gid,
+        1,
+        True,
+        entry,
+        frozenset({"CONTRACT_ACTIVATED", "ESTIMATE_CHANGED"}),
+        entries=((cid, entry),),
+        estimate_events=frozenset(key for key, _ in estimates),
+        estimate_dates=estimates,
+    )
+    obligations = []
+    cuts = {}
+    for output in book.obligation_versions:
+        columns = output.columns
+        oid = uuid4()
+        allocated = Decimal(str(columns["allocated_amount"])) / 100
+        ob = rpo._Ob(
+            oid,
+            vid,
+            oid,
+            cid,
+            "K-01",
+            str(columns["obligation_key"]),
+            "Service",
+            None,
+            None,
+            None,
+            eid,
+            "E",
+            "USD",
+            "POINT_IN_TIME",
+            date(2028, 12, 31),
+            entry,
+            allocated,
+            False,
+        )
+        obligations.append(ob)
+        at = ObligationAt(*(Decimal(0) for _ in range(7)), allocated, "UNSATISFIED", None, None)
+        for day in (before, entry, end):
+            cuts.setdefault((vid, day), {})[oid] = at
+    store = rpo.Store({gid: (version,)}, {vid: tuple(obligations)}, {cid: (version,)}, cuts)
+    for event, day in estimates:
+        if day > entry:
+            shares = allocations(book.trace, frozenset({event}))
+            assert shares is not None
+            store.estimate_event_allocations[vid, event] = shares
+    (movement,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    initial = sum(
+        Decimal(str(row.columns["allocated_amount"])) / 100 for row in original.obligation_versions
+    )
+    final = sum(ob.allocated for ob in obligations)
+    assert movement.lines["NEW_CONTRACTS"] == initial
+    assert movement.lines["VC_ESTIMATE_CHANGES"] == final - initial
+    assert movement.lines["CLOSING"] == final
+    assert movement.lines["UNEXPLAINED"] == 0

@@ -285,6 +285,7 @@ class _Version:
     # (contract, the effective date of its earliest ``ENTRY_EVENTS`` cause of this version)
     entries: tuple[tuple[UUID, date], ...] = ()
     estimate_events: frozenset[str] = frozenset()
+    estimate_dates: tuple[tuple[str, date], ...] = ()
 
 
 @dataclass(slots=True)
@@ -343,6 +344,9 @@ class Store:
     original_ends: dict[UUID, Mapping[str, date]] = field(default_factory=dict)
 
     estimate_allocations: dict[UUID, Mapping[str, Decimal]] = field(default_factory=dict)
+    estimate_event_allocations: dict[tuple[UUID, str], Mapping[str, Decimal]] = field(
+        default_factory=dict
+    )
 
     def version_at(self, contract_id: UUID, day: date) -> _Version | None:
         """The version a contract is read from at ``day``: the last one of its chain effective
@@ -471,6 +475,11 @@ def load(
                 entries=tuple(sorted(entries.items(), key=lambda pair: str(pair[0]))),
                 estimate_events=frozenset(
                     estimate_keys[UUID(str(item))]
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in estimate_keys
+                ),
+                estimate_dates=tuple(
+                    (estimate_keys[UUID(str(item))], events[UUID(str(item))][1])
                     for item in row["cause_event_ids"] or ()
                     if UUID(str(item)) in estimate_keys
                 ),
@@ -812,7 +821,10 @@ def measure(
             if (
                 version.id not in wanted
                 or not version.estimate_events
-                or not any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
+                or not (
+                    version.entries
+                    or any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
+                )
             ):
                 continue
             trace = trace_store.load_trace(session, version.id)
@@ -820,6 +832,11 @@ def measure(
                 changes = rpo_estimate_changes.allocations(trace, version.estimate_events)
                 if changes is not None:
                     store.estimate_allocations[version.id] = changes
+                if version.entries:
+                    for event in version.estimate_events:
+                        shares = rpo_estimate_changes.allocations(trace, frozenset({event}))
+                        if shares is not None:
+                            store.estimate_event_allocations[version.id, event] = shares
     if applied is not None and any("POL-197" in values for values in applied.values()):
         if book_code is None:
             raise Problem("validation-failed", "Original RPO terms require retained source access.")
@@ -1161,6 +1178,32 @@ def _obligation_lines(
             )
             lines["NEW_CONTRACTS"] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
+            later = [
+                (event, day) for event, day in version.estimate_dates if day > version.effective
+            ]
+            if (
+                later
+                and all(day <= end for _, day in later)
+                and not any(
+                    CAUSE_LINES.get(kind) in {"MODIFICATIONS", "CANCELLATIONS"}
+                    for kind in version.causes
+                )
+                and all(
+                    (version.id, event) in store.estimate_event_allocations for event, _ in later
+                )
+            ):
+                # Inception estimates are part of entry. Later original estimate
+                # shares are changes, even if first computed together with entry.
+                subject = obligation_subject_key(current.external_id, current.obligation_key)
+                change = sum(
+                    (
+                        store.estimate_event_allocations[version.id, event].get(subject, ZERO)
+                        for event, _ in later
+                    ),
+                    ZERO,
+                )
+                lines["NEW_CONTRACTS"] -= change
+                lines["VC_ESTIMATE_CHANGES"] += change
         elif current is None and previous_obligation is not None:
             removed = (
                 store.at(previous_obligation, version.effective).realised
