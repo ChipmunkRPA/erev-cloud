@@ -721,8 +721,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "currency_view",
         ),
         sources=(
+            "subledger_line",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
             "journal_line",
-            "journal_entry",
+            "journal_batch",
             "journal_run",
             "obligation_version",
             "product",
@@ -731,16 +736,20 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "lock_snapshot",
         ),
         joins=(
-            "journal_line.journal_entry_id = journal_entry.id",
-            "journal_line.obligation_id = obligation_version.obligation_id",
+            "subledger_line.obligation_id = obligation_version.obligation_id and "
+            "subledger_line.contract_version_id = obligation_version.contract_version_id",
             "obligation_version.product_id = product.id",
-            "journal_line.period_id = period.id",
+            "subledger_line.period_id = period.id",
+            "journal_line.journal_batch_id = journal_batch.id for the independent journal tie-out",
         ),
         filters=(
             _SCOPE,
             _BOOK,
             _PERIODS,
-            "journal_line.account_role = 'REVENUE' of runs not cancelled",
+            "subledger_line.account_role = 'REVENUE'; independent tie-out uses "
+            "journal runs not cancelled",
+            "functional reads posted amounts; reporting translates posted functional lines at "
+            "their period average rates, retained for reruns",
             "grouped by dimension_code and, with include_timing, the timing of transfer",
             _as_locked("DISAGGREGATION"),
         ),

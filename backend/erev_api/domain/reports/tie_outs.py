@@ -1528,9 +1528,11 @@ def journal_revenue(
     period_ids: Iterable[UUID],
     known_at: datetime,
     params: ReportParams | None = None,
+    functional: bool = False,
 ) -> dict[str, Decimal]:
     """Σ credit − debit of the ``REVENUE`` journal lines of every run not cancelled, whatever its
-    mode, per currency. Supervisor ruling R-52 (a) supersedes D-87 L6-3-Q-32 (only the runs of the
+    mode, per transaction currency (or posted functional currency with ``functional``).
+    Supervisor ruling R-52 (a) supersedes D-87 L6-3-Q-32 (only the runs of the
     entity's POL-005 posting mode): since DB-16 keys journal coverage on entity, book and period
     alone (04 rev 1.106, revision 0085; security finding SC-7) a seal is journalised by one run
     only, so nothing can count twice, and a run requested in the other mode journalises seals no
@@ -1547,10 +1549,18 @@ def journal_revenue(
         journal_line.c.entity_id.in_(list(entity_ids)),
         journal_line.c.period_id.in_(ids),
     ]
+    currency_column = (
+        journal_line.c.functional_currency if functional else journal_line.c.txn_currency
+    )
+    amount = (
+        journal_line.c.credit_functional - journal_line.c.debit_functional
+        if functional
+        else journal_line.c.credit_txn - journal_line.c.debit_txn
+    )
     statement = (
         select(
-            journal_line.c.txn_currency,
-            func.sum(journal_line.c.credit_txn - journal_line.c.debit_txn),
+            currency_column,
+            func.sum(amount),
         )
         .select_from(
             journal_line.join(
@@ -1572,7 +1582,7 @@ def journal_revenue(
             *scope,
             *_journal_run_membership(session, params, known_at, scope=scope),
         )
-        .group_by(journal_line.c.txn_currency)
+        .group_by(currency_column)
     )
     return {
         str(currency).strip(): Decimal(total)

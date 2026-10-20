@@ -6,7 +6,11 @@ Population: the ``REVENUE`` subledger lines of the range for the run's entities 
 by ``known_at``, joined to the obligation version that posted them. The dimension value is the
 product's ``revenue_category`` (default) or ``product_family``, or the line's stored dimension of
 ``dimension_code``; ``include_timing`` adds the timing of transfer from the obligation's
-``satisfaction_pattern`` ("Point in time", "Over time"). Revenue is −``amount_txn``. Rows
+``satisfaction_pattern`` ("Point in time", "Over time"). Transaction revenue is −``amount_txn``;
+functional revenue is the stored −``amount_functional``. Reporting revenue translates each posted
+functional line at the posting period's approved average rate, rounded at target currency precision.
+The retained rate/version evidence is reused on reruns; locked periods use their frozen cutoff.
+Reporting-view journal comparisons stay explicitly in functional currency. Rows
 ``<value>:<POINT_IN_TIME | OVER_TIME>`` (or ``<value>``) carry one money field per period
 ``period:<key>`` and ``total``; one ``TOTAL:<ISO>`` row per currency.
 
@@ -31,7 +35,7 @@ from uuid import UUID
 from sqlalchemy import and_, select
 
 from erev_api.db.tables import obligation_version, product, subledger_line
-from erev_api.domain.reports import elections, tie_outs
+from erev_api.domain.reports import elections, locked_ends, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as balances
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -49,6 +53,18 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     found, periods, _ = balances.ranges(session, params)
+    view = str(params.parameters.get("currency_view") or "transaction")
+    entity_by_id = {entity.id: entity for entity in found}
+    period_by_id = {period.id: period for selected in periods.values() for period in selected}
+    translations: dict[tuple[UUID, UUID], reporting_currency.Translation] = {}
+    functional_revenue: dict[str, Decimal] = {}
+    locked = locked_ends.Reader(
+        uow,
+        params,
+        book_code=book_code,
+        cutoff=tie_outs.cutoff_for(session, params),
+        entity_codes={entity.id: entity.code for entity in found},
+    )
     dimension_code = str(params.parameters.get("dimension_code") or "revenue_category")
     include_timing = bool(params.parameters.get("include_timing", True))
     elected = {
@@ -80,6 +96,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 subledger_line.c.period_id,
                 subledger_line.c.txn_currency,
                 subledger_line.c.amount_txn,
+                subledger_line.c.functional_currency,
+                subledger_line.c.amount_functional,
                 subledger_line.c.dimensions,
                 obligation_version.c.satisfaction_pattern,
                 product.c.id.label("product_id"),
@@ -118,6 +136,33 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             entity_id = UUID(str(row["entity_id"]))
             timing = str(row["satisfaction_pattern"])
             currency = str(row["txn_currency"]).strip()
+            amount = -Decimal(row["amount_txn"])
+            period_id = UUID(str(row["period_id"]))
+            if view in {"functional", "reporting"}:
+                currency = str(row["functional_currency"]).strip()
+                if currency != entity_by_id[entity_id].functional_currency:
+                    raise tie_outs.invalid(
+                        "currency_view", "Posted functional currency differs from entity."
+                    )
+                amount = -Decimal(row["amount_functional"])
+                add(functional_revenue, currency, amount)
+                if view == "reporting":
+                    rate_key = (entity_id, period_id)
+                    if rate_key not in translations:
+                        period = period_by_id[period_id]
+                        translations[rate_key] = reporting_currency.rates_for_period(
+                            session,
+                            params,
+                            tenant_id=uow.principal.tenant_id,
+                            entities=(entity_by_id[entity_id],),
+                            periods={entity_id: period},
+                            locked=locked,
+                            rate_type="average",
+                            evidence_key=f"revenue_reporting_rate_v1:{entity_id}:{period.key}",
+                        )
+                    translation = translations[rate_key]
+                    amount = translation.amount(entity_id, amount)
+                    currency = translation.currency
             group: Group
             if entity_id in timing_only:
                 group = ("timing", timing, TIMINGS.get(timing, timing), currency)
@@ -141,7 +186,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 group = (label, timing if include_timing else "", None, currency)
             cells = grouped.setdefault(group, {})
             period_key = key_of[UUID(str(row["period_id"]))]
-            cells[period_key] = cells.get(period_key, ZERO) - Decimal(row["amount_txn"])
+            cells[period_key] = cells.get(period_key, ZERO) + amount
         tie_outs.require_members(params, "subledger_line", consumed)
         tie_outs.record_members(params, "subledger_line", consumed)
     else:
@@ -226,12 +271,31 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         period_ids=key_of,
         known_at=params.known_at,
         params=params,  # S15-R-24: the tie-out's journal-run membership is bound
+        functional=view in {"functional", "reporting"},
     )
+    control: dict[str, Any] = {"revenue_total": tie_outs.by_currency(revenue), "notes": notes}
+    check = tie_outs.compared(
+        tie_outs.TO_DISAGGREGATION_EQ_JE_REVENUE,
+        expected,
+        functional_revenue if view == "reporting" else revenue,
+    )
+    if view == "reporting":
+        control["translation_rates"] = [
+            {"entity_code": entity_by_id[entity_id].code, **translation.rates[entity_id]}
+            for (entity_id, _), translation in sorted(
+                translations.items(), key=lambda pair: str(pair[0])
+            )
+        ]
+        control["translation_rounding_basis"] = (
+            "Each posted revenue line at reporting currency precision"
+        )
+        control["tie_out_currency_basis"] = "functional"
+        check["details"] = [
+            {"reason": "Journal comparison uses posted functional amounts before translation."}
+        ]
     return ReportData(
         columns=columns,
         rows=tuple(rows),
-        control_totals={"revenue_total": tie_outs.by_currency(revenue), "notes": notes},
-        tie_out_results=(
-            tie_outs.compared(tie_outs.TO_DISAGGREGATION_EQ_JE_REVENUE, expected, revenue),
-        ),
+        control_totals=control,
+        tie_out_results=(check,),
     )

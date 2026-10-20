@@ -6,6 +6,22 @@
 
 
 
+## Revenue disaggregation currency views — October 20, 2026
+
+- Fixed currency_view being ignored by revenue disaggregation. Functional view now reads posted
+  functional amounts; reporting view translates each posted functional revenue line at its own
+  posting period's approved average rate. Display totals sum the rounded line contributions.
+- Rates/version IDs are retained per entity/period; locked endpoints use frozen rate cutoffs.
+  Reporting journal tie-outs explicitly compare functional subledger and journal amounts before
+  translation. The general journal-revenue reader now supports functional amounts without
+  changing its default transaction behavior or retained run-membership rules.
+- Targeted API journey: EUR 10,000 transaction revenue is USD 11,000 functional revenue; changing
+  the reporting average to 0.8 yields EUR 8,800 in a fresh report while the original rerun keeps
+  EUR 10,000. Functional journal tie passes. Existing transaction disaggregation control passes;
+  Python lint/types pass. No deployment.
+- Revenue waterfall and RPO currency coverage remain separate unfinished work, along with the
+  previously documented multi-layer FX, combined-contract and difference-attribution gaps.
+
 ## Targeted VC evidence through the platform — October 20, 2026
 
 - Fixed a missing production adapter path: the estimate element's allocation-criteria evidence
@@ -211,33 +227,6 @@
 - Code review confirms variance_between_closes has prepare/replay/presentation and retained
   binding support. Its remaining business acceptance must not be described as absent code.
   Independent accounting acceptance and other release gaps remain open. No deployment.
-
-## Deal product selection — October 19, 2026
-
-- Replaced manual product-code entry with the shared searchable combobox. Choices show code
-  and name, include only active products, and follow the complete catalogue pagination.
-  Every deal line must have an explicit valid selection before preview submission.
-- Added catalogue loading/empty/refusal retry states. Product lookup runs only for new proposal
-  entry; reopening retained evidence does not require current product catalogue availability.
-  Start over clears selections and network retry retains the selected products.
-- Four focused selector/submission/pagination checks pass; TypeScript and ESLint pass.
-  Real browser/Tamsin accounting acceptance and independent sign-off remain open. Report gaps
-  still require the broader implementation/evidence review. No deployment; main-only publication.
-
-## Scenario draft save UI — October 19, 2026
-
-- Preview detail now advertises save_allowed only for an unsaved preview in an active registered
-  scenario where the caller holds entity-scoped contract.create. The save command still locks
-  and rechecks the scenario and preview; the read flag is not an authorization token.
-- SF-18 exposes external-ID entry and Save as scenario draft only when eligible. Keeps input
-  through network errors, uses the common idempotent command flow, invalidates preview/contracts,
-  and presents the saved draft link after save or on reopening. Start over is blocked during save.
-  Copy distinguishes current-reference draft calculation from retained preview evidence.
-- Six focused frontend tests and two real scenario/production API journeys pass, including
-  eligibility before/after save and production refusal. Python/TypeScript checks and lint pass.
-- Product picker and real Tamsin/browser acceptance remain open; independent accounting sign-off
-  is not obtained. Other report acceptance/implementation gaps remain under the broader goal.
-  No deployment; changes go directly to main.
 
 ## Outstanding release verification
 

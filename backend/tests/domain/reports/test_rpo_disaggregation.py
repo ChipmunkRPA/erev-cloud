@@ -764,3 +764,82 @@ def test_partial_vc_exemption_from_approved_element_to_report_and_snapshot(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == rows
+
+
+@pytest.mark.slow
+def test_disaggregation_uses_posted_functional_revenue_and_retained_average_rates(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from support import close_run_worlds, worlds
+    from support import close_runs as runs
+    from support.reference import approve
+
+    world = close_run_worlds.eur_receivable(app, keyring, clock, files, reporting_currency="EUR")
+    closed = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key="FY2026-P08")
+    assert closed["status"] == "SUCCEEDED"
+    world = runs.journal_posted(world, clock, closed["journal_run_id"])
+    params = {
+        "entity_codes": [AVM_US],
+        "book": "ASC606",
+        "from_period_key": "FY2026-P08",
+        "to_period_key": "FY2026-P08",
+    }
+    functional, rows = report_run(
+        world, "disaggregation", {**params, "currency_view": "functional"}
+    )
+    assert keyed(rows)["TOTAL:USD"]["total"] == usd("11000.00")
+    assert tie(functional, tie_outs.TO_DISAGGREGATION_EQ_JE_REVENUE)["result"] == "PASS"
+    params["currency_view"] = "reporting"
+    run, rows = report_run(world, "disaggregation", params)
+    assert keyed(rows)["TOTAL:EUR"]["total"] == {"currency": "EUR", "amount": "10000.00"}
+    check = tie(run, tie_outs.TO_DISAGGREGATION_EQ_JE_REVENUE)
+    assert check["result"] == "PASS"
+    assert check["expected"] == [usd("11000.00")]
+    assert run["control_totals"]["tie_out_currency_basis"] == "functional"
+    listed = get(app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
+    (average,) = [item for item in listed.json()["items"] if item["code"] == "AVM-RATES-AVERAGE"]
+    draft = post(
+        app,
+        f"/api/v1/fx-rate-sets/{average['id']}/versions",
+        world.maya,
+        {
+            "coverage_from": "2026-08-01",
+            "coverage_to": "2026-08-31",
+            "rates": [
+                {
+                    "base_currency": "USD",
+                    "quote_currency": "EUR",
+                    "period_key": "FY2026-P08",
+                    "rate": "0.8",
+                }
+            ],
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    sent = post(
+        app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        world.maya,
+        {"comment": "Revised reporting average"},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert sent.status_code == 200, sent.text
+    clock.advance(timedelta(minutes=1))
+    world = worlds.verified(world, clock, "marcus")
+    approved = approve(app, sent.json()["pending_approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    _, fresh = report_run(world, "disaggregation", params)
+    assert keyed(fresh)["TOTAL:EUR"]["total"] == {"currency": "EUR", "amount": "8800.00"}
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows

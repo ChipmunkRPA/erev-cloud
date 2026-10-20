@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current revenue disaggregation update (October 20): functional and reporting views now honor
+the selected currency basis. Functional revenue comes from posted amounts; reporting uses
+retained period-average rates, with line-level currency rounding and summed display totals.
+Its journal comparison stays explicitly functional. New runs and retained reruns after a rate
+change pass the targeted API journey; transaction behavior is unchanged. Older reporting bindings
+without rate evidence cannot invent that evidence on rerun. This does not complete revenue
+waterfall or RPO multi-currency coverage, or substitute journal comparison for external GL
+reconciliation. No deployment.
+
 Current targeted-VC adapter update (October 20): the production bundle now carries allocation
 criteria from the estimate element, with no version-parameter substitution. Later RPO quota
 changes read the same authoritative element evidence. A positive approved two-version journey
