@@ -26,6 +26,7 @@ from erev_api.db.tables import (
     subledger_posting_seal,
 )
 from erev_api.domain.reports import computation_sources
+from erev_api.domain.reports.fx_subjects import retained_subject
 from erev_api.enums import PrincipalKind
 from erev_api.explain.store import load_trace, trace_document
 from erev_api.uow import UnitOfWork
@@ -89,12 +90,15 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
             select(period.c.period_key).where(period.c.id == line["origin_period_id"])
         ).scalar_one()
     )
+    subject = line["subject_key"]
+    if subject is None:
+        subject = retained_subject(None, source.bundle, entity_code)
     matches = []
     for intent in book["posting_intents"]:
         if (
             intent["entity"] != entity_code
             or intent["book_code"] != book_code
-            or intent["subject_key"] != line["subject_key"]
+            or intent["subject_key"] != subject
             or intent["entry_kind"] != str(line["entry_kind"])
             or intent["posting_period_key"] != period_key
             or intent["origin_period_key"] != origin_key

@@ -6,6 +6,27 @@
 
 
 
+## Regrouped FX source ownership — October 20, 2026
+
+- Historical FX matching now uses S14's retained-membership regrouping rule. A stored group
+  subject is compared under the computation's original member population; keyless legacy
+  lines use that retained group/entity subject. Neither the sealed ledger fields nor the
+  original source calculation is rewritten. Command intent checks retain exact stored subjects;
+  only a missing subject uses the historical fallback.
+- Necessary checks cover keyless settlement attribution, the actual reversal after the listing
+  member leaves a three-contract group, and a two-contract public functional report. The latter
+  assigns GBP 1,080 to the actual asset owner even though the ledger lists another member.
+  The regrouping reversal retains the original paid-line dependency and delivered owner.
+  The public August–September report after exit nets original/reversal/reposted FX to USD 200
+  and passes the balance tie-out. Scoped lint/type checks pass.
+- Scope correction: current control FX templates JET-10a/b/c select one role on each side;
+  S14 does not emit split-weight targets for these flows. Unknown split formulas still refuse,
+  but are not an outstanding feature for the current FX report path.
+- Still open: late-carried public acceptance, populated foreign two-lock
+  acceptance, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
+  Group settlement/exit cases do not establish every membership transition or production
+  readiness. No deployment.
+
 ## Source-timed EVENT FX reporting — October 20, 2026
 
 - Functional/reporting rollforwards now consume actual command EVENT posting deltas with
@@ -206,22 +227,6 @@
 - Remaining: reporting-currency close variance (not offered yet), populated foreign-currency
   lock-to-lock acceptance, combined/late-carried liability FX and documented release gaps.
   No deployment or independent accounting sign-off; the overall objective remains unfinished.
-
-## Rollforward and disaggregation currency locks — October 20, 2026
-
-- Extended immutable three-view lock storage, as-locked API/UI selection, CSV export and relock
-  comparisons to contract balance rollforward, RPO rollforward and revenue disaggregation.
-  Per-view schemas (including RPO translation rounding) and controls remain inside the hashed
-  snapshot; report readers do not rebuild live inputs. Existing historical locks still refuse
-  alternate views they never retained.
-- Database checks cover each added report in all three views through API and exact CSV output
-  with its live builder disabled, plus public empty/populated lock publication. A foreign-currency
-  disaggregation witness retains EUR 10,000 transaction, USD 11,000 functional and EUR 10,000
-  reporting revenue with rate evidence. Targeted fixture/unit checks, 94 frontend checks,
-  frontend types and scoped lint pass.
-- Remaining implementation includes close-variance currency selection and attribution against
-  these snapshots, combined/late-carried liability FX and documented reporting/release gaps.
-  No deployment or independent accounting sign-off; no production-readiness claim.
 
 ## Outstanding release verification
 

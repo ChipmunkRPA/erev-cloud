@@ -635,6 +635,22 @@ def test_a_settlement_stored_without_a_subject_key_answers_the_group_subject(
         .distinct()
     )
     assert [row["subject_key"] for row in stored] == [None]
+    from erev_api.domain.close import pass_evidence
+
+    with world.place.uow() as uow:
+        line_id = uow.session.execute(
+            select(subledger_line.c.id).where(
+                subledger_line.c.contract_id == contract_id,
+                subledger_line.c.entry_kind == FX,
+                subledger_line.c.account_role == "CONTRACT_LIABILITY",
+            )
+        ).scalar_one()
+        attributed = pass_evidence.liability_attribution(
+            uow, line_id, owners={CONTRACT: contract_id}
+        )
+        assert attributed is not None
+        assert attributed.amount == Decimal("1080.00")
+        assert {item.contract_id for item in attributed.movements} == {contract_id}
     posted_lines = _line_count(world, contract_id)
 
     _recorded(

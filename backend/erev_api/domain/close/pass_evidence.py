@@ -24,6 +24,7 @@ from sqlalchemy import insert, select
 
 from erev_api.db import new_id
 from erev_api.db.tables import close_pass_evidence, subledger_line, subledger_posting
+from erev_api.domain.reports.fx_subjects import retained_subject
 from erev_api.domain.reports.liability_fx_trace import LayerDelta, PostingDelta, from_pass
 from erev_api.enums import FilePurpose
 from erev_api.explain.store import MAX_TRACE_BYTES, trace_document, trace_from_row
@@ -357,7 +358,8 @@ def _paid_layers(
     ):
         raise ValueError("FX paid-source periods are absent from the retained calendar.")
     basis = delta.params["class"]
-    base = f"posting_target:{line['subject_key']}/FX_REMEASUREMENT/CONTRACT_LIABILITY"
+    subject = retained_subject(line["subject_key"], bundle, line["entity_code"])
+    base = f"posting_target:{subject}/FX_REMEASUREMENT/CONTRACT_LIABILITY"
     target_subject = str(delta.inputs[0]).rsplit(":", 1)[0]
     if target_subject == base:
         split = False
@@ -379,7 +381,7 @@ def _paid_layers(
         if (
             saved["entity_id"] != str(line["entity_id"])
             or saved["book_code"] != str(line["book_code"])
-            or saved["subject_key"] != line["subject_key"]
+            or retained_subject(saved["subject_key"], bundle, line["entity_code"]) != subject
             or saved["txn_currency"] != str(line["txn_currency"]).strip()
             or saved["functional_currency"] != str(line["functional_currency"]).strip()
             or (basis != "ALL" and saved["posting_class"] != basis)

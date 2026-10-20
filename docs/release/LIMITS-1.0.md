@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Regrouped FX source ownership — October 20, 2026
+
+- Historical FX matching now uses S14's retained-membership regrouping rule. A stored group
+  subject is compared under the computation's original member population; keyless legacy
+  lines use that retained group/entity subject. Neither the sealed ledger fields nor the
+  original source calculation is rewritten. Command intent checks retain exact stored subjects;
+  only a missing subject uses the historical fallback.
+- Necessary checks cover keyless settlement attribution, the actual reversal after the listing
+  member leaves a three-contract group, and a two-contract public functional report. The latter
+  assigns GBP 1,080 to the actual asset owner even though the ledger lists another member.
+  The regrouping reversal retains the original paid-line dependency and delivered owner.
+  The public August–September report after exit nets original/reversal/reposted FX to USD 200
+  and passes the balance tie-out. Scoped lint/type checks pass.
+- Scope correction: current control FX templates JET-10a/b/c select one role on each side;
+  S14 does not emit split-weight targets for these flows. Unknown split formulas still refuse,
+  but are not an outstanding feature for the current FX report path.
+- Still open: late-carried public acceptance, populated foreign two-lock
+  acceptance, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
+  Group settlement/exit cases do not establish every membership transition or production
+  readiness. No deployment.
+
 ## Source-timed EVENT FX reporting — October 20, 2026
 
 - Functional/reporting rollforwards now consume actual command EVENT posting deltas with

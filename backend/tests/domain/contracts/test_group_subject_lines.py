@@ -286,6 +286,54 @@ def test_a_settlement_in_a_group_of_two_contracts_is_posted_under_the_first_memb
         uow.commit()
     assert str(getattr(again.status, "value", again.status)) == "SUCCEEDED"
     assert _line_count(fx.place, members) == posted
+    from erev_api.db.tables import legal_entity
+    from erev_api.domain.close import pass_evidence
+    from erev_api.jobs.context import JobRuntime
+
+    with fx.place.uow() as uow:
+        line_id = uow.session.execute(
+            select(subledger_line.c.id).where(
+                subledger_line.c.contract_id.in_(members),
+                subledger_line.c.entry_kind == FX,
+                subledger_line.c.account_role == "CONTRACT_LIABILITY",
+            )
+        ).scalar_one()
+        attributed = pass_evidence.liability_attribution(
+            uow, line_id, owners={FIRST_UK: first_id, DELIVERED_UK: delivered_id}
+        )
+        assert attributed is not None
+        assert attributed.amount == Decimal("1080.00")
+        assert {item.contract_id for item in attributed.movements} == {delivered_id}
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    run, rows = worlds.report_run(
+        reporting,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [AVM_UK],
+            "book": "ASC606",
+            "currency_view": "functional",
+            "from_period_key": AUGUST,
+            "to_period_key": AUGUST,
+        },
+    )
+    fx_row = next(row for row in rows if row["row_key"] == "FX_REMEASUREMENT")
+    assert sum(
+        Decimal(fx_row[key]["amount"])
+        for key in ("contract_liability", "contract_asset", "unbilled_receivable")
+    ) == Decimal("1080.00")
+    assert (
+        next(item for item in run["tie_out_results"] if item["code"] == "TO_ROLLFORWARD_BALANCES")[
+            "result"
+        ]
+        == "PASS"
+    )
 
 
 # --- (b) the period-end pass, and the member that leaves ------------------------------------------
@@ -397,6 +445,28 @@ def test_when_the_listing_member_leaves_later_lines_are_listed_under_the_next(
         ]
     )
     assert _fx_lines(world.place, members) == reposted
+    from erev_api.domain.close import pass_evidence
+
+    with world.place.uow() as uow:
+        lines = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id.in_(members),
+                    subledger_line.c.entry_kind == FX,
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
+            )
+            .mappings()
+            .all()
+        )
+        reversing = next(line for line in lines if line["amount_functional"] < 0)
+        attributed = pass_evidence.liability_attribution(uow, reversing["id"], owners=ids)
+        assert attributed is not None
+        assert attributed.amount == Decimal("-50.00")
+        assert len(attributed.paid_line_ids) == 1
+        # The listing member has left; the original calculation still owns its
+        # asset remeasurement under the delivered member, not the ledger caption.
+        assert {item.contract_id for item in attributed.movements} == {ids[DELIVERED_EU]}
 
     september = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
     assert september["status"] == "SUCCEEDED", september
@@ -406,4 +476,28 @@ def test_when_the_listing_member_leaves_later_lines_are_listed_under_the_next(
             (DELIVERED_EU, SEPTEMBER, "CONTRACT_LIABILITY", Decimal("0.0000"), Decimal("150.0000")),
             (DELIVERED_EU, SEPTEMBER, "FX_GAIN_LOSS", Decimal("0.0000"), Decimal("-150.0000")),
         ]
+    )
+    run, rows = worlds.report_run(
+        world,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "currency_view": "functional",
+            "from_period_key": AUGUST,
+            "to_period_key": SEPTEMBER,
+        },
+    )
+    fx_row = next(row for row in rows if row["row_key"] == "FX_REMEASUREMENT")
+    # From a zero opening, revenue first builds the asset path; endpoint
+    # presentation later reclassifies it to unbilled. FX stays in its path caption.
+    assert sum(
+        Decimal(fx_row[key]["amount"]) for key in ("contract_asset", "unbilled_receivable")
+    ) == Decimal("200.00"), fx_row
+    assert fx_row["contract_liability"] == {"amount": "0.00", "currency": "USD"}
+    assert (
+        next(item for item in run["tie_out_results"] if item["code"] == "TO_ROLLFORWARD_BALANCES")[
+            "result"
+        ]
+        == "PASS"
     )

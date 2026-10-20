@@ -9153,3 +9153,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: alternate-currency rollforward/disaggregation lock datasets and close-variance
   integration, combined/late-carried liability FX, and other release limitations. This checkpoint
   does not complete all four reporting workstreams or provide independent accounting sign-off.
+
+## Rollforward and disaggregation currency locks — October 20, 2026
+
+- Extended immutable three-view lock storage, as-locked API/UI selection, CSV export and relock
+  comparisons to contract balance rollforward, RPO rollforward and revenue disaggregation.
+  Per-view schemas (including RPO translation rounding) and controls remain inside the hashed
+  snapshot; report readers do not rebuild live inputs. Existing historical locks still refuse
+  alternate views they never retained.
+- Database checks cover each added report in all three views through API and exact CSV output
+  with its live builder disabled, plus public empty/populated lock publication. A foreign-currency
+  disaggregation witness retains EUR 10,000 transaction, USD 11,000 functional and EUR 10,000
+  reporting revenue with rate evidence. Targeted fixture/unit checks, 94 frontend checks,
+  frontend types and scoped lint pass.
+- Remaining implementation includes close-variance currency selection and attribution against
+  these snapshots, combined/late-carried liability FX and documented reporting/release gaps.
+  No deployment or independent accounting sign-off; no production-readiness claim.
