@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal screen update (October 19): SF-18 now supports proposal entry, asynchronous
+calculation, reconnect by job URL, saved preview reads, allocation/SSP and revenue tables.
+This is the first functional screen, not full FCS-6 acceptance: scenario save, product selection
+polish, revenue chart/period totals and Tamsin/browser acceptance remain outstanding. Other
+Reporting gaps and independent sign-off remain open. No deployment was performed.
+
 Current deal presentation update (October 19): verified detail reads now include structured
 allocation/SSP range data, per-book totals and indicators, and revenue by entity/period/subject.
 Scheduled and awaiting-trigger totals distinguish an empty schedule from a zero-value deal.

@@ -6,6 +6,21 @@
 
 
 
+## Deal preview page — October 19, 2026
+
+- Registered SF-18 at /contracts/deal-preview, enabling the existing Contracts list entry.
+  Scoped users can enter existing/proposed customers, entity, start date, multiple product
+  lines, decimal quantity/price, optional term and performing entity; currency follows entity.
+- Asynchronous submission retains the job ID in the URL for reload/reconnect. Saved previews
+  also open by preview ID. Result tables show per-book allocations, SSP bounds/range, weights,
+  adjustments, indicators, scheduled/awaiting-trigger totals and entity/period revenue rows.
+- Includes permission gating, input retention after network errors, retry controls, invalid-link
+  handling and start-over confirmation. No contract creation or scenario-save button is implied.
+- Nine targeted page/result/permission checks pass; TypeScript and ESLint checks pass.
+  Scenario save, product-picker polish, revenue chart/period totals and real browser/accounting
+  acceptance remain open. K11, multi-contract K03 and close variance remain Reporting priorities.
+  No deployment; main-only publication.
+
 ## Deal preview report presentation — October 19, 2026
 
 - Detail reads now expose typed allocation rows, SSP bounds/range position, selected SSP,
@@ -229,20 +244,6 @@
   remain legible with no overlap. Wide reports may now use more pages.
 - This fixes clipping, not the existing WinAnsi font character-set limitation. Full populated
   accounting acceptance and independent sign-off remain open. No deployment.
-
-## Disclosure source filtering and status correction — October 19, 2026
-
-- Added API source=DRAFT|LOCKED filtering from immutable period_lock_id before pagination and
-  counts, plus a source selector on the snapshot register. Updated generated OpenAPI/client
-  types. The source state is computed from the record, never caller-supplied classification.
-- Revalidated the real disclosure child/parent journey: draft list/count filtering, atomic
-  locked snapshots, opposite-source empty results, frozen JSON/XLSX/PDF rebuild and retained
-  reruns all pass in the existing database scenario with added source-filter assertions.
-- Corrected stale status carried forward in recent notes/LIMITS: lock-time capture and frozen
-  disclosure execution were already implemented in 54bb6fa / 41c8278. They are not remaining
-  development work. Full populated accounting acceptance and independent sign-off remain open.
-- Two focused register tests, Python typing/lint, frontend TypeScript/ESLint and the real
-  disclosure journey pass. No deployment; the disposable verification database was stopped.
 
 ## Outstanding release verification
 

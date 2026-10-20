@@ -8411,3 +8411,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   so no speculative calculation rewrite was made. Disclosure lock-time orchestration was
   already implemented (see archived publication/frozen-execution entries); the earlier status
   here was stale. Populated accounting acceptance and independent sign-off remain open.
+
+## Disclosure source filtering and status correction — October 19, 2026
+
+- Added API source=DRAFT|LOCKED filtering from immutable period_lock_id before pagination and
+  counts, plus a source selector on the snapshot register. Updated generated OpenAPI/client
+  types. The source state is computed from the record, never caller-supplied classification.
+- Revalidated the real disclosure child/parent journey: draft list/count filtering, atomic
+  locked snapshots, opposite-source empty results, frozen JSON/XLSX/PDF rebuild and retained
+  reruns all pass in the existing database scenario with added source-filter assertions.
+- Corrected stale status carried forward in recent notes/LIMITS: lock-time capture and frozen
+  disclosure execution were already implemented in 54bb6fa / 41c8278. They are not remaining
+  development work. Full populated accounting acceptance and independent sign-off remain open.
+- Two focused register tests, Python typing/lint, frontend TypeScript/ESLint and the real
+  disclosure journey pass. No deployment; the disposable verification database was stopped.

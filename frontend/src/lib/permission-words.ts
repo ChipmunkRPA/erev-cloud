@@ -18,6 +18,7 @@ export const PHRASED_PERMISSIONS = [
   "api_client.manage",
   "audit.read",
   "migration.run",
+  "scenario.use",
   "settings.manage",
   "support_grant.approve",
   "tenant.snapshot",
