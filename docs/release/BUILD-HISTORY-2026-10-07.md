@@ -8005,3 +8005,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Fixed a stale transition-history function reference in period-pack journal collection; the
   existing real CTL-041 close-pack journey passes again.
 - Broader multi-contract/combined-group acceptance and independent accounting sign-off remain.
+
+## Contract sample creation form — October 19, 2026
+
+- Added the sample-generation action to the evidence page. Users paste 1–50 exact external
+  contract IDs (one per line), select an explicit effective cutoff, and submit through the shared
+  idempotent command pipeline. Duplicate/blank-only IDs, excess counts and future dates are refused.
+- All evidence permissions are required to offer the action; configuration permission is not.
+  Server source-scope checks remain authoritative. Field refusals use the shared form mapping.
+- Accepted requests open the sample detail page. If the response lacks its pack header, the
+  form follows the job and recovers the result link without permitting duplicate submission.
+- 22 focused generation/register UI checks, TypeScript and ESLint pass. The evidence register
+  still lists CLOSE packs only; authorized sample-list pagination and discovery remain next.

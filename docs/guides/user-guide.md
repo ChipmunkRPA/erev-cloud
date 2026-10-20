@@ -881,6 +881,9 @@ actuals. Report access is required for all forecast entities, along with scenari
 entities. Category comparisons refuse historical classifications that were not retained reliably.
 The same-source rerun recomputes from retained facts and does not substitute newly refreshed actuals.
 Legacy snapshots without retained actuals cannot be compared. In **Reports → Scenarios and forecasts**, use **Actual versus forecast** to choose a saved run,
-including runs from earlier refreshes. Choose contract or revenue-category rows and a period
+including runs from earlier refreshes. The form defaults to the latest authorized succeeded run
+and its full horizon. Each succeeded history entry also offers an **Actual versus forecast**
+button that opens a form for that exact run. Changing parameters or paging the choices retains
+your selected run. Choose contract or revenue-category rows and a period
 range inside its horizon, then run the comparison. File formats require export permission;
 the completed job links to the standard report page. Populated accounting acceptance is still outstanding.

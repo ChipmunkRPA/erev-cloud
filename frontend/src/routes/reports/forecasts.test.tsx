@@ -11,7 +11,10 @@ const state = vi.hoisted(() => ({
   showOutput: false,
   submit: vi.fn(),
 }));
-vi.mock("./ForecastComparisonForm", () => ({ ForecastComparisonForm: () => null }));
+vi.mock("./ForecastComparisonForm", () => ({
+  ForecastComparisonForm: ({ initialForecast }: { initialForecast?: { id: string } }) =>
+    initialForecast ? <p>Compare {initialForecast.id}</p> : null,
+}));
 vi.mock("./frame", () => ({ ReportsHeader: () => null }));
 vi.mock("../../lib/api/queries/me", () => ({
   useMe: () => ({
@@ -45,7 +48,7 @@ vi.mock("../../lib/api/queries/forecasts", () => ({
             status: "SUCCEEDED",
             created_at: "2026-10-19",
             problem: null,
-            parameters: { horizon_periods: ["2026-01"] },
+            parameters: { horizon_periods: ["2026-01"], entity_ids: ["entity"] },
             report_run_ids: ["xlsx-output"],
           },
         ]
@@ -140,4 +143,11 @@ it("opens saved file-format sections only with export access", async () => {
   page();
   await screen.findByText("XLSX — RPT-1");
   expect(screen.queryByRole("button", { name: "View forecast figures" })).toBeNull();
+});
+
+it("opens a comparison bound to the selected succeeded history entry", async () => {
+  state.showOutput = true;
+  page();
+  fireEvent.click(await screen.findByRole("button", { name: "Actual versus forecast" }));
+  expect(screen.getByText("Compare forecast")).toBeTruthy();
 });

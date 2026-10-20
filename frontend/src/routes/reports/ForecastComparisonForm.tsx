@@ -14,12 +14,12 @@ import { entitiesKey, fetchActiveEntities } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import { t } from "../../lib/i18n/t";
 
-export function ForecastComparisonForm() {
+export function ForecastComparisonForm({ initialForecast }: { initialForecast?: ForecastRun }) {
   const access = useAccess();
   const [cursor, setCursor] = useState<string | null>(null);
-  const [selected, setSelected] = useState<ForecastRun | null>(null);
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
+  const [selection, setSelected] = useState<ForecastRun | null | undefined>(initialForecast);
+  const [firstChoice, setFirst] = useState<string | undefined>();
+  const [lastChoice, setLast] = useState<string | undefined>();
   const [dimension, setDimension] = useState("CONTRACT");
   const [format, setFormat] = useState("JSON");
   const [networkError, setNetworkError] = useState(false);
@@ -30,7 +30,10 @@ export function ForecastComparisonForm() {
   const entities = useQuery({ queryKey: entitiesKey(), queryFn: fetchActiveEntities });
   const command = useCommand({ method: "POST", path: "/api/v1/report-runs" });
   const cancel = useCommand({ method: "POST", path: `/api/v1/jobs/${command.jobId ?? ""}/cancel` });
+  const selected = selection === undefined ? (choices.data?.items[0] ?? null) : selection;
   const horizon = selected?.parameters.horizon_periods ?? [];
+  const first = firstChoice ?? horizon[0] ?? "";
+  const last = lastChoice ?? horizon.at(-1) ?? "";
   const scope = (entities.data ?? []).filter((e) => selected?.parameters.entity_ids.includes(e.id));
   const canExport = scope.length > 0 && access.holdsForEvery("report.export", scope);
   const running =
@@ -48,6 +51,7 @@ export function ForecastComparisonForm() {
   const outputId = command.job?.state === "SUCCEEDED" ? command.job.result?.report_run_id : null;
   async function submit() {
     if (!valid || running || selected === null) return;
+    setSelected(selected);
     setNetworkError(false);
     const outcome = await command.submit({
       report_code: "actual_vs_forecast",
@@ -117,12 +121,24 @@ export function ForecastComparisonForm() {
         </label>
         <div className="flex gap-2">
           {cursor && (
-            <Button variant="secondary" onClick={() => setCursor(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelected(selected);
+                setCursor(null);
+              }}
+            >
               {t("reports.forecasts.latest")}
             </Button>
           )}
           {choices.data?.nextCursor && (
-            <Button variant="secondary" onClick={() => setCursor(choices.data?.nextCursor ?? null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelected(selected);
+                setCursor(choices.data?.nextCursor ?? null);
+              }}
+            >
               {t("reports.forecasts.older")}
             </Button>
           )}
@@ -132,7 +148,10 @@ export function ForecastComparisonForm() {
           <select
             className="ml-2 rounded border p-2"
             value={dimension}
-            onChange={(e) => setDimension(e.target.value)}
+            onChange={(e) => {
+              setSelected(selected);
+              setDimension(e.target.value);
+            }}
           >
             <option value="CONTRACT">{t("reports.comparison.contract")}</option>
             <option value="REVENUE_CATEGORY">{t("reports.comparison.category")}</option>
@@ -144,7 +163,10 @@ export function ForecastComparisonForm() {
             <select
               className="ml-2 rounded border p-2"
               value={side === "first" ? first : last}
-              onChange={(e) => (side === "first" ? setFirst : setLast)(e.target.value)}
+              onChange={(e) => {
+                setSelected(selected);
+                (side === "first" ? setFirst : setLast)(e.target.value);
+              }}
             >
               <option value="">{t("reports.forecasts.choose")}</option>
               {horizon.map((key) => (
@@ -160,7 +182,10 @@ export function ForecastComparisonForm() {
           <select
             className="ml-2 rounded border p-2"
             value={format}
-            onChange={(e) => setFormat(e.target.value)}
+            onChange={(e) => {
+              setSelected(selected);
+              setFormat(e.target.value);
+            }}
           >
             {["JSON", "XLSX", "CSV", "PDF"].map((value) => (
               <option key={value} value={value} disabled={value !== "JSON" && !canExport}>

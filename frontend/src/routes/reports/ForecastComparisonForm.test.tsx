@@ -40,22 +40,22 @@ afterEach(() => {
   vi.clearAllMocks();
   state.exportAllowed = true;
 });
-function page() {
+function page(initialForecast?: import("../../lib/api/queries/forecasts").ForecastRun) {
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <MemoryRouter>
-        <ForecastComparisonForm />
+        <ForecastComparisonForm {...(initialForecast ? { initialForecast } : {})} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
-it("submits an archived forecast with its fixed entity and currency scope", async () => {
+it("defaults to the latest authorized forecast and its complete horizon", async () => {
   state.submit.mockResolvedValue({ kind: "accepted" });
   page();
   await screen.findByText(/2026-10-18 · ASC606/);
-  fireEvent.change(screen.getByLabelText("Saved forecast"), { target: { value: "archived-run" } });
+  expect((screen.getByLabelText("Saved forecast") as HTMLSelectElement).value).toBe("archived-run");
   fireEvent.change(screen.getByLabelText("Compare by"), { target: { value: "REVENUE_CATEGORY" } });
   fireEvent.click(screen.getByRole("button", { name: "Run comparison" }));
   await waitFor(() =>
@@ -79,4 +79,34 @@ it("does not offer file formats without export permission", async () => {
   await screen.findByText(/2026-10-18 · ASC606/);
   fireEvent.change(screen.getByLabelText("Saved forecast"), { target: { value: "archived-run" } });
   expect((screen.getByRole("option", { name: "XLSX" }) as HTMLOptionElement).disabled).toBe(true);
+});
+
+it("keeps an explicit history forecast selected even when it is absent from the choice page", async () => {
+  state.submit.mockResolvedValue({ kind: "accepted" });
+  const run = {
+    id: "chosen-history",
+    created_at: "2026-09-01",
+    parameters: {
+      entity_ids: ["entity"],
+      book_code: "ASC606",
+      currency_view: "transaction",
+      horizon_periods: ["FY2026-P08", "FY2026-P09"],
+    },
+  } as import("../../lib/api/queries/forecasts").ForecastRun;
+  page(run);
+  await screen.findByText(/2026-10-18 · ASC606/);
+  expect((screen.getByLabelText("Saved forecast") as HTMLSelectElement).value).toBe(run.id);
+  fireEvent.click(screen.getByRole("button", { name: "Run comparison" }));
+  await waitFor(() =>
+    expect(state.submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parameters: expect.objectContaining({
+          forecast_run_id: run.id,
+          from_period_key: "FY2026-P08",
+          to_period_key: "FY2026-P09",
+          currency_view: "transaction",
+        }),
+      }),
+    ),
+  );
 });

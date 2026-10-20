@@ -14,6 +14,7 @@ import {
   forecastInputsKey,
   forecastRunsKey,
   type ForecastRequest,
+  type ForecastRun,
 } from "../../lib/api/queries/forecasts";
 import { useMe } from "../../lib/api/queries/me";
 import { fetchReportRun, reportRunKey, reportRunRoute } from "../../lib/api/queries/reports";
@@ -70,6 +71,26 @@ function Output({ id }: { id: string }) {
       )}
       {open && canPreview && <ForecastPack runId={id} />}
     </div>
+  );
+}
+
+function CompareSavedForecast({ run }: { run: ForecastRun }) {
+  const [open, setOpen] = useState(false);
+  const access = useAccess();
+  if (
+    run.status !== "SUCCEEDED" ||
+    !access.holdsForEvery(
+      "report.run",
+      run.parameters.entity_ids.map((id) => ({ id })),
+    )
+  )
+    return null;
+  return open ? (
+    <ForecastComparisonForm initialForecast={run} />
+  ) : (
+    <Button variant="secondary" onClick={() => setOpen(true)}>
+      {t("reports.comparison.title")}
+    </Button>
   );
 }
 
@@ -367,6 +388,7 @@ export function ForecastRunsPage() {
                   title={String(run.problem.title ?? run.problem.detail ?? run.status)}
                 />
               )}
+              <CompareSavedForecast run={run} />
               {run.report_run_ids.map((id) => (
                 <Output key={id} id={id} />
               ))}

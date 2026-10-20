@@ -6,6 +6,18 @@
 
 
 
+## Forecast comparison entry points — October 19, 2026
+
+- The comparison form now defaults to the latest authorized succeeded forecast and its full
+  saved horizon, matching RPT-40's specified initial selection. Explicit selection, parameter
+  edits, submission and paging retain the selected record instead of following list refreshes.
+- Each succeeded forecast history entry offers an inline comparison form preselected to that
+  exact record, including a record absent from the current choices page. It preserves the
+  saved entity/currency scope and only offers the entry with report access for every entity.
+- Eight focused forecast/comparison interaction checks pass. Broader reporting content,
+  populated accounting acceptance and independent accounting sign-off remain open.
+  No deployment or production-readiness claim.
+
 ## Actual-versus-forecast percentage display — October 19, 2026
 
 - Completed RPT-40's signed variance percentage presentation. API values are already scaled
@@ -235,18 +247,6 @@
   TypeScript, Mypy and lint pass. No deployment.
 - Reporting remains unfinished: broader sample accounting acceptance, period-pack completion,
   relock variance, change/access packs and forecast/report orchestration remain tracked.
-
-## Contract sample creation form — October 19, 2026
-
-- Added the sample-generation action to the evidence page. Users paste 1–50 exact external
-  contract IDs (one per line), select an explicit effective cutoff, and submit through the shared
-  idempotent command pipeline. Duplicate/blank-only IDs, excess counts and future dates are refused.
-- All evidence permissions are required to offer the action; configuration permission is not.
-  Server source-scope checks remain authoritative. Field refusals use the shared form mapping.
-- Accepted requests open the sample detail page. If the response lacks its pack header, the
-  form follows the job and recovers the result link without permitting duplicate submission.
-- 22 focused generation/register UI checks, TypeScript and ESLint pass. The evidence register
-  still lists CLOSE packs only; authorized sample-list pagination and discovery remain next.
 
 ## Outstanding release verification
 
