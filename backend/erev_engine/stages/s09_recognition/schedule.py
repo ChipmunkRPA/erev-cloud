@@ -1256,9 +1256,16 @@ def _emit_dated_schedule(
     for target in targets:
         cut = periods[target.period_key].end_date
         seg = components.active_segment(ob, "FIXED", cut)
-        if seg is None or not any(
+        later_allocation = any(
             item.component == "FIXED" and item.effective_date > cut for item in ob.segments
-        ):
+        )
+        later_hold = any(
+            event.contract_key == ob.contract_key
+            and event.effective_date > cut
+            and event.event_type in ("HOLD_APPLIED", "HOLD_RELEASED")
+            for event in st.measure_events
+        )
+        if seg is None or not (later_allocation or later_hold):
             continue
         ev = evaluator.posted(cut)
         if ev.guard is not None or ev.adjusted or ev.fixed is None:
@@ -1384,6 +1391,52 @@ def _emit_dated_schedule(
             previous_node = posted
 
 
+def _emit_dated_remainder(
+    ctx: BookContext,
+    st: AllocatedState,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+    targets: Sequence[Target],
+    measures: ObligationMeasures,
+) -> None:
+    """Keep the engine's scheduled/awaiting decision at each original reporting cut."""
+    if not targets:
+        return
+    ob = evaluator.ob
+    ends = {period.period_key: period.end_date for period in evaluator.periods}
+    points: list[tuple[str | None, date, str]] = [
+        (target.period_key, ends[target.period_key], target.node_id) for target in targets
+    ]
+    points.append((None, measures.as_of, measures.trace_nodes["revenue_cum"]))
+    for period_key, day, revenue_node in points:
+        ev = evaluator.posted(day)
+        seg = components.active_segment(ob, "FIXED", day)
+        allocated, _ = _allocation(ctx, st, ob, evaluator, seg, day)
+        in_target = sum(item.amount for item in ev.realised) + (
+            0 if ev.royalty is None else ev.royalty.recognised
+        )
+        pattern, held = _pattern(ob, ev, day), ev.hold is not None
+        value = allocated - (ev.value - in_target) if pattern == DETERMINISTIC and not held else 0
+        tb.node(
+            measure="scheduled_remainder",
+            subject_key=ob.subject_key,
+            period_key=period_key,
+            value=value,
+            currency=ctx.txn_currency,
+            minor_unit=evaluator.mu,
+            formula_id=SCHEDULED_FORMULA,
+            inputs=[revenue_node],
+            params={
+                "allocated": str(allocated),
+                "as_of": day.isoformat(),
+                "held": "true" if held else "false",
+                "pattern": pattern,
+                "realised": str(in_target),
+            },
+            narrative_key=_narrative(SCHEDULED_FORMULA),
+        )
+
+
 def _emit_fixed_allocation(
     ctx: BookContext,
     st: AllocatedState,
@@ -1497,5 +1550,8 @@ def build(
         )
         measures[subject_key] = obligation_measures(
             ctx, st, ob, v, evaluator=evaluator, boundaries=boundaries, tb=tb, emitted=emitted
+        )
+        _emit_dated_remainder(
+            ctx, st, tb, evaluator, targets.get(subject_key, ()), measures[subject_key]
         )
     return tuple(lines), MappingProxyType(measures)

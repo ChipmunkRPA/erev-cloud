@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Dated recognition-hold remainder classification — October 20, 2026
+
+- Stage 09 retains the scheduled remainder and its hold/pattern evidence at each measured
+  period, plus a version-state reconciliation. Contract/report reads use that dated amount
+  and derive awaiting-trigger remainder from the independently reconciled total.
+- A later hold no longer changes an earlier cut's scheduled/awaiting split. Held cuts show
+  awaiting-trigger remainder; release restores the time-based scheduled remainder. Future
+  hold/release events also trigger the original-segment schedule projection for earlier cuts.
+- Real engine hold-only and hold-then-release cases cover January before hold, February held,
+  and March held/released; all trace nodes replay. Missing state/series and mismatched states
+  are refused. 117 scoped tests pass; DB regressions and migration 0216 verified before publish.
+- This does not complete arbitrary manual adjustment projection or combined hold/modification
+  lifecycle acceptance. Legacy evidence gaps, missing original calendar/terms, broader mixed
+  attribution and independent accounting sign-off remain open. No deployment.
+
+
 ## Historical periods survive removed schedule lines — October 20, 2026
 
 - Original fixed period projections now have independent trace nodes, including periods whose

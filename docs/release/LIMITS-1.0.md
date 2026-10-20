@@ -1,5 +1,19 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — dated recognition-hold classification
+
+Scheduled versus awaiting-trigger remainder now follows retained per-period engine evidence,
+reconciled to the original version state. A later recognition hold or release cannot substitute
+its state for an earlier reporting cut. Earlier time-based schedule projections also exclude
+later hold/release effects. Real engine cases cover an open hold and hold-then-release through
+three period cuts, including trace replay and the contract/report reader.
+
+Arbitrary manual adjustment projection and combined hold/modification lifecycle acceptance
+remain open, along with missing original calendars/terms and legacy traces without dated
+remainder evidence. This update does not establish full production readiness or independent
+accounting acceptance. No deployment.
+
+
 ### October 20 — historical deterministic schedule evidence
 
 Historical RPO and waterfall schedules now freeze the original time-based allocation segment

@@ -1249,3 +1249,82 @@ def test_historical_time_schedule_freezes_original_allocation(
                 )
         if subject == "K-01/A":
             assert found.fixed_schedule_cut == day
+
+
+@pytest.mark.parametrize("released", [False, True])
+def test_historical_remainder_uses_the_hold_state_at_each_cut(released: bool) -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports import cuts
+    from erev_engine.trace import reevaluate
+    from support import allocation_worlds as worlds
+    from support import bundles
+
+    base = worlds.targeted_world(estimates=[worlds.element("100", keys=["A"])])
+    base = replace(
+        base,
+        pob_template_versions=tuple(
+            replace(
+                template,
+                recognition_method="TIME_ELAPSED",
+                satisfaction_pattern="OVER_TIME",
+                over_time_criterion="OT_A",
+                ratable_convention="DAILY",
+            )
+            for template in base.pob_template_versions
+        ),
+    )
+    hold = bundles.event(
+        "K-01",
+        len(base.events) + 1,
+        "HOLD_APPLIED",
+        date(2026, 2, 1),
+        {
+            "hold_type": "recognition",
+            "hold_source": "MANUAL",
+            "reason": "Acceptance dispute",
+            "obligation_key": "A",
+        },
+        obligation_keys=["A"],
+    )
+    events = [*base.events, hold]
+    if released:
+        events.append(
+            bundles.event(
+                "K-01",
+                len(events) + 1,
+                "HOLD_RELEASED",
+                date(2026, 3, 1),
+                {"hold_id": hold.event_key, "comment": "Resolved"},
+            )
+        )
+    bundle = replace(base, events=tuple(events))
+    book = erev_engine.compute(bundle).books[0]
+    assert reevaluate(book.trace) == {node.id: node.value for node in book.trace.nodes}
+    for day, held in (
+        (date(2026, 1, 31), False),
+        (date(2026, 2, 28), True),
+        (date(2026, 3, 31), not released),
+    ):
+        _, at, rows = product_read(bundle, book, day)
+        row = next(row for row in rows if row["obligation_key"] == "A")
+        found = at.obligations[row["id"]]
+        remaining = found.fixed_allocation - found.revenue
+        assert remaining > 0
+        assert found.scheduled == (0 if held else remaining)
+        assert found.awaiting == (remaining if held else 0)
+        if day.month == 1:
+            projected = cuts.projected_after(found, day, contract="K-01", obligation="A")
+            assert projected is not None
+            assert sum(amount for _, _, amount in projected) == remaining
+
+
+@pytest.mark.parametrize("evidence", ["no_state", "no_series", "mismatch"])
+def test_scheduled_remainder_requires_its_original_state_and_series(evidence: str) -> None:
+    kept = []
+    if evidence != "no_state":
+        kept.append(node("scheduled_remainder", "C-1/O1", "-", "999999.00"))
+    if evidence != "no_series":
+        kept.extend(series("scheduled_remainder", "C-1/O1", {"P01": "500.00"}))
+    with pytest.raises(to_date.Unreadable, match="1 field needs attention"):
+        read(JANUARY, trace(*kept))

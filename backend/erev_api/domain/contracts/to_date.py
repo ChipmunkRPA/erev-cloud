@@ -113,6 +113,7 @@ BILLED: Final = "billed_cum"
 PROGRESS: Final = "progress_ratio"
 REALISED: Final = "realised_allocation"
 FIXED_ALLOCATION: Final = "fixed_allocation"
+SCHEDULED_REMAINDER: Final = "scheduled_remainder"
 FIXED_SCHEDULE: Final = "scheduled_fixed_amount"
 DATED_SCHEDULE: Final = "scheduled_fixed_at_cut"
 PERIOD_SCHEDULE: Final = "scheduled_period_at_cut"
@@ -123,7 +124,7 @@ FIXED: Final = "#FIXED"  # the component of the returns reduction (ENGINE_SPEC_B
 REDUCE: Final = "REDUCE_CONTRACT_QUANTITY"  # POL-053
 STATE: Final = "-"  # the period slot of a version-state node (ENGINE_SPEC CV-50)
 # The obligation measures read by date: each of their period nodes carries its period's end.
-DATED: Final = (REVENUE, BILLED, PROGRESS, REALISED, FIXED_ALLOCATION)
+DATED: Final = (REVENUE, BILLED, PROGRESS, REALISED, FIXED_ALLOCATION, SCHEDULED_REMAINDER)
 # The ``<contract>@<entity>`` measures read by the period key of that subject's cut.
 KEYED: Final = (RELEASE,)
 # The two parts of an obligation's remainder (04 T-CON-11). ``SCHEDULED`` is also the measure of
@@ -1168,7 +1169,31 @@ def version_at(
         if recognised:  # an obligation the engine measures no revenue for keeps its status
             status = _status(status, revenue, progress)
         pattern = nodes.patterns.get(subject)
-        scheduled, awaiting = remainder_at(row, delta + shift, named, day, pattern)
+        schedule_state = nodes.states.get(f"{SCHEDULED_REMAINDER}:{subject}")
+        if schedule_state is not None:
+            if Decimal(schedule_state[0]) != Decimal(row[SCHEDULED]) or not _measures(
+                nodes, SCHEDULED_REMAINDER, subject
+            ):
+                raise Unreadable(
+                    f"obligations[{subject}].{SCHEDULED_REMAINDER}",
+                    "Dated scheduled remainder does not reconcile to the version state.",
+                )
+            scheduled, _ = _read(
+                nodes, SCHEDULED_REMAINDER, subject, day, named, stored=row[SCHEDULED]
+            )
+            awaiting = Decimal(row[SCHEDULED]) + Decimal(row[AWAITING]) - delta - shift - scheduled
+            if scheduled < ZERO or awaiting < ZERO:
+                raise Unreadable(
+                    f"obligations[{subject}].{SCHEDULED_REMAINDER}",
+                    "Dated scheduled remainder exceeds the retained remaining allocation.",
+                )
+        elif _measures(nodes, SCHEDULED_REMAINDER, subject):
+            raise Unreadable(
+                f"obligations[{subject}].{SCHEDULED_REMAINDER}",
+                "Dated scheduled remainder has no retained version state.",
+            )
+        else:
+            scheduled, awaiting = remainder_at(row, delta + shift, named, day, pattern)
         schedule_cut = None if revenue_at is None else revenue_at.end
         dated_schedule = (
             None

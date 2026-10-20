@@ -413,6 +413,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "drill-through",
             "original period projections survive removed current schedule lines; source evidence "
             "is the contract version trace for the exact reporting cut and future period",
+            "scheduled and awaiting remainders use original period-level recognition-hold and "
+            "pattern evidence reconciled to the version state; future holds do not alter earlier "
+            "time-based projections",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -761,6 +764,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "drill-through",
             "original period projections survive removed current schedule lines; source evidence "
             "is the contract version trace for the exact reporting cut and future period",
+            "scheduled and awaiting remainders use original period-level recognition-hold and "
+            "pattern evidence reconciled to the version state; future holds do not alter earlier "
+            "time-based projections",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -832,6 +838,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "drill-through",
             "original period projections survive removed current schedule lines; source evidence "
             "is the contract version trace for the exact reporting cut and future period",
+            "scheduled and awaiting remainders use original period-level recognition-hold and "
+            "pattern evidence reconciled to the version state; future holds do not alter earlier "
+            "time-based projections",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),
