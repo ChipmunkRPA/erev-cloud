@@ -6,6 +6,23 @@
 
 
 
+## Locked-period foreign invoice carry — October 20, 2026
+
+- The populated foreign lock witness now also follows the no-reopen path: an EUR 4,000
+  invoice dated August is recorded after the actual August lock, then September is closed
+  through the public pipeline. Transaction, functional and reporting rollforwards all pass
+  their balance tie-outs. The August lock remains the only lock/reopen record for its period.
+- Frozen opening remains EUR 10,000 / USD 11,050; closing after the carried invoice is
+  EUR 6,000 / USD 6,720. September's actual FX pass supplies USD 70 of remeasurement. Before
+  that pass the functional report correctly reported the unposted difference; no residual
+  or synthetic balancing entry was added to hide it. This closes the ordinary invoice/TIME
+  carry acceptance gap using the existing implementation. Reconciliation review fixtures
+  remain fixtures, not independent approval; no external GL trial balance is claimed.
+- Still open: public combined-contract credit-memo and more complex carried EVENT correction
+  scenarios, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
+  Necessary verification is this actual lock/invoice/close/report flow plus scoped lint.
+  No deployment and no claim that all Reporting or production readiness is complete.
+
 ## Credit-memo FX source attribution — October 20, 2026
 
 - JET-10c attribution now resolves the original credit-memo difference trace into its
@@ -209,23 +226,6 @@
 - Targeted archive checks cover actual snapshot production, legacy locks, manifest/hash/count
   refusal and formula guards. Combined/late-carried liability FX and populated foreign two-lock
   acceptance remain outstanding. No deployment or production-readiness claim.
-
-## Populated foreign-currency public lock — October 20, 2026
-
-- The public lock witness now includes a EUR contract of a USD entity reporting in EUR. It runs
-  actual close jobs and journal submit/approve/export/acknowledgement before requesting lock and
-  obtaining a different Controller's approval. Frozen unbilled balances are EUR 10,000 in
-  transaction/reporting currency and USD 11,050 functional. All monetary endpoints in all three
-  views reproduce from the retained computation, after the source-read transaction closes.
-- Reconciliation review rows remain test fixtures; this is not independent accounting approval.
-  The domestic K01 public lock remains covered. This closes the single populated foreign-lock
-  witness, not the still-outstanding two-lock foreign-currency report acceptance.
-- Inspection for late liability FX found that S14 emits cumulative target differences and the
-  ledger trace points to that target; fx_layer_key is not populated by the current product writer.
-  The report's latest-version layer movements cannot simply be treated as those posted deltas.
-  Next implementation must reconcile retained target/posted history and source-layer ownership;
-  direct allocation from an assumed ledger layer key would be unsupported. Combined/late-carried
-  liability FX remains unfinished. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

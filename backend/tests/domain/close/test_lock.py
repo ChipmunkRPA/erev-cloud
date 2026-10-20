@@ -728,7 +728,11 @@ def test_lock_writes_certification_and_snapshots(world: CloseWorld, clock: Froze
     assert _value(october) == PeriodState.OPEN.value  # BR-CLS-03
 
 
-@pytest.mark.parametrize("foreign", [False, True])
+@pytest.mark.parametrize(
+    "foreign,carry",
+    [(False, False), (True, False), (True, True)],
+    ids=["domestic", "foreign-reopen", "foreign-carry"],
+)
 def test_contract_balances_snapshot_k01(
     app: FastAPI,
     keyring: KeyRing,
@@ -736,6 +740,7 @@ def test_contract_balances_snapshot_k01(
     files: LocalFileStore,
     monkeypatch: pytest.MonkeyPatch,
     foreign: bool,
+    carry: bool,
 ) -> None:
     """The foreign case executes the real close pipeline and journal approval/export/acknowledgement
     then publicly locks EUR 10,000 (USD 11,050 carrying). All three frozen currency endpoints
@@ -906,6 +911,9 @@ def test_contract_balances_snapshot_k01(
                 else None,
             )
             assert verified.output_sha256 == computation.output_sha256
+        if carry:
+            _foreign_late_carry(pellworth, clock, monkeypatch, UUID(str(lock_id)))
+            return
         _foreign_relock_variance(
             pellworth, clock, monkeypatch, controller, UUID(str(lock_id)), period_id
         )
@@ -3512,3 +3520,99 @@ def test_lock_queues_close_pack_once_across_preparation_commit_crash(
         assert {n["subject_id"] for n in notices} == {lock["id"]}
         assert {n["link_path"] for n in notices} == {f"/close/periods/{world.state_id}"}
         assert all(n["body"].endswith("The evidence pack is available.") for n in notices)
+
+
+def _foreign_late_carry(
+    world: Any, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch, first_lock: UUID
+) -> None:
+    from support import close_run_worlds, worlds
+    from support import close_runs as runs
+
+    identity = UUID(str(world.contracts[close_run_worlds.EUR_CONTRACT].contract["id"]))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == identity)
+    )
+    clock.set(
+        max(clock.now(), world.place.scalar(select(func.clock_timestamp()))) + timedelta(seconds=1)
+    )
+    response = post(
+        world.app,
+        f"/api/v1/contracts/{identity}/events",
+        world.maya,
+        {
+            "events": [
+                {
+                    "event_type": "BILLING_RECORDED",
+                    "effective_date": "2026-08-31",
+                    "payload": {
+                        "invoice_number": "CARRIED-EUR",
+                        "line_external_id": "CARRIED-EUR-1",
+                        "obligation_key": "O1",
+                        "issue_date": "2026-08-31",
+                        "amount": {"amount": "4000.00", "currency": "EUR"},
+                    },
+                }
+            ]
+        },
+        if_match=f'"s{head}"',
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["computation"]["status"] == "SUCCEEDED", response.text
+    clock.set(
+        max(clock.now(), world.place.scalar(select(func.clock_timestamp()))) + timedelta(seconds=1)
+    )
+    september = next(
+        item
+        for item in periods(world.app, world.maya, entity="AVM-US")
+        if item["period"]["period_key"] == "FY2026-P09"
+    )
+    started = post(
+        world.app,
+        f"{PERIODS}/{september['id']}/start-close",
+        world.maya,
+        {"comment": "Close carried foreign invoice"},
+        if_match=f'"r{september["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    closed = runs.closed(world, monkeypatch, entity_code="AVM-US", period_key="FY2026-P09")
+    assert closed["status"] == "SUCCEEDED", json.dumps(closed)
+    for view in ("transaction", "functional", "reporting"):
+        run, rows = worlds.report_run(
+            world,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": ["AVM-US"],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": "FY2026-P09",
+                "to_period_key": "FY2026-P09",
+            },
+        )
+        found = {row["row_key"]: row for row in rows}
+        currency = "USD" if view == "functional" else "EUR"
+        for key, expected in (
+            ("OPENING", "11050.00" if view == "functional" else "10000.00"),
+            ("CLOSING", "6720.00" if view == "functional" else "6000.00"),
+        ):
+            assert found[key]["unbilled_receivable"] == {"amount": expected, "currency": currency}
+        if view == "functional":
+            assert found["FX_REMEASUREMENT"]["unbilled_receivable"] == {
+                "amount": "70.00",
+                "currency": "USD",
+            }
+        assert all(
+            check["result"] in {"PASS", "NOT_APPLICABLE"} for check in run["tie_out_results"]
+        ), (view, run, rows)
+    assert (
+        world.place.scalar(
+            select(func.count())
+            .select_from(period_lock)
+            .where(
+                period_lock.c.period_id
+                == select(period_lock.c.period_id)
+                .where(period_lock.c.id == first_lock)
+                .scalar_subquery(),
+            )
+        )
+        == 1
+    )

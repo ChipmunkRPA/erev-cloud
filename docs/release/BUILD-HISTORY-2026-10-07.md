@@ -9228,3 +9228,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   late-carried liability FX, other documented reporting gaps and final release verification.
   Older locks missing required currency/rate evidence cannot be silently reconstructed.
   No deployment or independent accounting sign-off; production readiness remains unproven.
+
+## Populated foreign-currency public lock — October 20, 2026
+
+- The public lock witness now includes a EUR contract of a USD entity reporting in EUR. It runs
+  actual close jobs and journal submit/approve/export/acknowledgement before requesting lock and
+  obtaining a different Controller's approval. Frozen unbilled balances are EUR 10,000 in
+  transaction/reporting currency and USD 11,050 functional. All monetary endpoints in all three
+  views reproduce from the retained computation, after the source-read transaction closes.
+- Reconciliation review rows remain test fixtures; this is not independent accounting approval.
+  The domestic K01 public lock remains covered. This closes the single populated foreign-lock
+  witness, not the still-outstanding two-lock foreign-currency report acceptance.
+- Inspection for late liability FX found that S14 emits cumulative target differences and the
+  ledger trace points to that target; fx_layer_key is not populated by the current product writer.
+  The report's latest-version layer movements cannot simply be treated as those posted deltas.
+  Next implementation must reconcile retained target/posted history and source-layer ownership;
+  direct allocation from an assumed ledger layer key would be unsupported. Combined/late-carried
+  liability FX remains unfinished. No deployment or production-readiness claim.
