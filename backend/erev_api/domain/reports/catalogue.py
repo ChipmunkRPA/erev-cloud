@@ -578,6 +578,20 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "legal_entity",
             "period",
             "lock_snapshot",
+            "period_lock",
+            "subledger_posting",
+            "close_pass_evidence",
+            "computation_evidence",
+            "contract_version",
+            "subledger_posting_seal",
+            "file_object",
+            "calc_trace",
+            "fx_layer_movement",
+            "contract_event",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "contract_version_balance.contract_id = contract.id",
@@ -585,6 +599,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "subledger_line.period_id = period.id",
             "contract.customer_id = customer.id",
             "contract_version_balance.entity_id = legal_entity.id",
+            "functional/reporting sources share the retained contract balance rollforward "
+            "version, movement, posting-delta and reporting-rate joins",
         ),
         filters=(
             _SCOPE,
@@ -595,6 +611,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "INTERCOMPANY in the range, net; the INTERCOMPANY relief is counted as revenue "
             "recognized",
             "consumption per accounting.rollforward.opening_liability_consumption (POL-126)",
+            "new functional/reporting runs use reconciled original liability-layer relief; "
+            "combined opening holders and recognizing members are both included, without a "
+            "same-member opening cap; original bindings retain their prior path",
+            "reporting openings use preceding closing rates and recognized flows use their "
+            "period averages; translation rates and source method are bound for rerun",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
     ),

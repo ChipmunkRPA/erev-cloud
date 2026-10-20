@@ -1,5 +1,29 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Opening-liability disclosure in functional/reporting currency — October 20, 2026
+
+- New functional/reporting revenue_from_opening_liability requests now consume the retained
+  balance path and original opening-layer attribution instead of silently reading amount_txn.
+  Reporting openings use preceding closing rates; revenue flows use their period averages.
+  The method, source populations and rates are bound for rerun. Earlier bindings keep their
+  prior builder path; the transaction view is still the separate legacy implementation.
+- The disclosure includes opening holders and recognizing members without capping a
+  recognizer's valid combined-group relief at its own zero opening. Its footnote explains
+  that distinction. Member/period source paths must reconcile before the disclosure is
+  emitted, so unmatched paths cannot silently become disclosure totals. The IPE catalogue,
+  source contract and migration 0198 document the additional sources and currency semantics.
+- Necessary public checks passed: standalone disclosure totals and contract details equal
+  the corresponding functional/reporting rollforward relief in the combined-member case,
+  including GBP 43,200 recognized against another member's opening. July-start versus
+  August-start ranges change opening/current provenance without changing recognized revenue.
+  Reporting currency, summary opening totals and identical bound reruns pass; lint/types pass.
+  No deployment.
+- Still open: the transaction disclosure's legacy same-contract cap, per-obligation opening
+  consumption, cross-member asset-creating/reversing/carried/other-control histories and the
+  underlying posting-delta replay gaps. This new disclosure path currently requires reconciled
+  source balance movements; pre-close paths with unposted FX are not accepted. Recorded
+  registry gaps and final accounting/release acceptance remain; Reporting is not complete.
+
 ## Cross-member revenue relief and opening provenance — October 20, 2026
 
 - Added retained positive-revenue layer transfers for combined members. The original trace

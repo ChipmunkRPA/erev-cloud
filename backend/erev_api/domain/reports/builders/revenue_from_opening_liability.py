@@ -25,8 +25,12 @@ backlog.
 The opening where the period before the range is locked at the run's cutoff (ENGINE_SPEC_B
 S15-R-20 rev 1.168; item RPT-ROLLFWD-LOCKED-CLOSING-1; the supervisor's ruling of 2026-10-02):
 the lock's, as the contract balance roll-forward opens (``reports.locked_ends``) — the two
-reports are one disclosure and state one opening. A contract that is not in the lock's opening
-liability — one activated after the lock — contributes no revenue from the opening.
+reports are one disclosure and state one opening. In the legacy transaction path a contract
+outside the lock's opening contributes no relief.
+New functional/reporting requests use the retained rollforward sources, with reporting
+openings at preceding closing rates and flows at period averages. Combined-contract relief
+may be recognized by a different member from the opening holder; both are shown without
+capping the recognizer's relief at its own opening. Original bindings keep their prior path.
 """
 
 from __future__ import annotations
@@ -180,6 +184,13 @@ def footnote(resolved: Iterable[str]) -> str:
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    view = str(params.parameters.get("currency_view") or "transaction")
+    if view in {"functional", "reporting"} and (
+        params.binding is None or "opening_relief_currency_v1" in params.binding.evidence
+    ):
+        from ..opening_relief_currency import build as currency_build
+
+        return currency_build(uow, params)
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     found, periods, before = rollforward.ranges(session, params)

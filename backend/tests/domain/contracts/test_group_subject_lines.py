@@ -746,3 +746,43 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
             fx.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", fx.maya
         )
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+        disclosure_run, disclosure_rows = worlds.report_run(
+            reporting,
+            "revenue_from_opening_liability",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": first,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        summary = next(row for row in disclosure_rows if str(row["row_key"]).startswith("summary:"))
+        expected_relief = -Decimal(detail[FIRST_UK]["revenue_from_opening"]["amount"])
+        assert Decimal(summary["revenue_from_opening"]["amount"]) == expected_relief
+        assert summary["currency"] == detail[FIRST_UK]["currency"]
+        assert Decimal(summary["opening_contract_liability"]["amount"]) == sum(
+            (Decimal(row["opening"]["amount"]) for row in detail.values()), Decimal(0)
+        )
+        income = next(row for row in disclosure_rows if row.get("contract_external_id") == FIRST_UK)
+        assert income["opening_contract_liability"]["amount"] == "0.00"
+        assert Decimal(income["revenue_from_opening"]["amount"]) == expected_relief
+        expected_revenue = -sum(
+            (
+                Decimal(detail[FIRST_UK][name]["amount"])
+                for name in ("revenue_from_opening", "revenue_from_period_billings")
+            ),
+            Decimal(0),
+        )
+        assert Decimal(income["revenue_recognized"]["amount"]) == expected_revenue
+        assert Decimal(summary["revenue_recognized"]["amount"]) == expected_revenue
+        restarted = post(fx.app, f"/api/v1/report-runs/{disclosure_run['id']}/rerun", fx.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        reloaded = get(
+            fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert reloaded.status_code == 200 and reloaded.json()["items"] == disclosure_rows, (
+            reloaded.text
+        )
