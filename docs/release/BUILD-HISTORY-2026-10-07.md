@@ -8107,3 +8107,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   acceptance specific to these kinds, and wider RPS-16 accounting acceptance. Next reporting
   development: catalogue PACK builders and disclosure orchestration; remaining forecast work.
   No deployment or production-readiness claim.
+
+## Catalogue evidence source/output adapter — October 19, 2026
+
+- RPT-54/55 now have an internal adapter for an explicitly selected retained pack. It binds
+  exact selectors, entity scope, source cutoff, source hash and pack/job identity; reauthorization
+  refuses changed sources and requires current evidence permissions in every source entity.
+- ZIP output preserves the complete original archive. Sample PDF/XLSX extraction preserves the
+  retained chapter bytes and emits provenance linking the artifact to the pack manifest.
+- Five focused archive/format checks pass; actual closed-period pack binding/read, altered-source
+  refusal and revoked-export refusal pass. Ruff/Mypy pass.
+- This is an internal adapter, not catalogue availability: ordinary report creation, persistent
+  binding and dependency dispatch still need integration. The catalogue still refuses these codes.
+- Reinspection confirms disclosure_pack already has child orchestration and a worker execution
+  path. Its remaining acceptance gaps need auditing; do not describe orchestration as absent.
+  No deployment or readiness claim.

@@ -6,6 +6,19 @@
 
 
 
+## Migration reconciliation workflow — October 19, 2026
+
+- Replaced the empty migration Reconciliation step with a runnable workflow for opening-balance
+  and replay batches: POST reconcile, persisted job recovery/polling, failure display and retry,
+  and migration refresh at task completion. In-flight or successful reconciliation prevents a
+  duplicate submission while the batch state refreshes.
+- Imported/reconciled/submitted/promoted batches can navigate to this step. Report-authorized
+  readers can open the retained reconciliation report or the report viewer with migration_id
+  pinned, plus parallel comparison with the same batch selected. Period inputs remain editable
+  in the report toolbar. Profile, promotion and other migration UI gaps remain separate work.
+- Twenty-three focused migration checks, TypeScript and ESLint pass. Full populated accounting
+  acceptance and independent sign-off remain outstanding; no deployment or readiness claim.
+
 ## Conditional reporting catalogue — October 19, 2026
 
 - Removed the obsolete unconditional hiding of forecast outputs, actual-versus-forecast,
@@ -228,21 +241,6 @@
   and addressed/list/download authorization must be integrated before exposing RPT-54/55.
   Fresh sample capture currently requires the creation-time known_at; historical fresh capture
   remains unsupported (retained reruns preserve the original cutoff). No deployment.
-
-## Catalogue evidence source/output adapter — October 19, 2026
-
-- RPT-54/55 now have an internal adapter for an explicitly selected retained pack. It binds
-  exact selectors, entity scope, source cutoff, source hash and pack/job identity; reauthorization
-  refuses changed sources and requires current evidence permissions in every source entity.
-- ZIP output preserves the complete original archive. Sample PDF/XLSX extraction preserves the
-  retained chapter bytes and emits provenance linking the artifact to the pack manifest.
-- Five focused archive/format checks pass; actual closed-period pack binding/read, altered-source
-  refusal and revoked-export refusal pass. Ruff/Mypy pass.
-- This is an internal adapter, not catalogue availability: ordinary report creation, persistent
-  binding and dependency dispatch still need integration. The catalogue still refuses these codes.
-- Reinspection confirms disclosure_pack already has child orchestration and a worker execution
-  path. Its remaining acceptance gaps need auditing; do not describe orchestration as absent.
-  No deployment or readiness claim.
 
 ## Outstanding release verification
 

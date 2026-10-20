@@ -6,7 +6,7 @@
 // The minimal host of the opening-balances journey J-20.2 → J-20.3 (supervisor ruling, option A): the
 // Data frame, the five-step stepper "Migration steps", the Mapping step (`MigrationMappingStep`) and the
 // Import step (summary "Cutover <date> · <n> entities · <n> contracts", "Run import" → `POST /import`,
-// the DS-CMP-24 job while `MIGRATION_IMPORT` runs). The Profile, Reconciliation and Promotion steps, the
+// the DS-CMP-24 job while `MIGRATION_IMPORT` runs). The Profile and Promotion steps, the
 // replay journey, SF-19 (list) and SF-19:new are separate WEB items: their steps are in the stepper but
 // not navigable, and a `step` naming one shows the frame and the stepper with no region.
 import { useQuery } from "@tanstack/react-query";
@@ -53,6 +53,7 @@ import { fetchAllParameters, parametersKey, valueControl } from "../../lib/api/q
 import { formatDate } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { decodeValue, rawParams } from "../../lib/url/params";
+import { MigrationReconciliation } from "./migration-reconciliation";
 import { DataPageHeader, digestText } from "./imports";
 import {
   type FieldMappingState,
@@ -225,7 +226,10 @@ function migrationSteps(migration: Migration, page: MigrationStep): readonly Ste
     // A built step links while the migration is still PROFILED (the mapping is editable until
     // `/import` captures it); an unbuilt step never links (separate WEB items).
     const navigable =
-      isBuiltStep(migration.mode, step) && migration.status === "PROFILED" && step !== page;
+      step !== page &&
+      ((step === "reconciliation" &&
+        ["IMPORTED", "RECONCILED", "SUBMITTED", "PROMOTED"].includes(migration.status)) ||
+        (isBuiltStep(migration.mode, step) && migration.status === "PROFILED"));
     return {
       id: step,
       label: t(`data.migrations.step.${step}`),
@@ -287,6 +291,8 @@ function StepPage({
     // The only Profile-step region this build renders: §10.3 "any | Failed" SCR-ST-12 for a batch that
     // failed while profiling (no profile written — F-LMG's rule, SCREENS_B row 1.22).
     content = <ProfilingFailed migration={migration} />;
+  } else if (step === "reconciliation") {
+    content = <MigrationReconciliation migration={migration} />;
   } else if (built && step === "mapping") {
     content = (
       <MappingStepPage

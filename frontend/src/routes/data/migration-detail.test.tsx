@@ -560,6 +560,50 @@ describe("SF-19:detail (SCREENS_B §10.3 rev 1.20)", () => {
     expect(screen.queryByTestId("SF-19-grid-field-mapping")).toBeNull();
   });
 
+  it("opens the reconciled batch report with its migration identity", async () => {
+    serve(migration({ status: "RECONCILED" }));
+    renderApp(`/data/migrations/${MIGRATION_ID}?step=reconciliation`, {
+      me: signedInMe({ permissions: [...MAYA.permissions, "report.run"] }),
+      screenRoutes: SCREEN_ROUTES,
+    });
+    const link = await screen.findByRole("link", { name: "Open reconciliation report" });
+    expect(link.getAttribute("href")).toBe(
+      `/reports/migration_reconciliation?p.migration_id=${MIGRATION_ID}`,
+    );
+    expect(
+      screen.getByRole("link", { name: "Open parallel-run comparison" }).getAttribute("href"),
+    ).toContain(`p.migration_id=${MIGRATION_ID}`);
+    expect(screen.queryByRole("button", { name: "Run reconciliation" })).toBeNull();
+  });
+
+  it("starts reconciliation and prevents another submission while its job runs", async () => {
+    serve(migration({ status: "IMPORTED" }));
+    let requests = 0;
+    server.use(
+      http.post(apiUrl(`/api/v1/migrations/${MIGRATION_ID}/reconcile`), () => {
+        requests += 1;
+        return HttpResponse.json(
+          {},
+          { status: 202, headers: { Location: `/api/v1/jobs/${JOB_ID}` } },
+        );
+      }),
+    );
+    renderApp(`/data/migrations/${MIGRATION_ID}?step=reconciliation`, {
+      me: MAYA,
+      screenRoutes: SCREEN_ROUTES,
+    });
+    const button = await screen.findByRole("button", { name: "Run reconciliation" });
+    fireEvent.click(button);
+    await waitFor(() => expect(requests).toBe(1));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Run reconciliation" }).getAttribute("aria-disabled"),
+      ).toBe("true"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run reconciliation" }));
+    expect(requests).toBe(1);
+  });
+
   it("shows the frame and the stepper but no region for a step that is not built", async () => {
     serve(migration());
     renderApp(`/data/migrations/${MIGRATION_ID}?step=profile`, {

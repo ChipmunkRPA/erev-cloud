@@ -77,7 +77,7 @@ export const BUILT_STEPS: ReadonlySet<MigrationStep> = new Set<MigrationStep>([
 ]);
 
 export function isBuiltStep(mode: MigrationMode, step: MigrationStep): boolean {
-  return mode === "OPENING_BALANCES" && BUILT_STEPS.has(step);
+  return step === "reconciliation" || (mode === "OPENING_BALANCES" && BUILT_STEPS.has(step));
 }
 
 export function stepsOf(mode: MigrationMode): readonly MigrationStep[] {
