@@ -289,6 +289,110 @@ def exercise_capture(world: Any, source_actor: Any) -> None:
     assert done.status_code == 200, done.text
     assert done.json()["status"] == "SUCCEEDED", done.text
     assert len(done.json()["report_run_ids"]) == 3
+    # Public catalogue creation and ordinary REPORT_RUN worker retain the forecast dataset.
+    for output_format in ("JSON", "CSV", "XLSX"):
+        requested_report = call(
+            world.app,
+            "POST",
+            "/api/v1/report-runs",
+            headers=cookie_headers(world.place.author.token, world.place.author.csrf_token),
+            json={
+                "report_code": "forecast_outputs",
+                "output_format": output_format,
+                "parameters": {
+                    "forecast_run_id": str(parent_id),
+                    "book": "ASC606",
+                    "entity_codes": list(document["entity_codes"]),
+                },
+            },
+        )
+        assert requested_report.status_code == 202, requested_report.text
+        report_job_id = UUID(requested_report.json()["id"])
+        with tenant_session(world.place.principal.db_context) as session:
+            queued_report = (
+                session.execute(select(job).where(job.c.id == report_job_id)).mappings().one()
+            )
+            catalogue_id = queued_report["subject_id"]
+            session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": queued_report["procrastinate_job_id"]},
+            )
+        registry.run_job(
+            report_job_id,
+            world.place.tenant_id,
+            attempt=1,
+            runtime=JobRuntime(
+                clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+            ),
+        )
+        response = call(
+            world.app,
+            "GET",
+            f"/api/v1/report-runs/{catalogue_id}",
+            headers=cookie_headers(world.place.author.token, key=False),
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "SUCCEEDED", response.text
+        download = call(
+            world.app,
+            "GET",
+            f"/api/v1/report-runs/{catalogue_id}/output",
+            headers=cookie_headers(world.place.author.token, key=False),
+        )
+        assert download.status_code == 200, download.text
+        if output_format == "JSON":
+            assert len(download.json()["sections"]) == 5
+            assert download.json()["parameters"] == document["parameters"]
+        rerun_response = call(
+            world.app,
+            "POST",
+            f"/api/v1/report-runs/{catalogue_id}/rerun",
+            headers=cookie_headers(world.place.author.token, world.place.author.csrf_token),
+        )
+        assert rerun_response.status_code == 202, rerun_response.text
+        rerun_job_id = UUID(rerun_response.json()["id"])
+        with tenant_session(world.place.principal.db_context) as session:
+            rerun_job = (
+                session.execute(select(job).where(job.c.id == rerun_job_id)).mappings().one()
+            )
+            rerun_id = rerun_job["subject_id"]
+            session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": rerun_job["procrastinate_job_id"]},
+            )
+        registry.run_job(
+            rerun_job_id,
+            world.place.tenant_id,
+            attempt=1,
+            runtime=JobRuntime(
+                clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+            ),
+        )
+        with world.place.uow() as uow:
+            uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+            original_report = dict(
+                uow.session.execute(select(report_run).where(report_run.c.id == catalogue_id))
+                .mappings()
+                .one()
+            )
+            repeated = (
+                uow.session.execute(select(report_run).where(report_run.c.id == rerun_id))
+                .mappings()
+                .one()
+            )
+            assert repeated["status"] == "SUCCEEDED", repeated["problem"]
+            assert repeated["output_sha256"] == original_report["output_sha256"]
+            assert repeated["source_binding"] == original_report["source_binding"]
+            from erev_api.domain.reports import evidence_catalogue_access
+
+            uow.ctx = replace(
+                uow.ctx,
+                principal=replace(
+                    uow.principal, permissions=uow.principal.permissions - {"scenario.use"}
+                ),
+            )
+            with pytest.raises(Problem):
+                evidence_catalogue_access.authorize(uow, original_report)
     with world.place.uow() as uow, pytest.raises(Problem, match="already been published"):
         run_job.cancel_guard(uow, {"forecast_run_id": str(requested_id)}, job_id)
     production = call(

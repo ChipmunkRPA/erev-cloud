@@ -7962,3 +7962,28 @@ cleanup in the shared database session kernel was also repaired and regression-t
   with collectors disabled; digest tampering and revoked export scope are refused. Ruff/Mypy pass.
 - Source-file deletion/retention registry integration must precede public release. Public create/
   worker/read/download, stamped PDF/XLSX and broader acceptance remain; no complete-pack claim.
+
+## Contract sample dependency retention — October 19, 2026
+
+- Added immutable tenant FK links from sample packs to captured snapshots and original
+  documents (0188). Pack creation retains dependency files in the same transaction under
+  file locks; retained reads refuse missing/extra/scope-inconsistent links.
+- Integrated deletion holds and internal-only file ownership, preserving current document
+  authorization. Also registered the existing forecast actuals capture file as retained evidence.
+- The populated K01 sample journey passes with persisted dependency holds and missing-link
+  refusal; 11 file-registry checks plus Ruff/Mypy pass. No broad suite rerun or deployment.
+- Reporting remains feature work: public sample create/job/download and rendered PDF/XLSX/UI,
+  period pack/relock completion, and populated actual-versus-forecast acceptance remain open.
+
+## Contract sample PDF/XLSX assembly — October 19, 2026
+
+- Added stamped nine-chapter PDF/XLSX workpapers from the authorized retained sample archive.
+  Accounting grids show allocations, schedules, journal lines/contributions, events and documents;
+  complete source-field tables preserve versions, trace nodes, approvals and linked audit evidence.
+- Exact JSON values retain decimal precision, empty/null fields and long text in numbered parts.
+  Unicode/control values use explicit escapes for the PDF standard font. Source file hashes and
+  cutoff/basis notes accompany sections; binary originals remain byte-for-byte in the final ZIP.
+- The populated K01 journey assembles both formats with live collectors disabled and verifies
+  ZIP contents and unchanged originals. Precision/long-text check, Ruff/Mypy and PDF preview pass.
+- Public sample create/worker/read/download and UI remain unfinished; rendering is an assembly
+  component, not a claim that RPS-16 or the production-readiness goal is complete.

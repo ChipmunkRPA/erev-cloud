@@ -103,7 +103,7 @@ from erev_api.controls.evidence import RunRefType, record_execution
 from erev_api.controls.release import current_environment, current_release, release_identity
 from erev_api.controls.stamping import process_release_id
 from erev_api.db import new_id
-from erev_api.db.session import every_entity_scope, tenant_session
+from erev_api.db.session import every_entity_scope
 from erev_api.db.tables import (
     contract,
     contract_event,
@@ -593,6 +593,7 @@ _OPEN_ONLY: Final = (
 )
 # Composed reports use the worker's chapter-aware execution path, not a single-table builder.
 REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {
+    "forecast_outputs",
     "disclosure_pack",
     "period_evidence_pack",
     "contract_sample_pack",
@@ -600,6 +601,10 @@ REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {
 
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        "forecast_outputs": SourceContract(
+            ADAPTER,
+            ("Original forecast publication, saved format visibility and five-section dataset",),
+        ),
         "contract_sample_pack": SourceContract(
             ADAPTER,
             ("Explicit retained contract sample, source grants and original artifact",),
@@ -1806,6 +1811,14 @@ def _insert_run(
                 },
             )
         )
+    if str(definition["code"]) == "forecast_outputs":
+        from erev_api.domain.reports.forecast_catalogue import prepare as prepare_forecast
+
+        values.update(
+            prepare_forecast(
+                uow, {"tenant_id": uow.principal.tenant_id, "id": run_id, **values, **_stamp(uow)}
+            )
+        )
     session.execute(
         insert(report_run).values(
             tenant_id=uow.principal.tenant_id, id=run_id, **values, **_stamp(uow)
@@ -1817,7 +1830,7 @@ def _insert_run(
         object_id=run_id,
         after={
             **{key: value for key, value in values.items() if key != "known_at"},
-            "known_at": utc_text(resolved.known_at),
+            "known_at": utc_text(values["known_at"]),
         },
         detail={} if rerun_of is None else {"rerun_of": str(rerun_of)},
     )
@@ -1908,6 +1921,14 @@ def rerun(uow: UnitOfWork, run_id: UUID) -> tuple[UUID, JobOut]:
     )
     if definition is None or str(definition["code"]) not in REGISTERED_REPORTS:
         raise _invalid([_finding("report_code", NOT_AVAILABLE, RULE_REPORT)])
+    if original["report_code"] == "forecast_outputs" and not (
+        original.get("source_binding") or {}
+    ).get("evidence", {}).get("catalogue_forecast"):
+        raise Problem(
+            "invalid-transition",
+            "Forecast computation reruns are not supported. "
+            "Create a catalogue report to re-export the saved forecast.",
+        )
     # S15-R-24: a live run reruns from ITS bound sources — never from today's rows; without a
     # binding it is refused by name. An as-locked run reruns from its frozen dataset (S15-R-19).
     require_bound(original, RERUN_UNBOUND, "invalid-transition")
@@ -2086,6 +2107,8 @@ def _lock_comparison(run: Mapping[str, Any]) -> ReportLockComparisonOut | None:
 
 
 def _source(session: Session, run: Mapping[str, Any]) -> str:
+    if run["report_code"] == "forecast_outputs":
+        return f"Saved forecast ({display_timestamp(run['known_at'])})"
     if run["report_code"] == variance_builder.CODE:
         ids = [
             UUID(str(run["parameters"][key]))
@@ -2421,6 +2444,19 @@ def _export_requester(
         finally:
             uow.ctx = original_context
         return ctx
+    if str(run["report_code"]) == "forecast_outputs":
+        from erev_api.domain.reports import forecast_catalogue
+
+        if stored is not None:
+            raise Problem("invalid-transition")
+        ctx = report_requester.validation_requester(jc, uow, run)
+        original_context = uow.ctx
+        uow.ctx = ctx
+        try:
+            forecast_catalogue.read(uow, run)
+        finally:
+            uow.ctx = original_context
+        return ctx
     if str(run["report_code"]) == "disclosure_pack":
         if stored is not None:
             raise Problem("invalid-transition")
@@ -2557,6 +2593,17 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             uow.ctx = requester
             try:
                 data, rendered, source_binding = build_evidence(uow, run)
+            finally:
+                uow.ctx = original_context
+        elif str(run["report_code"]) == "forecast_outputs":
+            from erev_api.domain.reports.forecast_catalogue_execution import build as build_forecast
+
+            if requester is None:
+                raise Problem("forbidden")
+            original_context = uow.ctx
+            uow.ctx = requester
+            try:
+                data, rendered, source_binding = build_forecast(uow, run, definition, style)
             finally:
                 uow.ctx = original_context
         elif run["period_lock_id"] is not None and run["report_code"] != "disclosure_pack":
@@ -3168,8 +3215,14 @@ def run_document(
     ctx: RequestContext, run_id: UUID, *, files: FileStore, keyring: KeyRing
 ) -> dict[str, Any]:
     """Authorize and verify the saved JSON dataset before serving rows or chapter metadata."""
-    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+    from erev_api.clock import FrozenClock
+    from erev_api.domain.reports import evidence_catalogue_access
+    from erev_api.uow import unit_of_work
+
+    with unit_of_work(ctx, clock=FrozenClock(ctx.now), keyring=keyring, files=files) as uow:
+        session = uow.session
         row = run_row(session, ctx.principal, run_id, RUN_PERMISSION)
+        evidence_catalogue_access.authorize(uow, row)
         require_report(ctx, str(row["report_code"]), run_id=run_id, keyring=keyring)  # R-13
         if row["status"] != SUCCEEDED or row["output_file_id"] is None:
             raise Problem("invalid-transition", NOT_FINISHED)

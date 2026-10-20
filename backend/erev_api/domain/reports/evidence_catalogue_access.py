@@ -13,6 +13,15 @@ from erev_api.uow import UnitOfWork
 
 
 def authorize(uow: UnitOfWork, run: Mapping[str, Any]) -> bool:
+    if (
+        run["report_code"] == "forecast_outputs"
+        and (run.get("source_binding") or {}).get("evidence", {}).get("catalogue_forecast")
+        is not None
+    ):
+        from erev_api.domain.reports import forecast_catalogue
+
+        forecast_catalogue.read(uow, run)
+        return True
     if run["report_code"] not in evidence_catalogue_jobs.CODES:
         return False
     evidence_catalogue.authorize(uow, evidence_catalogue_jobs.source(run))

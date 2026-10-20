@@ -245,6 +245,24 @@ Every report you open or export is a report run: a stored, numbered record that 
 - Text that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with a leading apostrophe in CSV and XLSX, so a spreadsheet never evaluates it as a formula. Numbers stay numbers (REQ-SEC-011).
 - For JSON and CSV runs the output SHA-256 is the hash of the file. XLSX and PDF files carry their own run number and time, so their printed SHA-256 is the hash of the run's JSON dataset.
 
+### Saved forecast reports
+
+Run `forecast_outputs` with a completed `forecast_run_id`, its complete `entity_codes`,
+`book` and `currency_view`. Use the active scenario workspace and retain `scenario.use`
+and report permissions for all entities. The report reads the selected forecast's saved
+revenue, billing, projected balances, RPO and journal preview. Its cutoff is the original
+forecast cutoff; an explicitly supplied different historical cutoff is refused.
+
+Choose a format published by that forecast: JSON, XLSX or CSV. XLSX contains five sheets;
+CSV downloads as a ZIP with five section files and a manifest. A missing format is refused,
+since formats can have different disclosure visibility. For these forecast reports,
+`output_sha256` identifies the canonical JSON dataset in every format; the CSV manifest
+also provides the hashes of the individual CSV files. File stamps identify the new report run.
+
+Rerunning a catalogue forecast report re-exports the same saved publication and rechecks
+current access. It does not recalculate the forecast. Original forecast computation reports
+cannot be rerun through this operation; create a catalogue report to re-export their results.
+
 ### Reproducing a run
 
 `POST /api/v1/report-runs/{id}/rerun` creates a new run with identical parameters, entity scope and `known_at`. When its job finishes, the job result shows `output_sha256_equal` and `control_totals_equal`. Both are `true` when the source data has not changed.

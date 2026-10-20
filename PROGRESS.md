@@ -6,6 +6,25 @@
 
 
 
+## Public forecast catalogue reports — October 19, 2026
+
+- Registered forecast_outputs for JSON/CSV/XLSX through ordinary POST /report-runs and
+  REPORT_RUN execution. Creation pins the completed publication before INSERT; execution
+  reauthorizes the requester and renders all five saved sections without recapturing sources.
+- Read/detail/list/download and cached-command access use current scenario/source grants.
+  JSON data reads also authorize the bound publication. CSV remains a five-section ZIP;
+  output_sha256 follows the forecast convention of hashing the canonical five-section dataset.
+- Same-source catalogue reruns preserve the publication and dataset hash. Original forecast
+  computation reruns remain explicitly unsupported; the UI/API must not imply recomputation.
+- Real API creation, worker execution, download and rerun pass for all three formats; removal
+  of scenario.use refuses retained-source access. Twenty-four focused source/export checks
+  and Ruff/Mypy pass. User guide describes saved scope, format retention and hash semantics.
+- Catalogue audit: all 59 definitions now have registered execution paths. This is not full
+  report content, populated business workflow or independent accounting acceptance. Next:
+  audit reporting feature/content gaps and complete the outstanding workflows, including
+  multi-contract samples, reopen/relock, forecast comparisons and report-centre usability.
+  No deployment or production-readiness claim.
+
 ## Bound forecast catalogue exports — October 19, 2026
 
 - Added pre-insert forecast publication binding and per-use authorization. Bindings pin the
@@ -218,31 +237,6 @@
 - Fixed a stale transition-history function reference in period-pack journal collection; the
   existing real CTL-041 close-pack journey passes again.
 - Broader multi-contract/combined-group acceptance and independent accounting sign-off remain.
-
-## Contract sample PDF/XLSX assembly — October 19, 2026
-
-- Added stamped nine-chapter PDF/XLSX workpapers from the authorized retained sample archive.
-  Accounting grids show allocations, schedules, journal lines/contributions, events and documents;
-  complete source-field tables preserve versions, trace nodes, approvals and linked audit evidence.
-- Exact JSON values retain decimal precision, empty/null fields and long text in numbered parts.
-  Unicode/control values use explicit escapes for the PDF standard font. Source file hashes and
-  cutoff/basis notes accompany sections; binary originals remain byte-for-byte in the final ZIP.
-- The populated K01 journey assembles both formats with live collectors disabled and verifies
-  ZIP contents and unchanged originals. Precision/long-text check, Ruff/Mypy and PDF preview pass.
-- Public sample create/worker/read/download and UI remain unfinished; rendering is an assembly
-  component, not a claim that RPS-16 or the production-readiness goal is complete.
-
-## Contract sample dependency retention — October 19, 2026
-
-- Added immutable tenant FK links from sample packs to captured snapshots and original
-  documents (0188). Pack creation retains dependency files in the same transaction under
-  file locks; retained reads refuse missing/extra/scope-inconsistent links.
-- Integrated deletion holds and internal-only file ownership, preserving current document
-  authorization. Also registered the existing forecast actuals capture file as retained evidence.
-- The populated K01 sample journey passes with persisted dependency holds and missing-link
-  refusal; 11 file-registry checks plus Ruff/Mypy pass. No broad suite rerun or deployment.
-- Reporting remains feature work: public sample create/job/download and rendered PDF/XLSX/UI,
-  period pack/relock completion, and populated actual-versus-forecast acceptance remain open.
 
 ## Outstanding release verification
 
