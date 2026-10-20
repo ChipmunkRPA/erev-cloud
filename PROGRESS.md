@@ -6,6 +6,21 @@
 
 
 
+## Captured forecast input review — October 19, 2026
+
+- Assumption versions now expand a read-only review of captured contract event bodies and
+  committed import sources in their retained interleaved application order. Event dates,
+  obligations, payloads, comments and evidence IDs remain visible as captured; decimal strings
+  are not coerced, rounded or truncated, and text is never interpreted as HTML.
+- Contract/import links respect available read permission and use local routes. The page states
+  that linked current records may differ from captured version evidence. Empty baselines and
+  populated legacy sets without valid sequence evidence are explicitly distinguished.
+- Six focused review/lifecycle checks pass, covering interleaving, exact numeric strings,
+  literal markup, source links, missing order and baseline handling; frontend types/lint pass.
+- Direct event-entry capture UI, effective-date controls, populated report accounting acceptance
+  and independent sign-off remain open. Import sources use the existing authorized row viewer.
+  No deployment or production-readiness claim.
+
 ## Forecast fact import entry and correction continuity — October 19, 2026
 
 - Draft assumption records now link to the import wizard for import.upload readers, carrying
@@ -232,20 +247,6 @@
   Backend authorization and supported-field validation remain authoritative. Richer record
   selectors, other reporting workflows and independent accounting acceptance remain open.
   No deployment or production-readiness claim.
-
-## Declared report parameter controls — October 19, 2026
-
-- Removed the fixed-toolbar-only limitation for ordinary scalar/list report parameters.
-  Declared strings, dates, integers, booleans, enums and arrays now receive controls after
-  the existing ordered fields. Entity/book/period/source controls remain in their context UI.
-  Contract-sample IDs, forecast references and close-comparison lock IDs can be entered on
-  the report page rather than requiring manually constructed p.* URL parameters.
-- New fields use declared titles or readable labels, required flags, date inputs, enum/boolean
-  choices and comma-separated list help. Lists trim separator whitespace. Invalid integers
-  and booleans are preserved for API rejection rather than silently converted/truncated.
-- Forty-five existing report-page checks and three focused parameter checks pass, plus
-  TypeScript/ESLint. Object-valued advanced filters and richer record pickers remain separate
-  UI work; broader reporting and accounting acceptance remain open. No deployment.
 
 ## Outstanding release verification
 

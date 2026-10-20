@@ -1,3 +1,4 @@
+import { ForecastInputReview } from "./ForecastInputReview";
 import { Link } from "react-router";
 import { useAccess } from "../../lib/access";
 import { useState } from "react";
@@ -50,6 +51,7 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
         {label("commands")}: {row.api_commands.length} · {label("imports")}:{" "}
         {row.import_upload_ids.length}
       </p>
+      <ForecastInputReview row={row} />
       {row.content_sha256 ? (
         <p className="break-all">
           {label("hash")}: {row.content_sha256}

@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current captured-input review update (October 19): assumption versions now show retained
+contract-event bodies and import-source links in recorded application order. Numeric strings
+retain their precision. Missing sequence evidence is reported instead of inferred; linked
+current records are distinguished from captured inputs. Import-row detail remains in the
+existing authorized import viewer. Direct event-entry capture and accounting acceptance remain open.
+
+
 Current forecast import update (October 19): draft assumption records now open a targeted
 import workflow. The upload page verifies and identifies the draft, restricts supported fact
 templates, and preserves the association through corrected-file uploads. Import validation

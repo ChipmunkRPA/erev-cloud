@@ -8297,3 +8297,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the POST /report-runs action and navigation without a misleading equality banner.
 - Broader reporting/business acceptance and independent accounting sign-off remain open.
   No deployment or production-readiness claim.
+
+## Declared report parameter controls — October 19, 2026
+
+- Removed the fixed-toolbar-only limitation for ordinary scalar/list report parameters.
+  Declared strings, dates, integers, booleans, enums and arrays now receive controls after
+  the existing ordered fields. Entity/book/period/source controls remain in their context UI.
+  Contract-sample IDs, forecast references and close-comparison lock IDs can be entered on
+  the report page rather than requiring manually constructed p.* URL parameters.
+- New fields use declared titles or readable labels, required flags, date inputs, enum/boolean
+  choices and comma-separated list help. Lists trim separator whitespace. Invalid integers
+  and booleans are preserved for API rejection rather than silently converted/truncated.
+- Forty-five existing report-page checks and three focused parameter checks pass, plus
+  TypeScript/ESLint. Object-valued advanced filters and richer record pickers remain separate
+  UI work; broader reporting and accounting acceptance remain open. No deployment.
