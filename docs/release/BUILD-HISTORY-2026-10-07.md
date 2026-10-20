@@ -8763,3 +8763,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Seven focused history/page/save checks pass, including lazy load, cursor pagination, new-tab
   navigation and later-page retry. Types and lint pass. Broader business/browser acceptance and
   independent accounting sign-off remain open. No deployment; direct main publication.
+
+## Tamsin deal acceptance and missing schedule fix — October 19, 2026
+
+- Ran the FCS-6 Tamsin proposal against real published product templates and approved US-LIST
+  2026-H2 ranges. SSP selection/range flags and 94,225.26 / 21,774.74 allocations already matched;
+  the required November revenue schedule failed because the dry-run bundle stayed DRAFT.
+- Deal computation now adds a deterministic hypothetical activation at inception to a single
+  booking-only DRY_RUN input. The synthetic event stays in retained evidence, never the database
+  event stream. Real save still creates a DRAFT. UI explicitly states the activation assumption.
+- Added simulated revenue-to-calculation-date to per-book totals, so backdated proposals reconcile
+  allocation = simulated revenue + future scheduled + awaiting trigger. Prior retained previews
+  are not recomputed. OpenAPI/frontend types updated.
+- Tamsin now passes exact SSP/range/allocation, no MR/VC, November start and deterministic input.
+  API/worker journey passes no production contract and total reconciliation. Scratch rollback,
+  four computation boundary checks, frontend rendering, Python lint/types and API generation pass.
+  This is concrete FCS-6 case evidence, not independent accounting sign-off or full browser/release
+  acceptance. No deployment.

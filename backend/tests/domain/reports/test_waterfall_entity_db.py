@@ -519,3 +519,155 @@ def test_rpo_currency_bands_exemption_and_retained_rates(
     assert all(item["section"] == 2 for item in excluded)
     assert all(item["excluded_amount"]["currency"] == "USD" for item in excluded)
     assert exempt["tie_out_results"][0]["result"] == "PASS"
+
+
+@pytest.mark.slow
+def test_rpo_rollforward_currency_movements_and_retained_rates(
+    world: ReportWorld, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import timedelta
+    from decimal import ROUND_HALF_UP
+
+    from support.reference import approve, post
+
+    params = {
+        "entity_codes": [AVM_UK],
+        "book": "ASC606",
+        "from_period_key": "FY2026-P07",
+        "to_period_key": "FY2026-P09",
+        "currency_view": "reporting",
+    }
+    run, rows = report_run(world, "rpo_rollforward", params)
+    result = keyed(rows)
+    assert all(check["result"] == "PASS" for check in run["tie_out_results"])
+    assert result["UNEXPLAINED"]["rpo"]["amount"] == "0.00"
+    _, disclosure = report_run(
+        world,
+        "rpo",
+        {
+            "entity_codes": [AVM_UK],
+            "book": "ASC606",
+            "period_key": "FY2026-P09",
+            "currency_view": "reporting",
+        },
+    )
+    assert result["CLOSING"]["rpo"] == keyed(disclosure)["TOTAL:USD"]["total"]
+    _, opening = report_run(
+        world,
+        "rpo",
+        {
+            "entity_codes": [AVM_UK],
+            "book": "ASC606",
+            "period_key": "FY2026-P06",
+            "currency_view": "reporting",
+        },
+    )
+    assert result["OPENING"]["rpo"] == keyed(opening)["TOTAL:USD"]["total"]
+    expected_revenue = Decimal(0)
+    expected_fx = Decimal(0)
+    rates = {
+        7: ("1.27", "1.27", "1.27"),
+        8: ("1.27", "1.275", "1.27"),
+        9: ("1.28", "1.29", "1.275"),
+    }
+    for month, (average, closing, prior) in rates.items():
+        key = f"FY2026-P{month:02d}"
+        _, raw = report_run(
+            world,
+            "rpo_rollforward",
+            {
+                **params,
+                "from_period_key": key,
+                "to_period_key": key,
+                "currency_view": "transaction",
+            },
+        )
+        monthly = keyed(raw)
+        expected_revenue += (
+            Decimal(monthly["REVENUE"]["rpo"]["amount"]) * Decimal(average)
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        expected_fx += (
+            Decimal(monthly["CLOSING"]["rpo"]["amount"]) * (Decimal(closing) - Decimal(average))
+            - Decimal(monthly["OPENING"]["rpo"]["amount"]) * (Decimal(prior) - Decimal(average))
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    assert result["REVENUE"]["rpo"] == {"amount": str(expected_revenue), "currency": "USD"}
+    assert result["FX"]["rpo"] == {"amount": str(expected_fx), "currency": "USD"}
+    assert expected_fx != 0
+    assert sum(
+        Decimal(item["rpo"]["amount"])
+        for item in rows
+        if item["section"] == 1 and item["line_code"] not in ("CLOSING", "UNEXPLAINED")
+    ) == Decimal(result["CLOSING"]["rpo"]["amount"])
+    from dataclasses import replace
+
+    from erev_api.domain.reports.builders import rpo
+
+    original_lines = rpo.rollforward_lines
+
+    def unsupported_change(*args: Any, **kwargs: Any) -> tuple[rpo.ContractLines, ...]:
+        return tuple(
+            replace(
+                item,
+                lines={
+                    **item.lines,
+                    "MODIFICATIONS": item.lines["MODIFICATIONS"] - Decimal("0.01"),
+                    "UNEXPLAINED": item.lines["UNEXPLAINED"] + Decimal("0.01"),
+                },
+            )
+            for item in original_lines(*args, **kwargs)
+        )
+
+    with monkeypatch.context() as changed:
+        changed.setattr(rpo, "rollforward_lines", unsupported_change)
+        failed, failed_rows = report_run(world, "rpo_rollforward", params)
+        assert failed["control_totals"]["source_unexplained"] is True
+        assert (
+            next(
+                check
+                for check in failed["tie_out_results"]
+                if check["code"] == tie_outs.TO_ROLLFORWARD_BALANCES
+            )["result"]
+            == "FAIL"
+        )
+        assert keyed(failed_rows)["FX"]["rpo"] == result["FX"]["rpo"]
+
+    # Republish a complete closing-rate set; fresh output changes, retained rerun does not.
+    listed = get(world.app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
+    (closing_set,) = [
+        item for item in listed.json()["items"] if item["code"] == "AVM-RATES-CLOSING"
+    ]
+    revised = [
+        {**item, "rate": "1.4"} if item["period_key"] == "FY2026-P09" else item
+        for item in worlds._gbp_rates("closing")
+    ]
+    draft = post(
+        world.app,
+        f"/api/v1/fx-rate-sets/{closing_set['id']}/versions",
+        world.maya,
+        {"coverage_from": "2026-01-01", "coverage_to": "2026-09-30", "rates": revised},
+    )
+    assert draft.status_code == 201, draft.text
+    sent = post(
+        world.app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        world.maya,
+        {"comment": "Revised RPO closing rate"},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert sent.status_code == 200, sent.text
+    clock.advance(timedelta(minutes=1))
+    world = worlds.verified(world, clock, "marcus")
+    approved = approve(world.app, sent.json()["pending_approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    fresh_run, fresh = report_run(world, "rpo_rollforward", params)
+    assert keyed(fresh)["CLOSING"]["rpo"] != result["CLOSING"]["rpo"]
+    assert all(check["result"] == "PASS" for check in fresh_run["tie_out_results"])
+    started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(started.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        world.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows

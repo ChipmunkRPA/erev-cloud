@@ -685,6 +685,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "currency_view",
         ),
         sources=(
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
             "obligation_version",
             "contract_version",
             "contract_computation",

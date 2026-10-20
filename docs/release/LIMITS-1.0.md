@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current RPO rollforward update (October 20): functional/reporting views now use monthly average
+rates for business movements and dated closing rates for endpoints. The endpoints share RPO's
+obligation-level gross/exclusion projection. FX and rounding are separate lines, and source
+unexplained differences cannot be hidden by translation. Three-month API evidence covers FX,
+endpoint ties and retained reruns after rate revision; an unsupported-source witness still
+fails reconciliation. This supersedes the live RPO-rollforward currency limitation below.
+Alternate currency lock datasets, multi-layer liability FX and group-change attribution remain
+unfinished; no production readiness, deployment or independent accounting acceptance claimed.
+
+
 Current RPO disclosure update (October 20): the RPO report now supports functional/reporting
 currency using approved retained as-of closing rates. Gross/excluded translation and allocated
 net rounding conserve bands, current/noncurrent and cell sources. Source rollforward comparison

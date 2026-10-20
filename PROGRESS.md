@@ -6,6 +6,23 @@
 
 
 
+## RPO rollforward currency attribution — October 20, 2026
+
+- Functional/reporting RPO rollforwards now translate month-by-month: business movements at
+  monthly average rates and opening/closing disclosures at their own closing rates. Endpoints
+  use the same per-obligation gross/exclusion projection as RPO, so partial-exemption rounding
+  does not create mismatched closing totals. Approved rate identities are retained for reruns.
+- FX is calculated independently from opening/closing exposures and rate differences; currency
+  rounding has its own line. Source UNEXPLAINED remains separate, and any nonzero source monthly
+  unexplained amount forces a failed balance tie even if display rounding could erase it.
+- Necessary API witness covers three months of GBP/USD revenue and FX, both endpoint disclosure
+  ties, a revised closing-rate set versus retained rerun, and injected unsupported movement that
+  still fails the tie without changing FX. Existing transaction CTL-030 passes; lint/types pass.
+- This completes the current RPO live-report currency path, not every reporting feature or
+  alternate currency lock datasets. Multi-layer liability FX, group membership/combined-contract
+  attribution and broader release acceptance remain outstanding. No deployment or accounting
+  sign-off claimed.
+
 ## RPO disclosure currency views — October 20, 2026
 
 - RPO now translates foreign transaction consideration to functional currency and then to
@@ -207,23 +224,6 @@
   rollforward valuation, broader GL coverage, population replay and dated POL-200 exclusions remain.
   POL-199's zero royalty exclusion can be correct under the engine's realization model; the older
   blanket description of both exemptions as missing was too broad. No deployment.
-
-## Tamsin deal acceptance and missing schedule fix — October 19, 2026
-
-- Ran the FCS-6 Tamsin proposal against real published product templates and approved US-LIST
-  2026-H2 ranges. SSP selection/range flags and 94,225.26 / 21,774.74 allocations already matched;
-  the required November revenue schedule failed because the dry-run bundle stayed DRAFT.
-- Deal computation now adds a deterministic hypothetical activation at inception to a single
-  booking-only DRY_RUN input. The synthetic event stays in retained evidence, never the database
-  event stream. Real save still creates a DRAFT. UI explicitly states the activation assumption.
-- Added simulated revenue-to-calculation-date to per-book totals, so backdated proposals reconcile
-  allocation = simulated revenue + future scheduled + awaiting trigger. Prior retained previews
-  are not recomputed. OpenAPI/frontend types updated.
-- Tamsin now passes exact SSP/range/allocation, no MR/VC, November start and deterministic input.
-  API/worker journey passes no production contract and total reconciliation. Scratch rollback,
-  four computation boundary checks, frontend rendering, Python lint/types and API generation pass.
-  This is concrete FCS-6 case evidence, not independent accounting sign-off or full browser/release
-  acceptance. No deployment.
 
 ## Outstanding release verification
 

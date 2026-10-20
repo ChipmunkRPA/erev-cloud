@@ -25,7 +25,7 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import rpo_currency, rpo_rollforward_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, rpo
 from erev_api.domain.reports.builders import contract_balance_rollforward as balances
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -43,6 +43,7 @@ LABELS: Final[Mapping[str, str]] = {
     "REVENUE": "Revenue recognized",
     "CANCELLATIONS": "Cancellations and terminations",
     "FX": "FX",
+    "ROUNDING": "Currency rounding",
     "UNEXPLAINED": "Unexplained difference",
     "CLOSING": "Closing RPO",
 }
@@ -62,7 +63,15 @@ COLUMNS: Final = (
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
-    found, periods, _ = balances.ranges(session, params)
+    found, periods, before = balances.ranges(session, params)
+    view = str(params.parameters.get("currency_view") or "transaction")
+    converted = view != "transaction"
+    codes = (
+        ("OPENING", *rpo.MOVEMENTS, "ROUNDING", "UNEXPLAINED", "CLOSING")
+        if converted
+        else rpo.ROLLFORWARD_LINES
+    )
+    movements = (*rpo.MOVEMENTS, "ROUNDING") if converted else rpo.MOVEMENTS
     ranges: dict[UUID, tuple[date, date]] = {
         entity.id: (periods[entity.id][0].start - timedelta(days=1), periods[entity.id][-1].end)
         for entity in found
@@ -76,30 +85,43 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates
     rpo.measure(
-        session, store, ranges, applied=applied, uow=uow, book_code=book_code, params=params
+        session,
+        store,
+        {
+            entity_id: tuple(day for p in selected for day in (p.start - timedelta(days=1), p.end))
+            for entity_id, selected in periods.items()
+        }
+        if converted
+        else ranges,
+        applied=applied,
+        uow=uow,
+        book_code=book_code,
+        params=params,
     )
     items = rpo.rollforward_lines(store, ranges=ranges, applied=applied)
-    view = str(params.parameters.get("currency_view") or "transaction")
-    functional = {entity.code: entity.functional_currency for entity in found}
-    if view != "transaction" and any(
-        item.currency != functional[item.entity_code] for item in items
-    ):
-        raise tie_outs.invalid("currency_view", rpo.FUNCTIONAL_ONLY)
+    rates: list[dict[str, Any]] = []
+    source_unexplained = False
+    if converted:
+        items, rates, source_unexplained = rpo_rollforward_currency.project(
+            uow, params, store, found, periods, before, applied
+        )
     totals: dict[str, dict[str, Decimal]] = {}
     for item in items:
-        into = totals.setdefault(item.currency, dict.fromkeys(rpo.ROLLFORWARD_LINES, ZERO))
-        for line in rpo.ROLLFORWARD_LINES:
+        into = totals.setdefault(item.currency, dict.fromkeys(codes, ZERO))
+        for line in codes:
             into[line] += item.lines[line]
     rows: list[dict[str, Any]] = []
     mixed = len(totals) > 1
     for currency, lines in sorted(totals.items()):
-        for line in rpo.ROLLFORWARD_LINES:
+        for line in codes:
             rows.append(
                 {
                     "row_key": f"{line}:{currency}" if mixed else line,
                     "section": 1,
                     "line_code": line,
-                    "line_label": LABELS[line],
+                    "line_label": "RPO currency translation"
+                    if converted and line == "FX"
+                    else LABELS[line],
                     # 04 T-CLS-05 dataset identity (D-98 85): a line row is identified by its
                     # line code and currency; the contract column is stated EMPTY, never left
                     # out — the lock freeze reads every key column by name (S15-R-18).
@@ -117,21 +139,18 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "line_code": None,
                 "contract_external_id": item.external_id,
                 "currency": item.currency,
-                **{
-                    line.lower(): tie_outs.money(item.lines[line], item.currency)
-                    for line in rpo.ROLLFORWARD_LINES
-                },
+                **{line.lower(): tie_outs.money(item.lines[line], item.currency) for line in codes},
             }
         )
     expected: dict[str, Decimal] = {}
     actual: dict[str, Decimal] = {}
-    unexplained = False
+    unexplained = source_unexplained
     for currency, lines in totals.items():
         add(expected, currency, lines["CLOSING"])
         add(
             actual,
             currency,
-            lines["OPENING"] + sum((lines[code] for code in rpo.MOVEMENTS), ZERO),
+            lines["OPENING"] + sum((lines[code] for code in movements), ZERO),
         )
         unexplained = unexplained or any(item.lines["UNEXPLAINED"] != 0 for item in items)
     balanced = tie_outs.compared(tie_outs.TO_ROLLFORWARD_BALANCES, expected, actual)
@@ -140,13 +159,31 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     report_total: dict[str, Decimal] = {}
     bands = tuple(params.parameters.get("time_bands") or rpo.DEFAULT_BANDS)
     at_end = {entity_id: value[1] for entity_id, value in ranges.items()}
-    for found_item in rpo.rows_at(store, as_of=at_end, bands=bands, applied=applied):
+    closing_rows = rpo.rows_at(store, as_of=at_end, bands=bands, applied=applied)
+    if converted:
+        closing_rows = tuple(item for item in closing_rows if item.exemption is None)
+        closing_rows, _ = rpo_currency.translate(
+            session,
+            params,
+            closing_rows,
+            found,
+            {entity_id: selected[-1] for entity_id, selected in periods.items() if selected},
+        )
+    for found_item in closing_rows:
         if found_item.exemption is None:
             add(report_total, found_item.ob.currency, found_item.total)
     return ReportData(
-        columns=COLUMNS,
+        columns=(*COLUMNS[:-2], Column("rounding", LABELS["ROUNDING"], "money"), *COLUMNS[-2:])
+        if converted
+        else COLUMNS,
         rows=tuple(rows),
         control_totals={
+            "currency_view": view,
+            "translation_basis": "monthly_average_flows_closing_endpoints"
+            if converted
+            else "transaction",
+            "translation_rates": rates,
+            "source_unexplained": source_unexplained,
             "opening": tie_outs.by_currency({code: v["OPENING"] for code, v in totals.items()}),
             "closing": tie_outs.by_currency({code: v["CLOSING"] for code, v in totals.items()}),
             "unexplained": tie_outs.by_currency(

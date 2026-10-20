@@ -227,9 +227,7 @@ CAUSE_LINES: Final[Mapping[str, str]] = {
 }
 NO_EXEMPTIONS: Final = "No contracts are excluded. {entity} applies no RPO practical expedient."
 MIXED_BANDS: Final = "Choose one set of time bands for the entities of the run."
-FUNCTIONAL_ONLY: Final = (
-    "The functional and reporting views show contracts in the entity's functional currency only."
-)
+
 UNKNOWN_CELL: Final = "The run holds no cell {row_key} / {column_key}."
 
 
