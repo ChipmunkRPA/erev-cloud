@@ -1,4 +1,9 @@
 {
+  "reports.parameters.migration_id": "Migration",
+  "reports.parameters.migrations.loading": "Loading migrations\u2026",
+  "reports.parameters.migrations.error": "Could not load migrations",
+  "reports.parameters.migrations.more": "Load older migrations",
+  "reports.parameters.migrations.empty": "No migrations available in this workspace.",
   "data.migrations.reconcile.lines.clearFilter": "Clear the tolerance filter to review all retained lines.",
   "data.migrations.reconcile.lines.noEvidence": "No comparison lines were returned for this migration. An empty result does not establish that balances reconcile.",
   "data.migrations.reconcile.lines.title": "Reconciliation lines",

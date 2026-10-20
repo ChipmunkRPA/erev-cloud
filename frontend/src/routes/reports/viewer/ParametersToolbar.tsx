@@ -21,6 +21,7 @@ import { formatDate, NO_VALUE } from "../../../lib/format";
 import { hasMessage, t } from "../../../lib/i18n/t";
 import { TextField } from "../../contracts/drawers/common";
 import { parameterKeys, type ReportContext } from "./specs";
+import { MigrationParameter } from "./MigrationParameter";
 import { ReportFilters } from "./ReportFilters";
 import { filterRows, validFilterRows } from "./filterValues";
 
@@ -253,6 +254,16 @@ export function ParametersToolbar({
         const value = values[key] ?? "";
         const error = errors[key];
         switch (key) {
+          case "migration_id":
+            return (
+              <MigrationParameter
+                key={key}
+                value={value}
+                error={error}
+                disabled={disabled}
+                onChange={(next) => onChange(key, next)}
+              />
+            );
           case "filters":
             return (
               <div key={key}>

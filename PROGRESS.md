@@ -6,6 +6,18 @@
 
 
 
+## Migration report record selector — October 19, 2026
+
+- Migration report parameters now offer searchable authorized records by migration number,
+  mode, status and cutover date, with cursor-based loading of older batches. Choosing a record
+  writes its exact ID into the existing report parameter flow.
+- A saved ID outside loaded pages is retained. Readers without migration.run do not request
+  migration metadata and retain the manual parameter field; locked parameters remain disabled.
+  List loading, errors/retry and empty workspaces have explicit states.
+- Eight focused selector/toolbar checks pass, covering older-page selection, retained IDs and
+  permission gating, plus TypeScript/ESLint. Other report selectors, populated accounting
+  acceptance and independent sign-off remain open. No deployment.
+
 ## Retained migration comparison lines — October 19, 2026
 
 - Reconciled migration details now display retained contract/obligation comparison lines,
@@ -238,22 +250,6 @@
 - Next: contract_sample_pack public catalogue admission and full sample orchestration acceptance;
   fresh historical sample capture and wider accounting/re-lock acceptance remain open.
   No deployment or production-readiness claim.
-
-## Catalogue evidence dependency/execution chain — October 19, 2026
-
-- Ordinary report insertion now prepares and persists an explicit source pack binding in the
-  initial INSERT, atomically with its jobs. Immutable report parameters/entity scope are not
-  updated later. Retained preparation reuses the same pack; selectors and cutoff remain fixed.
-- REPORT_RUN readiness waits for the exact EVIDENCE_PACK job and verifies its subject/hash.
-  The worker rehydrates the current requester, verifies source access and stores the original
-  artifact plus provenance through normal report completion/control recording.
-- Real close acceptance exercises internal report creation, child reports/audit verification,
-  source-pack completion and catalogue report worker completion; output bytes/hash match.
-  Ruff and Mypy pass. Sample orchestration acceptance remains open.
-- Public catalogue admission is still disabled: registration, lock resolution, source contracts
-  and addressed/list/download authorization must be integrated before exposing RPT-54/55.
-  Fresh sample capture currently requires the creation-time known_at; historical fresh capture
-  remains unsupported (retained reruns preserve the original cutoff). No deployment.
 
 ## Outstanding release verification
 

@@ -8122,3 +8122,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Reinspection confirms disclosure_pack already has child orchestration and a worker execution
   path. Its remaining acceptance gaps need auditing; do not describe orchestration as absent.
   No deployment or readiness claim.
+
+## Catalogue evidence dependency/execution chain — October 19, 2026
+
+- Ordinary report insertion now prepares and persists an explicit source pack binding in the
+  initial INSERT, atomically with its jobs. Immutable report parameters/entity scope are not
+  updated later. Retained preparation reuses the same pack; selectors and cutoff remain fixed.
+- REPORT_RUN readiness waits for the exact EVIDENCE_PACK job and verifies its subject/hash.
+  The worker rehydrates the current requester, verifies source access and stores the original
+  artifact plus provenance through normal report completion/control recording.
+- Real close acceptance exercises internal report creation, child reports/audit verification,
+  source-pack completion and catalogue report worker completion; output bytes/hash match.
+  Ruff and Mypy pass. Sample orchestration acceptance remains open.
+- Public catalogue admission is still disabled: registration, lock resolution, source contracts
+  and addressed/list/download authorization must be integrated before exposing RPT-54/55.
+  Fresh sample capture currently requires the creation-time known_at; historical fresh capture
+  remains unsupported (retained reruns preserve the original cutoff). No deployment.
