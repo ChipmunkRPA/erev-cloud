@@ -919,22 +919,32 @@ def rpo_of(
     placed = [ZERO] * (len(bounds) + 1)
     total = current = ZERO
     contributors: list[tuple[str, UUID, Decimal, int, bool]] = []
-    scheduled = cuts.scheduled_after(
-        ob.lines,
-        at,
-        day,
-        contract=ob.external_id,
-        obligation=ob.obligation_key,
-        sources=ob.line_nodes,
-    )
-    for line_id, end, amount in scheduled:
+    projected = cuts.projected_after(at, day, contract=ob.external_id, obligation=ob.obligation_key)
+    if projected is None:
+        scheduled = [
+            ("schedule_line", line_id, end, amount)
+            for line_id, end, amount in cuts.scheduled_after(
+                ob.lines,
+                at,
+                day,
+                contract=ob.external_id,
+                obligation=ob.obligation_key,
+                sources=ob.line_nodes,
+            )
+        ]
+    else:
+        scheduled = [
+            (f"{to_date.PERIOD_SCHEDULE}@{at.fixed_schedule_cut}@{key}", ob.row_id, end, amount)
+            for key, end, amount in projected
+        ]
+    for kind, object_id, end, amount in scheduled:
         index = band_index(end, bounds)
         placed[index] += amount
         total += amount
         is_current = end <= current_bound
         if is_current:
             current += amount
-        contributors.append(("schedule_line", line_id, amount, index, is_current))
+        contributors.append((kind, object_id, amount, index, is_current))
     if at.awaiting:
         index = 0 if ob.end_date is None else band_index(ob.end_date, bounds)
         is_current = ob.end_date is None or ob.end_date <= current_bound
@@ -1652,6 +1662,8 @@ def cell(
                 continue
             value += amount
             measure = "amount" if kind == "schedule_line" else "awaiting_trigger_amount"
+            if kind.startswith(to_date.PERIOD_SCHEDULE + "@"):
+                measure, kind = kind, "obligation_version"
             if (
                 kind == "schedule_line"
                 and run.store.at(item.ob, item.as_of).fixed_schedule is not None
@@ -1666,7 +1678,12 @@ def cell(
                     "id": object_id,
                     "measure": measure,
                     "value": tie_outs.money(amount, currency),
-                    "href": f"/api/v1/explain/{kind}/{object_id}/{measure}",
+                    "href": f"/api/v1/explain/{kind}/{object_id}/{measure}"
+                    + (
+                        f"?as_of={item.as_of}"
+                        if measure.startswith(to_date.PERIOD_SCHEDULE + "@")
+                        else ""
+                    ),
                 }
             )
     if params.parameters.get("currency_view", "transaction") != "transaction":

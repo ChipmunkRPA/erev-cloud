@@ -234,3 +234,35 @@ def scheduled_after(
         )
         raise ScheduleUnreadable(f"obligations[{obligation}].scheduled_amount", message)
     return later
+
+
+def projected_after(
+    at: to_date.ObligationAt,
+    day: date,
+    *,
+    contract: str,
+    obligation: str,
+) -> tuple[tuple[str, date, Decimal], ...] | None:
+    """Original period projections, independent of later surviving schedule lines."""
+    rows = at.period_schedule
+    if rows is None:
+        return None
+    cut = day if at.measured is None else at.measured.end_date
+    placed = sum((amount for _, _, amount in rows), ZERO)
+    if (
+        at.fixed_schedule_cut != cut
+        or any(end <= cut for _, end, _ in rows)
+        or len({key for key, _, _ in rows}) != len(rows)
+        or placed != at.scheduled
+    ):
+        raise ScheduleUnreadable(
+            f"obligations[{obligation}].scheduled_amount",
+            SCHEDULE_DIFFERS.format(
+                contract=contract,
+                obligation=obligation,
+                day=cut,
+                scheduled=at.scheduled,
+                lines=placed,
+            ),
+        )
+    return rows

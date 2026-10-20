@@ -386,6 +386,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "lock_snapshot",
             "combination_group_member",
             "contract_computation",
+            "calc_trace",
         ),
         joins=(
             "schedule_line.contract_version_id = contract_version.id",
@@ -410,6 +411,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "historical time-based schedules freeze the original allocation segment at the "
             "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
             "drill-through",
+            "original period projections survive removed current schedule lines; source evidence "
+            "is the contract version trace for the exact reporting cut and future period",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -733,6 +736,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "registry_version",
             "lock_snapshot",
             "combination_group_member",
+            "calc_trace",
         ),
         joins=(
             "obligation_version.contract_version_id = contract_version.id",
@@ -755,6 +759,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "historical time-based schedules freeze the original allocation segment at the "
             "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
             "drill-through",
+            "original period projections survive removed current schedule lines; source evidence "
+            "is the contract version trace for the exact reporting cut and future period",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -824,6 +830,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "historical time-based schedules freeze the original allocation segment at the "
             "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
             "drill-through",
+            "original period projections survive removed current schedule lines; source evidence "
+            "is the contract version trace for the exact reporting cut and future period",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

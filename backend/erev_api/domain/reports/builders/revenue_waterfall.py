@@ -115,6 +115,7 @@ class _Obligation:
     schedule_lines: dict[str, list[tuple[UUID, Decimal]]] = field(default_factory=dict)
     fixed_schedule_lines: set[UUID] = field(default_factory=set)
     fixed_schedule_cut: date | None = None
+    projected_schedule_periods: set[str] = field(default_factory=set)
     subledger_lines: dict[str, list[tuple[UUID, Decimal]]] = field(default_factory=dict)
 
 
@@ -505,17 +506,30 @@ def _at_as_of(
         ob.awaiting = found.awaiting
         ob.fixed_schedule_cut = found.fixed_schedule_cut
         own = lines.get((version_id, ob.obligation_id), [])
-        scheduled = {
-            line_id: amount
-            for line_id, _, amount in cuts.scheduled_after(
-                [(line_id, end, amount) for line_id, end, amount, _ in own],
-                found,
-                day,
-                contract=ob.external_id,
-                obligation=ob.obligation_key,
-                sources=line_nodes,
-            )
-        }
+        projected = cuts.projected_after(
+            found, day, contract=ob.external_id, obligation=ob.obligation_key
+        )
+        if projected is not None:
+            for projected_key, _, amount in projected:
+                if projected_key in {key_of[period_id] for period_id in period_ids}:
+                    ob.projected_schedule_periods.add(projected_key)
+                    ob.schedule_lines.setdefault(projected_key, []).append(
+                        (ob.version_row_id, amount)
+                    )
+                    ob.scheduled[projected_key] = amount
+            scheduled = {}
+        else:
+            scheduled = {
+                line_id: amount
+                for line_id, _, amount in cuts.scheduled_after(
+                    [(line_id, end, amount) for line_id, end, amount, _ in own],
+                    found,
+                    day,
+                    contract=ob.external_id,
+                    obligation=ob.obligation_key,
+                    sources=line_nodes,
+                )
+            }
         for line_id, end, amount, period_id in own:
             if period_id not in in_range or (end > day and line_id not in scheduled):
                 continue
@@ -854,6 +868,17 @@ def cell(
                             "currency_view", "transaction"
                         ) != "transaction" and (key not in ob.scheduled or state == RECOGNIZED):
                             continue
+                        if key in ob.projected_schedule_periods:
+                            contributors.append(
+                                _contributor(
+                                    "obligation_version",
+                                    ob.version_row_id,
+                                    amount,
+                                    currency,
+                                    measure=f"scheduled_period_at_cut@{ob.fixed_schedule_cut}@{key}",
+                                )
+                            )
+                            continue
                         contributors.append(
                             _contributor(
                                 "schedule_line",
@@ -916,5 +941,10 @@ def _contributor(
         "id": object_id,
         "measure": measure,
         "value": tie_outs.money(amount, currency),
-        "href": f"/api/v1/explain/{object_type}/{object_id}/{measure}",
+        "href": f"/api/v1/explain/{object_type}/{object_id}/{measure}"
+        + (
+            "?as_of=" + measure.split("@")[1]
+            if measure.startswith("scheduled_period_at_cut@")
+            else ""
+        ),
     }

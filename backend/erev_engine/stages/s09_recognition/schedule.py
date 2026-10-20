@@ -1246,8 +1246,8 @@ def _emit_dated_schedule(
 ) -> None:
     """Freeze the original time-based segment at each cut preceding a later allocation.
 
-    Keep the original schedule source for drill-through. Missing future source periods remain
-    unsupported and are rejected by the reader's scheduled-remainder reconciliation.
+    Period projections retain their own trace even where a later change removed the schedule
+    line. Existing schedule sources remain available for older drill-through consumers.
     """
     ob = evaluator.ob
     if not components.is_deterministic(ob):
@@ -1268,9 +1268,9 @@ def _emit_dated_schedule(
             continue
         previous = ev.fixed.posted
         previous_node: str | None = None
-        for future in targets:
-            end = periods[future.period_key].end_date
-            if end < cut:
+        for future in evaluator.periods:
+            end = future.end_date
+            if end < cut or future.start_date > seg.totals.end_date:
                 continue
             part = components.segment_target(
                 ctx,
@@ -1339,6 +1339,24 @@ def _emit_dated_schedule(
                 previous_node = posted
                 continue
             assert previous_node is not None
+            tb.node(
+                measure="scheduled_period_at_cut",
+                subject_key=ob.subject_key,
+                period_key=slot,
+                value=part.posted - previous,
+                currency=ctx.txn_currency,
+                minor_unit=evaluator.mu,
+                formula_id=FIXED_SCHEDULE_FORMULA,
+                inputs=[posted, previous_node],
+                params={
+                    "signs": "+,-",
+                    "cause": "FIXED_SCHEDULE",
+                    "as_of": end.isoformat(),
+                    "cut": cut.isoformat(),
+                    "period_key": future.period_key,
+                },
+                narrative_key=_narrative(FIXED_SCHEDULE_FORMULA),
+            )
             own = [item for item in causes if item.period_key == future.period_key and item.value]
             for i, cause in enumerate(own):
                 # All of this period's frozen fixed movement belongs to one retained source.

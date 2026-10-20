@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Historical periods survive removed schedule lines — October 20, 2026
+
+- Original fixed period projections now have independent trace nodes, including periods whose
+  current schedule line disappeared after a later allocation change. The engine projects over
+  the retained performing-entity calendar and original segment term.
+- RPO and revenue waterfall read these periods directly, reconcile their sum, and explain each
+  through its obligation version, reporting cut and future period. Existing currency conversion
+  uses the same projected contributions; no synthetic posted schedule line is created.
+- A real engine case reduces the later allocation to zero: original January future amounts
+  remain in RPO and waterfall even with no current schedule rows. Trace replay, trimming,
+  incomplete-evidence refusal and explain selection are covered. 115 scoped tests and two DB
+  journeys pass; lint/types and migration 0215 checked against all three IPE definitions.
+- Missing original calendar/terms, held or manually adjusted cuts, legacy traces without the
+  new evidence and complex mixed lifecycles remain open. Independent accounting acceptance is
+  outstanding. No deployment.
+
+
 ## Historical time-based schedule projection — October 20, 2026
 
 - Stage 09 now freezes the original deterministic allocation segment at cuts before later
@@ -205,31 +222,6 @@
   consistency, scoped lint and types.
   Mixed TIME/EVENT attribution, intercompany counterparts, remaining close-only histories and
   the other release gaps remain open. No deployment or production-readiness claim.
-
-## Cross-period returns: asset settlement and new liability sources — October 20, 2026
-
-- Original revenue attribution now presents the recognizing member's asset settlements and
-  newly created liability sources as well as liability consumption and asset creation.
-  Signed liability effects drive the member presentation bridge; newly created liabilities
-  do not become opening-liability relief. Foreign-owner asset/new-liability sources remain
-  refused until their separate transfer presentation is implemented.
-- Bridge v5 includes cross-member relationships whose original consumption predates the selected
-  range, so a return-month-only report retains the same original paid history as a full-range
-  report. Earlier v1-v4 report bindings retain their scope and presentation path.
-- Fixed S14 EVENT classification when a full return leaves zero cumulative transaction revenue
-  but a nonzero functional amount from historical rates. A non-time-released obligation now
-  keeps that amount in EVENT instead of incorrectly routing it into TIME because zero equals
-  zero. This does not invent per-layer mixed TIME/EVENT attribution or repair old sealed journals.
-- Real foreign combined scenario: USD 45,000 advance and USD 54,000 delivery produce GBP 43,470
-  revenue, including GBP 36,000 original opening relief. A full September return at retained
-  spot .84 reverses GBP 45,360, settling the asset and creating a new liability. Full-range net
-  revenue is GBP -1,890; September alone reports GBP -45,360 and zero opening relief.
-- Necessary checks passed: both currency views and identical reruns for full-range and
-  return-month-only disclosures, the prior combined delivery/return sequence, catalogue
-  migration consistency, 16 S14 checks, scoped lint and types.
-- Migration 0203 describes the source method. Mixed TIME/EVENT source allocation, intercompany
-  counterparts, foreign-owner asset settlement, remaining close-only histories and the other
-  documented release gaps remain open. No deployment or production-readiness claim.
 
 
 ## Outstanding release verification

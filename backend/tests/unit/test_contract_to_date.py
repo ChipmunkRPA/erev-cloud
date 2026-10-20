@@ -1102,8 +1102,10 @@ def test_fixed_allocation_requires_reconciled_state_and_dated_evidence(evidence:
         read(JANUARY, trace(*kept))
 
 
-@pytest.mark.parametrize("later_amount", ["200", "50"])
-def test_historical_time_schedule_freezes_original_allocation(later_amount: str) -> None:
+@pytest.mark.parametrize("later_amount", ["200", "50", "-50"])
+def test_historical_time_schedule_freezes_original_allocation(
+    later_amount: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from dataclasses import replace
 
     from erev_api.domain.reports import cuts
@@ -1136,6 +1138,9 @@ def test_historical_time_schedule_freezes_original_allocation(later_amount: str)
     day = date(2026, 1, 31)
     kept = to_date.nodes_at(book.trace.nodes, [day])
     assert (
+        to_date.nodes_of(kept).period_schedule == to_date.nodes_of(book.trace.nodes).period_schedule
+    )
+    assert (
         to_date.nodes_of(kept).dated_schedule == to_date.nodes_of(book.trace.nodes).dated_schedule
     )
     _, at, rows = product_read(bundle, book, day)
@@ -1149,14 +1154,18 @@ def test_historical_time_schedule_freezes_original_allocation(later_amount: str)
         ]
         sources = {uuid5(NAMESPACE_URL, line.trace_node_id): line.trace_node_id for line in own}
         found = at.obligations[row["id"]]
-        projected = cuts.scheduled_after(
-            lines,
-            found,
-            day,
-            contract="K-01",
-            obligation=str(row["obligation_key"]),
-            sources=sources,
+        projected = cuts.projected_after(
+            found, day, contract="K-01", obligation=str(row["obligation_key"])
         )
+        if projected is None:
+            projected = cuts.scheduled_after(
+                lines,
+                found,
+                day,
+                contract="K-01",
+                obligation=str(row["obligation_key"]),
+                sources=sources,
+            )
         expected = {}
         actual = {}
         for line in original.schedules:
@@ -1165,6 +1174,78 @@ def test_historical_time_schedule_freezes_original_allocation(later_amount: str)
                 expected[end] = expected.get(end, Decimal(0)) + major(line.amount)
         for _, end, amount in projected:
             actual[end] = actual.get(end, Decimal(0)) + amount
-        assert actual == expected
+        assert {k: v for k, v in actual.items() if v} == expected
+        if subject == "K-01/A" and later_amount == "-50":
+            current_periods = {end for _, end, _ in lines}
+            assert any(end not in current_periods for end in expected)
+            assert found.period_schedule is not None
+            from types import SimpleNamespace
+
+            from erev_api.domain.reports.builders import revenue_waterfall
+
+            version_id, entity_id = uuid5(NAMESPACE_URL, "v"), uuid5(NAMESPACE_URL, "e")
+            waterfall_ob = revenue_waterfall._Obligation(
+                row["id"],
+                row["id"],
+                "K-01",
+                "A",
+                1,
+                "Service",
+                None,
+                None,
+                entity_id,
+                "E",
+                "USD",
+                Decimal(0),
+            )
+            monkeypatch.setattr(
+                cuts,
+                "obligations_at",
+                lambda *args, held={(version_id, day): {row["id"]: found}}: held,
+            )
+            keys = {uuid5(NAMESPACE_URL, key): key for key in ends}
+            session = SimpleNamespace(execute=lambda *args: SimpleNamespace(mappings=lambda: []))
+            revenue_waterfall._at_as_of(
+                session, [waterfall_ob], {row["id"]: version_id}, {entity_id: day}, list(keys), keys
+            )
+            assert {
+                ends[key]: amount for key, amount in waterfall_ob.scheduled.items() if amount
+            } == expected
+            assert waterfall_ob.projected_schedule_periods
+            from erev_api.domain.reports.builders import rpo
+
+            ob = rpo._Ob(
+                row["id"],
+                uuid5(NAMESPACE_URL, "v"),
+                row["id"],
+                row["contract_id"],
+                "K-01",
+                "A",
+                "Service",
+                None,
+                None,
+                None,
+                uuid5(NAMESPACE_URL, "e"),
+                "E",
+                "USD",
+                "TIME_ELAPSED",
+                date(2026, 12, 31),
+                date(2026, 1, 1),
+                row["allocated_amount"],
+                False,
+            )
+            total, _, _, contributors = rpo.rpo_of(ob, day, (12, 24), found)
+            assert total == sum(expected.values())
+            assert all(
+                kind.startswith("scheduled_period_at_cut@2026-01-31@") and object_id == row["id"]
+                for kind, object_id, *_ in contributors
+            )
+            with pytest.raises(cuts.ScheduleUnreadable):
+                cuts.projected_after(
+                    replace(found, period_schedule=found.period_schedule[:-1]),
+                    day,
+                    contract="K-01",
+                    obligation="A",
+                )
         if subject == "K-01/A":
             assert found.fixed_schedule_cut == day

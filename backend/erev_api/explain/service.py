@@ -550,7 +550,15 @@ def _obligation_version(
     name = MEASURE_ALIASES.get(measure, measure)
     nodes: Mapping[str, Any] = row["trace_nodes"] or {}
     stored: Decimal | None = None
-    if period_key is None:
+    if name.startswith("scheduled_period_at_cut@"):
+        parts = name.split("@")
+        if len(parts) != 3:
+            raise Problem("not-found", NOT_TRACED)
+        _, cut, projected_period = parts
+        subject = _subject(nodes, contract_row, row)
+        node = _node(trace, f"scheduled_period_at_cut:{subject}:{projected_period}@{cut}")
+        period_key = projected_period
+    elif period_key is None:
         stored = _stored(obligation_version, row, name)  # read BEFORE the link is classified
         node = _node(trace, _linked_node_id(name, nodes.get(name), stored))
     elif name == REVENUE:
@@ -568,7 +576,11 @@ def _obligation_version(
         node=node,
         stored=stored,
         currency=node.currency,
-        entity_id=contract_row["contracting_entity_id"],
+        entity_id=(
+            row["performing_entity_id"]
+            if name.startswith("scheduled_period_at_cut@")
+            else contract_row["contracting_entity_id"]
+        ),
         contract_id=row["contract_id"],
         obligation_id=row["obligation_id"],
     )

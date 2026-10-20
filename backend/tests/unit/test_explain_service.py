@@ -346,3 +346,38 @@ def test_schedule_projection_explanation_selects_the_requested_cut(monkeypatch) 
     assert service._schedule_line(None, uuid4(), "scheduled_fixed_amount") is original
     with pytest.raises(Problem, match="no unique"):
         service._schedule_line(None, uuid4(), "scheduled_fixed_amount@2026-02-28")
+
+
+def test_period_projection_explains_without_a_surviving_schedule_line(monkeypatch) -> None:
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from erev_api.explain import service
+
+    node = SimpleNamespace(currency="USD")
+    row = dict(
+        contract_id=uuid4(),
+        contract_version_id=uuid4(),
+        obligation_id=uuid4(),
+        performing_entity_id=uuid4(),
+        obligation_key="O",
+        trace_nodes={},
+    )
+    monkeypatch.setattr(service, "_one", lambda *_: row)
+    monkeypatch.setattr(service, "_contract", lambda *_: {"external_id": "C"})
+    monkeypatch.setattr(service, "_version", lambda *_: {"calc_trace_id": uuid4()})
+    monkeypatch.setattr(service, "_trace", lambda *_: (None, None))
+
+    def selected(trace, node_id):
+        assert node_id == "scheduled_period_at_cut:C/O:P03@2026-01-31"
+        return node
+
+    monkeypatch.setattr(service, "_node", selected)
+    monkeypatch.setattr(service, "_figure", lambda *args, **kwargs: kwargs)
+    found = service._obligation_version(
+        None, uuid4(), "scheduled_period_at_cut@2026-01-31@P03", None
+    )
+    assert found["node"] is node
+    assert found["stored"] is None
+    assert found["period_key"] == "P03"
+    assert found["entity_id"] == row["performing_entity_id"]

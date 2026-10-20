@@ -9,8 +9,14 @@ to the scheduled remainder; drill-through names the cut. Positive and negative e
 match the original future schedule by period. This closes the latest-allocation backfill gap
 for this supported path, not every historical modification or lifecycle case.
 
-Remaining: source periods absent from the retained schedule, absent original segment terms,
-and held/manually adjusted cuts need further original evidence. No proportional schedule or
+Update: independent period trace projections now preserve historical future amounts even when
+later changes remove the current schedule lines. RPO and waterfall use these projections with
+cut/period-specific obligation-version drill-through. A real engine decrease-to-zero case also
+exercises both report readers without surviving schedule rows; this is not a full public API
+lifecycle acceptance test for every kind of contract modification.
+
+Remaining: missing original calendar coverage or segment terms, held/manually adjusted cuts,
+and legacy traces without dated evidence need further work. No proportional schedule or
 unexplained plug is used. Broader compound attribution and independent accounting acceptance
 remain open. No deployment has been performed.
 

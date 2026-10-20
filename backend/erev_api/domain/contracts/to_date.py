@@ -115,6 +115,7 @@ REALISED: Final = "realised_allocation"
 FIXED_ALLOCATION: Final = "fixed_allocation"
 FIXED_SCHEDULE: Final = "scheduled_fixed_amount"
 DATED_SCHEDULE: Final = "scheduled_fixed_at_cut"
+PERIOD_SCHEDULE: Final = "scheduled_period_at_cut"
 RPO: Final = "rpo_amount"
 RELEASE: Final = "incentive_release_cum"  # ENGINE_SPEC_B S10-R-26, per ``<contract>@<entity>``
 TARGET: Final = "revenue_target_exact"
@@ -140,6 +141,7 @@ MEASURES: Final = (
     SCHEDULED,
     FIXED_SCHEDULE,
     DATED_SCHEDULE,
+    PERIOD_SCHEDULE,
     *tie_outs.BALANCE_MEASURES,
 )
 # What a read without balances needs of them: the periods a member subject carries, which one
@@ -154,6 +156,7 @@ WITHOUT_BALANCES: Final = (
     SCHEDULED,
     FIXED_SCHEDULE,
     DATED_SCHEDULE,
+    PERIOD_SCHEDULE,
     HORIZON,
 )
 # ENGINE_SPEC_B S09-R-46; the statuses whose obligations carry RPO (04 T-CON-08 ``rpo_amount``).
@@ -345,6 +348,9 @@ class Nodes:
     patterns: Mapping[str, tuple[str, str]]
     fixed_schedule: Mapping[str, Mapping[str, Decimal]] | None = None
     dated_schedule: Mapping[str, Mapping[date, Mapping[str, Decimal]]] | None = None
+    period_schedule: Mapping[str, Mapping[date, tuple[tuple[str, date, Decimal], ...]]] | None = (
+        None
+    )
     realised_modes: Mapping[str, str] | None = None
     unmeasured_drafts: frozenset[str] = frozenset()
 
@@ -404,6 +410,7 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
     patterns: dict[str, tuple[str, str]] = {}
     fixed_schedule: dict[str, dict[str, Decimal]] = {}
     dated_schedule: dict[str, dict[date, dict[str, Decimal]]] = {}
+    period_schedule: dict[str, dict[date, list[tuple[str, date, Decimal]]]] = {}
     realised_modes: dict[str, str] = {}
     no_period: set[str] = set()
     draft_zero: set[str] = set()
@@ -418,6 +425,14 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
                 no_period.add(subject)
             if node.measure == REVENUE and params.get("guard") == "V4:DRAFT":
                 draft_zero.add(subject)
+        if node.measure == PERIOD_SCHEDULE:
+            cut, end, period = params.get("cut"), params.get("as_of"), params.get("period_key")
+            if isinstance(cut, str) and isinstance(end, str) and isinstance(period, str):
+                subject = head.partition(":")[2]
+                period_schedule.setdefault(subject, {}).setdefault(
+                    date.fromisoformat(cut), []
+                ).append((period, date.fromisoformat(end), Decimal(node.value)))
+            continue
         if node.measure == DATED_SCHEDULE:
             source, cut = params.get("source_node"), params.get("cut")
             if isinstance(source, str) and isinstance(cut, str):
@@ -487,6 +502,10 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
         patterns=patterns,
         fixed_schedule=fixed_schedule,
         dated_schedule=dated_schedule,
+        period_schedule={
+            subject: {cut: tuple(rows) for cut, rows in cuts.items()}
+            for subject, cuts in period_schedule.items()
+        },
         realised_modes=realised_modes,
         unmeasured_drafts=frozenset(no_period & draft_zero),
     )
@@ -548,7 +567,7 @@ def _kept[T](
     parsed: dict[object, date | None] = {}
     for item in items:
         node_id, measure, as_of, scope = facts(item)
-        if measure in (FIXED_SCHEDULE, DATED_SCHEDULE):
+        if measure in (FIXED_SCHEDULE, DATED_SCHEDULE, PERIOD_SCHEDULE):
             found.append(item)
             continue
         if measure == TARGET:
@@ -937,6 +956,7 @@ class ObligationAt:
     realised_through: Decimal = ZERO  # completed period ends on or before the requested date
     fixed_allocation: Decimal | None = None
     fixed_schedule_cut: date | None = None
+    period_schedule: tuple[tuple[str, date, Decimal], ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1171,7 +1191,16 @@ def version_at(
             realised_stored=realised_stored,
             fixed_allocation=fixed_allocation,
             realised_traced=realised_state is not None,
-            fixed_schedule_cut=schedule_cut if dated_schedule is not None else None,
+            fixed_schedule_cut=schedule_cut
+            if dated_schedule is not None
+            or (
+                schedule_cut is not None
+                and schedule_cut in (nodes.period_schedule or {}).get(subject, {})
+            )
+            else None,
+            period_schedule=None
+            if schedule_cut is None
+            else (nodes.period_schedule or {}).get(subject, {}).get(schedule_cut),
             fixed_schedule=(
                 dated_schedule
                 if dated_schedule is not None
