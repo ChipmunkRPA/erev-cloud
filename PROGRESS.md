@@ -6,6 +6,29 @@
 
 
 
+## Cross-member revenue relief and opening provenance — October 20, 2026
+
+- Added retained positive-revenue layer transfers for combined members. The original trace
+  identifies the recognizing contract while the movement keeps the consumed layer's owner.
+  All liability reliefs must reproduce the affected recipient's entire posted revenue in
+  every selected period before any transfer is admitted. Original lines, relief/creation
+  movements, amounts and opening portions are bound for rerun. No remainder is inferred.
+- The v3 member bridge includes those source transfers and classifies revenue by the actual
+  consumed layer's creation date, not the recognizing member's own billing history. v1/v2
+  bindings retain their original paths. Migration 0197 updates the rollforward IPE catalogue.
+- Necessary public checks passed: another member recognizes USD 54,000 revenue using GBP
+  43,200 of the first member's July advance; differing historical-rate member closings are
+  GBP 74,571.43 / 29,828.57 with +2,571.43 / -2,571.43 reclassification and zero OTHER. Functional,
+  monthly reporting and bound reruns pass. An August-start range classifies the GBP 43,200 as
+  opening relief; a July-start range classifies it as current-range relief without changing
+  total revenue or closing balances. Scoped lint/types pass. No deployment.
+- Still open: the separate revenue_from_opening_liability builder reads amount_txn and applies
+  its legacy same-contract cap; it must consume the multi-currency/source-backed relief path.
+  Cross-member asset-creating, reversing, carried and other-control histories need their own
+  posting-delta replay; this path requires full positive liability-relief reproduction and
+  refuses unmatched histories. Recorded registry gaps and final accounting/release acceptance
+  also remain. This is not full Reporting or production-readiness acceptance.
+
 ## Endpoint-driven member liability presentation — October 20, 2026
 
 - New functional/reporting builds apply the retained member-presentation bridge to all
@@ -199,45 +222,6 @@
   lock-to-lock acceptance, the recorded privacy/snapshot registry gaps and final accounting
   acceptance. A synthetic mixed target is not a populated combined-contract public witness.
   No deployment or production-readiness claim.
-
-## Historical paid FX and rollforward integration — October 20, 2026
-
-- Close-pass evidence format 2 freezes the exact sealed FX control-line population read by
-  the pass, including zero-net histories. The reader selects paid lines by retained role,
-  currency, class, reason and origin/anchor periods, verifies their ledger fields and recursively
-  resolves their retained close-pass deltas. Per-call memoization shares repeated dependencies;
-  results bind every paid line and retained evidence hash. Format 1 remains readable but cannot
-  establish automatic paid attribution; missing history refuses rather than allocating a plug.
-- Functional/reporting contract-balance rollforwards now consume retained liability TIME
-  deltas. Original creation dates keep opening/current-range layer identities, and group-level
-  amounts follow source owners. New source bindings retain and recheck attribution dependencies;
-  old bindings keep their original path. Asset-only FX remains on its existing path.
-- Necessary checks passed: actual same-period second close after delivery, with nonzero prior
-  paid amounts and explicit report source-binding assertions; original report rerun; the single
-  liability close; ERP/ENGINE functional invoice paths; 25 focused projection/path checks and
-  scoped lint/types. No deployment.
-- Still open: command-computation paid adapters, mixed asset/liability target decomposition,
-  combined-membership and late-carried public acceptance, populated foreign two-lock acceptance,
-  recorded privacy/snapshot registry gaps and final release/accounting acceptance. Current tests
-  do not establish completion of all combined/late-carried FX or production readiness.
-
-## Signed liability FX posting attribution — October 20, 2026
-
-- Added a signed trace projection from retained S14 targets through S12 cumulative sums to
-  actual liability layer owners. The posting calculation subtracts the prior target and
-  explicitly supplied attributed paid layers, distinguishes TIME from EVENT, and verifies
-  every intermediate sum, retained time component, paid total and final journal delta.
-  Missing/corrupt sources, unknown split formulas and unprovided nonzero paid history refuse.
-- The internal close-pass reader now resolves a selected sealed FX control line to its unique
-  retained delta by target, posting period, currency and amount. Its evidence adapter keeps
-  source identities scoped to the immutable close record rather than inventing version rows.
-  A real GBP 5,400 close-pass delta reproduces with its actual contract/layer ownership. Two
-  synthetic two-owner cases verify TIME/EVENT subtraction, differing owner shares and refusal
-  of missing paid/source evidence. Scoped lint/types and these necessary checks pass.
-- Still unfinished: selecting/authorizing and recursively attributing historical paid lines,
-  command-computation evidence adapters, wiring attribution into rollforward presentation and
-  acceptance for combined/late-carried cases. No report-completion or production-readiness
-  claim; no deployment. Registry issues recorded in the preceding checkpoint remain open.
 
 ## Outstanding release verification
 

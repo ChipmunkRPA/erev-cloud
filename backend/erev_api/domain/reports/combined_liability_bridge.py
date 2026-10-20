@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 
 ZERO = Decimal(0)
 ROLE = "contract_liability"
-KEY = "combined_liability_bridge_v2"
+KEY = "combined_liability_bridge_v3"
+ENDPOINT_KEY = "combined_liability_bridge_v2"
 LEGACY_KEY = "combined_liability_bridge_v1"
 
 
@@ -43,10 +44,14 @@ def apply(
     monthly: Mapping[tuple[UUID, UUID], Mapping[tuple[UUID, UUID], tie_outs.BalanceRow]],
     transfers: Mapping[tuple[UUID, UUID, UUID], Decimal],
     foreign_members: frozenset[tuple[UUID, UUID]],
+    opening_relief: Mapping[tuple[UUID, UUID, UUID], Decimal],
 ) -> tuple[ContractRollforward, ...]:
     evidence_key = KEY
-    if params.binding is not None and KEY not in params.binding.evidence:
-        evidence_key = LEGACY_KEY
+    if params.binding is not None:
+        evidence_key = next(
+            key for key in (KEY, ENDPOINT_KEY, LEGACY_KEY) if key in params.binding.evidence
+        )
+    if evidence_key == LEGACY_KEY:
         touched = {owner for owner, _, _ in transfers}
         versions = {row.version_id for row in closing if row.contract_id in touched}
         members = {
@@ -104,7 +109,7 @@ def apply(
             consumed.add(source["id"])
         value = row.value(ROLE) - carrying
         identity = f"{row.version_id}:{row.contract_id}:{period.key}"
-        if evidence_key == KEY:
+        if evidence_key != LEGACY_KEY:
             identity = f"{row.version_id}:{row.contract_id}:{row.entity_id}:{period.key}"
         facts[identity] = {
             "presented": str(row.value(ROLE)),
@@ -144,11 +149,17 @@ def apply(
         )
 
         def adjusted(
-            lines: Mapping[str, Mapping[str, Decimal]], amount: Decimal
+            lines: Mapping[str, Mapping[str, Decimal]],
+            amount: Decimal,
+            original: Decimal | None = None,
         ) -> dict[str, dict[str, Decimal]]:
             changed = {name: dict(values) for name, values in lines.items()}
             changed["RECLASSIFICATIONS"][ROLE] += amount
             changed["OTHER"][ROLE] -= amount
+            if original is not None:
+                previous_opening = changed["REVENUE_FROM_OPENING"][ROLE]
+                changed["REVENUE_FROM_OPENING"][ROLE] = -original
+                changed["REVENUE_FROM_PERIOD_BILLINGS"][ROLE] += previous_opening + original
             return changed
 
         months = {}
@@ -162,16 +173,33 @@ def apply(
             month_key = (item.entity_id, None if month is None else month.version_id, period.key)
             conservation[month_key] = conservation.get(month_key, ZERO) + at
             current = at - initial + cumulative
-            months[period.id] = adjusted(item.period_lines[period.id], current - previous)
+            months[period.id] = adjusted(
+                item.period_lines[period.id],
+                current - previous,
+                opening_relief.get((*key, period.id)),
+            )
             previous = current
-        output.append(replace(item, lines=adjusted(item.lines, total), period_lines=months))
+        selected_opening = [
+            amount
+            for (owner, entity, _), amount in opening_relief.items()
+            if (owner, entity) == key
+        ]
+        output.append(
+            replace(
+                item,
+                lines=adjusted(
+                    item.lines, total, sum(selected_opening, ZERO) if selected_opening else None
+                ),
+                period_lines=months,
+            )
+        )
     if any(value != 0 for value in conservation.values()) or sum(transfers.values(), ZERO) != 0:
         raise tie_outs.invalid(
             "currency_view", "Member liability bridge does not conserve the full group."
         )
     evidence = {
         "endpoints": facts,
-        "memo_transfers": {
+        ("source_transfers" if evidence_key == KEY else "memo_transfers"): {
             ":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())
         },
     }

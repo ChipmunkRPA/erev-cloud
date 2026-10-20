@@ -662,3 +662,87 @@ def test_combined_historical_rates_reallocate_without_a_memo(fx: FxWorld) -> Non
             fx.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", fx.maya
         )
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+
+
+def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld) -> None:  # noqa: F811
+    from erev_api.db.tables import legal_entity
+    from erev_api.jobs.context import JobRuntime
+    from support.reference import get
+    from support.worlds import approved_manual_events
+    from test_fx_remeasurement_recompute import _advance_received
+
+    source_id, _ = _advance_received(fx)
+    recognizer_id = _gateways(fx, FIRST_UK)
+    _grouped(fx.app, fx.maya, fx.marcus, [source_id, recognizer_id])
+    head = fx.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == recognizer_id)
+    )
+    _recorded(fx, recognizer_id, int(head), _invoice("RECOGNIZER-ADV", "2026-08-20", "90000.00"))
+    approved_manual_events(
+        fx.place,
+        fx.priya,
+        recognizer_id,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-08-21",
+            "payload": {"obligation_key": "O1", "quantity": "120", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    for first, view in (
+        (AUGUST, "functional"),
+        (AUGUST, "reporting"),
+        ("FY2026-P07", "functional"),
+    ):
+        run, rows = worlds.report_run(
+            reporting,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": first,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        assert (
+            next(
+                check
+                for check in run["tie_out_results"]
+                if check["code"] == "TO_ROLLFORWARD_BALANCES"
+            )["result"]
+            == "PASS"
+        ), (run, rows)
+        detail = {
+            row["contract_external_id"]: row for row in rows if row.get("contract_external_id")
+        }
+        assert all(Decimal(row["other"]["amount"]) == 0 for row in detail.values()), detail
+        if view == "functional":
+            for name, closing, transfer in (
+                (DELIVERED_UK, "74571.43", "2571.43"),
+                (FIRST_UK, "29828.57", "-2571.43"),
+            ):
+                assert detail[name]["closing"]["amount"] == closing
+                assert detail[name]["reclassifications"]["amount"] == transfer
+            assert detail[FIRST_UK]["revenue_from_opening"]["amount"] == (
+                "-43200.00" if first == AUGUST else "0.00"
+            )
+            assert detail[FIRST_UK]["revenue_from_period_billings"]["amount"] == (
+                "0.00" if first == AUGUST else "-43200.00"
+            )
+        started = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(reporting, UUID(started.json()["id"]))
+        assert finished["state"] == "SUCCEEDED", finished
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text

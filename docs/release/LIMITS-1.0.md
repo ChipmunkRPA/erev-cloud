@@ -1,5 +1,28 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Cross-member revenue relief and opening provenance — October 20, 2026
+
+- Added retained positive-revenue layer transfers for combined members. The original trace
+  identifies the recognizing contract while the movement keeps the consumed layer's owner.
+  All liability reliefs must reproduce the affected recipient's entire posted revenue in
+  every selected period before any transfer is admitted. Original lines, relief/creation
+  movements, amounts and opening portions are bound for rerun. No remainder is inferred.
+- The v3 member bridge includes those source transfers and classifies revenue by the actual
+  consumed layer's creation date, not the recognizing member's own billing history. v1/v2
+  bindings retain their original paths. Migration 0197 updates the rollforward IPE catalogue.
+- Necessary public checks passed: another member recognizes USD 54,000 revenue using GBP
+  43,200 of the first member's July advance; differing historical-rate member closings are
+  GBP 74,571.43 / 29,828.57 with +2,571.43 / -2,571.43 reclassification and zero OTHER. Functional,
+  monthly reporting and bound reruns pass. An August-start range classifies the GBP 43,200 as
+  opening relief; a July-start range classifies it as current-range relief without changing
+  total revenue or closing balances. Scoped lint/types pass. No deployment.
+- Still open: the separate revenue_from_opening_liability builder reads amount_txn and applies
+  its legacy same-contract cap; it must consume the multi-currency/source-backed relief path.
+  Cross-member asset-creating, reversing, carried and other-control histories need their own
+  posting-delta replay; this path requires full positive liability-relief reproduction and
+  refuses unmatched histories. Recorded registry gaps and final accounting/release acceptance
+  also remain. This is not full Reporting or production-readiness acceptance.
+
 ## Endpoint-driven member liability presentation — October 20, 2026
 
 - New functional/reporting builds apply the retained member-presentation bridge to all

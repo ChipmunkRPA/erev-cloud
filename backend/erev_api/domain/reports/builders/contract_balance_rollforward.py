@@ -468,6 +468,7 @@ def rollforwards(
         functional=functional,
     )
     member_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
+    opening_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     booked_billing: dict[tuple[UUID, UUID], list[Entry]] = {}
     if functional and documents:
         # Read billing at its source date in either posting mode. ENGINE totals
@@ -542,6 +543,18 @@ def rollforwards(
             handled=handled,
             event_sources=event_sources,
         )
+    if (
+        functional
+        and documents
+        and (params.binding is None or "combined_liability_bridge_v3" in params.binding.evidence)
+    ):
+        from ..revenue_layer_transfers import read as revenue_transfers
+
+        revenue_sources, opening_relief = revenue_transfers(
+            session, params, transaction_ends, periods, posted
+        )
+        for transfer_key, amount in revenue_sources.items():
+            member_transfers[transfer_key] = member_transfers.get(transfer_key, ZERO) + amount
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
         described = closing if closing is not None else opening
@@ -585,7 +598,11 @@ def rollforwards(
             params.binding is None
             or any(
                 key in params.binding.evidence
-                for key in ("combined_liability_bridge_v1", "combined_liability_bridge_v2")
+                for key in (
+                    "combined_liability_bridge_v1",
+                    "combined_liability_bridge_v2",
+                    "combined_liability_bridge_v3",
+                )
             )
         )
     ):
@@ -602,6 +619,7 @@ def rollforwards(
                 periods=periods,
                 monthly=monthly,
                 transfers=member_transfers,
+                opening_relief=opening_relief,
                 foreign_members=frozenset(
                     (row.contract_id, row.entity_id)
                     for row in (*opening_rows, *closing_rows)

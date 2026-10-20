@@ -546,6 +546,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "each original computation group conserves zero and evidence is bound",
             "new member presentation bridges include all foreign contract/entity endpoints, "
             "even without a memo or FX journal; legacy v1 bindings retain memo-triggered scope",
+            "positive cross-member revenue relief must reproduce the entire recipient-period "
+            "posted revenue from retained liability movements; origin layer creation dates "
+            "classify opening versus current-range revenue and source transfers "
+            "bind original lines",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
