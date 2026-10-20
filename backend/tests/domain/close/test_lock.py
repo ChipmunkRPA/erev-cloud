@@ -728,10 +728,21 @@ def test_lock_writes_certification_and_snapshots(world: CloseWorld, clock: Froze
     assert _value(october) == PeriodState.OPEN.value  # BR-CLS-03
 
 
+@pytest.mark.parametrize("foreign", [False, True])
 def test_contract_balances_snapshot_k01(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+    foreign: bool,
 ) -> None:
-    """With ``worlds.k01_pellworth`` through 31 Aug 2026 and Aug 2026 locked, the stored
+    """The foreign case executes the real close pipeline and journal approval/export/acknowledgement
+    then publicly locks EUR 10,000 (USD 11,050 carrying). All three frozen currency endpoints
+    reproduce from retained computations outside a database transaction. Reconciliation review
+    rows are fixtures, not independent accounting acceptance. The domestic case is unchanged.
+
+    With ``worlds.k01_pellworth`` through 31 Aug 2026 and Aug 2026 locked, the stored
     ``CONTRACT_BALANCES`` dataset (RPT-02 columns; read back from the store) carries contract
     liability 39,708.49 for ``SF-ORD-10001`` (WLD-X-03). CLO6-R3 (8): the evidence is what the lock
     stored, not a ``control_totals`` shape. Residual (1): Maya (the report world's Revenue
@@ -746,9 +757,15 @@ def test_contract_balances_snapshot_k01(
     greatest server-stamped ``recorded_at`` of its events (04 T-CON-07, T-CON-08; DB-08), later
     than the FrozenClock the world was built at — a lock at the business clock freezes
     ``CONTRACT_BALANCES`` without K-01."""
+    from support import close_run_worlds
+    from support import close_runs as runs
     from support.worlds import k01_pellworth, resigned, run_now
 
-    pellworth = k01_pellworth(app, keyring, clock, files, through=date(2026, 8, 31))
+    pellworth = (
+        close_run_worlds.eur_receivable(app, keyring, clock, files, reporting_currency="EUR")
+        if foreign
+        else k01_pellworth(app, keyring, clock, files, through=date(2026, 8, 31))
+    )
     # F-RPS-CUTOFF-R1: one server read after the world's last commit is the record-time clock;
     # the jump of days ends every session at the 12-hour limit (SAR-10), so the personas re-sign.
     stamp = pellworth.place.scalar(select(func.clock_timestamp()))
@@ -765,24 +782,40 @@ def test_contract_balances_snapshot_k01(
         for item in periods(app, maya, entity="AVM-US")
         if item["period"]["period_key"] == "FY2026-P08"
     ]
-    started = post(
-        app,
-        f"{PERIODS}/{august['id']}/start-close",
-        maya,
-        {"comment": "August close"},
-        if_match=f'"r{august["row_version"]}"',
-    )
-    assert started.status_code == 200, started.text
     period_id = UUID(str(august["period"]["id"]))
-    requested = post(app, JOURNAL_RUNS, maya, {"entity_code": "AVM-US", "period_key": "FY2026-P08"})
-    assert requested.status_code == 202, requested.text
-    calculated = run_now(pellworth, UUID(str(requested.json()["id"])))
-    assert calculated["state"] == "SUCCEEDED", calculated
+    if foreign:
+        started = post(
+            app,
+            f"{PERIODS}/{august['id']}/start-close",
+            maya,
+            {"comment": "Foreign currency close"},
+            if_match=f'"r{august["row_version"]}"',
+        )
+        assert started.status_code == 200, started.text
+        closed = runs.closed(pellworth, monkeypatch, entity_code="AVM-US", period_key="FY2026-P08")
+        assert closed["status"] == "SUCCEEDED", closed
+        pellworth = runs.journal_posted(pellworth, clock, closed["journal_run_id"])
+        journal_id = UUID(closed["journal_run_id"])
+    else:
+        started = post(
+            app,
+            f"{PERIODS}/{august['id']}/start-close",
+            maya,
+            {"comment": "August close"},
+            if_match=f'"r{august["row_version"]}"',
+        )
+        assert started.status_code == 200, started.text
+        requested = post(
+            app, JOURNAL_RUNS, maya, {"entity_code": "AVM-US", "period_key": "FY2026-P08"}
+        )
+        assert requested.status_code == 202, requested.text
+        calculated = run_now(pellworth, UUID(str(requested.json()["id"])))
+        assert calculated["state"] == "SUCCEEDED", calculated
+        journal_id = UUID(str(requested.headers[JOURNAL_RUN_ID_HEADER]))
     context = DbContext(tenant_id=pellworth.tenant_id, user_id=None, entity_scope="*")
     with tenant_session(context) as session:
-        acknowledge_run(
-            session, UUID(str(requested.headers[JOURNAL_RUN_ID_HEADER])), now=clock.now()
-        )
+        if not foreign:
+            acknowledge_run(session, journal_id, now=clock.now())
         reviewed_reconciliations_for(
             session,
             tenant_id=pellworth.tenant_id,
@@ -790,13 +823,14 @@ def test_contract_balances_snapshot_k01(
             period_id=period_id,
             now=clock.now(),
         )
-        close_run_succeeded_for(
-            session,
-            tenant_id=pellworth.tenant_id,
-            entity_id=pellworth.entity_id,
-            period_id=period_id,
-            now=clock.now(),
-        )
+        if not foreign:
+            close_run_succeeded_for(
+                session,
+                tenant_id=pellworth.tenant_id,
+                entity_id=pellworth.entity_id,
+                period_id=period_id,
+                now=clock.now(),
+            )
     with pellworth.place.uow() as uow:
         out = close_commands.request_lock(
             uow,
@@ -826,9 +860,52 @@ def test_contract_balances_snapshot_k01(
 
     for view in snapshot_views.VIEWS:
         _, rows, controls = snapshot_views.select(data, view)
-        (k01,) = [row for row in rows if row["contract_external_id"] == "SF-ORD-10001"]
-        assert Decimal(k01["contract_liability"]) == Decimal("39708.49")
+        (k01,) = [
+            row
+            for row in rows
+            if row["contract_external_id"]
+            == (close_run_worlds.EUR_CONTRACT if foreign else "SF-ORD-10001")
+        ]
+        if foreign:
+            assert Decimal(k01["unbilled_receivable"]) == Decimal(
+                "11050.00" if view == "functional" else "10000.00"
+            )
+            assert k01["currency"] == ("USD" if view == "functional" else "EUR")
+        else:
+            assert Decimal(k01["contract_liability"]) == Decimal("39708.49")
         assert controls is not None and controls["currency_view"] == view
+
+    if foreign:
+        from erev_api.domain.reports import (
+            evidence_close,
+            variance_measures,
+            variance_reporting,
+            variance_sources,
+        )
+        from erev_api.domain.reports.variance_execution import verify_source
+
+        with pellworth.place.uow() as uow:
+            frozen = evidence_close.read_for_report(uow, UUID(str(lock_id)))
+            retained = variance_sources._side(uow, frozen)
+        assert len(retained.computations) == 1
+        computation = next(iter(retained.computations.values()))
+        for view in ("transaction", "functional", "reporting"):
+            amounts = {
+                key: point.amount
+                for key, point in variance_measures.endpoints(frozen, view).items()
+            }
+            verified, _ = verify_source(
+                computation,
+                amounts,
+                entity_code="AVM-US",
+                book_code="ASC606",
+                period_key="FY2026-P08",
+                currency_view=view,
+                reporting_basis=variance_reporting.for_close(frozen)
+                if view == "reporting"
+                else None,
+            )
+            assert verified.output_sha256 == computation.output_sha256
 
 
 def test_lock_certifies_reconciliations(world: CloseWorld, clock: FrozenClock) -> None:
