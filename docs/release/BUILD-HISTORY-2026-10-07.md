@@ -8259,3 +8259,27 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Eight focused forecast/comparison interaction checks pass. Broader reporting content,
   populated accounting acceptance and independent accounting sign-off remain open.
   No deployment or production-readiness claim.
+
+## Saved report column metadata — October 19, 2026
+
+- Ordinary report grids now use saved column order where no dedicated layout applies, and
+  use the saved title for fields without an existing translated title. RPO, waterfall and
+  close/parallel comparison layouts retain their specialized section rules.
+- Added saved date/timestamp/boolean types, decimal quantity versus integer formatting,
+  actor display names and readable code lists. Nullable money fields keep their declared
+  money type when their populated values are money objects. Legacy exports retain literal
+  field naming and values; frozen textual data is not reinterpreted as a money object.
+- Fifty-one focused report-page, grid and specialized-layout checks pass; TypeScript and
+  ESLint pass. Reporting content and populated accounting acceptance remain open.
+  No deployment or production-readiness claim.
+
+## Report export recovery — October 19, 2026
+
+- Export menus now guard duplicate submissions during the request, the accepted-but-not-yet-
+  loaded job interval and job execution. Running jobs keep format choices visibly unavailable.
+- Network failures and malformed accepted responses now show a recovery message. Cancellation
+  has its own message. A completed export whose report record cannot be loaded offers a retry
+  against the same report; it never queues another report or announces successful preparation.
+- Three focused interaction checks cover duplicate requests, same-report recovery and network
+  errors; TypeScript and ESLint pass. Other reporting workflows and independent accounting
+  acceptance remain open. No deployment or production-readiness claim.

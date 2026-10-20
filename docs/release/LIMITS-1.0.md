@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current assumption lifecycle update (October 19): forecast page now supports draft creation,
+name editing, publication confirmation and paginated version inspection. Published versions
+are immutable and refresh the report input selector. Business-change capture UI, import
+attachment selection, effective-date editing and detailed input review remain unfinished.
+Lifecycle controls alone do not establish complete assumption authoring or accounting acceptance.
+
+
 Current scenario reporting update (October 19): source workspace scenario creation, archive,
 status filtering and refresh UI are implemented. Refresh selects published assumptions and
 tracks durable outcomes, preserving the current copy on failure. Published-input metadata and

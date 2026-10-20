@@ -6,6 +6,22 @@
 
 
 
+## Forecast assumption lifecycle controls — October 19, 2026
+
+- Forecast runs now include a lazy-loaded, paginated assumption manager within the existing
+  scenario-workspace permission gate. Users can create a draft, rename a saved draft and
+  explicitly confirm publication; published and superseded versions remain read-only.
+- Shows captured-command/import counts, version/status and publication fingerprints. Empty
+  sets explicitly identify baseline publication. Reusing a code invokes the existing backend
+  next-version/copy semantics; an existing draft is handled by the server's refusal.
+- Updates carry the saved row version. Publication refreshes the shared forecast input cache,
+  making the new published version selectable for report runs. Lost responses preserve fields
+  and permit idempotent retry; no optimistic publication state is shown.
+- Eight targeted manager/forecast checks pass, with TypeScript and ESLint. Business-change
+  capture controls, import attachment selection, effective-date editing and richer input review
+  remain open; this implements lifecycle management, not the entire assumption authoring flow.
+  Reporting accounting acceptance and independent sign-off remain open. No deployment.
+
 ## Scenario refresh reporting workflow — October 19, 2026
 
 - Production scenario cards now select searchable, paginated published assumptions and request
@@ -229,30 +245,6 @@
   explains that exports reuse original figures. Twenty-six run-record checks pass, including
   the POST /report-runs action and navigation without a misleading equality banner.
 - Broader reporting/business acceptance and independent accounting sign-off remain open.
-  No deployment or production-readiness claim.
-
-## Report export recovery — October 19, 2026
-
-- Export menus now guard duplicate submissions during the request, the accepted-but-not-yet-
-  loaded job interval and job execution. Running jobs keep format choices visibly unavailable.
-- Network failures and malformed accepted responses now show a recovery message. Cancellation
-  has its own message. A completed export whose report record cannot be loaded offers a retry
-  against the same report; it never queues another report or announces successful preparation.
-- Three focused interaction checks cover duplicate requests, same-report recovery and network
-  errors; TypeScript and ESLint pass. Other reporting workflows and independent accounting
-  acceptance remain open. No deployment or production-readiness claim.
-
-## Saved report column metadata — October 19, 2026
-
-- Ordinary report grids now use saved column order where no dedicated layout applies, and
-  use the saved title for fields without an existing translated title. RPO, waterfall and
-  close/parallel comparison layouts retain their specialized section rules.
-- Added saved date/timestamp/boolean types, decimal quantity versus integer formatting,
-  actor display names and readable code lists. Nullable money fields keep their declared
-  money type when their populated values are money objects. Legacy exports retain literal
-  field naming and values; frozen textual data is not reinterpreted as a money object.
-- Fifty-one focused report-page, grid and specialized-layout checks pass; TypeScript and
-  ESLint pass. Reporting content and populated accounting acceptance remain open.
   No deployment or production-readiness claim.
 
 ## Outstanding release verification

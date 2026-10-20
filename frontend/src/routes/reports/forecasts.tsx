@@ -27,6 +27,7 @@ import {
 import { queryKey } from "../../lib/api/query-keys";
 import { t } from "../../lib/i18n/t";
 import { ReportsHeader } from "./frame";
+import { ForecastInputs } from "./ForecastInputs";
 import { ForecastComparisonForm } from "./ForecastComparisonForm";
 import { ForecastPack } from "./viewer/ForecastPack";
 
@@ -210,6 +211,7 @@ export function ForecastRunsPage() {
         </div>
       ) : (
         <>
+          <ForecastInputs />
           {(inputs.isError || entities.isError || periods.isError || runs.isError) && (
             <Banner
               tone="negative"
