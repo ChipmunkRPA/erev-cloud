@@ -476,6 +476,7 @@ def rollforwards(
     member_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     opening_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     liability_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
+    asset_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     booked_billing: dict[tuple[UUID, UUID], list[Entry]] = {}
     if functional and documents:
         # Read billing at its source date in either posting mode. ENGINE totals
@@ -567,7 +568,7 @@ def rollforwards(
     ):
         from ..revenue_layer_transfers import read as revenue_transfers
 
-        revenue_sources, opening_relief, liability_relief = revenue_transfers(
+        revenue_sources, opening_relief, liability_relief, asset_transfers = revenue_transfers(
             session, params, transaction_ends, periods, posted, uow=uow
         )
         for transfer_key, amount in revenue_sources.items():
@@ -646,6 +647,31 @@ def rollforwards(
                     if (row.contract_id, row.entity_id) in transaction_ends
                     and transaction_ends[(row.contract_id, row.entity_id)].currency != row.currency
                 ),
+            )
+        )
+    if (
+        functional
+        and documents
+        and (
+            asset_transfers
+            or (
+                params.binding is not None and "combined_asset_bridge_v1" in params.binding.evidence
+            )
+        )
+    ):
+        from ..combined_asset_bridge import apply as asset_bridge
+
+        found = list(
+            asset_bridge(
+                session,
+                params,
+                found,
+                opening=opening_rows,
+                closing=closing_rows,
+                before=before,
+                periods=periods,
+                monthly=monthly,
+                transfers=asset_transfers,
             )
         )
     return tuple(sorted(found, key=lambda item: (item.external_id, item.entity_code)))

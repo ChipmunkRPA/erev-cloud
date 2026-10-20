@@ -1135,3 +1135,96 @@ def test_combined_revenue_can_exhaust_another_members_advance_and_create_an_asse
         assert repeated.status_code == 200 and repeated.json()["items"] == returned_rows, (
             repeated.text
         )
+
+
+def test_combined_return_settles_another_members_asset(fx: FxWorld) -> None:  # noqa: F811
+    from erev_api.db.tables import close_run, legal_entity, report_run
+    from erev_api.domain.close import gates, period_end
+    from erev_api.jobs.context import JobRuntime
+    from support.reference import get
+    from support.worlds import approved_manual_events
+
+    source_id = _gateways(fx, DELIVERED_UK)
+    returner_id = _gateways(fx, FIRST_UK)
+    _grouped(fx.app, fx.maya, fx.marcus, [source_id, returner_id])
+    for owner, day, kind in (
+        (source_id, "2026-07-10", "DELIVERY_RECORDED"),
+        (returner_id, "2026-08-21", "DELIVERY_RECORDED"),
+        (returner_id, "2026-09-03", "RETURN_RECORDED"),
+    ):
+        payload = {"obligation_key": "O1", "quantity": "120"}
+        if kind == "DELIVERY_RECORDED":
+            payload["trigger"] = "DELIVERY"
+        approved_manual_events(
+            fx.place,
+            fx.priya,
+            owner,
+            {"event_type": kind, "effective_date": day, "payload": payload},
+            evidence_file_ids=[],
+        )
+    for key in ("FY2026-P07", AUGUST, SEPTEMBER):
+        run_id, _ = runs.started(fx.app, fx.marcus, entity_code=AVM_UK, period_key=key)
+        with fx.place.uow() as uow:
+            run = (
+                uow.session.execute(select(close_run).where(close_run.c.id == UUID(run_id)))
+                .mappings()
+                .one()
+            )
+            scope = gates.scope_of_period(uow.session, run["entity_id"], "ASC606", run["period_id"])
+            assert scope is not None
+            period_end.post_pass(
+                uow,
+                close_run_id=UUID(run_id),
+                close_run_no=run["close_run_no"],
+                scope=scope,
+                pass_name=period_end.FX_REMEASUREMENT,
+            )
+            uow.commit()
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    for first, view in (
+        (AUGUST, "functional"),
+        (AUGUST, "reporting"),
+        (SEPTEMBER, "functional"),
+        (SEPTEMBER, "reporting"),
+    ):
+        run, rows = worlds.report_run(
+            reporting,
+            "revenue_from_opening_liability",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": first,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        returned = next(row for row in rows if row.get("contract_external_id") == FIRST_UK)
+        assert returned["revenue_from_opening"]["amount"] == "0.00"
+        if view == "functional":
+            assert returned["revenue_recognized"]["amount"] == (
+                "-540.00" if first == AUGUST else "-45360.00"
+            )
+        binding = fx.place.scalar(
+            select(report_run.c.source_binding).where(report_run.c.id == UUID(run["id"]))
+        )
+        bridge = binding["evidence"]["combined_asset_bridge_v1"]
+        assert len(bridge["source_transfers"]) == 2
+        assert sum(map(Decimal, bridge["source_transfers"].values()), Decimal(0)) == 0
+        assert {abs(Decimal(value)) for value in bridge["source_transfers"].values()} == {
+            Decimal("45360")
+        }
+        restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text

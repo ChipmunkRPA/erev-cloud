@@ -3,7 +3,7 @@
 Retained liability reliefs must reproduce the full recipient/period posting.
 Source-proven reversals may reduce original consumed layers. Own-member asset creation
 can accompany cross-member liability relief. Mixed TIME allocation, close-pass-only
-and foreign-owner asset histories still require additional presentation;
+and cross-member billing histories still require additional presentation;
 no difference is apportioned or inferred from the report's OTHER amount.
 """
 
@@ -43,13 +43,15 @@ def read(
     posted: Mapping[tuple[UUID, UUID], list[Entry]],
     *,
     uow: UnitOfWork | None = None,
-) -> tuple[Amounts, Amounts, Amounts]:
+) -> tuple[Amounts, Amounts, Amounts, Amounts]:
     groups: dict[tuple[UUID, UUID], list[tie_outs.BalanceRow]] = defaultdict(list)
     for row in rows.values():
         groups[(row.version_id, row.entity_id)].append(row)
     transfers: Amounts = defaultdict(Decimal)
     opening: Amounts = {}
     liability: Amounts = {}
+    asset_transfers: Amounts = defaultdict(Decimal)
+    asset_sources = params.binding is None or "revenue_asset_sources_v1" in params.binding.evidence
     consumed: set[UUID] = set()
     evidence: dict[str, Any] = {}
     signed_key = "revenue_signed_sources_v1"
@@ -104,6 +106,17 @@ def read(
         verified_revenue: dict[str, dict[UUID, revenue_trace.RevenueSource]] = {}
         for movement in movement_rows:
             node = nodes.get(str(movement["trace_node_id"]))
+            if (
+                asset_sources
+                and node is not None
+                and movement["movement_kind"] == "ASSET_LAYER_SETTLED"
+                and "#NEGATIVE_REVENUE@" in node.id
+                and movement["effective_date"] <= periods[entity][-1].end
+            ):
+                returned_subject = node.id.split("#NEGATIVE_REVENUE@", 1)[1].rsplit(":", 1)[0]
+                returner = owners.get(contract_key_from_subject(returned_subject))
+                if returner is not None and returner != movement["contract_id"]:
+                    affected.add(returner)
             if (
                 movement["movement_kind"] != "LIABILITY_LAYER_CONSUMED"
                 or node is None
@@ -231,6 +244,17 @@ def read(
                             if part.movement_kind == "LIABILITY_LAYER_CONSUMED":
                                 posted_reliefs[(part.contract_id, part.layer_key)] -= part.amount
                                 signed_liability -= part.amount
+                            elif (
+                                asset_sources
+                                and part.amount
+                                and part.movement_kind == "ASSET_LAYER_SETTLED"
+                                and part.contract_id != recognizer
+                            ):
+                                amount = Decimal(part.amount.numerator) / Decimal(
+                                    part.amount.denominator
+                                )
+                                asset_transfers[(part.contract_id, entity, at.id)] -= amount
+                                asset_transfers[(recognizer, entity, at.id)] += amount
                             elif part.amount and (
                                 part.contract_id == recognizer
                                 and part.movement_kind
@@ -331,7 +355,19 @@ def read(
         tie_outs.require_members(params, "revenue_paid_line", posted_ids)
         tie_outs.record_members(params, "revenue_paid_line", posted_ids)
         tie_outs.record_evidence(params, delta_key, posted_evidence)
+    if asset_sources:
+        asset_evidence = {
+            ":".join(map(str, key)): str(amount) for key, amount in sorted(asset_transfers.items())
+        }
+        if (
+            params.binding is not None
+            and params.binding.evidence["revenue_asset_sources_v1"] != asset_evidence
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Revenue asset sources differ from retained evidence."
+            )
+        tie_outs.record_evidence(params, "revenue_asset_sources_v1", asset_evidence)
     tie_outs.require_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_evidence(params, KEY, evidence)
-    return dict(transfers), opening, liability
+    return dict(transfers), opening, liability, dict(asset_transfers)

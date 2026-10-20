@@ -556,6 +556,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "v5 presentation includes own-member asset settlements and newly created liabilities "
             "from original signed revenue sources, including returns whose source consumption "
             "predates the selected range; new liabilities are not opening relief",
+            "cross-member revenue asset settlements retain their original layer owner and "
+            "signed member transfers; an asset bridge reconciles original carrying to presented "
+            "contract-asset/unbilled endpoints and conserves the full group at each endpoint",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
@@ -629,6 +632,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "use original source amounts; only consumed opening liabilities enter opening relief",
             "own-member return sources distinguish asset settlement from new-liability creation; "
             "both complete-range and return-month-only views retain prior-period dependencies",
+            "returns settling another member's asset retain signed settlement transfers and "
+            "the original asset carrying bridge; asset settlement never becomes opening relief",
             "functional/reporting cross-member liability relief includes source-proven revenue "
             "reversals using original functional targets and recursive paid-line attribution",
             "ordinary transaction revenue reversals use original signed transaction sources, "

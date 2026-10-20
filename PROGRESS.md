@@ -2,6 +2,29 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Cross-member asset settlement from revenue returns — October 20, 2026
+
+- Functional/reporting revenue returns can now settle another authorized group member's asset.
+  The original signed posting replay identifies that asset owner and retains both sides of the
+  settlement transfer. Asset settlement is never classified as opening-liability consumption.
+- A new asset presentation bridge independently reconciles retained asset-layer carrying with
+  presented contract-asset plus unbilled balances at each opening, closing and monthly endpoint.
+  Creation, settlement and remeasurement amounts must match their original trace; member
+  transfers and group endpoint differences must conserve zero. OTHER does not determine the
+  adjustment. Every consumed layer and endpoint/source-transfer amount is bound for rerun.
+- The revenue asset-source method is retained even when no transfer occurs, preserving scope
+  on rerun. Earlier bindings keep their original method. Migration 0204 records the expanded
+  report logic. Cross-member billing asset settlements still need their own source presentation;
+  this change covers revenue-return settlements.
+- The real combined foreign scenario recognizes revenue for two members and then returns the
+  second member's delivery, settling the first member's asset at retained spot .84. The return
+  generates GBP 45,360 of equal/opposite member transfers and zero opening-liability relief.
+- Necessary checks passed: full-range and return-month-only functional/reporting outputs and
+  identical reruns, the existing asset-to-new-liability return case, catalogue migration
+  consistency, scoped lint and types.
+  Mixed TIME/EVENT attribution, intercompany counterparts, remaining close-only histories and
+  the other release gaps remain open. No deployment or production-readiness claim.
+
 ## Cross-period returns: asset settlement and new liability sources — October 20, 2026
 
 - Original revenue attribution now presents the recognizing member's asset settlements and
@@ -190,30 +213,6 @@
   cross-member asset-creating/carried/other-control histories, pre-close unposted FX paths,
   recorded registry gaps and final accounting/release acceptance remain open. Reporting
   is not yet complete. No deployment.
-
-## Opening-liability disclosure in functional/reporting currency — October 20, 2026
-
-- New functional/reporting revenue_from_opening_liability requests now consume the retained
-  balance path and original opening-layer attribution instead of silently reading amount_txn.
-  Reporting openings use preceding closing rates; revenue flows use their period averages.
-  The method, source populations and rates are bound for rerun. Earlier bindings keep their
-  prior builder path; the transaction view is still the separate legacy implementation.
-- The disclosure includes opening holders and recognizing members without capping a
-  recognizer's valid combined-group relief at its own zero opening. Its footnote explains
-  that distinction. Member/period source paths must reconcile before the disclosure is
-  emitted, so unmatched paths cannot silently become disclosure totals. The IPE catalogue,
-  source contract and migration 0198 document the additional sources and currency semantics.
-- Necessary public checks passed: standalone disclosure totals and contract details equal
-  the corresponding functional/reporting rollforward relief in the combined-member case,
-  including GBP 43,200 recognized against another member's opening. July-start versus
-  August-start ranges change opening/current provenance without changing recognized revenue.
-  Reporting currency, summary opening totals and identical bound reruns pass; lint/types pass.
-  No deployment.
-- Still open: the transaction disclosure's legacy same-contract cap, per-obligation opening
-  consumption, cross-member asset-creating/reversing/carried/other-control histories and the
-  underlying posting-delta replay gaps. This new disclosure path currently requires reconciled
-  source balance movements; pre-close paths with unposted FX are not accepted. Recorded
-  registry gaps and final accounting/release acceptance remain; Reporting is not complete.
 
 ## Outstanding release verification
 
