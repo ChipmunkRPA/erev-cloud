@@ -483,19 +483,35 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     group_ids = [uuid4(), uuid4()]
     release_id = uuid4()
 
-    def side(bundle: InputBundle, day: int, keep: tuple[int, ...] = (0, 1)) -> Side:
+    def side(
+        bundle: InputBundle,
+        day: int,
+        keep: tuple[int, ...] = (0, 1),
+        prepared: tuple[tuple[UUID, InputBundle], ...] | None = None,
+    ) -> Side:
         scope = locked.LockScope(
             uuid4(), entity_id, "Mock Entity 2", "ASC606", period_id, "FY2023-P05"
         )
         sources: dict[UUID, VerifiedComputation] = {}
         contracts = {}
         amounts = {}
-        for number, group_id in enumerate(group_ids, start=2):
-            if number - 2 not in keep:
-                continue
-            named = upgrade.decode_input(
-                upgrade.encode_input(bundle).replace(b"Contract 2", f"Contract {number}".encode())
+        inputs = (
+            prepared
+            if prepared is not None
+            else tuple(
+                (
+                    group_id,
+                    upgrade.decode_input(
+                        upgrade.encode_input(bundle).replace(
+                            b"Contract 2", f"Contract {number}".encode()
+                        )
+                    ),
+                )
+                for number, group_id in enumerate(group_ids, start=2)
+                if number - 2 in keep
             )
+        )
+        for group_id, named in inputs:
             output = compute(named)
             identity = uuid4()
             sources[identity] = VerifiedComputation(
@@ -508,7 +524,7 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
                 {"ASC606": 0},
                 None,
             )
-            contracts[f"Contract {number}"] = identity
+            contracts.update({name: identity for name in named.group.member_contract_keys})
             amounts.update(
                 Projection(named, scope.entity_code, scope.book_code, scope.period_key)(output)
             )
@@ -781,6 +797,145 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
                 "population." in detail for item in contributors for detail in item["details"]
             )
         assert all(item.sums_exactly for item in population.measures.values())
+
+    # Existing contracts are merged without any business/reference change.
+    # Different booking prices make the shared allocation redistribute real money.
+    second = upgrade.decode_input(
+        upgrade.encode_input(before).replace(b"Contract 2", b"Contract 3")
+    )
+    booking = next(event for event in second.events if event.event_type == "CONTRACT_BOOKED")
+    lines = [dict(line) for line in booking.payload["lines"]]
+    lines[0]["total_price"] = Decimal("1200")
+    second = replace(
+        second,
+        events=tuple(
+            replace(event, payload={**event.payload, "lines": lines}) if event is booking else event
+            for event in second.events
+        ),
+    )
+    joined_books = tuple(
+        replace(
+            book,
+            policies=tuple(
+                {
+                    canonical_bytes(policy): policy
+                    for source in (before, second)
+                    for held in source.books
+                    if held.book_code == book.book_code
+                    for policy in held.policies
+                }.values()
+            ),
+        )
+        for book in before.books
+    )
+    joined = replace(
+        before,
+        known_at=before.known_at + timedelta(days=1),
+        books=joined_books,
+        contracts=(*before.contracts, *second.contracts),
+        estimate_versions=(*before.estimate_versions, *second.estimate_versions),
+        events=tuple(
+            sorted(
+                (*before.events, *second.events),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+        group=replace(
+            before.group,
+            group_key="MERGED",
+            member_contract_keys=("Contract 2", "Contract 3"),
+            criterion="25_9_A",
+        ),
+    )
+    merged_id = uuid4()
+    membership_pair = Pair(
+        side(before, 1, prepared=((group_ids[0], before), (group_ids[1], second))),
+        side(joined, 2, prepared=((merged_id, joined),)),
+        (entity_id,),
+    )
+    membership = variance_groups.execute(membership_pair)
+    assert all(change.sums_exactly for change in membership.measures.values())
+    assert any(change.total for change in membership.measures.values())
+    assert all(
+        effect.driver == "MODIFICATION"
+        for change in membership.measures.values()
+        for effect in change.effects
+    )
+    shown = variance_presentation.dataset(membership_pair, membership)
+    assert canonical_bytes(shown.evidence)
+    split = Pair(
+        side(joined, 2, prepared=((merged_id, joined),)),
+        side(
+            before,
+            3,
+            prepared=(
+                (group_ids[0], replace(before, known_at=joined.known_at + timedelta(days=1))),
+                (group_ids[1], replace(second, known_at=joined.known_at + timedelta(days=1))),
+            ),
+        ),
+        (entity_id,),
+    )
+    split_result = variance_groups.execute(split)
+    assert {key: change.total for key, change in split_result.measures.items()} == {
+        key: -change.total for key, change in membership.measures.items()
+    }
+    assert variance_presentation.dataset(split, split_result).data.rows
+    delivery = next(
+        event
+        for event in after.events
+        if event.event_key not in {e.event_key for e in before.events}
+    )
+    mixed = replace(
+        joined,
+        events=tuple(
+            sorted(
+                (*joined.events, delivery),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    with pytest.raises(Problem, match="business events require a separate phase"):
+        variance_groups.execute(
+            replace(membership_pair, later=side(mixed, 2, prepared=((merged_id, mixed),)))
+        )
+
+    sides = identities(membership_pair)
+    rebound = replace(
+        binding,
+        row_keys=frozenset(row["row_key"] for row in shown.data.rows),
+        evidence={
+            "close_variance_sources": {
+                "version": 1,
+                "sides": sides,
+                "required_entity_ids": [str(entity_id)],
+            },
+            "close_variance_contributors": shown.evidence,
+            "close_variance_evidence_sha256": sha256_hex(shown.evidence),
+        },
+    )
+    for row in shown.data.rows:
+        if row["row_key"].startswith("TOTAL:"):
+            continue
+        value, contributors = variance_cells.cell(
+            cast(Session, Lookup()),
+            replace(
+                params,
+                binding=rebound,
+                parameters={
+                    "from_period_lock_id": sides[0]["lock_id"],
+                    "to_period_lock_id": sides[1]["lock_id"],
+                },
+            ),
+            row["row_key"],
+            "change",
+        )
+        assert value == row["change"]
+        assert sum(Fraction(item["value"]["amount"]) for item in contributors) == Fraction(
+            value["amount"]
+        )
+        assert any(
+            "group.membership" in detail for item in contributors for detail in item["details"]
+        )
 
 
 @pytest.mark.parametrize("fault", ["version", "source", "weight", "existing"])

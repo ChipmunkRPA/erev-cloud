@@ -88,7 +88,7 @@ def cell(
                 original = identity["sides"][index]["computations"][computation_id]
                 if (
                     group[side]["computation_id"] != computation_id
-                    or original["group_id"] != source["group_id"]
+                    or original["group_id"] != group[side].get("group_id", source["group_id"])
                     or any(
                         group[side][field] != original[field]
                         for field in ("input_sha256", "output_sha256")

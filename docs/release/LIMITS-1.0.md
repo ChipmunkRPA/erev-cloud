@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current membership-attribution update (October 20): isolated merges/splits of existing retained
+contracts now produce verified group.membership contributions under MODIFICATION. Original
+computations and frozen endpoints are reproduced, old groups are checked at the later cutoff,
+and new groups replay on the earlier contract-qualified posting basis. Per-contract evidence
+retains both actual group identities. Real-engine authored-frozen-dataset tests cover merge,
+reverse split, presentation/cell provenance and refusal of a simultaneous delivery. Mixed
+business/reference changes, missing earlier member sources and group-level posted redistribution
+remain unfinished, as do combined-contract FX and late-carried FX. No deployment, full lock-flow
+acceptance or independent accounting sign-off claimed.
+
+
 Current liability-layer FX update (October 20): functional/reporting balance rollforward paths
 now preserve billing layer keys and apply trace-verified per-layer FX, with relief FX before
 revenue and closing FX afterward. Opening versus current-range billing classifications remain

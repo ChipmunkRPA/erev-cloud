@@ -107,7 +107,12 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
             if new_id is not None
             else None
         )
-        group = replay.groups.get(source.group_id) if source is not None else None
+        execution_id = (
+            replay.contract_groups.get(key.contract_external_id, source.group_id)
+            if source is not None
+            else None
+        )
+        group = replay.groups.get(execution_id) if execution_id is not None else None
         if (
             group is None
             or group.replay.measures.get(key) != change
@@ -115,7 +120,7 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
             or (None if group.later is None else group.later.computation_id) != new_id
         ):
             raise _refuse("a contract has no matching group execution evidence.")
-        group_id = str(source.group_id) if source is not None else ""
+        group_id = str(execution_id) if execution_id is not None else ""
         by_driver = totals_by_driver(change.effects)
         for driver, amount in by_driver.items():
             driver_key = key.currency, key.measure, driver
@@ -220,10 +225,15 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
                 else {
                     **asdict(run.earlier),
                     "computation_id": str(run.earlier.computation_id),
+                    "group_id": str(pair.earlier.computations[run.earlier.computation_id].group_id),
                 },
                 "later": None
                 if run.later is None
-                else {**asdict(run.later), "computation_id": str(run.later.computation_id)},
+                else {
+                    **asdict(run.later),
+                    "computation_id": str(run.later.computation_id),
+                    "group_id": str(pair.later.computations[run.later.computation_id].group_id),
+                },
                 "normalized_fields": list(run.normalized_fields),
                 "replay_input_sha256": run.replay_input_sha256,
                 "engine_version": run.replay.engine_version,

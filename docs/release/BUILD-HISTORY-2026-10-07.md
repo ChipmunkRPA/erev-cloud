@@ -8799,3 +8799,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   rollforward valuation, broader GL coverage, population replay and dated POL-200 exclusions remain.
   POL-199's zero royalty exclusion can be correct under the engine's realization model; the older
   blanket description of both exemptions as missing was too broad. No deployment.
+
+## Dated functional contract balances and GL comparison — October 20, 2026
+
+- Contract balances now reads retained engine functional targets at the selected period,
+  preserving historical-layer liability valuation and monetary asset remeasurement. Foreign
+  balances without dated evidence are refused rather than converted with a current rate.
+- GL reconciliation uses the same dated targets. Actual EUR 10,000 receivable reports show
+  USD 11,050 in August and USD 11,200 in September, both matching uploaded GL balances.
+- Locked endpoints select computations available at the lock cutoff and verify the frozen
+  transaction endpoint before projecting functional values; selected versions are retained
+  for reruns. Locked-endpoint report/rerun and missing-evidence controls pass targeted journeys.
+- Full functional movement attribution, reporting-currency translation, additional captions
+  without engine functional targets, population replay and RPO partial exclusions remain open.
+  This is a functional balance checkpoint, not completion of all reporting currencies. No deployment.

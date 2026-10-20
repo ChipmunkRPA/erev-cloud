@@ -3,13 +3,14 @@
 This worker calculation runs after source loading has closed its transaction. It
 keeps currency/measure totals separate and retains each group's execution evidence.
 Independent groups entering/leaving the population have explicit source-backed
-contributions. Regrouping still needs membership replay, never an invented empty bundle.
+contributions. Isolated merges/splits use verified membership replay on connected groups;
+mixed business/reference changes still require separate phases. No empty bundle is invented.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fractions import Fraction
 from types import MappingProxyType
 from uuid import UUID
@@ -19,7 +20,7 @@ from erev_engine.stages.s15_disclosures.variance import Decomposition
 
 from erev_api.problems import Problem
 
-from . import variance_execution, variance_measures, variance_population
+from . import variance_execution, variance_measures, variance_membership, variance_population
 from .computation_sources import VerifiedComputation
 from .variance_measures import MeasureKey
 from .variance_replay import Engine
@@ -32,6 +33,7 @@ class GroupReplay:
     measures: Mapping[MeasureKey, Decomposition]
     driver_totals: Mapping[tuple[str, str, str], Fraction]  # currency, measure, driver
     required_entity_ids: tuple[UUID, ...]
+    contract_groups: Mapping[str, UUID] = field(default_factory=dict)
 
 
 def _refuse(detail: str) -> Problem:
@@ -67,19 +69,72 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
         if any(key.contract_external_id not in side.contract_computations for key in amounts):
             raise _refuse("a frozen monetary contract has no retained source.")
     old, new = _groups(pair.earlier), _groups(pair.later)
-    for name in pair.earlier.contract_computations.keys() & pair.later.contract_computations.keys():
-        identity = pair.earlier.contract_computations[name]
-        later_identity = pair.later.contract_computations[name]
-        if (
-            pair.earlier.computations[identity].group_id
-            != pair.later.computations[later_identity].group_id
-        ):
-            raise _refuse("a regrouped contract requires membership replay.")
     scope = pair.earlier.frozen.scope
     runs: dict[UUID, variance_execution.RetainedReplay | variance_population.PopulationReplay] = {}
     measures = {}
     totals: dict[tuple[str, str, str], Fraction] = {}
-    for group_id in sorted(old.keys() | new.keys(), key=str):
+    affected: set[UUID] = set()
+    for name in pair.earlier.contract_computations.keys() & pair.later.contract_computations.keys():
+        a = pair.earlier.computations[pair.earlier.contract_computations[name]]
+        b = pair.later.computations[pair.later.contract_computations[name]]
+        if (
+            a.group_id != b.group_id
+            or a.bundle.group.member_contract_keys != b.bundle.group.member_contract_keys
+            or a.bundle.group.group_key != b.bundle.group.group_key
+            or a.bundle.group.criterion != b.bundle.group.criterion
+        ):
+            affected.update((a.group_id, b.group_id))
+    while affected:
+        names = {
+            name
+            for key, source in (*old.items(), *new.items())
+            if key in affected
+            for name in source.bundle.group.member_contract_keys
+        }
+        expanded = affected | {
+            key
+            for key, source in (*old.items(), *new.items())
+            if names.intersection(source.bundle.group.member_contract_keys)
+        }
+        if expanded == affected:
+            break
+        affected = expanded
+    aliases: dict[str, UUID] = {}
+    if affected:
+        names = {
+            name
+            for key, source in (*old.items(), *new.items())
+            if key in affected
+            for name in source.bundle.group.member_contract_keys
+        }
+        membership, aliases = variance_membership.execute(
+            {key: source for key, source in old.items() if key in affected},
+            {key: source for key, source in new.items() if key in affected},
+            {
+                key: point.amount
+                for key, point in earlier.items()
+                if key.contract_external_id in names
+            },
+            {
+                key: point.amount
+                for key, point in later.items()
+                if key.contract_external_id in names
+            },
+            entity_code=scope.entity_code,
+            book_code=scope.book_code,
+            period_key=scope.period_key,
+            engine=engine,
+        )
+        runs.update(membership)
+        for result in membership.values():
+            for key, decomposition in result.replay.measures.items():
+                if key in measures:
+                    raise _refuse("membership replay duplicates an attributed contract.")
+                measures[key] = decomposition
+                for effect in decomposition.effects:
+                    total_key = key.currency, key.measure, effect.driver
+                    totals[total_key] = totals.get(total_key, Fraction(0)) + effect.amount
+    for group_id in sorted((old.keys() | new.keys()) - affected, key=str):
         if group_id not in old or group_id not in new:
             entering = group_id not in old
             side = pair.later if entering else pair.earlier
@@ -148,4 +203,5 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
         MappingProxyType(measures),
         MappingProxyType(totals),
         pair.required_entity_ids,
+        MappingProxyType(aliases),
     )

@@ -1,0 +1,295 @@
+"""Isolate changes in group partition when retained business inputs are unchanged.
+
+Both frozen sides are reproduced. Old groups are checked at the later cutoff and
+new groups are replayed on the earlier posted basis. A mixed business/reference
+change is refused until its own counterfactual phase is available.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import fields, replace
+from fractions import Fraction
+from types import MappingProxyType
+from uuid import NAMESPACE_URL, UUID, uuid5
+
+from erev_engine.canonical import canonical_bytes
+from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
+from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
+
+from erev_api.problems import Problem
+
+from .computation_sources import VerifiedComputation
+from .variance_execution import RetainedReplay, SourceExecution, verify_source
+from .variance_projection import Projection
+from .variance_replay import Engine, Execution, Metrics, Replay
+
+
+def _refuse(detail: str) -> Problem:
+    return Problem("validation-failed", f"Close membership replay: {detail}")
+
+
+def execute(
+    old: Mapping[UUID, VerifiedComputation],
+    new: Mapping[UUID, VerifiedComputation],
+    earlier: Metrics,
+    later: Metrics,
+    *,
+    entity_code: str,
+    book_code: str,
+    period_key: str,
+    engine: Engine,
+) -> tuple[dict[UUID, RetainedReplay], dict[str, UUID]]:
+    old_owner = {
+        name: key
+        for key, source in old.items()
+        for name in source.bundle.group.member_contract_keys
+    }
+    new_owner = {
+        name: key
+        for key, source in new.items()
+        for name in source.bundle.group.member_contract_keys
+    }
+    if (
+        set(old_owner) != set(new_owner)
+        or len(old_owner) != sum(len(s.bundle.contracts) for s in old.values())
+        or len(new_owner) != sum(len(s.bundle.contracts) for s in new.values())
+    ):
+        raise _refuse("membership entry/exit needs complete retained sources on both sides.")
+    sources = (*old.values(), *new.values())
+    checked = {
+        "format_version",
+        "engine_version",
+        "trigger",
+        "known_at",
+        "tenant_preset",
+        "currencies",
+        "books",
+        "entities",
+        "group",
+        "contracts",
+        "events",
+        "ssp_versions",
+        "pob_template_versions",
+        "rule_set_versions",
+        "estimate_versions",
+        "fx_rates",
+        "posted",
+    }
+    if {field.name for field in fields(sources[0].bundle)} != checked:
+        raise _refuse("the input schema requires a new membership comparison rule.")
+    for source in sources:
+        group = source.bundle.group
+        if group.inception_date != min(
+            contract.inception_date for contract in source.bundle.contracts
+        ) or any(
+            contract.transaction_currency != group.transaction_currency
+            for contract in source.bundle.contracts
+        ):
+            raise _refuse("group date/currency does not derive from its retained members.")
+        if any(
+            policy.scope == "GROUP" and policy.subject_key not in ("", group.group_key)
+            for book in source.bundle.books
+            for policy in book.policies
+        ):
+            raise _refuse("group policy ownership is inconsistent.")
+    # References shared by a computation must not drift between the partitions.
+    shared = (
+        "engine_version",
+        "format_version",
+        "tenant_preset",
+        "currencies",
+        "entities",
+        "ssp_versions",
+        "pob_template_versions",
+        "rule_set_versions",
+        "fx_rates",
+    )
+    for field in shared:
+        if len({canonical_bytes(getattr(source.bundle, field)) for source in sources}) != 1:
+            raise _refuse(f"membership is mixed with a {field} change.")
+    for field in ("contracts", "estimate_versions"):
+        before = {
+            canonical_bytes(item)
+            for source in old.values()
+            for item in getattr(source.bundle, field)
+        }
+        after = {
+            canonical_bytes(item)
+            for source in new.values()
+            for item in getattr(source.bundle, field)
+        }
+        if before != after:
+            raise _refuse(f"membership is mixed with a {field} change.")
+    for field in ("products", "portfolios"):
+        before = {
+            canonical_bytes(item)
+            for source in old.values()
+            for item in getattr(source.bundle.group, field)
+        }
+        after = {
+            canonical_bytes(item)
+            for source in new.values()
+            for item in getattr(source.bundle.group, field)
+        }
+        if before != after:
+            raise _refuse(f"membership is mixed with a group {field} change.")
+
+    def books(source: VerifiedComputation) -> tuple[bytes, ...]:
+        return tuple(canonical_bytes(replace(book, policies=())) for book in source.bundle.books)
+
+    if len({books(source) for source in sources}) != 1:
+        raise _refuse("book configuration differs between group partitions.")
+
+    def policies(side: Mapping[UUID, VerifiedComputation]) -> set[bytes]:
+        return {
+            canonical_bytes(
+                (
+                    book.book_code,
+                    replace(policy, subject_key="") if policy.scope == "GROUP" else policy,
+                )
+            )
+            for source in side.values()
+            for book in source.bundle.books
+            for policy in book.policies
+        }
+
+    if policies(old) != policies(new):
+        raise _refuse("membership is mixed with policy or recorded-choice changes.")
+    # Even equal unions must not mask different group policies swapped between members.
+    for name in old_owner:
+
+        def group_policies(source: VerifiedComputation) -> set[bytes]:
+            return {
+                canonical_bytes((book.book_code, replace(policy, subject_key="")))
+                for book in source.bundle.books
+                for policy in book.policies
+                if policy.scope == "GROUP"
+            }
+
+        if group_policies(old[old_owner[name]]) != group_policies(new[new_owner[name]]):
+            raise _refuse("a member changes its group policy basis.")
+    old_events = {
+        event.event_key: event for source in old.values() for event in source.bundle.events
+    }
+    new_events = {
+        event.event_key: event for source in new.values() for event in source.bundle.events
+    }
+    if any(new_events.get(key) != value for key, value in old_events.items()):
+        raise _refuse("an earlier immutable event changed or disappeared.")
+    added = tuple(sorted(new_events.keys() - old_events.keys()))
+    if any(new_events[key].event_type != "COMBINATION_CHANGED" for key in added):
+        raise _refuse("business events require a separate phase before membership attribution.")
+    if any(
+        new_events[key].recorded_at <= old[old_owner[new_events[key].contract_key]].bundle.known_at
+        for key in added
+    ):
+        raise _refuse(
+            "a newly supplied membership event was already known at the earlier source cutoff."
+        )
+    cutoff = max(source.bundle.known_at for source in new.values())
+    if cutoff < max(source.bundle.known_at for source in old.values()):
+        raise _refuse("the source cutoffs are reversed.")
+    old_verified: dict[UUID, SourceExecution] = {}
+    new_verified: dict[UUID, SourceExecution] = {}
+    normalized: dict[UUID, tuple[str, str]] = {}
+    baselines: dict[UUID, Execution] = {}
+    for side, metrics, verified in ((old, earlier, old_verified), (new, later, new_verified)):
+        for key, source in side.items():
+            expected = {
+                k: v
+                for k, v in metrics.items()
+                if k.contract_external_id in source.bundle.group.member_contract_keys
+            }
+            verified[key], _ = verify_source(
+                source,
+                expected,
+                engine=engine,
+                entity_code=entity_code,
+                book_code=book_code,
+                period_key=period_key,
+            )
+    posted = tuple(line for source in old.values() for line in source.bundle.posted)
+    if any(contract_key_from_subject(line.subject_key) not in old_owner for line in posted):
+        raise _refuse("group-level posted amounts need an explicit redistribution basis.")
+    heads = {
+        name: head
+        for source in old.values()
+        for name, head in source.bundle.group.previous_stream_heads
+    }
+    for side, metrics in ((old, earlier), (new, later)):
+        for key, source in side.items():
+            members = source.bundle.group.member_contract_keys
+            bundle = replace(source.bundle, known_at=cutoff, trigger="DRY_RUN")
+            if side is new:
+                bundle = replace(
+                    bundle,
+                    posted=tuple(
+                        line
+                        for line in posted
+                        if contract_key_from_subject(line.subject_key) in members
+                    ),
+                    group=replace(
+                        bundle.group,
+                        previous_stream_heads=tuple(
+                            sorted((name, heads[name]) for name in members if name in heads)
+                        ),
+                    ),
+                )
+            output = engine(bundle)
+            if (
+                output.input_sha256 != bundle.sha256()
+                or output.engine_version != bundle.engine_version
+            ):
+                raise _refuse("a dry-run output does not identify its executed input.")
+            actual = Projection(bundle, entity_code, book_code, period_key)(output)
+            expected = {k: v for k, v in metrics.items() if k.contract_external_id in members}
+            if any(
+                actual.get(k, Fraction(0)) != expected.get(k, Fraction(0))
+                for k in actual.keys() | expected.keys()
+            ):
+                raise _refuse("time/posting normalization does not reproduce the frozen endpoint.")
+            if side is new:
+                normalized[key] = (bundle.sha256(), output.sha256())
+            else:
+                baselines[key] = Execution(
+                    "BASELINE", (), bundle.sha256(), output.sha256(), ("known_at",)
+                )
+    runs, aliases = {}, {}
+    for name in sorted(old_owner):
+        old_key, new_key = old_owner[name], new_owner[name]
+        identity = uuid5(NAMESPACE_URL, f"erev:membership:{old_key}:{new_key}")
+        aliases[name] = identity
+        names = {n for n in old_owner if old_owner[n] == old_key and new_owner[n] == new_key}
+        measures = {
+            k: decompose(
+                earlier.get(k, Fraction(0)), [Evaluation("MODIFICATION", later.get(k, Fraction(0)))]
+            )
+            for k in earlier.keys() | later.keys()
+            if k.contract_external_id in names
+        }
+        measures = {
+            key: replace(
+                change,
+                effects=tuple(replace(effect, event_keys=added) for effect in change.effects),
+            )
+            for key, change in measures.items()
+        }
+        input_hash, output_hash = normalized[new_key]
+        runs[identity] = RetainedReplay(
+            old_verified[old_key],
+            new_verified[new_key],
+            ("group.membership", "posted", "group.previous_stream_heads"),
+            input_hash,
+            Replay(
+                new[new_key].bundle.engine_version,
+                (
+                    baselines[old_key],
+                    Execution(
+                        "MODIFICATION", added, input_hash, output_hash, ("group.membership",)
+                    ),
+                ),
+                MappingProxyType(measures),
+            ),
+        )
+    return runs, aliases

@@ -6,6 +6,27 @@
 
 
 
+## Isolated group-membership variance replay — October 20, 2026
+
+- Close variance now detects connected group reorganizations and can attribute pure merge/split
+  changes as MODIFICATION with explicit group.membership evidence. It verifies every original
+  output/frozen endpoint, checks earlier groups at the later cutoff, and replays the new partition
+  on the earlier contract-qualified posting basis before accepting the difference.
+- Business events, contract terms, policy/reference changes and missing population sources are
+  checked separately. Unchanged unions cannot hide a member's different group-policy basis.
+  New bundle fields require an explicit comparison rule. Group-level posted amounts still need
+  a redistribution basis; they are not reassigned by weight or replaced with empty computations.
+- Per-contract execution aliases preserve distinct earlier/later computation and group identities.
+  Report rows and cell contributors verify those identities against the authorized frozen sources;
+  existing one-group and whole-population entry/exit evidence remains compatible.
+- Necessary real-engine/frozen-CSV witness covers two differently priced contracts merging,
+  reverse split, exact redistribution, presentation and cell sums/provenance. A simultaneous
+  delivery is refused as a mixed change. Existing grouped replay/population/export checks pass;
+  lint/types pass. This witness is not a full production close/lock workflow.
+- Still open: simultaneous membership/business/reference replay, members entering/leaving a
+  surviving group without a prior source, group-level posted redistribution, combined-contract
+  FX ownership and late-carried FX. No deployment or accounting sign-off claimed.
+
 ## Layer-specific liability FX attribution — October 20, 2026
 
 - Functional balance rollforwards now retain new billing layer identities and read verified
@@ -209,20 +230,6 @@
 - Full populated partial-exemption API/lock/export acceptance remains to be completed. This does
   not complete multi-currency movement translation, population replay or all release acceptance.
   No deployment; direct main publication.
-
-## Dated functional contract balances and GL comparison — October 20, 2026
-
-- Contract balances now reads retained engine functional targets at the selected period,
-  preserving historical-layer liability valuation and monetary asset remeasurement. Foreign
-  balances without dated evidence are refused rather than converted with a current rate.
-- GL reconciliation uses the same dated targets. Actual EUR 10,000 receivable reports show
-  USD 11,050 in August and USD 11,200 in September, both matching uploaded GL balances.
-- Locked endpoints select computations available at the lock cutoff and verify the frozen
-  transaction endpoint before projecting functional values; selected versions are retained
-  for reruns. Locked-endpoint report/rerun and missing-evidence controls pass targeted journeys.
-- Full functional movement attribution, reporting-currency translation, additional captions
-  without engine functional targets, population replay and RPO partial exclusions remain open.
-  This is a functional balance checkpoint, not completion of all reporting currencies. No deployment.
 
 ## Outstanding release verification
 
