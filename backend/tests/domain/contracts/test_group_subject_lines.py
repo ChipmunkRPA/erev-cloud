@@ -689,6 +689,29 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
         },
         evidence_file_ids=[],
     )
+    # The revenue adapter verifies the actual ledger line against both original
+    # currencies and retains the original pre-computation paid population.
+    from erev_api.domain.reports.command_fx_evidence import read_revenue
+
+    with fx.place.uow() as uow:
+        revenue_line = dict(
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id == recognizer_id,
+                    subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                    subledger_line.c.account_role == "REVENUE",
+                    subledger_line.c.amount_txn == Decimal("-54000"),
+                )
+            )
+            .mappings()
+            .one()
+        )
+        retained = read_revenue(uow, revenue_line)
+        assert retained is not None and retained["source_kind"] == "CONTRACT_VERSION"
+        assert Decimal(retained["selected_lines"][0]["amount_functional"]) == Decimal("-43200.00")
+        changed = {**revenue_line, "amount_functional": Decimal("-43201")}
+        with pytest.raises(ValueError, match="retained computation intent"):
+            read_revenue(uow, changed)
     reporting = worlds.ReportWorld(
         place=fx.place,
         priya=fx.priya,
@@ -812,3 +835,36 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
             fx.app, f"/api/v1/report-runs/{replay.headers['x-erev-report-run-id']}/data", fx.maya
         )
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+
+    approved_manual_events(
+        fx.place,
+        fx.priya,
+        recognizer_id,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-09-01",
+            "payload": {"obligation_key": "O1", "quantity": "10", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    with fx.place.uow() as uow:
+        later = dict(
+            uow.session.execute(
+                select(subledger_line)
+                .where(
+                    subledger_line.c.contract_id == recognizer_id,
+                    subledger_line.c.account_role == "REVENUE",
+                    subledger_line.c.id != revenue_line["id"],
+                )
+                .order_by(subledger_line.c.entry_no.desc())
+                .limit(1)
+            )
+            .mappings()
+            .one()
+        )
+        retained = read_revenue(uow, later)
+        assert retained is not None
+        paid_ids = {row["id"] for row in retained["posted_lines"]}
+        assert str(revenue_line["id"]) in paid_ids
+        assert str(later["id"]) not in paid_ids
+        assert all(row["account_role"] == "REVENUE" for row in retained["posted_lines"])

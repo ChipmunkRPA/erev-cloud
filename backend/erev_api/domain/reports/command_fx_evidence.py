@@ -33,14 +33,29 @@ from erev_api.uow import UnitOfWork
 
 
 def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
-    from erev_api.domain.close.pass_evidence import _line_values, capture_posted_lines
-
     if (
         line["contract_version_id"] is None
         or line["entry_kind"] != "FX_REMEASUREMENT"
         or line["account_role"] != "CONTRACT_LIABILITY"
     ):
         return None
+    return _read(uow, line)
+
+
+def read_revenue(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Retain a revenue line with its original functional amount and paid population."""
+    if (
+        line["contract_version_id"] is None
+        or line["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
+        or line["account_role"] != "REVENUE"
+    ):
+        return None
+    return _read(uow, line)
+
+
+def _read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any]:
+    from erev_api.domain.close.pass_evidence import _line_values, capture_posted_lines
+
     version = (
         uow.session.execute(
             select(contract_version).where(contract_version.c.id == line["contract_version_id"])
@@ -61,9 +76,9 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
         .one_or_none()
     )
     if version is None or posting is None:
-        raise ValueError("FX line has no retained version or sealed posting.")
+        raise ValueError("Ledger line has no retained version or sealed posting.")
     if posting["contract_computation_id"] != version["contract_computation_id"]:
-        raise ValueError("FX line version differs from its posting computation.")
+        raise ValueError("Ledger line version differs from its posting computation.")
     source = computation_sources.read_for_report(
         uow,
         version["contract_computation_id"],
@@ -72,11 +87,11 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
     book_code = str(line["book_code"])
     books = [book for book in source.output["books"] if book["book_code"] == book_code]
     if len(books) != 1 or int(posting["chain_seq"]) <= source.ledger_cutoff[book_code]:
-        raise ValueError("FX posting does not follow its retained input ledger cutoff.")
+        raise ValueError("Posting does not follow its retained input ledger cutoff.")
     book = books[0]
     trace = load_trace(uow.session, version["id"])
     if trace is None or sha256_hex(book["trace"]) != trace.sha256():
-        raise ValueError("FX computation output differs from its retained version trace.")
+        raise ValueError("Computation output differs from its retained version trace.")
     entity_code = uow.session.execute(
         select(legal_entity.c.code).where(legal_entity.c.id == line["entity_id"])
     ).scalar_one()
@@ -107,7 +122,7 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
             continue
         for candidate in intent["lines"]:
             if candidate["side"] not in {"D", "C"}:
-                raise ValueError("Retained FX intent has an invalid side.")
+                raise ValueError("Retained posting intent has an invalid side.")
             sign = 1 if candidate["side"] == "D" else -1
             if (
                 candidate["trace_node_id"] == line["trace_node_id"]
@@ -128,7 +143,7 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
             ):
                 matches.append(candidate)
     if len(matches) != 1:
-        raise ValueError("FX ledger line does not identify one retained computation intent.")
+        raise ValueError("Ledger line does not identify one retained computation intent.")
     members = (
         uow.session.execute(
             select(contract.c.id).where(
@@ -158,7 +173,11 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
         "entries": [int(line["entry_no"])],
         "selected_lines": [_line_values(line)],
         "posted_lines": capture_posted_lines(
-            uow, members, book_code, ledger_cutoff=source.ledger_cutoff[book_code]
+            uow,
+            members,
+            book_code,
+            ledger_cutoff=source.ledger_cutoff[book_code],
+            revenue=line["account_role"] == "REVENUE",
         ),
     }
 

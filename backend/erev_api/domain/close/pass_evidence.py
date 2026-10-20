@@ -280,8 +280,9 @@ def capture_posted_lines(
     book_code: str,
     *,
     ledger_cutoff: int | None = None,
+    revenue: bool = False,
 ) -> list[dict[str, Any]]:
-    """Freeze the exact FX control population visible to this group's pass.
+    """Freeze the exact FX control or revenue population visible to this group's pass.
 
     Record identities even for lines that net to zero: they can transfer the
     attribution between layers without changing the aggregate paid amount.
@@ -307,8 +308,10 @@ def capture_posted_lines(
         .where(
             subledger_line.c.contract_id.in_(contract_ids),
             subledger_line.c.book_code == book_code,
-            subledger_line.c.entry_kind == "FX_REMEASUREMENT",
-            subledger_line.c.account_role == "CONTRACT_LIABILITY",
+            subledger_line.c.entry_kind.in_(
+                ("REVENUE_RECOGNITION", "INTERCOMPANY") if revenue else ("FX_REMEASUREMENT",)
+            ),
+            subledger_line.c.account_role == ("REVENUE" if revenue else "CONTRACT_LIABILITY"),
             *(
                 (subledger_posting_seal.c.chain_seq <= ledger_cutoff,)
                 if ledger_cutoff is not None

@@ -9391,3 +9391,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   acceptance, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
   Group settlement/exit cases do not establish every membership transition or production
   readiness. No deployment.
+
+## Exact paid-origin window for carried FX — October 20, 2026
+
+- TIME FX historical attribution now selects the target period plus its immediately preceding
+  continuous closed/permanently-locked run, bounded by the retained anchor. It no longer treats
+  every period between sparse calculation targets as paid: an intervening open period stops
+  pooling, matching S14. EVENT/ALL retain their exact source origin. All period states come from
+  the original encrypted computation input; today's calendar does not change reruns.
+- Necessary verification covers sparse targets across an intervening open period, a retained
+  anchor inside a locked run, EVENT origin isolation and refusal of TIME in a non-postable
+  period; the existing actual multi-layer repeated-close/report scenario checks integration.
+  Scoped lint/types pass. No deployment.
+- Still open: end-to-end late-carried public acceptance, populated foreign two-lock acceptance,
+  recorded privacy/snapshot registry gaps and final accounting/release acceptance. Correcting
+  this selector does not establish those broader acceptance cases or production readiness.

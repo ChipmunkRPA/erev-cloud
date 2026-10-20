@@ -97,3 +97,95 @@ def test_corrupt_source_cannot_hide_in_zero_target(corruption: str) -> None:
         trace = replace(trace, nodes=tuple(nodes))
     with pytest.raises(InvalidRevenueTrace):
         project(trace, "current", movements, currency="GBP")
+
+
+@pytest.mark.parametrize("basis, expected", [("ALL", 40), ("TIME", 20), ("EVENT", 20)])
+def test_target_prior_and_paid_preserve_reversal_owners(basis: str, expected: int) -> None:
+    from datetime import date
+
+    from erev_api.domain.reports.revenue_trace import (
+        RevenueMovement,
+        RevenueTarget,
+        posting_delta,
+    )
+
+    def movement(owner: int, amount: int, time: bool = False) -> RevenueMovement:
+        return RevenueMovement(
+            UUID(int=owner),
+            f"layer-{owner}",
+            "ASSET_LAYER_SETTLED" if owner == 3 else "LIABILITY_LAYER_CREATED",
+            date(2026, 8, 31),
+            f"event-{owner}",
+            time,
+            Fraction(amount),
+        )
+
+    # The same historical revenue in both targets cancels, even when its
+    # retained movement row belongs to a different computation version.
+    prior = RevenueTarget(Fraction(-100), Fraction(0), (movement(1, -100),), (UUID(int=10),))
+    current = RevenueTarget(
+        Fraction(0),
+        Fraction(20),
+        (movement(1, -100), movement(3, 20, True), movement(4, 80)),
+        (UUID(int=11), UUID(int=12), UUID(int=13)),
+    )
+    paid = () if basis == "TIME" else (movement(4, 60),)
+    result = posting_delta(
+        current,
+        prior,
+        basis=basis,
+        paid=paid,
+        expected_paid=Fraction(0 if basis == "TIME" else 60),
+        expected_delta=Fraction(expected),
+    )
+    assert result.amount == expected
+    assert {item.contract_id: item.amount for item in result.movements} == (
+        {UUID(int=3): 20, UUID(int=4): 20}
+        if basis == "ALL"
+        else {UUID(int=3 if basis == "TIME" else 4): 20}
+    )
+    assert result.source_ids == tuple(UUID(int=i) for i in (10, 11, 12, 13))
+
+
+@pytest.mark.parametrize("corruption", ["target", "time", "paid", "basis", "delta"])
+def test_posted_delta_refuses_unreconciled_components(corruption: str) -> None:
+    from dataclasses import replace
+    from datetime import date
+
+    from erev_api.domain.reports.revenue_trace import (
+        RevenueMovement,
+        RevenueTarget,
+        posting_delta,
+    )
+
+    item = RevenueMovement(
+        UUID(int=1),
+        "layer",
+        "LIABILITY_LAYER_CONSUMED",
+        date(2026, 8, 31),
+        "event",
+        False,
+        Fraction(-80),
+    )
+    target = RevenueTarget(Fraction(-80), Fraction(0), (item,), (UUID(int=2),))
+    paid = (replace(item, amount=Fraction(-20)),)
+    expected_paid, expected_delta = Fraction(-20), Fraction(-60)
+    if corruption == "target":
+        target = replace(target, amount=Fraction(-81))
+    elif corruption == "time":
+        target = replace(target, time_amount=Fraction(-80))
+    elif corruption == "paid":
+        expected_paid = Fraction(-19)
+    elif corruption == "basis":
+        paid = (replace(paid[0], time=True),)
+    else:
+        expected_delta = Fraction(-59)
+    with pytest.raises(InvalidRevenueTrace):
+        posting_delta(
+            target,
+            None,
+            basis="EVENT",
+            paid=paid,
+            expected_paid=expected_paid,
+            expected_delta=expected_delta,
+        )

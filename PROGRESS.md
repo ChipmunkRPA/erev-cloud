@@ -6,6 +6,28 @@
 
 
 
+## Revenue posting-delta evidence and reconciliation — October 20, 2026
+
+- Added revenue-line evidence reading alongside the existing FX adapter. It verifies the
+  line against exactly one original retained posting intent in transaction and functional
+  currency, verifies the trace/output and sealed posting, and captures the original
+  pre-computation revenue population by ledger cutoff. Later/current lines are excluded.
+- Added exact source-level target minus prior target minus paid reconciliation, including
+  TIME, EVENT and ALL bases, negative amounts and owner-preserving cancellation across
+  computation versions. Target totals, TIME components, paid totals and final delta are
+  each checked. Source date and source key now accompany the signed layer projection.
+- Ordinary revenue posting trace nodes are transaction-currency nodes; their functional
+  amounts are separately retained. The reconciler therefore accepts verified explicit
+  target facts rather than treating the transaction trace as a functional FX delta.
+- Necessary checks passed: 14 focused source/delta checks and a real combined-contract
+  sequence proving the later revenue envelope includes the prior posting but excludes its
+  own posting; incorrect functional amounts are refused. Existing report reruns pass.
+- Still required: wire verified functional target/time projections and recursive paid
+  attribution into report presentation, including close-pass revenue histories. This
+  internal reconciliation/reader addition does not yet enable complete negative-revenue
+  reports. Per-obligation opening consumption, asset presentation transfers and final
+  accounting/release acceptance remain open. No deployment.
+
 ## Signed revenue calculation sources — October 20, 2026
 
 - Added exact signed expansion of retained S12 revenue cumulative targets, preserving each
@@ -209,21 +231,6 @@
   but no remeasurement movement leaf), end-to-end late-carried public acceptance without
   reopening, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
   This populated foreign two-lock witness does not establish every FX or membership scenario.
-
-## Exact paid-origin window for carried FX — October 20, 2026
-
-- TIME FX historical attribution now selects the target period plus its immediately preceding
-  continuous closed/permanently-locked run, bounded by the retained anchor. It no longer treats
-  every period between sparse calculation targets as paid: an intervening open period stops
-  pooling, matching S14. EVENT/ALL retain their exact source origin. All period states come from
-  the original encrypted computation input; today's calendar does not change reruns.
-- Necessary verification covers sparse targets across an intervening open period, a retained
-  anchor inside a locked run, EVENT origin isolation and refusal of TIME in a non-postable
-  period; the existing actual multi-layer repeated-close/report scenario checks integration.
-  Scoped lint/types pass. No deployment.
-- Still open: end-to-end late-carried public acceptance, populated foreign two-lock acceptance,
-  recorded privacy/snapshot registry gaps and final accounting/release acceptance. Correcting
-  this selector does not establish those broader acceptance cases or production readiness.
 
 ## Outstanding release verification
 

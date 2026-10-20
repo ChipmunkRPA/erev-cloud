@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from fractions import Fraction
 from typing import Any
 from uuid import UUID
@@ -27,6 +28,8 @@ class RevenueSource:
     layer_key: str
     movement_kind: str
     amount: Fraction
+    effective_date: date | None = None
+    source_key: str | None = None
 
 
 _ALLOWED = {
@@ -122,6 +125,110 @@ def project(
             layer_key=str(leaves[key]["layer_key"]),
             movement_kind=str(leaves[key]["movement_kind"]),
             amount=amount,
+            effective_date=leaves[key].get("effective_date"),
+            source_key=leaves[key].get("source_key"),
         )
         for key, amount in sorted(visit(node_id).items())
     )
+
+
+@dataclass(frozen=True, slots=True)
+class RevenueMovement:
+    contract_id: UUID
+    layer_key: str
+    movement_kind: str
+    effective_date: date | None
+    source_key: str | None
+    time: bool
+    amount: Fraction
+
+
+@dataclass(frozen=True, slots=True)
+class RevenuePostingDelta:
+    movements: tuple[RevenueMovement, ...]
+    source_ids: tuple[UUID, ...]
+
+    @property
+    def amount(self) -> Fraction:
+        return sum((item.amount for item in self.movements), Fraction(0))
+
+
+@dataclass(frozen=True, slots=True)
+class RevenueTarget:
+    amount: Fraction
+    time_amount: Fraction
+    movements: tuple[RevenueMovement, ...]
+    source_ids: tuple[UUID, ...]
+
+
+def posting_delta(
+    current: RevenueTarget,
+    previous: RevenueTarget | None,
+    *,
+    basis: str,
+    paid: Sequence[RevenueMovement],
+    expected_paid: Fraction,
+    expected_delta: Fraction,
+) -> RevenuePostingDelta:
+    """Apply target − prior target − paid to independently verified source facts.
+
+    All amounts are ledger-signed in one currency. Callers obtain the target
+    amounts, TIME components and paid population from original computation and
+    posting evidence. Ordinary S14 revenue nodes are in transaction currency;
+    functional callers must verify the separately retained functional amounts.
+    This function neither converts currencies nor infers source ownership.
+    """
+    if basis not in {"TIME", "EVENT", "ALL"}:
+        raise InvalidRevenueTrace("Unknown revenue posting delta basis.")
+    if not isinstance(expected_paid, Fraction) or not isinstance(expected_delta, Fraction):
+        raise InvalidRevenueTrace("Revenue delta amounts must be exact.")
+    if any(not isinstance(item.amount, Fraction) for item in paid):
+        raise InvalidRevenueTrace("Paid revenue attribution must use exact amounts.")
+    if sum((item.amount for item in paid), Fraction(0)) != expected_paid:
+        raise InvalidRevenueTrace("Attributed history differs from the retained paid amount.")
+    if any(basis != "ALL" and item.time != (basis == "TIME") for item in paid):
+        raise InvalidRevenueTrace("Paid revenue attribution uses a different posting basis.")
+    values: dict[tuple[UUID, str, str, date | None, str | None, bool], Fraction] = {}
+    source_ids: set[UUID] = set()
+
+    def add(item: RevenueMovement, sign: int) -> None:
+        key = (
+            item.contract_id,
+            item.layer_key,
+            item.movement_kind,
+            item.effective_date,
+            item.source_key,
+            item.time,
+        )
+        values[key] = values.get(key, Fraction(0)) + sign * item.amount
+
+    for target, sign in ((current, 1), (previous, -1)):
+        if target is None:
+            continue
+        if (
+            not isinstance(target.amount, Fraction)
+            or not isinstance(target.time_amount, Fraction)
+            or any(not isinstance(item.amount, Fraction) for item in target.movements)
+            or sum((item.amount for item in target.movements), Fraction(0)) != target.amount
+        ):
+            raise InvalidRevenueTrace("Revenue sources do not reproduce the retained target.")
+        time_amount = sum((item.amount for item in target.movements if item.time), Fraction(0))
+        if time_amount != target.time_amount:
+            raise InvalidRevenueTrace("Revenue TIME sources differ from the retained component.")
+        source_ids.update(target.source_ids)
+        for item in target.movements:
+            if basis == "ALL" or item.time == (basis == "TIME"):
+                add(item, sign)
+    for item in paid:
+        add(item, -1)
+    result = RevenuePostingDelta(
+        tuple(
+            RevenueMovement(*key, amount)
+            for key, amount in sorted(values.items(), key=lambda pair: tuple(map(str, pair[0])))
+            if amount
+        ),
+        tuple(sorted(source_ids, key=str)),
+    )
+    if result.amount != expected_delta:
+        raise InvalidRevenueTrace("Revenue source deltas differ from the retained journal delta.")
+    return result
