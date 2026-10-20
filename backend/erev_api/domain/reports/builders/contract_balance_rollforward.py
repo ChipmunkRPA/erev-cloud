@@ -40,6 +40,13 @@ flow with an equal offset to period-end FX. Layer identities and verified traces
 for reruns. FX on more than one open liability layer still needs explicit per-layer attribution
 and is refused rather than apportioned using functional balances as weights.
 
+The reporting view translates monthly functional paths using the engine's S12-R-18 helper:
+opening at the preceding closing rate, flows at each posting period's average rate, closing
+at that period's closing rate. Monthly paths keep the original range's opening-layer identity.
+TRANSLATION and ROUNDING are separate lines; rates and versions are retained, and locked
+endpoints select rates at their frozen cutoff. GL and balance comparisons stay functional.
+Unexplained functional OTHER remains a failure even if translated amounts round to zero.
+
 Section 1 "Rollforward" gives one row per line code (``<line>:<ISO>`` when several currencies);
 section 2 "By contract" one row per contract for ``balance_role``. Tie-outs:
 ``TO_ROLLFORWARD_BALANCES`` passes when every ``OTHER`` cell is 0 (opening plus activity equals
@@ -59,7 +66,7 @@ contract is activated late: its lines are movements of the period they are poste
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
@@ -70,7 +77,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract_event, fx_layer_movement, subledger_line
-from erev_api.domain.reports import functional_balances, locked_ends, rollforward_gl, tie_outs
+from erev_api.domain.reports import (
+    functional_balances,
+    locked_ends,
+    reporting_rollforward,
+    rollforward_gl,
+    tie_outs,
+)
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import (
@@ -110,6 +123,8 @@ LABELS: Final[Mapping[str, str]] = {
     "FX_REMEASUREMENT": "FX remeasurement",
     "BUSINESS_COMBINATIONS": "Business combinations",
     "OTHER": "Other",
+    "TRANSLATION": "Reporting currency translation",
+    "ROUNDING": "Translation rounding",
     "CLOSING": "Closing balance",
 }
 BALANCE_ROLES: Final[Mapping[str, str]] = {
@@ -201,6 +216,7 @@ class ContractRollforward:
     entity_code: str
     currency: str
     lines: Mapping[str, Mapping[str, Decimal]]
+    period_lines: Mapping[UUID, Lines] = field(default_factory=dict)
 
 
 def path(
@@ -301,6 +317,7 @@ def rollforwards(
     contract_id: UUID | None = None,
     documents: bool = True,
     functional: bool = False,
+    period_detail: bool = False,
     locked: tie_outs.LockedEnds | None = None,
 ) -> tuple[ContractRollforward, ...]:
     """The rollforward of every member contract and entity with a balance at either end.
@@ -356,6 +373,38 @@ def rollforwards(
             book_code=book_code,
             locked=locked,
         )
+    monthly: dict[tuple[UUID, UUID], dict[tuple[UUID, UUID], BalanceRow]] = {}
+    if period_detail:
+        # Read each intermediate endpoint once. Prefix paths retain the original range's
+        # opening-layer identity, so later months do not relabel new billings as opening.
+        for entity_id, selected_periods in periods.items():
+            for period in selected_periods:
+                if period == selected_periods[-1]:
+                    rows = tuple(row for row in closing_rows if row.entity_id == entity_id)
+                else:
+                    rows = tie_outs.balances_at(
+                        session,
+                        entity_ids=(entity_id,),
+                        book_code=book_code,
+                        period_keys={entity_id: period},
+                        cutoff=cutoff,
+                        params=params,
+                        contract_id=contract_id,
+                        locked_ends=locked,
+                    )
+                    if functional:
+                        rows = functional_balances.read(
+                            session,
+                            params,
+                            rows,
+                            entities=entities,
+                            periods={entity_id: period},
+                            book_code=book_code,
+                            locked=locked,
+                        )
+                monthly[(entity_id, period.id)] = {
+                    (row.contract_id, row.entity_id): row for row in rows
+                }
     ends: dict[tuple[UUID, UUID], list[BalanceRow | None]] = {}
     for row in opening_rows:
         ends.setdefault((row.contract_id, row.entity_id), [None, None])[0] = row
@@ -436,9 +485,53 @@ def rollforwards(
                 entity_code=described.entity_code,
                 currency=described.currency,
                 lines=lines,
+                period_lines=(
+                    period_paths(
+                        _values(opening),
+                        entries,
+                        [
+                            (period, _values(monthly[(entity_id, period.id)].get(key)))
+                            for period in periods[entity_id]
+                        ],
+                    )
+                    if period_detail
+                    else {}
+                ),
             )
         )
     return tuple(sorted(found, key=lambda item: (item.external_id, item.entity_code)))
+
+
+def period_paths(
+    opening: Mapping[str, Decimal],
+    entries: Sequence[Entry],
+    endpoints: Sequence[tuple[PeriodRef, Mapping[str, Decimal]]],
+) -> dict[UUID, Lines]:
+    """Monthly deltas of the cumulative path, preserving range-opening provenance."""
+    wanted = {period.id for period, _ in endpoints}
+    if any(entry.period_id not in wanted for entry in entries):
+        raise tie_outs.invalid("currency_view", "A reporting flow lacks its posting period.")
+    previous = path(opening, (), opening)
+    admitted: set[UUID] = set()
+    output = {}
+    for period, closing in endpoints:
+        admitted.add(period.id)
+        current = path(opening, [e.flow for e in entries if e.period_id in admitted], closing)
+        output[period.id] = {
+            line: {
+                balance: (
+                    previous["CLOSING"][balance]
+                    if line == "OPENING"
+                    else current[line][balance]
+                    if line == "CLOSING"
+                    else current[line][balance] - previous[line][balance]
+                )
+                for balance in ROLLFORWARD_BALANCES
+            }
+            for line in LINES
+        }
+        previous = current
+    return output
 
 
 def _values(row: BalanceRow | None) -> dict[str, Decimal]:
@@ -1066,6 +1159,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         cutoff=cutoff,
         entity_codes={item.id: item.code for item in found},
     )
+    view = str(params.parameters.get("currency_view") or "transaction")
     items = rollforwards(
         session,
         entity_ids=params.entity_ids,
@@ -1076,23 +1170,39 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         cutoff=cutoff,
         params=params,
         contract_id=contract_id,
-        functional=params.parameters.get("currency_view") == "functional",
+        functional=view in {"functional", "reporting"},
+        period_detail=view == "reporting",
         locked=ends,
     )
     _check_view(params, found, items)
+    functional_items = items
+    rate_evidence: list[dict[str, Any]] = []
+    line_codes: tuple[str, ...] = LINES
+    if view == "reporting":
+        items, rate_evidence = reporting_rollforward.project(
+            session,
+            params,
+            tenant_id=uow.principal.tenant_id,
+            entities=found,
+            periods=periods,
+            before=before,
+            items=items,
+            locked=ends,
+        )
+        line_codes = (*LINES[:-1], *reporting_rollforward.EXTRA_LINES, "CLOSING")
     role = BALANCE_ROLES[str(params.parameters.get("balance_role") or "CONTRACT_LIABILITY")]
     totals: dict[str, Lines] = {}
     for item in items:
         into = totals.setdefault(
-            item.currency, {line: dict.fromkeys(ROLLFORWARD_BALANCES, ZERO) for line in LINES}
+            item.currency, {line: dict.fromkeys(ROLLFORWARD_BALANCES, ZERO) for line in line_codes}
         )
-        for line in LINES:
+        for line in line_codes:
             for balance in ROLLFORWARD_BALANCES:
                 into[line][balance] += item.lines[line][balance]
     rows: list[dict[str, Any]] = []
     mixed = len(totals) > 1
     for currency, lines in sorted(totals.items()):
-        for line in LINES:
+        for line in line_codes:
             rows.append(
                 {
                     "row_key": f"{line}:{currency}" if mixed else line,
@@ -1122,7 +1232,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "currency": item.currency,
                 **{
                     line.lower(): tie_outs.money(item.lines[line][role], item.currency)
-                    for line in LINES
+                    for line in line_codes
                 },
             }
         )
@@ -1144,7 +1254,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         contract_id=contract_id,
         locked_ends=ends,
     )
-    if params.parameters.get("currency_view") == "functional":
+    if view in {"functional", "reporting"}:
         closing_balances = functional_balances.read(
             session,
             params,
@@ -1154,23 +1264,46 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             book_code=book_code,
             locked=ends,
         )
+    movement_check = balances_tie(totals)
+    balance_check = balances_equal_tie(closing_balances, functional_items)
+    gl_check = rollforward_gl.build(
+        session,
+        params,
+        entities=found,
+        periods=periods,
+        items=functional_items,
+        book_code=book_code,
+        contract_id=contract_id,
+    )
+    columns: tuple[Column, ...] = COLUMNS
+    if view == "reporting":
+        columns = (
+            *COLUMNS[:-1],
+            Column("translation", "Reporting currency translation", "money"),
+            Column("rounding", "Translation rounding", "money"),
+            COLUMNS[-1],
+        )
+        control["translation_rates"] = rate_evidence
+        control["tie_out_currency_basis"] = "functional for balance and GL comparisons"
+        for check in (balance_check, gl_check):
+            check.setdefault("details", []).append(
+                {"reason": "Compared in functional currency before reporting translation."}
+            )
+        if any(
+            month["OTHER"][balance] != 0
+            for item in functional_items
+            for month in item.period_lines.values()
+            for balance in ROLLFORWARD_BALANCES
+        ):
+            movement_check["result"] = tie_outs.FAIL
+            movement_check.setdefault("details", []).append(
+                {"reason": "Functional period movements contain unexplained OTHER."}
+            )
     return ReportData(
-        columns=COLUMNS,
+        columns=columns,
         rows=tuple(rows),
         control_totals=control,
-        tie_out_results=(
-            balances_tie(totals),
-            balances_equal_tie(closing_balances, items),
-            rollforward_gl.build(
-                session,
-                params,
-                entities=found,
-                periods=periods,
-                items=items,
-                book_code=book_code,
-                contract_id=contract_id,
-            ),
-        ),
+        tie_out_results=(movement_check, balance_check, gl_check),
     )
 
 
@@ -1184,7 +1317,7 @@ def balances_tie(totals: Mapping[str, Lines]) -> dict[str, Any]:
         for balance in ROLLFORWARD_BALANCES:
             add(expected, currency, lines["CLOSING"][balance])
             explained = sum(
-                (lines[line][balance] for line in LINES if line not in ("OTHER", "CLOSING")), ZERO
+                (lines[line][balance] for line in lines if line not in ("OTHER", "CLOSING")), ZERO
             )
             add(actual, currency, explained)
             unexplained = unexplained or lines["OTHER"][balance] != 0

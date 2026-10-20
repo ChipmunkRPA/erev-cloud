@@ -6,6 +6,24 @@
 
 
 
+## Reporting-currency contract balance rollforward — October 20, 2026
+
+- Reporting view now uses the engine's S12-R-18 translation: preceding closing rate for opening,
+  each posting period's average rate for movements, closing rate for closing. TRANSLATION and
+  ROUNDING are explicit aggregate and by-contract lines, separate from FX_REMEASUREMENT.
+- Intermediate functional endpoints and cumulative path deltas retain the original range's
+  opening-liability identity across months. Rate/version facts are pinned per entity, period and
+  type; locked endpoints use frozen cutoffs. Balance and GL comparisons remain functional.
+- Unexplained functional OTHER fails the movement tie even if translation rounds it to zero.
+  Missing flow periods or required rates are refused; no current-rate substitution on reruns.
+- Targeted two-month API journey: EUR 10,000 closing, translated functional FX 180.59 and separate
+  translation -180.59. Publishing a new closing rate changes a fresh run to EUR 8,960 while the
+  original rerun retains its rows. Range-opening versus new-billing attribution is checked.
+  Locked-period reporting and the existing balance translation journey also pass; lint/types pass.
+- Remaining: broader reporting-currency coverage (including revenue/RPO), multi-layer monetary
+  liability FX and combined-contract attribution; the other priority workstream gaps remain as
+  previously stated. No deployment; this does not close the entire four-workstream request.
+
 ## Reporting-currency contract balances — October 20, 2026
 
 - Contract balances now translates dated functional balances into the tenant reporting currency
@@ -215,21 +233,6 @@
   mixed decimal precision, separate entity/currency scopes and cross-page totals. TypeScript
   and ESLint pass. Scenario save, product picker and Tamsin/browser acceptance remain open;
   populated K11, multi-contract K03 and close variance remain Reporting priorities. No deployment.
-
-## Deal preview page — October 19, 2026
-
-- Registered SF-18 at /contracts/deal-preview, enabling the existing Contracts list entry.
-  Scoped users can enter existing/proposed customers, entity, start date, multiple product
-  lines, decimal quantity/price, optional term and performing entity; currency follows entity.
-- Asynchronous submission retains the job ID in the URL for reload/reconnect. Saved previews
-  also open by preview ID. Result tables show per-book allocations, SSP bounds/range, weights,
-  adjustments, indicators, scheduled/awaiting-trigger totals and entity/period revenue rows.
-- Includes permission gating, input retention after network errors, retry controls, invalid-link
-  handling and start-over confirmation. No contract creation or scenario-save button is implied.
-- Nine targeted page/result/permission checks pass; TypeScript and ESLint checks pass.
-  Scenario save, product-picker polish, revenue chart/period totals and real browser/accounting
-  acceptance remain open. K11, multi-contract K03 and close variance remain Reporting priorities.
-  No deployment; main-only publication.
 
 ## Outstanding release verification
 

@@ -8649,3 +8649,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   screen, scenario save, actual-versus-forecast populated K11 and multi-contract K03/close
   variance remain open. Tamsin acceptance and independent sign-off are also outstanding.
   No deployment; direct main workflow.
+
+## Deal preview page — October 19, 2026
+
+- Registered SF-18 at /contracts/deal-preview, enabling the existing Contracts list entry.
+  Scoped users can enter existing/proposed customers, entity, start date, multiple product
+  lines, decimal quantity/price, optional term and performing entity; currency follows entity.
+- Asynchronous submission retains the job ID in the URL for reload/reconnect. Saved previews
+  also open by preview ID. Result tables show per-book allocations, SSP bounds/range, weights,
+  adjustments, indicators, scheduled/awaiting-trigger totals and entity/period revenue rows.
+- Includes permission gating, input retention after network errors, retry controls, invalid-link
+  handling and start-over confirmation. No contract creation or scenario-save button is implied.
+- Nine targeted page/result/permission checks pass; TypeScript and ESLint checks pass.
+  Scenario save, product-picker polish, revenue chart/period totals and real browser/accounting
+  acceptance remain open. K11, multi-contract K03 and close variance remain Reporting priorities.
+  No deployment; main-only publication.

@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current reporting rollforward update (October 20): contract balance rollforward now translates
+monthly functional paths using preceding closing, monthly average and closing rates, with
+separate TRANSLATION and ROUNDING lines. Original range-opening liability attribution persists
+across months; retained rate/version facts reproduce old reports after new rates are published.
+Functional OTHER remains a failed control even when translation rounds it away. Balance and GL
+comparisons stay explicitly functional. This supersedes the older blanket reporting-rollforward
+limitation for supported functional paths. Broader revenue/RPO currency coverage, monetary
+multi-layer liability FX and combined-contract attribution remain incomplete. No deployment.
+
 Current reporting-currency update (October 20): contract balances now translates functional
 balances at approved closing rates into the tenant reporting currency. Exact currency rounding,
 row totals, source rate/version retention and reruns after new rate publication are supported.

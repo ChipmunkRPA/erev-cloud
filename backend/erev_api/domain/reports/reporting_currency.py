@@ -53,7 +53,7 @@ class Translation:
         return tuple(result)
 
 
-def closing(
+def rates_for_period(
     session: Session,
     params: ReportParams,
     *,
@@ -61,9 +61,11 @@ def closing(
     entities: Sequence[tie_outs.EntityRef],
     periods: Mapping[UUID, tie_outs.PeriodRef | None],
     locked: tie_outs.LockedEnds | None = None,
+    rate_type: str = "closing",
+    evidence_key: str = EVIDENCE,
 ) -> Translation:
     if params.binding is not None:
-        evidence = params.binding.evidence.get(EVIDENCE)
+        evidence = params.binding.evidence.get(evidence_key)
         if not isinstance(evidence, dict):
             raise tie_outs.invalid(
                 "currency_view", "Retained reporting-currency rates are missing."
@@ -90,7 +92,7 @@ def closing(
                 "quote_currency": target,
                 "period_key": at.key,
                 "period_end": at.end.isoformat(),
-                "rate_type": "closing",
+                "rate_type": rate_type,
                 "rate": "1",
                 "rate_id": None,
                 "version_id": None,
@@ -99,7 +101,7 @@ def closing(
                 candidates = list(
                     session.execute(
                         fx_rates_in_force(rate_cutoff).where(
-                            fx_rate.c.rate_type == "closing",
+                            fx_rate.c.rate_type == rate_type,
                             fx_rate.c.base_currency == entity.functional_currency,
                             fx_rate.c.quote_currency == target,
                         )
@@ -110,12 +112,12 @@ def closing(
                     for row in candidates
                     if row["period_key"] == at.key and row["effective_date"] == at.end
                 ]
-                if not matched:
+                if not matched and rate_type == "closing":
                     matched = [row for row in candidates if row["effective_date"] == at.end]
                 if len(matched) != 1:
                     raise tie_outs.invalid(
                         "currency_view",
-                        "One approved closing rate is required for "
+                        f"One approved {rate_type} rate is required for "
                         f"{entity.functional_currency}/{target} at {at.key}.",
                     )
                 selected = matched[0]
@@ -126,7 +128,7 @@ def closing(
                 )
             evidence["rates"][str(entity.id)] = fact
         if params.sources is not None:
-            params.sources.record_evidence(EVIDENCE, evidence)
+            params.sources.record_evidence(evidence_key, evidence)
     try:
         target = str(evidence["currency"])
         tie_outs.minor_unit(target)
@@ -141,7 +143,7 @@ def closing(
                 or fact["quote_currency"] != target
                 or fact["period_key"] != at.key
                 or fact["period_end"] != at.end.isoformat()
-                or fact["rate_type"] != "closing"
+                or fact["rate_type"] != rate_type
                 or not rate.is_finite()
                 or rate <= 0
             ):
@@ -158,3 +160,17 @@ def closing(
         raise tie_outs.invalid(
             "currency_view", "Reporting-currency evidence is inconsistent."
         ) from error
+
+
+def closing(
+    session: Session,
+    params: ReportParams,
+    *,
+    tenant_id: UUID,
+    entities: Sequence[tie_outs.EntityRef],
+    periods: Mapping[UUID, tie_outs.PeriodRef | None],
+    locked: tie_outs.LockedEnds | None = None,
+) -> Translation:
+    return rates_for_period(
+        session, params, tenant_id=tenant_id, entities=entities, periods=periods, locked=locked
+    )

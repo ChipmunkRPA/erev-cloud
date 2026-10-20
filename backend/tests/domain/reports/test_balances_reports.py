@@ -465,7 +465,7 @@ def test_functional_balance_reads_locked_endpoint_and_reruns(
         {
             "entity_codes": [AVM_US],
             "book": "ASC606",
-            "currency_view": "functional",
+            "currency_view": currency_view,
             "from_period_key": "FY2026-P08",
             "to_period_key": "FY2026-P08",
         },
@@ -669,3 +669,108 @@ def test_reporting_balances_translate_and_pin_closing_rates(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == rows
+
+
+@pytest.mark.slow
+def test_reporting_rollforward_translates_each_period_and_reruns(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from uuid import UUID
+
+    from support import close_run_worlds, worlds
+    from support import close_runs as runs
+    from support.reference import post
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root), reporting_currency="EUR"
+    )
+    for period_key in ("FY2026-P08", "FY2026-P09"):
+        closed = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=period_key)
+        assert closed["status"] == "SUCCEEDED"
+        world = runs.journal_posted(world, clock, closed["journal_run_id"])
+    params = {
+        "entity_codes": [AVM_US],
+        "book": "ASC606",
+        "currency_view": "reporting",
+        "from_period_key": "FY2026-P08",
+        "to_period_key": "FY2026-P09",
+        "balance_role": "UNBILLED_RECEIVABLE",
+    }
+    run, rows = report_run(world, "contract_balance_rollforward", params)
+    by_key = keyed(rows)
+    assert by_key["OPENING"]["unbilled_receivable"] == {"currency": "EUR", "amount": "0.00"}
+    assert by_key["CLOSING"]["unbilled_receivable"] == {"currency": "EUR", "amount": "10000.00"}
+    assert sum(
+        D(by_key["FX_REMEASUREMENT"][role]["amount"])
+        for role in ("contract_liability", "contract_asset", "unbilled_receivable")
+    ) == D("180.59")
+    assert by_key["TRANSLATION"]["unbilled_receivable"] == {"currency": "EUR", "amount": "-180.59"}
+    contract_row = by_key[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
+    assert contract_row["translation"] == by_key["TRANSLATION"]["unbilled_receivable"]
+    assert tie(run, tie_outs.TO_ROLLFORWARD_BALANCES)["result"] == "PASS"
+    assert tie(run, tie_outs.TO_BALANCES_EQ_ROLLFORWARD)["result"] == "PASS"
+    # A newly published closing rate changes live reporting, not the retained source run.
+    world = close_run_worlds.closing_rates(world, clock, {"FY2026-P09": "1.25"})
+    _, fresh = report_run(world, "contract_balance_rollforward", params)
+    assert keyed(fresh)["CLOSING"]["unbilled_receivable"] == {
+        "currency": "EUR",
+        "amount": "8960.00",
+    }
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+
+
+def test_reporting_months_preserve_range_opening_liability() -> None:
+    from datetime import date
+    from uuid import UUID
+
+    from erev_api.domain.reports.builders.contract_balance_rollforward import (
+        LIABILITY,
+        Entry,
+        period_paths,
+    )
+
+    august = tie_outs.PeriodRef(
+        UUID(int=8),
+        "FY2026-P08",
+        "August",
+        2026,
+        8,
+        3,
+        date(2026, 8, 1),
+        date(2026, 8, 31),
+    )
+    september = tie_outs.PeriodRef(
+        UUID(int=9),
+        "FY2026-P09",
+        "September",
+        2026,
+        9,
+        3,
+        date(2026, 9, 1),
+        date(2026, 9, 30),
+    )
+    months = period_paths(
+        {LIABILITY: D("100")},
+        [
+            Entry((august.end,), Flow(D("-100"), False, "BILLING"), august.id),
+            Entry((september.end,), Flow(D("150"), True, "REVENUE"), september.id),
+        ],
+        [(august, {LIABILITY: D("200")}), (september, {LIABILITY: D("50")})],
+    )
+    assert months[august.id]["BILLINGS"][LIABILITY] == D("100")
+    assert months[september.id]["OPENING"][LIABILITY] == D("200")
+    assert months[september.id]["REVENUE_FROM_OPENING"][LIABILITY] == D("-100")
+    assert months[september.id]["REVENUE_FROM_PERIOD_BILLINGS"][LIABILITY] == D("-50")
+    assert months[september.id]["CLOSING"][LIABILITY] == D("50")
