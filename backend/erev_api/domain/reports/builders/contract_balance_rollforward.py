@@ -41,8 +41,9 @@ for reruns. Liability FX uses verified creation and remeasurement identities: op
 remain in the range-opening bucket, new billing layers keep their own keys, and relief FX
 precedes revenue while closing FX follows it. New close-pass TIME lines use their actual
 retained target/prior/paid decomposition, with recursive historical line dependencies and
-original layer creation dates bound into reruns. Historical passes without source evidence
-retain the legacy path; mixed/command attribution without complete evidence refuses. Layer
+original layer creation dates bound into reruns. Asset sources bypass liability layers; mixed
+control targets retain each source role. Historical passes without source evidence retain the
+legacy path; command attribution without complete evidence refuses. Layer
 totals must match posted period FX.
 
 The reporting view translates monthly functional paths using the engine's S12-R-18 helper:
@@ -192,6 +193,7 @@ class Flow:
     kind: str = ""
     layer_key: str | None = None
     liability_fx: tuple[tuple[str | None, Decimal], ...] = ()
+    asset_fx: bool = False
 
 
 def family_of(flow: Flow) -> str:
@@ -243,6 +245,13 @@ def path(
         family = family_of(flow)
         label = FAMILY_LINES[family]
         if family == FX:
+            if flow.asset_fx:
+                if flow.liability_fx:
+                    raise tie_outs.invalid("currency_view", "FX flow has conflicting source roles.")
+                role = UNBILLED if asset[UNBILLED] else ASSET
+                asset[role] += flow.amount
+                lines[label][role] += flow.amount
+                continue
             if flow.liability_fx:
                 if sum((amount for _, amount in flow.liability_fx), ZERO) != flow.amount:
                     raise tie_outs.invalid(
@@ -697,7 +706,8 @@ def _retained_time_fx(
     params: ReportParams,
 ) -> set[tuple[UUID, UUID, UUID]]:
     """Place actual close-pass TIME deltas on their retained member layers."""
-    evidence_key = "liability_posted_fx_v1"
+    mixed = params.binding is None or "control_posted_fx_v2" in params.binding.evidence
+    evidence_key = "control_posted_fx_v2" if mixed else "liability_posted_fx_v1"
     if params.binding is not None and evidence_key not in params.binding.evidence:
         return set()  # Preserve the explicitly retained historical report path.
     owners = {row.external_id: row.contract_id for row in rows.values()}
@@ -711,9 +721,8 @@ def _retained_time_fx(
             document = pass_evidence.read_for_line(uow, entry.line_id)
             if document is None:
                 continue
-            # Asset-only FX retains the existing asset path. Mixed control targets
-            # require a complete source decomposition, never a liability-only plug.
-            if not any(
+            # Preserve the earlier source-binding contract on historical reruns.
+            if not mixed and not any(
                 item["columns"]["movement_kind"] == "LIABILITY_LAYER_REMEASURED"
                 for item in document["book_output"]["fx_layer_movements"]
             ):
@@ -728,7 +737,7 @@ def _retained_time_fx(
                 )
             period = next(item for item in periods[key[1]] if item.id == entry.period_id)
             beginning = periods[key[1]][0].start
-            groups: dict[tuple[UUID, date], dict[str | None, Decimal]] = {}
+            groups: dict[tuple[UUID, date, str], dict[str | None, Decimal]] = {}
             for movement in result.movements:
                 if not movement.closing or movement.created_on is None:
                     raise tie_outs.invalid(
@@ -741,16 +750,20 @@ def _retained_time_fx(
                     )
                 day = max(period.start, min(period.end, movement.effective_date))
                 layer = None if movement.created_on < beginning else movement.layer_key
-                parts = groups.setdefault((movement.contract_id, day), {})
+                parts = groups.setdefault((movement.contract_id, day, movement.balance_role), {})
                 parts[layer] = parts.get(layer, ZERO) + movement.amount
                 handled.add((*owner_key, period.id))
             handled.add((*key, period.id))
-            for (owner, day), parts in groups.items():
+            for (owner, day, role), parts in groups.items():
                 additions.setdefault((owner, key[1]), []).append(
                     Entry(
                         order=(day, LINE_RANK, period.end, params.known_at, 0, str(entry.line_id)),
                         flow=Flow(
-                            sum(parts.values(), ZERO), False, FX, liability_fx=tuple(parts.items())
+                            sum(parts.values(), ZERO),
+                            False,
+                            FX,
+                            liability_fx=tuple(parts.items()) if role == LIABILITY_ROLE else (),
+                            asset_fx=role == "CONTRACT_ASSET",
                         ),
                         period_id=period.id,
                         entry_kind="FX_REMEASUREMENT",
@@ -763,13 +776,40 @@ def _retained_time_fx(
                 "evidence": [[str(identity), digest] for identity, digest in result.evidence],
             }
     for key, entries in additions.items():
-        posted.setdefault(key, []).extend(entries)
+        posted.setdefault(key, []).extend(_net_time_fx(entries))
     if params.binding is not None and params.binding.evidence[evidence_key] != facts:
         raise tie_outs.invalid(
             "currency_view", "Retained FX source attribution differs from the report binding."
         )
     tie_outs.record_evidence(params, evidence_key, facts)
     return handled
+
+
+def _net_time_fx(entries: Sequence[Entry]) -> tuple[Entry, ...]:
+    """Apply same-day close adjustments together, preserving source role/layer.
+
+    A later close may reverse all of an earlier remeasurement. Intermediate
+    UUID ordering must not overdraw a layer that is settled in the final path.
+    """
+    groups: dict[tuple[UUID | None, date, bool], list[Entry]] = {}
+    for entry in entries:
+        groups.setdefault((entry.period_id, entry.order[0], entry.flow.asset_fx), []).append(entry)
+    result = []
+    for (_, _, asset), items in groups.items():
+        parts: dict[str | None, Decimal] = {}
+        for item in items:
+            for key, amount in item.flow.liability_fx:
+                parts[key] = parts.get(key, ZERO) + amount
+        amount = sum((item.flow.amount for item in items), ZERO)
+        parts = {key: value for key, value in parts.items() if value}
+        if amount or parts:
+            result.append(
+                replace(
+                    min(items, key=lambda item: item.order),
+                    flow=Flow(amount, False, FX, liability_fx=tuple(parts.items()), asset_fx=asset),
+                )
+            )
+    return tuple(result)
 
 
 def _liability_fx(
@@ -853,6 +893,7 @@ def _liability_fx(
                 if entry.period_id == period.id
                 and entry.flow.kind == FX
                 and not entry.flow.liability_fx
+                and not entry.flow.asset_fx
             ]
             amount = sum((entry.flow.amount for entry in fx_entries), ZERO)
             if -sum((Decimal(item["amount_functional"]) for item in movements), ZERO) != amount:

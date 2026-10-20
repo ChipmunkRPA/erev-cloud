@@ -360,3 +360,34 @@ def test_layer_fx_preserves_opening_and_new_billing_fifo() -> None:
     assert result["REVENUE_FROM_OPENING"][LIABILITY] == D("-105")
     assert result["REVENUE_FROM_PERIOD_BILLINGS"][LIABILITY] == D("-120")
     assert result["OTHER"][LIABILITY] == 0
+
+
+@pytest.mark.parametrize("asset_change", [D("4"), D("-4")])
+def test_asset_fx_never_consumes_an_open_liability_layer(asset_change: D) -> None:
+    opening = {LIABILITY: D("100"), ASSET: D("20"), UNBILLED: D(0)}
+    closing = {LIABILITY: D("110"), ASSET: D("20") + asset_change, UNBILLED: D(0)}
+    lines = cbr.path(
+        opening,
+        [
+            cbr.Flow(asset_change, False, cbr.FX, asset_fx=True),
+            cbr.Flow(D("-10"), False, cbr.FX, liability_fx=((None, D("-10")),)),
+        ],
+        closing,
+    )
+    assert lines["FX_REMEASUREMENT"][ASSET] == asset_change
+    assert lines["FX_REMEASUREMENT"][LIABILITY] == D("10")
+    assert ties(lines)
+
+
+def test_repeated_closing_fx_nets_before_touching_a_settled_layer() -> None:
+    day = date(2026, 9, 30)
+    entries = [
+        cbr.Entry(
+            (day, index),
+            cbr.Flow(amount, False, cbr.FX, liability_fx=((None, amount),)),
+            SEPTEMBER.id,
+        )
+        for index, amount in enumerate((D("10"), D("-10")))
+    ]
+    # The final adjustment is zero even if UUID order puts the reversal first.
+    assert cbr._net_time_fx(entries) == ()

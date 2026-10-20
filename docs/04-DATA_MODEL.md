@@ -8860,3 +8860,13 @@ flows remain in their posting periods. Source bindings retain the attribution de
 verify them on rerun. Asset-only FX retains its existing path. Mixed asset/liability targets,
 command-generated paid sources, and combined-membership changes still require complete
 attribution support; broader late-carried/combined public acceptance remains outstanding.
+
+
+**Mixed control-source attribution (October 20, 2026).** The signed trace reader now accepts
+both CONTRACT_ASSET/ASSET_LAYER_REMEASURED and CONTRACT_LIABILITY/LIABILITY_LAYER_REMEASURED
+leaves. Source role remains part of the prior/paid layer key. New rollforward bindings use
+control_posted_fx_v2; asset FX bypasses live liability layers. Same-day TIME adjustments net
+per source role/layer before path application, preserving raw evidence while avoiding arbitrary
+UUID ordering of offsetting corrections. Historical liability_posted_fx_v1 bindings retain their
+original asset-path choice. Revision 0193 updates the rollforward's IPE catalogue. Command-source
+history, split formulas and broad combined/late-carried acceptance remain separate work.

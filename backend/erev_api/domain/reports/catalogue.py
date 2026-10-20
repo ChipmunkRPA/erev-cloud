@@ -485,6 +485,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         sources=(
             "subledger_line",
             "subledger_posting",
+            "close_pass_evidence",
+            "file_object",
             "contract_version_balance",
             "calc_trace",
             "fx_layer_movement",
@@ -501,6 +503,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ),
         joins=(
             "subledger_line.subledger_posting_id = subledger_posting.id",
+            "close_pass_evidence.subledger_posting_id = subledger_posting.id; "
+            "retained entry index identifies the source group",
+            "close_pass_evidence.file_id = file_object.id; "
+            "authenticated pass input/output and paid-line history",
             "subledger_line.contract_id = contract.id",
             "subledger_line.period_id = period.id",
             "contract_version_balance.contract_id = contract.id",
@@ -520,6 +526,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "the role; where not zero and the role holds no such line, the period's kept "
             "BILLING_RECORDED lines and CREDIT_MEMO_RECORDED events, not voided, at their "
             "effective dates",
+            "functional/reporting close FX uses signed asset/liability source layers, "
+            "prior targets and recursively retained paid lines",
+            "source binding retains posted-history dependencies and evidence hashes; "
+            "unavailable source attribution refuses",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),

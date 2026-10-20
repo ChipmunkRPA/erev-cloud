@@ -9087,3 +9087,38 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: contract/estimate record replay, incompatible earlier reference/policy bases,
   missing member sources, group-level posting redistribution, combined/late-carried liability
   FX, and alternate-currency locked datasets/close-report integration.
+
+## Contract records and combined-template modifications — October 20, 2026
+
+- Both ordinary and membership variance replay now introduce retained contract-record changes
+  in the reference phase before business application events. Membership uses original member
+  records first. Unique contract identities, transaction currency, contracting entity and inception
+  must remain fixed; changing these requires an explicit basis migration instead of attribution.
+- The real-engine merge + delivery + approved legacy prospective amendment witness uncovered an
+  engine defect: the single-member template total was compared to whole-group TP. Templates now
+  include unchanged members in the group check and preserve those members' posted allocations,
+  assigning only the residual fixed-basis budget to the amended member. Final group checks remain.
+- Necessary verification covers real monetary amendment effects, ordinary replay, isolated merge
+  invariance, unapplied-record zero effect, late application provenance and unchanged other-member
+  allocations/revenue/RPO (group balance attribution may change). Existing prospective/retrospective/POB-VC cases and basis-migration refusal checks
+  pass; lint/types checked. This supersedes the blanket contract-record refusal below.
+- Still open: missing member sources, incompatible earlier bases, group-level posted redistribution,
+  combined/late-carried liability FX and alternate-currency frozen close integration. Broader release
+  acceptance remains outstanding; no deployment or independent accounting sign-off claimed.
+
+## Estimate versions in membership replay — October 20, 2026
+
+- Group changes can now coexist with new approved estimate versions. The membership phase
+  reconstructs the earlier contract/portfolio-owned estimate set; the reference phase introduces
+  later versions before their ordered business application events. Original versions must remain
+  unchanged and retained, and duplicate identities with different contents are refused.
+- A real-engine/frozen-data witness combines merge, delivery and an added VC version/application
+  event. Membership effects equal the isolated merge; introducing an unapplied version has zero
+  effect; the dated application contributes the independently projected change under LATE_EVENT.
+  The actual VC amount changes, all sums reconcile and application keys remain in the evidence.
+- Necessary grouped journey also covers reverse split, RPO policy changes, conflicting policies,
+  report/cell provenance and exports. Lint/types checked. This supersedes the blanket estimate-
+  record refusal below; contract-header changes and incompatible earlier bases remain separate.
+- Remaining: contract-header replay, missing member sources, group-level posting redistribution,
+  combined/late-carried liability FX and alternate-currency frozen close integration. No deployment
+  or independent accounting sign-off claimed.

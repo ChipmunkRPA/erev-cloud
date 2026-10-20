@@ -999,7 +999,7 @@ def test_multiple_liability_layers_flow_through_functional_report(world: World) 
         )
     )
     assert binding is not None
-    attributed_sources = binding.evidence["liability_posted_fx_v1"]
+    attributed_sources = binding.evidence["control_posted_fx_v2"]
     assert set(attributed_sources) == {str(item["id"]) for item in posted_fx}
     assert any(item["paid_line_ids"] for item in attributed_sources.values())
     assert all(item["evidence"] for item in attributed_sources.values())

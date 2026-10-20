@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Mixed asset/liability FX sources — October 20, 2026
+
+- Signed control-target attribution now admits retained contract-asset and liability
+  remeasurement leaves, preserving role, owner, layer and creation date through prior-target
+  and paid-history subtraction. Functional/reporting rollforwards direct asset FX to assets
+  even with a live liability layer; liability FX remains layer-specific. Same-day closing
+  corrections net per role/layer before application, so UUID ordering cannot overdraw a layer
+  when a later close reverses an earlier remeasurement.
+- New reports bind control_posted_fx_v2. Historical liability_posted_fx_v1 bindings preserve
+  their original asset-path choice. Migration 0193 updates the report IPE source catalogue to
+  name encrypted close-pass evidence and recursive paid-line attribution.
+- Necessary checks: actual reporting-currency asset rollforward/rate change/rerun, actual
+  repeated liability close and report source binding, snapshot producer/migration checks,
+  36 focused catalogue/trace/path checks, scoped lint/types. Synthetic mixed-target checks
+  verify opposite asset/liability signs and asset flows that must not consume liabilities.
+- Still open: command-computation evidence adapters and paid attribution, split-target
+  formulas, combined-membership and late-carried public acceptance, populated foreign
+  lock-to-lock acceptance, the recorded privacy/snapshot registry gaps and final accounting
+  acceptance. A synthetic mixed target is not a populated combined-contract public witness.
+  No deployment or production-readiness claim.
+
+
 ## Historical paid FX and rollforward integration — October 20, 2026
 
 - Close-pass evidence format 2 freezes the exact sealed FX control-line population read by

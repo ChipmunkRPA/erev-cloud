@@ -1,4 +1,4 @@
-"""Resolve signed cumulative liability FX targets into retained source layers.
+"""Resolve signed cumulative control-account FX targets into retained source layers.
 
 A target is not a journal delta. Callers must subtract the prior target and the
 attributed posted history before using this projection as a period movement.
@@ -30,6 +30,7 @@ class LayerSource:
     closing: bool
     amount: Decimal
     created_on: date | None = None
+    balance_role: str = "CONTRACT_LIABILITY"
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +59,7 @@ def project(
 ) -> Target:
     """Expand a retained S14 role target through S12's signed cumulative sums.
 
-    Only persisted liability remeasurements may terminate the graph. Each sum
+    Only retained contract-asset/liability remeasurements may terminate the graph. Each sum
     reconciles independently, so an omitted/corrupt child cannot hide in a net
     zero root. Zero targets with no sources are valid; unknown formulas are not.
     The caller scopes movements to the same immutable version and entity.
@@ -68,10 +69,10 @@ def project(
         raise InvalidLiabilityTrace("Duplicate calculation node identity.")
     leaves: dict[str, Mapping[str, Any]] = {}
     for item in movements:
-        if (
-            item["balance_role"] != "CONTRACT_LIABILITY"
-            or item["movement_kind"] != "LIABILITY_LAYER_REMEASURED"
-        ):
+        if (item["balance_role"], item["movement_kind"]) not in {
+            ("CONTRACT_LIABILITY", "LIABILITY_LAYER_REMEASURED"),
+            ("CONTRACT_ASSET", "ASSET_LAYER_REMEASURED"),
+        }:
             continue
         key = str(item["trace_node_id"])
         if key in leaves:
@@ -144,6 +145,7 @@ def project(
                 nodes[key].formula_id == "fx.remeasure.closing.v1",
                 amount,
                 leaves[key].get("created_on"),
+                str(leaves[key]["balance_role"]),
             )
             for key, amount in sorted(values.items())
         ),
@@ -158,6 +160,7 @@ class LayerDelta:
     closing: bool
     amount: Decimal
     created_on: date | None = None
+    balance_role: str = "CONTRACT_LIABILITY"
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,10 +223,17 @@ def posting_delta(
             "Attributed posted layers differ from the retained paid amount."
         )
     sources: set[UUID] = set()
-    values: dict[tuple[UUID, str, date, bool, date | None], Decimal] = {}
+    values: dict[tuple[UUID, str, date, bool, date | None, str], Decimal] = {}
 
     def add(item: LayerSource | LayerDelta, sign: int) -> None:
-        key = (item.contract_id, item.layer_key, item.effective_date, item.closing, item.created_on)
+        key = (
+            item.contract_id,
+            item.layer_key,
+            item.effective_date,
+            item.closing,
+            item.created_on,
+            item.balance_role,
+        )
         values[key] = values.get(key, Decimal(0)) + sign * item.amount
 
     for index, target_id in enumerate(node.inputs[:-1]):
@@ -245,7 +255,7 @@ def posting_delta(
         node_id,
         currency,
         tuple(
-            LayerDelta(*key[:4], amount, key[4])
+            LayerDelta(*key[:4], amount, key[4], key[5])
             for key, amount in sorted(values.items(), key=lambda item: tuple(map(str, item[0])))
             if amount
         ),
@@ -288,23 +298,32 @@ def from_pass(
     trace = trace_from_row({"id": document["id"], **document["trace_record"]})
     evidence_id = UUID(str(document["id"]))
     creations = {
-        (item["columns"]["contract_key"], item["columns"]["layer_key"]): item["columns"]
+        (
+            item["columns"]["contract_key"],
+            item["columns"]["layer_key"],
+            item["columns"]["balance_role"],
+        ): item["columns"]
         for item in document["book_output"]["fx_layer_movements"]
         if item["columns"]["entity"] == entity_code
-        and item["columns"]["movement_kind"] == "LIABILITY_LAYER_CREATED"
+        and item["columns"]["movement_kind"] in {"LIABILITY_LAYER_CREATED", "ASSET_LAYER_CREATED"}
     }
     movements = []
     for item in document["book_output"]["fx_layer_movements"]:
         values = item["columns"]
-        if (
-            values["entity"] != entity_code
-            or values["movement_kind"] != "LIABILITY_LAYER_REMEASURED"
-        ):
+        if values["entity"] != entity_code or (
+            values["balance_role"],
+            values["movement_kind"],
+        ) not in {
+            ("CONTRACT_LIABILITY", "LIABILITY_LAYER_REMEASURED"),
+            ("CONTRACT_ASSET", "ASSET_LAYER_REMEASURED"),
+        }:
             continue
         owner = owners.get(values["contract_key"])
         if owner is None or values["contract_key"] not in bundle.group.member_contract_keys:
             raise InvalidLiabilityTrace("Liability source has no authorized member owner.")
-        creation = creations.get((values["contract_key"], values["layer_key"]))
+        creation = creations.get(
+            (values["contract_key"], values["layer_key"], values["balance_role"])
+        )
         if creation is None:
             raise InvalidLiabilityTrace("Liability remeasurement has no retained creation source.")
         node_id = item["trace_nodes"]["amount_functional"]
