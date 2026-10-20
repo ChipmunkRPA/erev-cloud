@@ -546,10 +546,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "each original computation group conserves zero and evidence is bound",
             "new member presentation bridges include all foreign contract/entity endpoints, "
             "even without a memo or FX journal; legacy v1 bindings retain memo-triggered scope",
-            "cross-member revenue relief must reproduce the entire recipient-period "
-            "posted revenue from retained liability movements; origin layer creation dates "
-            "classify opening versus current-range revenue and source transfers "
-            "bind original lines",
+            "cross-member revenue reconciles the entire posted delta to original signed sources; "
+            "liability consumption separately reproduces retained owner/layer relief while "
+            "own-member asset creation remains asset revenue; original layer dates classify "
+            "opening consumption and v4 presentation binds the liability relief amounts",
             "new source-backed revenue runs recursively reconcile original functional targets, "
             "prior targets and sealed paid-line history; reversals must reproduce the same "
             "owner/layer relief population and preserve evidence on rerun",
@@ -622,6 +622,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "new positive transaction runs pool control flows by retained computation version, "
             "entity and currency; actual opening-layer consumption is assigned to each recognizing "
             "member after prior non-revenue debits; source groups and lines are bound",
+            "functional/reporting mixed liability consumption and own-member asset creation "
+            "use original source amounts; only consumed opening liabilities enter opening relief",
             "functional/reporting cross-member liability relief includes source-proven revenue "
             "reversals using original functional targets and recursive paid-line attribution",
             "ordinary transaction revenue reversals use original signed transaction sources, "

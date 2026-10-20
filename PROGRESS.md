@@ -2,6 +2,28 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Mixed liability relief and own-member asset revenue — October 20, 2026
+
+- Functional/reporting cross-member revenue now accepts original sources that both consume
+  another member's liability and create the recognizing member's own contract asset. The full
+  posted revenue delta is verified; only liability-consumption sources must match retained
+  owner/layer relief. Asset creation remains separately evidenced and is not opening relief.
+- Presentation bridge v4 uses the verified total liability relief to correct local member
+  replay that initially presents cross-member consumption as asset revenue. The amount comes
+  from original source layers, never from OTHER. Opening/current-range relief, asset revenue
+  and member transfers reconcile independently; original v1-v3 bindings retain their path.
+- A real foreign-currency combined scenario consumes USD 45,000 of July advances and recognizes
+  USD 54,000 in August, creating an asset for the excess. After the actual FX close, functional
+  disclosure reports GBP 43,470 revenue and GBP 36,000 opening relief. Functional/reporting
+  reruns retain their original source amounts. Catalogue migration 0202 describes this method.
+- Necessary verification passed: the mixed-source scenario, existing multi-period delivery/return
+  disclosure and reruns, catalogue migration consistency, scoped lint and types.
+- Mixed TIME/EVENT source allocation remains open: S14 currently computes a proportional
+  functional TIME amount without retaining per-source allocation. Do not infer TIME ownership
+  from S12 source dates, which also represent EVENT revenue. Cross-owner asset settlement,
+  new-liability reversal presentation, remaining close-only histories and other release gaps
+  still need work. No deployment or production-readiness claim.
+
 ## Retained revenue history for close passes — October 20, 2026
 
 - Real period-end passes now freeze revenue paid-line identities and both original currency
@@ -209,29 +231,6 @@
   EVENT corrections and membership transitions, recorded privacy/snapshot registry gaps and
   final accounting/release acceptance. Generalizing the endpoint trigger does not establish
   those separate source-flow cases or production readiness.
-
-## Combined-member credit-memo presentation — October 20, 2026
-
-- Functional billing now reads source layers across the report's authorized members of the
-  same immutable group version and entity. A credit memo can therefore price a relief whose
-  layer belongs to another member, retaining the real source owner and movement identities.
-- Added a combined-liability presentation bridge for in-range cross-member memos. It computes
-  each endpoint's original layer carrying versus the engine's member presentation, then adds
-  the known memo issuer/source transfers. Each original computation group must conserve zero.
-  The independently derived amounts appear as RECLASSIFICATIONS; no amount is inferred from
-  OTHER. Bound endpoint facts, movements and transfers are checked on rerun, including monthly
-  reporting-currency paths. Historical bindings without the bridge retain the previous path.
-- Fixed a separate false-PASS: unexplained OTHER on an individual contract now fails the
-  movement tie-out even when opposing contract errors cancel in the currency total. Migration
-  0195 and the IPE catalogue describe the expanded source scope, bridge and per-contract check.
-- Necessary checks passed: public two-member memo consuming another member's layer, same and
-  different historical rates, exact member closing/reclassification amounts, bound reruns,
-  reporting-currency monthly projection, 27 scoped path checks and lint/types. The differing
-  rate case closes at GBP 74,314.29 / 41,285.71 with GBP +714.29 / -714.29 reclassification;
-  every member has zero unexplained OTHER. No deployment.
-- Still open: general member reallocations without an in-range cross-member memo, more complex
-  carried EVENT corrections, recorded privacy/snapshot registry gaps and final accounting/
-  release acceptance. These cases do not establish every membership transition or readiness.
 
 ## Outstanding release verification
 

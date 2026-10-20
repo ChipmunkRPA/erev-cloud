@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Mixed liability relief and own-member asset revenue — October 20, 2026
+
+- Functional/reporting cross-member revenue now accepts original sources that both consume
+  another member's liability and create the recognizing member's own contract asset. The full
+  posted revenue delta is verified; only liability-consumption sources must match retained
+  owner/layer relief. Asset creation remains separately evidenced and is not opening relief.
+- Presentation bridge v4 uses the verified total liability relief to correct local member
+  replay that initially presents cross-member consumption as asset revenue. The amount comes
+  from original source layers, never from OTHER. Opening/current-range relief, asset revenue
+  and member transfers reconcile independently; original v1-v3 bindings retain their path.
+- A real foreign-currency combined scenario consumes USD 45,000 of July advances and recognizes
+  USD 54,000 in August, creating an asset for the excess. After the actual FX close, functional
+  disclosure reports GBP 43,470 revenue and GBP 36,000 opening relief. Functional/reporting
+  reruns retain their original source amounts. Catalogue migration 0202 describes this method.
+- Necessary verification passed: the mixed-source scenario, existing multi-period delivery/return
+  disclosure and reruns, catalogue migration consistency, scoped lint and types.
+- Mixed TIME/EVENT source allocation remains open: S14 currently computes a proportional
+  functional TIME amount without retaining per-source allocation. Do not infer TIME ownership
+  from S12 source dates, which also represent EVENT revenue. Cross-owner asset settlement,
+  new-liability reversal presentation, remaining close-only histories and other release gaps
+  still need work. No deployment or production-readiness claim.
+
 ## Retained revenue history for close passes — October 20, 2026
 
 - Real period-end passes now freeze revenue paid-line identities and both original currency

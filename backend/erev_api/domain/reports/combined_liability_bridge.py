@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 
 ZERO = Decimal(0)
 ROLE = "contract_liability"
-KEY = "combined_liability_bridge_v3"
+KEY = "combined_liability_bridge_v4"
+REVENUE_KEY = "combined_liability_bridge_v3"
 ENDPOINT_KEY = "combined_liability_bridge_v2"
 LEGACY_KEY = "combined_liability_bridge_v1"
 
@@ -45,11 +46,14 @@ def apply(
     transfers: Mapping[tuple[UUID, UUID, UUID], Decimal],
     foreign_members: frozenset[tuple[UUID, UUID]],
     opening_relief: Mapping[tuple[UUID, UUID, UUID], Decimal],
+    liability_relief: Mapping[tuple[UUID, UUID, UUID], Decimal],
 ) -> tuple[ContractRollforward, ...]:
     evidence_key = KEY
     if params.binding is not None:
         evidence_key = next(
-            key for key in (KEY, ENDPOINT_KEY, LEGACY_KEY) if key in params.binding.evidence
+            key
+            for key in (KEY, REVENUE_KEY, ENDPOINT_KEY, LEGACY_KEY)
+            if key in params.binding.evidence
         )
     if evidence_key == LEGACY_KEY:
         touched = {owner for owner, _, _ in transfers}
@@ -152,10 +156,33 @@ def apply(
             lines: Mapping[str, Mapping[str, Decimal]],
             amount: Decimal,
             original: Decimal | None = None,
+            consumed_liability: Decimal | None = None,
         ) -> dict[str, dict[str, Decimal]]:
             changed = {name: dict(values) for name, values in lines.items()}
             changed["RECLASSIFICATIONS"][ROLE] += amount
             changed["OTHER"][ROLE] -= amount
+            if evidence_key == KEY and consumed_liability is not None:
+                raw_relief = -sum(
+                    (
+                        changed[label][ROLE]
+                        for label in ("REVENUE_FROM_OPENING", "REVENUE_FROM_PERIOD_BILLINGS")
+                    ),
+                    ZERO,
+                )
+                # Local member replay can put another member's consumed advance
+                # into asset revenue. Reclassify only the independently proven
+                # layer consumption; unexplained OTHER never determines this amount.
+                shift = consumed_liability - raw_relief
+                asset_revenue = changed["REVENUE_FROM_PERIOD_BILLINGS"]["contract_asset"]
+                if asset_revenue - shift < 0:
+                    raise tie_outs.invalid(
+                        "currency_view",
+                        "Original liability relief exceeds available revenue sources.",
+                    )
+                changed["REVENUE_FROM_PERIOD_BILLINGS"]["contract_asset"] -= shift
+                changed["REVENUE_FROM_PERIOD_BILLINGS"][ROLE] -= shift
+                changed["OTHER"]["contract_asset"] += shift
+                changed["OTHER"][ROLE] += shift
             if original is not None:
                 previous_opening = changed["REVENUE_FROM_OPENING"][ROLE]
                 changed["REVENUE_FROM_OPENING"][ROLE] = -original
@@ -177,6 +204,7 @@ def apply(
                 item.period_lines[period.id],
                 current - previous,
                 opening_relief.get((*key, period.id)),
+                liability_relief.get((*key, period.id)),
             )
             previous = current
         selected_opening = [
@@ -184,11 +212,19 @@ def apply(
             for (owner, entity, _), amount in opening_relief.items()
             if (owner, entity) == key
         ]
+        selected_liability = [
+            amount
+            for (owner, entity, _), amount in liability_relief.items()
+            if (owner, entity) == key
+        ]
         output.append(
             replace(
                 item,
                 lines=adjusted(
-                    item.lines, total, sum(selected_opening, ZERO) if selected_opening else None
+                    item.lines,
+                    total,
+                    sum(selected_opening, ZERO) if selected_opening else None,
+                    sum(selected_liability, ZERO) if selected_liability else None,
                 ),
                 period_lines=months,
             )
@@ -199,10 +235,14 @@ def apply(
         )
     evidence = {
         "endpoints": facts,
-        ("source_transfers" if evidence_key == KEY else "memo_transfers"): {
+        ("source_transfers" if evidence_key in {KEY, REVENUE_KEY} else "memo_transfers"): {
             ":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())
         },
     }
+    if evidence_key == KEY:
+        evidence["liability_relief"] = {
+            ":".join(map(str, key)): str(value) for key, value in sorted(liability_relief.items())
+        }
     if params.binding is not None and params.binding.evidence[evidence_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Member liability bridge differs from retained evidence."

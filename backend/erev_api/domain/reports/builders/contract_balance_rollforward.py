@@ -475,6 +475,7 @@ def rollforwards(
     )
     member_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     opening_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
+    liability_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     booked_billing: dict[tuple[UUID, UUID], list[Entry]] = {}
     if functional and documents:
         # Read billing at its source date in either posting mode. ENGINE totals
@@ -552,11 +553,17 @@ def rollforwards(
     if (
         functional
         and documents
-        and (params.binding is None or "combined_liability_bridge_v3" in params.binding.evidence)
+        and (
+            params.binding is None
+            or any(
+                key in params.binding.evidence
+                for key in ("combined_liability_bridge_v3", "combined_liability_bridge_v4")
+            )
+        )
     ):
         from ..revenue_layer_transfers import read as revenue_transfers
 
-        revenue_sources, opening_relief = revenue_transfers(
+        revenue_sources, opening_relief, liability_relief = revenue_transfers(
             session, params, transaction_ends, periods, posted, uow=uow
         )
         for transfer_key, amount in revenue_sources.items():
@@ -608,6 +615,7 @@ def rollforwards(
                     "combined_liability_bridge_v1",
                     "combined_liability_bridge_v2",
                     "combined_liability_bridge_v3",
+                    "combined_liability_bridge_v4",
                 )
             )
         )
@@ -626,6 +634,7 @@ def rollforwards(
                 monthly=monthly,
                 transfers=member_transfers,
                 opening_relief=opening_relief,
+                liability_relief=liability_relief,
                 foreign_members=frozenset(
                     (row.contract_id, row.entity_id)
                     for row in (*opening_rows, *closing_rows)

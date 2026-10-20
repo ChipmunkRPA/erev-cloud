@@ -1,8 +1,9 @@
 """Cross-member liability relief checked against original posted revenue sources.
 
 Retained liability reliefs must reproduce the full recipient/period posting.
-Source-proven reversals may reduce original consumed layers. Mixed TIME allocation,
-close-pass-only and asset-creating histories still require additional presentation;
+Source-proven reversals may reduce original consumed layers. Own-member asset creation
+can accompany cross-member liability relief. Mixed TIME allocation, close-pass-only
+and new-liability histories still require additional presentation;
 no difference is apportioned or inferred from the report's OTHER amount.
 """
 
@@ -42,12 +43,13 @@ def read(
     posted: Mapping[tuple[UUID, UUID], list[Entry]],
     *,
     uow: UnitOfWork | None = None,
-) -> tuple[Amounts, Amounts]:
+) -> tuple[Amounts, Amounts, Amounts]:
     groups: dict[tuple[UUID, UUID], list[tie_outs.BalanceRow]] = defaultdict(list)
     for row in rows.values():
         groups[(row.version_id, row.entity_id)].append(row)
     transfers: Amounts = defaultdict(Decimal)
     opening: Amounts = {}
+    liability: Amounts = {}
     consumed: set[UUID] = set()
     evidence: dict[str, Any] = {}
     signed_key = "revenue_signed_sources_v1"
@@ -211,12 +213,17 @@ def read(
                                 "Retained revenue delta differs from the report flow.",
                             )
                         for part in result.delta.movements:
-                            if part.amount and part.movement_kind != "LIABILITY_LAYER_CONSUMED":
+                            if part.movement_kind == "LIABILITY_LAYER_CONSUMED":
+                                posted_reliefs[(part.contract_id, part.layer_key)] -= part.amount
+                            elif part.amount and not (
+                                part.movement_kind == "ASSET_LAYER_CREATED"
+                                and part.contract_id == recognizer
+                            ):
                                 raise tie_outs.invalid(
                                     "currency_view",
-                                    "Revenue requires asset or new-liability source presentation.",
+                                    "Revenue requires foreign-owner asset or new-liability "
+                                    "source presentation.",
                                 )
-                            posted_reliefs[(part.contract_id, part.layer_key)] -= part.amount
                         posted_ids.update((revenue_id, *result.paid_line_ids))
                         posted_evidence[str(entry.line_id)] = {
                             "revenue_line_id": str(revenue_id),
@@ -253,14 +260,19 @@ def read(
                             "Posted revenue owners differ from the retained relief history.",
                         )
                 total = sum((entry.flow.amount for entry in entries), ZERO)
-                if total != amounts[source_key] or (
-                    not verify_period and any(entry.flow.amount < 0 for entry in entries)
+                # A verified posting can also create the recognizer's own asset.
+                # Its full revenue delta reconciles above; only liability consumption
+                # must equal the final retained relief population. Asset creation is
+                # never relabelled as opening-liability relief or a member transfer.
+                if not verify_period and (
+                    total != amounts[source_key] or any(entry.flow.amount < 0 for entry in entries)
                 ):
                     raise tie_outs.invalid(
                         "currency_view",
                         "Cross-member revenue requires retained posting-delta replay.",
                     )
                 opening[(recognizer, entity, at.id)] = original[source_key]
+                liability[(recognizer, entity, at.id)] = amounts[source_key]
                 consumed.update(sources[source_key])
                 evidence[f"{version}:{entity}:{recognizer}:{at.id}"] = {
                     "amount": str(total),
@@ -294,4 +306,4 @@ def read(
     tie_outs.require_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_evidence(params, KEY, evidence)
-    return dict(transfers), opening
+    return dict(transfers), opening, liability
