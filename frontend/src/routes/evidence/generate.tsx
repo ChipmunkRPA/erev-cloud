@@ -119,10 +119,7 @@ export function GenerateClosePack() {
     period === undefined
       ? []
       : (lockQuery.data ?? []).filter(
-          (item) =>
-            item.kind === "LOCK" &&
-            item.previous_lock_id === null &&
-            item.snapshot_manifest_sha256 !== null,
+          (item) => item.kind === "LOCK" && item.snapshot_manifest_sha256 !== null,
         );
   const lock = locks.find((item) => item.id === lockId);
   const busy = command.pending || accepted;

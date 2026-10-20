@@ -32,6 +32,8 @@ PATHS = {
     "sod_conflict_report": "access/sod_conflict_report",
 }
 
+RELOCK_PATHS = {"variance_between_closes": "relock/variance_between_closes"}
+
 
 @dataclass(frozen=True, slots=True)
 class ReportSource:
@@ -46,7 +48,7 @@ class ReportSource:
 
 def check_binding(row: Mapping[str, Any], source: ReportSource) -> None:
     if (
-        source.report_code not in PATHS
+        source.report_code not in (PATHS | RELOCK_PATHS)
         or row["id"] != source.run_id
         or row["report_code"] != source.report_code
         or sha256_hex(row["parameters"]) != source.parameters_sha256
@@ -117,7 +119,7 @@ def collect(uow: UnitOfWork, source: ReportSource) -> tuple[PackFile, ...]:
         raise Problem("validation-failed", "The supporting report output differs from its run.")
     manifest, manifest_hash = _file(uow, row["manifest_file_id"], "application/json")
     check_manifest(manifest, row, output)
-    path = PATHS[source.report_code]
+    path = (PATHS | RELOCK_PATHS)[source.report_code]
     return (
         PackFile(f"{path}.csv", output, report_run_id=source.run_id),
         PackFile(f"{path}.manifest.json", manifest, report_run_id=source.run_id),

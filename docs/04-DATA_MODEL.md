@@ -8726,3 +8726,13 @@ manifest downloads. The sample creation form now accepts exact external IDs and 
 cutoff, uses the idempotent command pipeline, and recovers accepted result links through the
 job if the pack header is unavailable. The register switches between close and sample history,
 showing sampled contracts and cutoffs and preserving the sample view on return from details.
+
+### Retained re-lock pack sources — October 19, 2026
+
+CLOSE source binding v3 retains the prior LOCK identity in addition to the current selected
+LOCK, five ordinary supporting runs and a variance_between_closes run. Ordinary runs use the
+freeze cutoff; variance uses the request cutoff so both lock records exist. Its monetary and
+driver endpoints remain bound to the frozen closes. v1/v2 first-close bindings remain readable.
+The same readiness gate waits for all six runs and the dedicated audit verification. Assembly
+requires the saved comparison, frozen monetary changes, both lock references and the variance
+CSV/manifest/source trio under relock/. No missing comparison is reconstructed on download.

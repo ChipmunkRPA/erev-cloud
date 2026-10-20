@@ -1,8 +1,8 @@
-"""Assemble a first-close evidence ZIP from retained, individually verified sources.
+"""Assemble a close or re-lock evidence ZIP from retained, individually verified sources.
 
 This is a read-only assembly boundary, not the EVIDENCE_PACK job or download API.
-Re-lock assembly remains refused until the required driver-variance report exists;
-the stored raw comparison alone does not meet that requirement.
+Re-lock bindings include a retained driver-variance report as well as the original
+stored comparison; neither replaces the other.
 """
 
 from __future__ import annotations
@@ -82,12 +82,12 @@ def assemble_close(uow: UnitOfWork, pack_id: UUID) -> Archive:
     require_for_entity(uow.ctx, "report.export", bound.entity_id)
     selected = evidence_selection.resolve(uow, bound.request)
     frozen = evidence_close.read_locked(uow, selected)
-    if evidence_relock.collect(uow, selected):
+    relock_files = evidence_relock.collect(uow, selected)
+    if bool(relock_files) != isinstance(bound, evidence_sources.RelockCloseSources):
         raise Problem(
-            "validation-failed",
-            "Re-lock pack assembly requires the variance-between-closes report.",
+            "validation-failed", "The re-lock sources differ from their retained binding."
         )
-    if isinstance(bound, evidence_sources.QueuedCloseSources):
+    if isinstance(bound, evidence_sources.QueuedSources):
         verification_id = evidence_verification.completed(
             uow.session,
             job_id=bound.audit_verification_job_id,
@@ -100,6 +100,7 @@ def assemble_close(uow: UnitOfWork, pack_id: UUID) -> Archive:
         verification_id = bound.audit_verification_id
     files = [
         *evidence_close.frozen_payloads(frozen),
+        *relock_files,
         *evidence_certification.collect(uow, selected),
         *evidence_journals.collect(uow, selected),
         *evidence_reconciliations.collect(uow, selected),
@@ -111,4 +112,18 @@ def assemble_close(uow: UnitOfWork, pack_id: UUID) -> Archive:
     files.append(
         PackFile("lock/source_binding.json", canonical_bytes(bound.model_dump(mode="json")))
     )
+    if relock_files:
+        required_relock = {
+            "relock/stored_comparison.json",
+            "relock/frozen_measure_changes.json",
+            "relock/sources.json",
+            *(
+                f"relock/variance_between_closes.{suffix}"
+                for suffix in ("csv", "manifest.json", "source.json")
+            ),
+        }
+        if not required_relock <= {file.path for file in files}:
+            raise Problem(
+                "validation-failed", "The re-lock pack is missing its comparison evidence."
+            )
     return checked_archive(files, report_run_ids=set(bound.pack_values()["report_run_ids"]))

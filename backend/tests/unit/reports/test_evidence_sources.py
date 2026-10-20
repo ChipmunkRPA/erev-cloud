@@ -162,3 +162,47 @@ def test_v2_keeps_a_dedicated_audit_job_without_changing_v1_bytes() -> None:
     ):
         with pytest.raises(Problem):
             checked_row({**row, "source_binding": invalid})
+
+
+def test_relock_binding_requires_variance_at_request_time_and_distinct_locks() -> None:
+    from erev_api.domain.reports.evidence_sources import RelockCloseSources
+
+    document = {
+        **DOCUMENT,
+        "format": "erev.close-evidence.sources.v3",
+        "previous_lock_id": str(UUID(int=99)),
+        "pack_id": str(UUID(int=100)),
+        "audit_verification_job_id": str(UUID(int=101)),
+        "requested_at": NOW + timedelta(seconds=5),
+        "supporting_reports": [
+            *DOCUMENT["supporting_reports"],
+            {
+                **DOCUMENT["supporting_reports"][0],
+                "report_code": "variance_between_closes",
+                "run_id": str(UUID(int=102)),
+                "job_id": str(UUID(int=103)),
+                "known_at": NOW + timedelta(seconds=5),
+            },
+        ],
+    }
+    del document["audit_verification_id"]
+    bound = RelockCloseSources.model_validate(document)
+    row = {
+        **bound.pack_values(),
+        "id": bound.pack_id,
+        "tenant_id": bound.tenant_id,
+        "created_at": bound.requested_at,
+    }
+    assert checked_row(row) == bound
+    for changed in (
+        {"previous_lock_id": DOCUMENT["request"]["period_lock_id"]},
+        {"supporting_reports": DOCUMENT["supporting_reports"]},
+        {
+            "supporting_reports": [
+                *DOCUMENT["supporting_reports"],
+                {**document["supporting_reports"][-1], "known_at": NOW},
+            ]
+        },
+    ):
+        with pytest.raises(ValidationError):
+            RelockCloseSources.model_validate({**document, **changed})

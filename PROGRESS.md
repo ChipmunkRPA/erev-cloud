@@ -6,6 +6,19 @@
 
 
 
+## Re-lock variance report integration — October 19, 2026
+
+- Close-pack creation now queues the existing variance-between-closes builder for re-locks.
+  New v3 bindings retain the previous/current locks, report run and request cutoff; ordinary
+  supporting reports retain the freeze cutoff. v1/v2 first-close bindings remain unchanged.
+- Readiness waits for the variance job and audit verification; assembly includes the retained
+  CSV, IPE manifest, source identity, original stored comparison and frozen measure changes.
+  Frontend now permits re-lock selection and describes the additional evidence.
+- Actual queue/worker/retained-output acceptance over seeded empty locks passes, as does the
+  real first-close command journey. Focused binding/assembly checks and 34 UI checks pass.
+- Still open: populated re-open/re-lock end-to-end acceptance, cross-contract driver evidence,
+  catalogue PACK builders, change/access packs and independent accounting sign-off. No deployment.
+
 ## Contract sample history register — October 19, 2026
 
 - Added sample history to the API and evidence page, with contract IDs, effective/known cutoffs,
@@ -234,20 +247,6 @@
   source entity; no scope is silently omitted.
 - Still open: authorized retained-actuals reader, contract/category mapping, comparison report
   builder/registration and UI. No deployment or overall production-readiness claim.
-
-## Snapshot-cutoff production actuals reader — October 19, 2026
-
-- Confirmed SBX-03 snapshots deliberately omit journals. Added a separate production-only
-  actuals reader using the journal extract's cutoff-bound lifecycle evidence and current entity
-  permissions. It retains acknowledged revenue batches only, preserving transaction/functional
-  debits and credits and journal/contract/obligation identities for the comparison mapper.
-- Later acknowledgements/cancellations are evaluated at the snapshot cutoff; cancelled lines,
-  duplicate lines, out-of-scope books/entities and post-cutoff lines are excluded or refused.
-  Scenario journals cannot be passed off as production actuals.
-- Six focused checks and the real scenario journey pass, including empty production actuals
-  despite scenario computations and refusal of a sandbox source. Ruff/Mypy pass.
-- Still required: durable capture retention in creation/refresh, category/contract mapping,
-  comparison builder/registration and UI. FCS-4 is not yet runnable. No deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

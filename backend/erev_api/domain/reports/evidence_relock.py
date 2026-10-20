@@ -8,8 +8,8 @@ replace a missing or incorrect diff with a newly generated report.
 
 Alongside those original bytes, deliver contract-level monetary changes from the
 same frozen sources. This separate payload explicitly has no driver attribution.
-This supplies stored close-comparison evidence. The separate
-``variance_between_closes`` report and complete pack workflow remain required.
+The pack orchestrator separately binds and collects the variance_between_closes
+report; this collector never substitutes raw differences for driver attribution.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.uow import UnitOfWork
 
 
-def _prior(uow: UnitOfWork, current: evidence_close.FrozenClose) -> UUID | None:
+def prior_lock_id(uow: UnitOfWork, current: evidence_close.FrozenClose) -> UUID | None:
     parent = current.record["previous_lock_id"]
     if parent is None:
         return None
@@ -86,7 +86,7 @@ def _side(source: evidence_close.FrozenClose) -> relock_diff.LockSide:
 def collect(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]:
     """Original stored diff and its bound lock/file identities; empty for a genuine first lock."""
     current = evidence_close.read_locked(uow, selection)
-    prior_id = _prior(uow, current)
+    prior_id = prior_lock_id(uow, current)
     file_id = current.record["diff_report_file_id"]
     if prior_id is None:
         if file_id is not None:

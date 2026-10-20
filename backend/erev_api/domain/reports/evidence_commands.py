@@ -1,10 +1,10 @@
-"""Transactional creation of retained first-close packs (RPS-16).
+"""Transactional creation of retained close and re-lock packs (RPS-16).
 
 The API/idempotency boundary or automatic preparation worker owns commit. Creation queues a
 dedicated audit verification unless its caller supplies an explicit completed verification ID.
 It never verifies
 in a separate transaction; all report jobs, numbering and pack state roll back
-with the caller. Other pack kinds and re-lock variance remain pending.
+with the caller. Re-lock creation queues a bound variance report and fresh audit verification.
 """
 
 from __future__ import annotations
@@ -55,9 +55,9 @@ def create_close(
     for entity_id in selection.entity_ids:
         for permission in PERMISSIONS:
             require_for_entity(uow.ctx, permission, entity_id)
-    if evidence_relock.collect(uow, selection):
+    if evidence_relock.collect(uow, selection) and verification_id is not None:
         raise Problem(
-            "validation-failed", "Re-lock packs require the variance-between-closes report."
+            "validation-failed", "Re-lock packs require a dedicated queued audit verification."
         )
     # Authorize every retained reference as the requester before a SYSTEM worker is queued.
     # These collectors also refuse unprovable approval/journal/reconciliation evidence early.
@@ -113,7 +113,7 @@ def create_close(
             "audit_verification_id": verification_id,
             "audit_verification_job_id": (
                 bound.audit_verification_job_id
-                if isinstance(bound, evidence_sources.QueuedCloseSources)
+                if isinstance(bound, evidence_sources.QueuedSources)
                 else None
             ),
             "report_run_ids": bound.pack_values()["report_run_ids"],

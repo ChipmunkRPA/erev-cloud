@@ -1,7 +1,7 @@
 """EVIDENCE_PACK worker: retained first-close and contract-sample lifecycle.
 
 PREPARE_CLOSE performs the durable post-lock handoff before the bound build. Samples
-reauthorize the active human requester. CHANGE/ACCESS and re-lock variance remain unavailable.
+reauthorize the active human requester. CHANGE/ACCESS remain unavailable.
 Public commands are separate; no worker capability is a caller permission.
 """
 

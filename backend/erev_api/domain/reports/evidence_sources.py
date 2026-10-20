@@ -26,7 +26,12 @@ from sqlalchemy import select
 
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.tables import evidence_pack, report_run
-from erev_api.domain.reports import evidence_audit, evidence_close, evidence_report_plan
+from erev_api.domain.reports import (
+    evidence_audit,
+    evidence_close,
+    evidence_relock,
+    evidence_report_plan,
+)
 from erev_api.domain.reports.evidence_reports import PATHS, ReportSource
 from erev_api.domain.reports.evidence_selection import SOURCE_PERMISSIONS, resolve
 from erev_api.enums import JobKind
@@ -69,16 +74,24 @@ class _CloseSources(BaseModel):
     @model_validator(mode="after")
     def complete_sources(self) -> Self:
         reports = self.supporting_reports
+        relock = getattr(self, "previous_lock_id", None) is not None
+        expected_codes = set(PATHS) | ({"variance_between_closes"} if relock else set())
         if (
             self.cutoff_known_at > self.requested_at
-            or len(reports) != len(PATHS)
-            or {report.report_code for report in reports} != set(PATHS)
+            or len(reports) != len(expected_codes)
+            or {report.report_code for report in reports} != expected_codes
             or len({report.run_id for report in reports}) != len(reports)
             or len({report.job_id for report in reports}) != len(reports)
             or len(set(self.frozen_report_run_ids)) != len(self.frozen_report_run_ids)
             or set(self.frozen_report_run_ids) & {report.run_id for report in reports}
             or any(
-                report.entity_ids != (self.entity_id,) or report.known_at != self.cutoff_known_at
+                report.entity_ids != (self.entity_id,)
+                or report.known_at
+                != (
+                    self.requested_at
+                    if report.report_code == "variance_between_closes"
+                    else self.cutoff_known_at
+                )
                 for report in reports
             )
         ):
@@ -114,10 +127,9 @@ class CloseSources(_CloseSources):
     audit_verification_id: UUID
 
 
-class QueuedCloseSources(_CloseSources):
+class QueuedSources(_CloseSources):
     """A dedicated verification job; the exact result is resolved only after success."""
 
-    format: Literal["erev.close-evidence.sources.v2"]
     audit_verification_job_id: UUID
     pack_id: UUID
 
@@ -128,7 +140,22 @@ class QueuedCloseSources(_CloseSources):
         return self
 
 
-type CloseBinding = CloseSources | QueuedCloseSources
+class QueuedCloseSources(QueuedSources):
+    format: Literal["erev.close-evidence.sources.v2"]
+
+
+class RelockCloseSources(QueuedSources):
+    format: Literal["erev.close-evidence.sources.v3"]
+    previous_lock_id: UUID
+
+    @model_validator(mode="after")
+    def distinct_locks(self) -> Self:
+        if self.previous_lock_id == self.request.period_lock_id:
+            raise ValueError("A re-lock must compare two distinct locks.")
+        return self
+
+
+type CloseBinding = CloseSources | QueuedCloseSources | RelockCloseSources
 _BINDING: TypeAdapter[CloseBinding] = TypeAdapter(
     Annotated[CloseBinding, Field(discriminator="format")]
 )
@@ -175,8 +202,8 @@ def prepare_close(
 
 def prepare_queued_close(
     uow: UnitOfWork, request: ClosePackCreateIn, *, pack_id: UUID
-) -> QueuedCloseSources:
-    """Queue a fresh verification and five reports atomically with the caller's pack."""
+) -> QueuedCloseSources | RelockCloseSources:
+    """Queue fresh verification and all supporting reports atomically with the pack."""
     # Never reuse a pending tenant verification: it may have read a prefix before this lock.
     verification_job = uow.defer(
         JobKind.AUDIT_CHAIN_VERIFY,
@@ -184,8 +211,20 @@ def prepare_queued_close(
         subject_type="evidence_pack",
         subject_id=pack_id,
     )
+    prepared = _prepared(uow, request)
+    prior = evidence_relock.prior_lock_id(
+        uow, evidence_close.read_locked(uow, resolve(uow, request))
+    )
+    if prior is not None:
+        return RelockCloseSources(
+            **prepared,
+            format="erev.close-evidence.sources.v3",
+            previous_lock_id=prior,
+            audit_verification_job_id=verification_job["id"],
+            pack_id=pack_id,
+        )
     return QueuedCloseSources(
-        **_prepared(uow, request),
+        **prepared,
         format="erev.close-evidence.sources.v2",
         audit_verification_job_id=verification_job["id"],
         pack_id=pack_id,
@@ -199,7 +238,7 @@ def checked_row(row: Mapping[str, Any]) -> CloseBinding:
         raise Problem(
             "validation-failed", "This pack has no valid retained CLOSE sources."
         ) from error
-    if isinstance(bound, QueuedCloseSources) and row.get("id") != bound.pack_id:
+    if isinstance(bound, QueuedSources) and row.get("id") != bound.pack_id:
         raise Problem("validation-failed", "The queued sources belong to a different pack.")
     expected = bound.pack_values()
     if (
@@ -248,6 +287,9 @@ def load_close(uow: UnitOfWork, pack_id: UUID) -> CloseBinding:
         != set(bound.frozen_report_run_ids)
     ):
         raise Problem("validation-failed", "The frozen close differs from its retained sources.")
+    prior = evidence_relock.prior_lock_id(uow, frozen)
+    if prior != (bound.previous_lock_id if isinstance(bound, RelockCloseSources) else None):
+        raise Problem("validation-failed", "The retained close history differs from its binding.")
     # Job/run association is fixed at creation and needed by retry orchestration. Success,
     # selectors, file hashes and export permission are verified by evidence_reports.collect.
     jobs = {

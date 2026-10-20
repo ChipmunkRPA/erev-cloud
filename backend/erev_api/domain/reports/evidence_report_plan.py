@@ -2,7 +2,8 @@
 
 Date-range registers use the report framework's inclusive UTC-day convention.
 Access/SoD use the final microsecond of the fiscal period's UTC end date. Every
-source's known-at is the selected lock's freeze cutoff, including a re-lock.
+ordinary source's known-at is the selected lock's freeze cutoff. Re-lock variance
+uses the request time so both lock records exist, while its endpoints stay frozen.
 The caller must persist returned bindings atomically with pack creation and reuse
 them on retries. This module neither commits nor implements pack job idempotency.
 """
@@ -18,7 +19,7 @@ from erev_engine.canonical import sha256_hex
 from sqlalchemy import select
 
 from erev_api.db.tables import period, report_run
-from erev_api.domain.reports import evidence_close, framework
+from erev_api.domain.reports import evidence_close, evidence_relock, framework
 from erev_api.domain.reports.evidence_reports import PATHS, ReportSource
 from erev_api.domain.reports.evidence_selection import SourceSelection
 from erev_api.problems import Problem
@@ -88,7 +89,7 @@ def plan(uow: UnitOfWork, selection: SourceSelection) -> tuple[ReportRunCreateIn
             "validation-failed",
             "The period changed after this close; its historical dates are unavailable.",
         )
-    return requests(
+    planned = requests(
         entity_code=frozen.scope.entity_code,
         book=frozen.scope.book_code,
         period_key=frozen.scope.period_key,
@@ -96,6 +97,23 @@ def plan(uow: UnitOfWork, selection: SourceSelection) -> tuple[ReportRunCreateIn
         end_date=row["end_date"],
         cutoff=cutoff,
     )
+    prior = evidence_relock.prior_lock_id(uow, frozen)
+    if prior is not None:
+        planned += (
+            ReportRunCreateIn(
+                report_code="variance_between_closes",
+                output_format="CSV",
+                parameters={
+                    "entity_codes": [frozen.scope.entity_code],
+                    "from_period_lock_id": str(prior),
+                    "to_period_lock_id": str(frozen.scope.lock_id),
+                    # Both lock records must exist at the report's knowledge cutoff.
+                    # Monetary/event endpoints remain the two immutable frozen closes.
+                    "known_at": selection.known_at.isoformat(),
+                },
+            ),
+        )
+    return planned
 
 
 def queue(uow: UnitOfWork, selection: SourceSelection) -> tuple[QueuedReport, ...]:
@@ -114,9 +132,10 @@ def queue(uow: UnitOfWork, selection: SourceSelection) -> tuple[QueuedReport, ..
             .mappings()
             .one()
         )
-        if (
-            set(row["entity_ids"]) != set(selection.entity_ids)
-            or row["known_at"] != selection.lock_known_at
+        if set(row["entity_ids"]) != set(selection.entity_ids) or row["known_at"] != (
+            selection.known_at
+            if body.report_code == "variance_between_closes"
+            else selection.lock_known_at
         ):
             raise Problem(
                 "validation-failed",

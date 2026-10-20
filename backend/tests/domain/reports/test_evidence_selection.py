@@ -1344,3 +1344,69 @@ def test_sample_event_collection_scopes_dates_and_current_export_permission(
         with pytest.raises(Problem) as error:
             collect(uow, request)
         assert error.value.slug == "not-found"
+
+
+def test_relock_supporting_reports_retain_variance_and_both_locks(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    from erev_api.domain.reports.evidence_sources import RelockCloseSources
+
+    with sources.world.place.uow() as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+    body, previous = _relock_for_pack(sources)
+    clock.set(clock.now() + timedelta(seconds=2))
+    permissions = frozenset({"report.run", "report.export", "audit.read", "contract.read"})
+    reader = replace(
+        sources.principal,
+        permissions=permissions,
+        permission_scopes={permission: "*" for permission in permissions},
+    )
+    request = ClosePackCreateIn.model_validate(body)
+    with sources.world.place.uow(reader) as uow:
+        pack_id = new_id()
+        bound = evidence_sources.prepare_queued_close(uow, request, pack_id=pack_id)
+        assert isinstance(bound, RelockCloseSources)
+        assert bound.previous_lock_id == previous
+        pack = evidence_pack_values(
+            sources.world.tenant_id, id=pack_id, **bound.pack_values(), created_at=uow.now
+        )
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        uow.commit()
+    for report in bound.supporting_reports:
+        finished = run_journal_job(sources.world, report.job_id, attempts=1)
+        assert finished["state"] == "SUCCEEDED", finished
+    with sources.world.place.uow(reader) as uow:
+        restored = evidence_sources.load_close(uow, pack_id)
+        assert restored == bound
+        files = [
+            file
+            for report in restored.supporting_reports
+            for file in evidence_reports.collect(uow, report.source())
+        ]
+        paths = {file.path for file in files}
+        assert len(paths) == 18
+        assert "relock/variance_between_closes.csv" in paths
+        variance = next(
+            report
+            for report in restored.supporting_reports
+            if report.report_code == "variance_between_closes"
+        )
+        assert variance.known_at == bound.requested_at
+        row = (
+            uow.session.execute(select(report_run).where(report_run.c.id == variance.run_id))
+            .mappings()
+            .one()
+        )
+        assert row["parameters"]["from_period_lock_id"] == str(previous)
+        assert row["parameters"]["to_period_lock_id"] == body["period_lock_id"]
+        assert row["source_binding"]["evidence"]["close_variance_sources"]["sides"][0][
+            "lock_id"
+        ] == str(previous)
+        assert all(
+            report.known_at == bound.cutoff_known_at
+            for report in bound.supporting_reports
+            if report.report_code != "variance_between_closes"
+        )

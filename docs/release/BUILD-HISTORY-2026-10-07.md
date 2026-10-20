@@ -7781,3 +7781,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The real scenario journey passes all three retained formats and archived revenue reading
   after refresh. Ruff/Mypy pass. Production actuals, comparison builder/registration and UI
   remain open; no generic archived-download access or production-readiness claim is added.
+
+
+## Snapshot-cutoff production actuals reader — October 19, 2026
+
+- Confirmed SBX-03 snapshots deliberately omit journals. Added a separate production-only
+  actuals reader using the journal extract's cutoff-bound lifecycle evidence and current entity
+  permissions. It retains acknowledged revenue batches only, preserving transaction/functional
+  debits and credits and journal/contract/obligation identities for the comparison mapper.
+- Later acknowledgements/cancellations are evaluated at the snapshot cutoff; cancelled lines,
+  duplicate lines, out-of-scope books/entities and post-cutoff lines are excluded or refused.
+  Scenario journals cannot be passed off as production actuals.
+- Six focused checks and the real scenario journey pass, including empty production actuals
+  despite scenario computations and refusal of a sandbox source. Ruff/Mypy pass.
+- Still required: durable capture retention in creation/refresh, category/contract mapping,
+  comparison builder/registration and UI. FCS-4 is not yet runnable. No deployment.

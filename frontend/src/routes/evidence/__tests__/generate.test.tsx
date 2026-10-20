@@ -193,7 +193,7 @@ it("submits exact retained selectors with an idempotency key and opens the new p
   ]);
   expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/i);
 });
-it("requires explicit lock selection and excludes re-lock/reopen records", async () => {
+it("requires explicit lock selection, includes re-locks and excludes reopen records", async () => {
   server.use(
     http.get(apiUrl(`/api/v1/periods/${period.id}/locks`), () =>
       list([
@@ -214,7 +214,8 @@ it("requires explicit lock selection and excludes re-lock/reopen records", async
     fireEvent.keyDown(field, { key: "ArrowDown" });
     expect(screen.getByRole("option", { name: /APR-000001/ })).not.toBeNull();
   });
-  expect(screen.queryByRole("option", { name: /APR-RELOCK|APR-REOPEN/ })).toBeNull();
+  expect(screen.getByRole("option", { name: /APR-RELOCK/ })).not.toBeNull();
+  expect(screen.queryByRole("option", { name: /APR-REOPEN/ })).toBeNull();
 });
 it.each(["report.export", "evidence.export", "config.read"])(
   "hides generation without %s",
