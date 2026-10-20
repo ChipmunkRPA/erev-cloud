@@ -98,6 +98,7 @@ class DealRevenueOut(BaseModel):
 class DealBookOut(BaseModel):
     book_code: str
     transaction_price: MoneyOut
+    revenue_to_date: MoneyOut
     total_allocated: MoneyOut
     scheduled: MoneyOut
     awaiting_trigger: MoneyOut

@@ -7786,7 +7786,7 @@
   "deal.amount": "Amount",
   "deal.noSchedule": "No revenue is scheduled yet. Review the awaiting-trigger amount and the product recognition conditions.",
   "deal.noResults": "No allocation results are available for this preview.",
-  "deal.notice": "Running a preview does not create a contract. Calculation evidence is retained.",
+  "deal.notice": "Revenue timing assumes the proposed contract takes effect on its start date. Running a preview does not create or activate a contract. Calculation evidence is retained.",
   "deal.invalidLink": "This preview link is invalid.",
   "deal.loadError": "Could not load preview data.",
   "deal.retry": "Retry",
@@ -7865,5 +7865,6 @@
   "deal.history.previewOnly": "Preview only",
   "deal.history.open": "Open preview (new tab)",
   "deal.history.openDraft": "Open draft (new tab)",
-  "deal.history.more": "Load older previews"
+  "deal.history.more": "Load older previews",
+  "deal.revenue_to_date": "Simulated revenue to calculation date"
 }

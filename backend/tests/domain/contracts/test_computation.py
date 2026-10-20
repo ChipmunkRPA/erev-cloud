@@ -6678,8 +6678,9 @@ def test_deal_preview_api_worker_retains_readable_result(world: World) -> None:
             sum(Decimal(line["amount"]["amount"]) for line in book["revenue_by_period"])
             == Decimal(expected_revenue) / 100
         )
-        assert Decimal(book["scheduled"]["amount"]) + Decimal(
-            book["awaiting_trigger"]["amount"]
+        assert sum(
+            Decimal(book[key]["amount"])
+            for key in ("scheduled", "awaiting_trigger", "revenue_to_date")
         ) == Decimal("120000")
     # Exercise display grouping independently of whether this template awaits a trigger.
     from erev_api.domain.forecast.deal_results import project

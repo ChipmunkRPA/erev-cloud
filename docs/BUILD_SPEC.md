@@ -11712,6 +11712,13 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
   - **Gates:** GK-01 `make ci`
 
 - [ ] **FCS-6 Deal-desk allocation preview and scenario save.**
+  - Implementation evidence (2026-10-19): API/worker retention, entity-scoped reads, scenario-only
+    draft save and SF-18 entry/result/history UI now exist. The real-template Tamsin regression
+    at `backend/tests/domain/forecast/test_deal_preview.py::test_tamsin_row_preview` passes the
+    exact SSP/allocation and November schedule expectations. It exposed and fixed missing
+    schedules: new previews explicitly assume inception activation in retained DRY_RUN input
+    only. Full browser/release gates and independent accounting acceptance remain open.
+
   - **Prerequisites:** FCS-5 (`s05_allocation.resolve_ssp` from GATE-ENA)
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/deal_preview.py` (`preview(jc, params) -> JobOutcome` computing allocation, range compliance, material-right and VC indicators and revenue by period through `erev_engine.compute` in `DRY_RUN` mode; `save`); `backend/erev_api/jobs/` handler `DEAL_PREVIEW` (removed from `PENDING_JOB_HANDLERS`); `backend/erev_api/api/v1/deal_previews.py`; `backend/erev_api/schemas/deal_previews.py`; `backend/tests/domain/forecast/test_deal_preview.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

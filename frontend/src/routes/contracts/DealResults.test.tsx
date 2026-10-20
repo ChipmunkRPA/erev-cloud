@@ -23,6 +23,7 @@ it("shows the saved allocation and explains revenue awaiting a trigger without i
         book_code: "ASC606",
         transaction_price: money,
         total_allocated: money,
+        revenue_to_date: { amount: "0.00", currency: "USD" },
         scheduled: { amount: "0.00", currency: "USD" },
         awaiting_trigger: money,
         has_material_right: false,

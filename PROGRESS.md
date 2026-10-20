@@ -6,6 +6,23 @@
 
 
 
+## Tamsin deal acceptance and missing schedule fix — October 19, 2026
+
+- Ran the FCS-6 Tamsin proposal against real published product templates and approved US-LIST
+  2026-H2 ranges. SSP selection/range flags and 94,225.26 / 21,774.74 allocations already matched;
+  the required November revenue schedule failed because the dry-run bundle stayed DRAFT.
+- Deal computation now adds a deterministic hypothetical activation at inception to a single
+  booking-only DRY_RUN input. The synthetic event stays in retained evidence, never the database
+  event stream. Real save still creates a DRAFT. UI explicitly states the activation assumption.
+- Added simulated revenue-to-calculation-date to per-book totals, so backdated proposals reconcile
+  allocation = simulated revenue + future scheduled + awaiting trigger. Prior retained previews
+  are not recomputed. OpenAPI/frontend types updated.
+- Tamsin now passes exact SSP/range/allocation, no MR/VC, November start and deterministic input.
+  API/worker journey passes no production contract and total reconciliation. Scratch rollback,
+  four computation boundary checks, frontend rendering, Python lint/types and API generation pass.
+  This is concrete FCS-6 case evidence, not independent accounting sign-off or full browser/release
+  acceptance. No deployment.
+
 ## Retained deal preview history — October 19, 2026
 
 - Added a lazy, paginated history panel on SF-18 using the existing entity-scoped summary API.
@@ -214,35 +231,6 @@
 - Usage/invoice input continues through forecast imports. Effective-date controls on input-set
   metadata, populated comparison/report accounting acceptance, deal preview and independent
   sign-off remain open. No deployment or production-readiness claim.
-
-## Captured forecast input review — October 19, 2026
-
-- Assumption versions now expand a read-only review of captured contract event bodies and
-  committed import sources in their retained interleaved application order. Event dates,
-  obligations, payloads, comments and evidence IDs remain visible as captured; decimal strings
-  are not coerced, rounded or truncated, and text is never interpreted as HTML.
-- Contract/import links respect available read permission and use local routes. The page states
-  that linked current records may differ from captured version evidence. Empty baselines and
-  populated legacy sets without valid sequence evidence are explicitly distinguished.
-- Six focused review/lifecycle checks pass, covering interleaving, exact numeric strings,
-  literal markup, source links, missing order and baseline handling; frontend types/lint pass.
-- Direct event-entry capture UI, effective-date controls, populated report accounting acceptance
-  and independent sign-off remain open. Import sources use the existing authorized row viewer.
-  No deployment or production-readiness claim.
-
-## Forecast fact import entry and correction continuity — October 19, 2026
-
-- Draft assumption records now link to the import wizard for import.upload readers, carrying
-  the selected input-set ID. The upload page reads that set, displays code/name/version/status,
-  blocks unavailable or non-draft targets before file upload and lists only backend-supported
-  progress_events, usage, cost_events and invoices templates.
-- Import creation retains the same forecast_event_set_id. Corrected-file navigation now keeps
-  that association alongside template/mode; previously it silently fell back to ordinary import.
-  Validation/commit and backend draft/permission checks continue to govern attachment.
-- Seven focused import/assumption checks cover the link, displayed target, template restriction,
-  publication guard, submitted ID and corrected-file identity. Frontend types/lint pass.
-- This supplies forecast fact import authoring through the existing pipeline. Direct business
-  command capture, richer input review and accounting acceptance remain open. No deployment.
 
 ## Outstanding release verification
 

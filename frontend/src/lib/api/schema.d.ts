@@ -12583,6 +12583,7 @@ export interface components {
       has_variable_consideration: boolean;
       /** Revenue By Period */
       revenue_by_period: components["schemas"]["DealRevenueOut"][];
+      revenue_to_date: components["schemas"]["MoneyOut"];
       scheduled: components["schemas"]["MoneyOut"];
       total_allocated: components["schemas"]["MoneyOut"];
       transaction_price: components["schemas"]["MoneyOut"];

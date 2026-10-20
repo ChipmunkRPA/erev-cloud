@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 
 import erev_engine
 from erev_engine.bundle import InputBundle, OutputBundle
+from erev_engine.canonical import sha256_hex
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +31,25 @@ def compute(bundle: InputBundle) -> DealComputation:
         raise ValueError("A deal preview requires exactly one proposed contract.")
     if bundle.posted:
         raise ValueError("A proposed deal cannot include posted ledger amounts.")
-    dry_run = replace(bundle, trigger="DRY_RUN")
+    events = bundle.events
+    if len(events) == 1 and events[0].event_type == "CONTRACT_BOOKED":
+        booked = events[0]
+        # Deal-desk schedules answer the proposed deal from inception. This activation is
+        # hypothetical input evidence only: it never enters a persisted contract stream.
+        payload: dict[str, object] = {"checklist": {}}
+        activation = replace(
+            booked,
+            event_key=f"{booked.contract_key}/EV-000002",
+            stream_version=2,
+            record_seq=2,
+            event_type="CONTRACT_ACTIVATED",
+            effective_date=bundle.contracts[0].inception_date,
+            obligation_keys=(),
+            payload=payload,
+            payload_sha256=sha256_hex(payload),
+        )
+        events = (*events, activation)
+    dry_run = replace(bundle, trigger="DRY_RUN", events=events)
     output = erev_engine.compute(dry_run)
     input_sha256 = dry_run.sha256()
     if output.input_sha256 != input_sha256:

@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current Tamsin acceptance/fix (October 19): the real-template, approved-H2 SSP case now matches
+95,200/22,000 selected SSP, below/above flags, 94,225.26/21,774.74 allocation and November 2026
+revenue start. The test exposed missing schedules from the booking-only DRAFT bundle. New deal
+previews retain a hypothetical inception activation in DRY_RUN evidence only; no production
+contract/event is activated. Simulated cumulative revenue is displayed alongside scheduled and
+awaiting amounts. Old previews remain unchanged. Browser and independent accounting acceptance
+are still open; the prior generic empty-schedule explanation did not prove this subscription case.
+
 Current preview history update (October 19): SF-18 now lists retained previews in the caller's
 entity scope, pages older results, and links to retained calculations and saved drafts without
 replacing current form input. Request/save completion refreshes this metadata list. This closes

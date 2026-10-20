@@ -11003,6 +11003,9 @@
             "title": "Revenue By Period",
             "type": "array"
           },
+          "revenue_to_date": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
           "scheduled": {
             "$ref": "#/components/schemas/MoneyOut"
           },
@@ -11016,6 +11019,7 @@
         "required": [
           "book_code",
           "transaction_price",
+          "revenue_to_date",
           "total_allocated",
           "scheduled",
           "awaiting_trigger",

@@ -17,7 +17,13 @@ export function DealResults({ preview }: { preview: DealPreview }) {
           <h3 className="text-heading-sm">{book.book_code}</h3>
           <dl className="grid grid-cols-2 gap-2">
             {(
-              ["transaction_price", "total_allocated", "scheduled", "awaiting_trigger"] as const
+              [
+                "transaction_price",
+                "total_allocated",
+                "revenue_to_date",
+                "scheduled",
+                "awaiting_trigger",
+              ] as const
             ).map((key) => (
               <div key={key}>
                 <dt>{text(key)}</dt>

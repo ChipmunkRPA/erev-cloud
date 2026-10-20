@@ -59,6 +59,9 @@ def project(inputs: dict[str, Any], result: dict[str, Any]) -> list[DealBookOut]
                 total_allocated=money(
                     sum(row["allocated_amount"] for row in obligations.values()), currency
                 ),
+                revenue_to_date=money(
+                    sum(row["revenue_cum"] for row in obligations.values()), currency
+                ),
                 scheduled=money(
                     sum(row["scheduled_amount"] for row in obligations.values()), currency
                 ),
