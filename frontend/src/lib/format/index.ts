@@ -796,3 +796,8 @@ export function instantAtOrAfter(value: string, boundary: string): boolean {
   const earlier = Date.parse(boundary);
   return Number.isFinite(current) && Number.isFinite(earlier) && current >= earlier;
 }
+
+/** UTC wall-clock value for fields explicitly labelled UTC. */
+export function utcDateTimeInput(value: string | null | undefined): string {
+  return value ? new Date(value).toISOString().slice(0, -1) : "";
+}

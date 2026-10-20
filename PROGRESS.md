@@ -6,6 +6,18 @@
 
 
 
+## Forecast assumption effective-window editing — October 19, 2026
+
+- Added optional UTC start/end controls to draft creation and editing, and saved-window display
+  for every version. Blank edited boundaries send explicit null; untouched boundaries are omitted
+  from PATCH, preserving original offset/precision when changing other fields.
+- Invalid reversed/equal ranges block submission, and unsaved metadata changes block publication.
+  All edits retain If-Match/version protection. Published versions stay read-only. Copy makes clear
+  this is version metadata and does not rewrite captured event dates or filter replay events.
+- Five focused assumption-manager tests pass, covering lifecycle, UTC conversion, preserving
+  untouched timestamps, clearing boundaries and invalid-range refusal. TypeScript and lint pass.
+  Remaining report/accounting acceptance and independent sign-off are still open. No deployment.
+
 ## Scenario refresh continuation fix — October 19, 2026
 
 - Fixed a live Reporting workflow defect: acceptedJob previously remained pinned after its
@@ -219,22 +231,6 @@
   publication guard, submitted ID and corrected-file identity. Frontend types/lint pass.
 - This supplies forecast fact import authoring through the existing pipeline. Direct business
   command capture, richer input review and accounting acceptance remain open. No deployment.
-
-## Forecast assumption lifecycle controls — October 19, 2026
-
-- Forecast runs now include a lazy-loaded, paginated assumption manager within the existing
-  scenario-workspace permission gate. Users can create a draft, rename a saved draft and
-  explicitly confirm publication; published and superseded versions remain read-only.
-- Shows captured-command/import counts, version/status and publication fingerprints. Empty
-  sets explicitly identify baseline publication. Reusing a code invokes the existing backend
-  next-version/copy semantics; an existing draft is handled by the server's refusal.
-- Updates carry the saved row version. Publication refreshes the shared forecast input cache,
-  making the new published version selectable for report runs. Lost responses preserve fields
-  and permit idempotent retry; no optimistic publication state is shown.
-- Eight targeted manager/forecast checks pass, with TypeScript and ESLint. Business-change
-  capture controls, import attachment selection, effective-date editing and richer input review
-  remain open; this implements lifecycle management, not the entire assumption authoring flow.
-  Reporting accounting acceptance and independent sign-off remain open. No deployment.
 
 ## Outstanding release verification
 

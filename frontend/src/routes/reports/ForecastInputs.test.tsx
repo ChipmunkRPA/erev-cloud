@@ -30,6 +30,8 @@ function open() {
         status: state.status,
         version_no: 2,
         row_version: 7,
+        effective_from: "2026-01-01T01:00:00.123456+01:00",
+        effective_to: null,
         api_commands: [],
         import_upload_ids: [],
       },
@@ -94,6 +96,46 @@ it("keeps published versions read-only", async () => {
   state.status = "PUBLISHED";
   open();
   await screen.findByText(/BUDGET — Budget/);
-  expect(screen.queryByRole("button", { name: "Save name" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Save assumptions" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Publish assumptions" })).toBeNull();
+});
+
+it("edits and clears UTC boundaries with the row version, and requires saving before publication", async () => {
+  state.submit.mockResolvedValue({ kind: "network-error" });
+  open();
+  await screen.findByText(/BUDGET — Budget/);
+  const start = screen.getAllByLabelText("Effective from (UTC)").at(-1) as HTMLInputElement;
+  const end = screen.getAllByLabelText("Effective to (UTC)").at(-1) as HTMLInputElement;
+  expect(start.value).toBe("2026-01-01T00:00:00.123");
+  fireEvent.change(end, { target: { value: "2026-02-01T00:00" } });
+  fireEvent.click(screen.getByRole("button", { name: "Publish assumptions" }));
+  expect(screen.queryByRole("button", { name: "Confirm publication" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Save assumptions" }));
+  await waitFor(() =>
+    expect(state.submit).toHaveBeenCalledWith(
+      expect.objectContaining({ method: "PATCH" }),
+      { name: "Budget", effective_to: "2026-02-01T00:00Z" },
+      { ifMatch: '"r7"' },
+    ),
+  );
+  // Unedited microsecond source timestamp is omitted, rather than rounded and rewritten.
+  fireEvent.change(start, { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save assumptions" }));
+  await waitFor(() =>
+    expect(state.submit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ method: "PATCH" }),
+      { name: "Budget", effective_from: null, effective_to: "2026-02-01T00:00Z" },
+      { ifMatch: '"r7"' },
+    ),
+  );
+});
+it("rejects equal or reversed effective boundaries before submission", async () => {
+  open();
+  await screen.findByText(/BUDGET — Budget/);
+  fireEvent.change(screen.getAllByLabelText("Effective to (UTC)").at(-1) as HTMLInputElement, {
+    target: { value: "2025-12-31T00:00" },
+  });
+  expect(screen.getByRole("alert").textContent).toContain("must be later");
+  fireEvent.click(screen.getByRole("button", { name: "Save assumptions" }));
+  expect(state.submit).not.toHaveBeenCalled();
 });

@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current forecast metadata update (October 19): the assumption manager now creates, edits and
+clears optional UTC effective windows, displays saved boundaries and requires saving before
+publication. These are version metadata; no claim is made that they filter captured replay
+facts. Published records remain immutable. Other reporting acceptance and independent accounting
+sign-off remain open. No deployment.
+
 Current scenario refresh correction (October 19): the UI now releases acknowledged request
 identities and follows subsequent durable refreshes, including a newer refresh observed after
 an accepted job has completed. This removes an indefinite-wait/blocked-submit state. The

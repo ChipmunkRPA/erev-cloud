@@ -34,7 +34,7 @@
   "reports.inputs.code": "Assumption set code",
   "reports.inputs.create": "Create assumption draft",
   "reports.inputs.required": "Enter a valid code and a name (up to 400 characters).",
-  "reports.inputs.save": "Save name",
+  "reports.inputs.save": "Save assumptions",
   "reports.inputs.publish": "Publish assumptions",
   "reports.inputs.confirmPublish": "Confirm publication",
   "reports.inputs.confirm": "Publish this saved version? It becomes available for forecast runs and scenario refresh. Its inputs cannot be edited after publication.",
@@ -44,7 +44,7 @@
   "reports.inputs.imports": "Committed imports",
   "reports.inputs.hash": "Publication fingerprint",
   "reports.inputs.noChanges": "Enter a changed valid name before saving.",
-  "reports.inputs.saveFirst": "Save name changes before publishing.",
+  "reports.inputs.saveFirst": "Save assumption changes before publishing.",
   "reports.inputs.pending": "Saving assumptions…",
   "reports.inputs.error": "Could not save assumptions. Check the connection and retry.",
   "reports.inputs.loading": "Loading assumptions…",
@@ -7839,5 +7839,13 @@
   "deal.productsLoading": "Loading active products\u2026",
   "deal.productsError": "Could not load products. Retry before running the preview.",
   "deal.productsEmpty": "No active products are available. Add or activate a product before running a preview.",
-  "deal.chooseProducts": "Select an active product for every line."
+  "deal.chooseProducts": "Select an active product for every line.",
+  "reports.inputs.dates": "Effective window (optional)",
+  "reports.inputs.from": "Effective from (UTC)",
+  "reports.inputs.to": "Effective to (UTC)",
+  "reports.inputs.savedFrom": "Saved effective from",
+  "reports.inputs.savedTo": "Saved effective to",
+  "reports.inputs.dateHelp": "Record this version\u2019s effective window in UTC. Leave a boundary blank for no limit. Captured event dates are unchanged.",
+  "reports.inputs.unbounded": "No limit",
+  "reports.inputs.invalidDates": "Effective to must be later than effective from."
 }

@@ -1,3 +1,5 @@
+import { ForecastEffectiveDates } from "./ForecastEffectiveDates";
+import { formatTimestamp, instantAtOrAfter, utcDateTimeInput } from "../../lib/format";
 import { ForecastInputReview } from "./ForecastInputReview";
 import { Link } from "react-router";
 import { useAccess } from "../../lib/access";
@@ -19,6 +21,12 @@ const label = (value: string) => t(`reports.inputs.${value}`);
 function InputRecord({ row }: { readonly row: ForecastInput }) {
   const access = useAccess();
   const [name, setName] = useState(row.name);
+  const originalStart = utcDateTimeInput(row.effective_from);
+  const originalEnd = utcDateTimeInput(row.effective_to);
+  const [start, setStart] = useState(originalStart);
+  const [end, setEnd] = useState(originalEnd);
+  const datesValid = !start || !end || !instantAtOrAfter(`${start}Z`, `${end}Z`);
+  const changed = name.trim() !== row.name || start !== originalStart || end !== originalEnd;
   const [confirming, setConfirming] = useState(false);
   const [networkError, setNetworkError] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -34,11 +42,25 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
   });
   const busy = edit.pending || publish.pending || finished;
   const save = async (publication: boolean) => {
-    if (busy || (publication && !confirming)) return;
+    if (
+      busy ||
+      !datesValid ||
+      !name.trim() ||
+      name.trim().length > 400 ||
+      (publication && (!confirming || changed))
+    )
+      return;
     setNetworkError(false);
     const outcome = publication
       ? await publish.submit(undefined, { ifMatch: rowIfMatch(row.row_version) })
-      : await edit.submit({ name: name.trim() }, { ifMatch: rowIfMatch(row.row_version) });
+      : await edit.submit(
+          {
+            name: name.trim(),
+            ...(start !== originalStart ? { effective_from: start ? `${start}Z` : null } : {}),
+            ...(end !== originalEnd ? { effective_to: end ? `${end}Z` : null } : {}),
+          },
+          { ifMatch: rowIfMatch(row.row_version) },
+        );
     setNetworkError(outcome.kind === "network-error");
     if (outcome.kind === "succeeded") setFinished(true);
   };
@@ -50,6 +72,12 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
       <p>
         {label("commands")}: {row.api_commands.length} · {label("imports")}:{" "}
         {row.import_upload_ids.length}
+      </p>
+      <p>
+        {label("savedFrom")}:{" "}
+        {row.effective_from ? formatTimestamp(`${originalStart}Z`) : label("unbounded")} ·{" "}
+        {label("savedTo")}:{" "}
+        {row.effective_to ? formatTimestamp(`${originalEnd}Z`) : label("unbounded")}
       </p>
       <ForecastInputReview row={row} />
       {row.content_sha256 ? (
@@ -82,6 +110,14 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
             onChange={setName}
             disabled={busy || confirming}
           />
+          <ForecastEffectiveDates
+            start={start}
+            end={end}
+            onStart={setStart}
+            onEnd={setEnd}
+            disabled={busy || confirming}
+          />
+          {!datesValid && <p role="alert">{label("invalidDates")}</p>}
           <div className="flex gap-2">
             <Button
               loading={edit.pending}
@@ -90,7 +126,8 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
                 confirming ||
                 !name.trim() ||
                 name.trim().length > 400 ||
-                name.trim() === row.name
+                !changed ||
+                !datesValid
                   ? label("noChanges")
                   : undefined
               }
@@ -99,7 +136,7 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
               {label("save")}
             </Button>
             <Button
-              disabledReason={busy || name.trim() !== row.name ? label("saveFirst") : undefined}
+              disabledReason={busy || changed || !datesValid ? label("saveFirst") : undefined}
               onClick={() => setConfirming(true)}
             >
               {label("publish")}
@@ -141,6 +178,9 @@ export function ForecastInputs() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const datesValid = !start || !end || !instantAtOrAfter(`${start}Z`, `${end}Z`);
   const [networkError, setNetworkError] = useState(false);
   const records = useInfiniteQuery({
     queryKey: [...key, "manage"],
@@ -164,15 +204,23 @@ export function ForecastInputs() {
   const valid =
     /^[A-Za-z0-9][A-Za-z0-9 _.:/#()+-]{0,127}$/.test(code.trim()) &&
     name.trim().length > 0 &&
-    name.trim().length <= 400;
+    name.trim().length <= 400 &&
+    datesValid;
   const submit = async () => {
     if (!valid || create.pending) return;
     setNetworkError(false);
-    const outcome = await create.submit({ code: code.trim(), name: name.trim() });
+    const outcome = await create.submit({
+      code: code.trim(),
+      name: name.trim(),
+      ...(start ? { effective_from: `${start}Z` } : {}),
+      ...(end ? { effective_to: `${end}Z` } : {}),
+    });
     setNetworkError(outcome.kind === "network-error");
     if (outcome.kind === "succeeded") {
       setCode("");
       setName("");
+      setStart("");
+      setEnd("");
     }
   };
   return (
@@ -204,6 +252,14 @@ export function ForecastInputs() {
               onChange={setName}
               disabled={create.pending}
             />
+            <ForecastEffectiveDates
+              start={start}
+              end={end}
+              onStart={setStart}
+              onEnd={setEnd}
+              disabled={create.pending}
+            />
+            {!datesValid && <p role="alert">{label("invalidDates")}</p>}
             <Button
               type="submit"
               variant="primary"
