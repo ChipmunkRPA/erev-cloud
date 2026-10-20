@@ -299,3 +299,61 @@ def test_rollforward_exemption_changes_preserve_both_endpoints(
     for day, key in ((before, "OPENING"), (end, "CLOSING")):
         rows = rpo.rows_at(store, as_of={eid: day}, bands=(12, 24), applied=applied)
         assert sum(row.total for row in rows if row.exemption is None) == movement.lines[key]
+
+
+@pytest.mark.parametrize("restated,revenue", [(40, 40), (40, 50), (45, 50), (40, 0)])
+def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
+    restated: int, revenue: int
+) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+
+    vid, next_vid, oid, cid, eid, gid = (uuid4() for _ in range(6))
+    before, end = date(2026, 1, 31), date(2026, 2, 28)
+    first = rpo._Version(vid, gid, 1, True, date(2026, 1, 1), frozenset())
+    second = rpo._Version(next_vid, gid, 2, True, end, frozenset({"CONTRACT_TERMINATED"}))
+    old = rpo._Ob(
+        oid,
+        vid,
+        oid,
+        cid,
+        "C",
+        "O",
+        "Service",
+        None,
+        None,
+        None,
+        eid,
+        "E",
+        "USD",
+        "POINT_IN_TIME",
+        date(2028, 12, 31),
+        date(2026, 1, 1),
+        Decimal(100),
+        False,
+    )
+    cancelled = replace(old, version_id=next_vid, cancelled=True)
+    at = ObligationAt(
+        Decimal(40),
+        *(Decimal(0) for _ in range(6)),
+        Decimal(60),
+        "PARTIALLY_SATISFIED",
+        None,
+        None,
+    )
+    store = rpo.Store(
+        {gid: (first, second)},
+        {vid: (old,), next_vid: (cancelled,)},
+        {cid: (first, second)},
+        {
+            (vid, before): {oid: at},
+            (vid, end): {oid: at},
+            (next_vid, before): {oid: replace(at, revenue=Decimal(restated))},
+            (next_vid, end): {oid: replace(at, revenue=Decimal(revenue), awaiting=Decimal(0))},
+        },
+    )
+    (movement,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert movement.lines["OPENING"] == 60
+    assert movement.lines["CANCELLATIONS"] == -(100 - revenue)
+    assert movement.lines["REVENUE"] == -(revenue - restated)
+    assert movement.lines["LATE_EVENTS"] == -(restated - 40)
+    assert movement.lines["CLOSING"] == movement.lines["UNEXPLAINED"] == 0

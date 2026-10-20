@@ -798,6 +798,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "movements classified by the contract_event that caused each contract version",
             "full RPO exemption eligibility is evaluated per retained version; "
             "opening and closing exclusions are separate, with eligibility changes in EXEMPTIONS",
+            "terminal cancellations remove only unrecognized allocation; "
+            "retained cancelled-version revenue separates period recognition and late restatement",
             _as_locked("RPO_ROLLFORWARD"),
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
