@@ -5,14 +5,14 @@ import { RefusalBanner } from "../../components/feedback/RefusalBanner";
 import { Field } from "../../components/form/Field";
 import { Combobox } from "../../components/form/Combobox";
 import { JobProgress } from "../../components/feedback/JobProgress";
-import { useJob } from "../../lib/api/jobs";
+import { isTerminal, useJob } from "../../lib/api/jobs";
 import { Button } from "../../components/ui/Button";
 import { useCommand } from "../../lib/api/commands";
 import { fetchListPage } from "../../lib/api/lists";
 import { rowIfMatch } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import type { components } from "../../lib/api/schema";
-import { formatTimestamp } from "../../lib/format";
+import { formatTimestamp, instantAtOrAfter } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 
 type Refresh = components["schemas"]["ScenarioRefreshOut"];
@@ -56,7 +56,20 @@ export function RefreshScenario({
   });
   const latest = status.data?.items[0];
   const job = useJob(expanded ? (acceptedJob ?? latest?.job_id ?? null) : null);
-  const awaiting = acceptedJob !== null && latest?.job_id !== acceptedJob;
+  // Resume following the register after it acknowledges our request, including later
+  // refreshes started in another session. An old accepted job must not pin this panel forever.
+  const observed =
+    acceptedJob !== null &&
+    (latest?.job_id === acceptedJob ||
+      (job.data?.id === acceptedJob &&
+        isTerminal(job.data) &&
+        latest !== undefined &&
+        job.data.finished_at != null &&
+        instantAtOrAfter(latest.created_at, job.data.finished_at)));
+  useEffect(() => {
+    if (observed) setAcceptedJob(null);
+  }, [observed]);
+  const awaiting = acceptedJob !== null && !observed;
   const busy = command.pending || awaiting || live(latest);
   const inputs = useInfiniteQuery({
     queryKey: queryKey("scenario-published-inputs", "tenant", { id, version }),

@@ -788,3 +788,11 @@ export function parseDateInput(text: string, options: FormatOptions = {}): Parse
   }
   return parsed(Number(field("year")), Number(field("month")), Number(field("day")));
 }
+
+
+/** Compare API timestamps as instants, including offsets; invalid values never establish order. */
+export function instantAtOrAfter(value: string, boundary: string): boolean {
+  const current = Date.parse(value);
+  const earlier = Date.parse(boundary);
+  return Number.isFinite(current) && Number.isFinite(earlier) && current >= earlier;
+}

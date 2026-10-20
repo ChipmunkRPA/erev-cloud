@@ -8492,3 +8492,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   checks also pass. Python lint/types pass. Disposable database stopped after verification.
 - Refresh UI still needs input selection and refresh-stage tracking; event editing and wider
   accounting acceptance remain open. No deployment or independent-signoff claim.
+
+## Scenario refresh reporting workflow — October 19, 2026
+
+- Production scenario cards now select searchable, paginated published assumptions and request
+  refresh with the displayed row version. The page explains replacement, guards pending
+  submissions and displays durable QUEUED/RUNNING/SUCCEEDED/FAILED outcomes plus job details.
+  Reopening the panel recovers an existing refresh; terminal outcomes reload scenario bindings
+  and choices. A successful copy job alone is not used as proof of the complete refresh.
+- Added source-owned GET /scenarios/{id}/refreshes with cursor paging/counts and no-store;
+  returns outcome metadata only, excluding raw failures and replay/internal workspace payloads.
+- Real forecast journey passes queued, failed and successful outcomes and sandbox denial.
+  Eight focused scenario UI checks pass after correcting a test's tooltip/text ambiguity;
+  frontend types/lint and backend types/lint pass. No deployment.
+- Reporting remains unfinished: assumption editing/publishing UI, deal preview, populated
+  actual-versus-forecast and close-variance accounting acceptance remain outstanding. Catalogue
+  coverage is not completion of all reporting workflows or independent accounting sign-off.

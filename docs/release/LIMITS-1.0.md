@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current scenario refresh correction (October 19): the UI now releases acknowledged request
+identities and follows subsequent durable refreshes, including a newer refresh observed after
+an accepted job has completed. This removes an indefinite-wait/blocked-submit state. The
+variance_between_closes builder/replay/presentation already exist; broader business acceptance
+and independent accounting sign-off remain unproven. No deployment.
+
 Current deal product selector update (October 19): new proposal entry now offers searchable
 active products by code/name, loads subsequent catalogue pages, and requires a selected product
 on every line. Retained preview reads do not depend on loading the current catalogue. Product

@@ -3,9 +3,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { RefreshScenario } from "./RefreshScenario";
-const state = vi.hoisted(() => ({ fetch: vi.fn(), submit: vi.fn(), status: "", jobId: "job-old" }));
+const state = vi.hoisted(() => ({
+  fetch: vi.fn(),
+  submit: vi.fn(),
+  status: "",
+  jobId: "job-old",
+  finished: false,
+}));
 vi.mock("../../lib/api/lists", () => ({ fetchListPage: state.fetch }));
-vi.mock("../../lib/api/jobs", () => ({ useJob: () => ({ data: undefined }) }));
+vi.mock("../../lib/api/jobs", () => ({
+  useJob: (id: string | null) => ({
+    data:
+      state.finished && id === "new-job"
+        ? { id, state: "SUCCEEDED", finished_at: "2026-10-18T23:00:00Z" }
+        : undefined,
+  }),
+  isTerminal: (job: { state: string } | undefined) => job?.state === "SUCCEEDED",
+}));
+vi.mock("../../components/feedback/JobProgress", () => ({ JobProgress: () => null }));
 vi.mock("../../lib/api/commands", () => ({
   useCommand: () => ({ submit: state.submit, pending: false, problem: null, banner: null }),
 }));
@@ -14,6 +29,7 @@ afterEach(() => {
   vi.clearAllMocks();
   state.status = "";
   state.jobId = "job-old";
+  state.finished = false;
 });
 function open() {
   state.fetch.mockImplementation((path: string) =>
@@ -69,6 +85,23 @@ it("loads choices only when opened and keeps an accepted refresh blocked until i
   state.status = "SUCCEEDED";
   await client.invalidateQueries({ queryKey: ["scenario-refreshes"] });
   expect(await screen.findByText(/Refresh completed/)).toBeTruthy();
+  state.jobId = "later-job";
+  state.status = "RUNNING";
+  await client.invalidateQueries({ queryKey: ["scenario-refreshes"] });
+  expect(await screen.findByText(/Refresh in progress/)).toBeTruthy();
+  expect(
+    screen.queryByText("Waiting for the complete refresh outcome…", { selector: "p" }),
+  ).toBeNull();
+  state.status = "SUCCEEDED";
+  await client.invalidateQueries({ queryKey: ["scenario-refreshes"] });
+  expect(await screen.findByText(/Refresh completed/)).toBeTruthy();
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Refresh with selected assumptions" })
+        .getAttribute("aria-disabled"),
+    ).not.toBe("true"),
+  );
 });
 it("recovers an in-flight refresh after reopening without requesting a second copy", async () => {
   state.status = "RUNNING";
@@ -77,4 +110,25 @@ it("recovers an in-flight refresh after reopening without requesting a second co
   expect(await screen.findByText(/Refresh in progress/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Refresh with selected assumptions" }));
   expect(state.submit).not.toHaveBeenCalled();
+});
+
+it("follows a newer durable refresh when the accepted terminal outcome was skipped between polls", async () => {
+  open();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh scenario" }));
+  await waitFor(() => expect(state.fetch).toHaveBeenCalledTimes(2));
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "Budget" } });
+  fireEvent.mouseDown(await screen.findByRole("option", { name: "BUDGET — Budget (v2)" }));
+  state.submit.mockImplementation(async () => {
+    state.finished = true;
+    state.jobId = "newer-job";
+    state.status = "RUNNING";
+    return { kind: "accepted", jobId: "new-job" };
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Refresh with selected assumptions" }));
+  expect(await screen.findByText(/Refresh in progress/)).toBeTruthy();
+  await waitFor(() =>
+    expect(
+      screen.queryByText("Waiting for the complete refresh outcome…", { selector: "p" }),
+    ).toBeNull(),
+  );
 });

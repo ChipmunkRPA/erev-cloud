@@ -6,6 +6,21 @@
 
 
 
+## Scenario refresh continuation fix — October 19, 2026
+
+- Fixed a live Reporting workflow defect: acceptedJob previously remained pinned after its
+  refresh appeared in the durable register. A later refresh then appeared to be a missing
+  outcome forever, blocked new submissions and kept polling/displaying the old job.
+- Acknowledged requests now release that local pin and follow the latest durable refresh.
+  A terminal accepted job also releases it when a newer register row is dated at/after that
+  job's completion, handling a completed refresh skipped between polls. Timestamp ordering
+  compares instants, not lexicographic strings with potentially different offsets.
+- Focused checks cover repeat refreshes, reopened in-flight work and a skipped terminal
+  outcome followed by newer work. Existing backend authorization and row-version guards remain.
+- Code review confirms variance_between_closes has prepare/replay/presentation and retained
+  binding support. Its remaining business acceptance must not be described as absent code.
+  Independent accounting acceptance and other release gaps remain open. No deployment.
+
 ## Deal product selection — October 19, 2026
 
 - Replaced manual product-code entry with the shared searchable combobox. Choices show code
@@ -220,22 +235,6 @@
   capture controls, import attachment selection, effective-date editing and richer input review
   remain open; this implements lifecycle management, not the entire assumption authoring flow.
   Reporting accounting acceptance and independent sign-off remain open. No deployment.
-
-## Scenario refresh reporting workflow — October 19, 2026
-
-- Production scenario cards now select searchable, paginated published assumptions and request
-  refresh with the displayed row version. The page explains replacement, guards pending
-  submissions and displays durable QUEUED/RUNNING/SUCCEEDED/FAILED outcomes plus job details.
-  Reopening the panel recovers an existing refresh; terminal outcomes reload scenario bindings
-  and choices. A successful copy job alone is not used as proof of the complete refresh.
-- Added source-owned GET /scenarios/{id}/refreshes with cursor paging/counts and no-store;
-  returns outcome metadata only, excluding raw failures and replay/internal workspace payloads.
-- Real forecast journey passes queued, failed and successful outcomes and sandbox denial.
-  Eight focused scenario UI checks pass after correcting a test's tooltip/text ambiguity;
-  frontend types/lint and backend types/lint pass. No deployment.
-- Reporting remains unfinished: assumption editing/publishing UI, deal preview, populated
-  actual-versus-forecast and close-variance accounting acceptance remain outstanding. Catalogue
-  coverage is not completion of all reporting workflows or independent accounting sign-off.
 
 ## Outstanding release verification
 
