@@ -98,17 +98,21 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
             raise _refuse("the replay contains an unsupported measure.")
         total_key = key.currency, key.measure
         totals[total_key] = totals.get(total_key, zero) + change.total
-        computation_id = pair.earlier.contract_computations.get(key.contract_external_id)
+        old_id = pair.earlier.contract_computations.get(key.contract_external_id)
+        new_id = pair.later.contract_computations.get(key.contract_external_id)
         source = (
-            pair.earlier.computations.get(computation_id) if computation_id is not None else None
+            pair.earlier.computations.get(old_id)
+            if old_id is not None
+            else pair.later.computations.get(new_id)
+            if new_id is not None
+            else None
         )
         group = replay.groups.get(source.group_id) if source is not None else None
         if (
             group is None
             or group.replay.measures.get(key) != change
-            or group.earlier.computation_id != computation_id
-            or group.later.computation_id
-            != pair.later.contract_computations.get(key.contract_external_id)
+            or (None if group.earlier is None else group.earlier.computation_id) != old_id
+            or (None if group.later is None else group.later.computation_id) != new_id
         ):
             raise _refuse("a contract has no matching group execution evidence.")
         group_id = str(source.group_id) if source is not None else ""
@@ -211,11 +215,15 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
         "contributors": contributors,
         "groups": {
             str(identity): {
-                "earlier": {
+                "earlier": None
+                if run.earlier is None
+                else {
                     **asdict(run.earlier),
                     "computation_id": str(run.earlier.computation_id),
                 },
-                "later": {**asdict(run.later), "computation_id": str(run.later.computation_id)},
+                "later": None
+                if run.later is None
+                else {**asdict(run.later), "computation_id": str(run.later.computation_id)},
                 "normalized_fields": list(run.normalized_fields),
                 "replay_input_sha256": run.replay_input_sha256,
                 "engine_version": run.replay.engine_version,

@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current population variance update (October 20): whole independent groups entering/leaving a
+frozen population now receive explicit, source-verified contributions and drill-through. The
+absent side has no synthetic computation. Entries use NEW_CONTRACT; departures remain OTHER
+with population.left evidence, not a cancellation assertion. Regrouping and membership changes
+inside an existing group remain unsupported, as do calendar changes. Earlier blanket statements
+that all population changes are refused are superseded by this narrower supported path.
+
 Current partial RPO update (October 20): POL-200 now reads dated targeted allocation/share
 traces and immutable estimate eligibility, preserves fixed/untargeted consideration, apportions
 net bands and reports the excluded portion. Dashboard, frozen obligation rows, rollforward

@@ -8601,3 +8601,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Python lint/types pass. Sequence allocation may leave harmless gaps after scratch rollback.
 - Job/API retention, result presentation, scenario save and SF-18 UI remain unfinished, as do
   Tamsin acceptance and independent accounting sign-off. No deployment.
+
+## Immutable deal preview retention — October 19, 2026
+
+- Added retain service under a tenant/preview advisory lock. Every attempt rechecks scenario
+  permission and entity currency. A matching existing record returns only after proposal and
+  input/result fingerprints verify; reuse of an identity with changed input is refused.
+- First execution resolves the scratch bundle and its reference index, uses the DRY_RUN engine,
+  and stores the proposal plus complete engine bundle, full canonical result, both hashes,
+  registered release ID and standard pinned_refs. Exactly one deal_preview.run audit is added.
+  No commit occurs inside the service; the future worker owns attempt fencing and commit.
+- Real database verification passes saved SSP references, exact request retention, repeated
+  result identity, one audit and changed-proposal refusal alongside scratch rollback checks.
+  Python lint/types pass. No production contract/customer survives the enclosing commit.
+- Asynchronous request/worker wiring, authorized read APIs, user-facing result projection,
+  scenario save and SF-18 UI remain unimplemented. No deployment or accounting-signoff claim.

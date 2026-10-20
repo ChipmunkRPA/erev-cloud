@@ -78,7 +78,13 @@ def cell(
                 raise _refuse()
             group = evidence["groups"][source["group_id"]]
             for index, side in enumerate(("earlier", "later")):
-                computation_id = identity["sides"][index]["contracts"][name]
+                computation_id = identity["sides"][index]["contracts"].get(name)
+                if computation_id is None:
+                    if group[side] is not None:
+                        raise _refuse()
+                    continue
+                if group[side] is None:
+                    raise _refuse()
                 original = identity["sides"][index]["computations"][computation_id]
                 if (
                     group[side]["computation_id"] != computation_id
@@ -89,6 +95,9 @@ def cell(
                     )
                 ):
                     raise _refuse()
+            existing = group["later"] or group["earlier"]
+            if existing is None:
+                raise _refuse()
             found = session.execute(
                 select(contract.c.id)
                 .select_from(contract)
@@ -104,8 +113,7 @@ def cell(
                 )
                 .where(
                     contract.c.external_id == name,
-                    contract_version.c.contract_computation_id
-                    == UUID(group["later"]["computation_id"]),
+                    contract_version.c.contract_computation_id == UUID(existing["computation_id"]),
                     contract_version.c.book_code == params.book_code,
                 )
                 .distinct()

@@ -6,6 +6,19 @@
 
 
 
+## Independent group population changes in close variance — October 20, 2026
+
+- Frozen close comparisons now support entire independent contract groups entering or leaving
+  the population. The present side must reproduce its retained output hash and frozen money;
+  the absent side is recorded as absent, with no fabricated empty input/computation.
+- Entries use NEW_CONTRACT and exits OTHER with explicit population.entered/population.left
+  evidence. Exits do not assert cancellation. Retained presentation and cell drill-through
+  validate the available source and current contract access on either side.
+- Existing groups still use event/reference/FX replay. A contract moving between groups or
+  member additions/removals within a retained group still requires membership replay.
+- The 27 focused replay checks pass, including real-engine group entry/exit, exact endpoints,
+  presentation and cell source selection. Python lint/types pass. No deployment.
+
 ## Partial RPO targeted-VC exemptions — October 20, 2026
 
 - POL-200 now excludes the dated targeted-VC quota only for wholly unsatisfied obligations
@@ -218,21 +231,6 @@
 - Scenario save, user-facing allocation/range/indicator projection and SF-18 UI still need
   implementation. Tamsin accounting acceptance, broader release verification and independent
   sign-off remain open. No deployment.
-
-## Immutable deal preview retention — October 19, 2026
-
-- Added retain service under a tenant/preview advisory lock. Every attempt rechecks scenario
-  permission and entity currency. A matching existing record returns only after proposal and
-  input/result fingerprints verify; reuse of an identity with changed input is refused.
-- First execution resolves the scratch bundle and its reference index, uses the DRY_RUN engine,
-  and stores the proposal plus complete engine bundle, full canonical result, both hashes,
-  registered release ID and standard pinned_refs. Exactly one deal_preview.run audit is added.
-  No commit occurs inside the service; the future worker owns attempt fencing and commit.
-- Real database verification passes saved SSP references, exact request retention, repeated
-  result identity, one audit and changed-proposal refusal alongside scratch rollback checks.
-  Python lint/types pass. No production contract/customer survives the enclosing commit.
-- Asynchronous request/worker wiring, authorized read APIs, user-facing result projection,
-  scenario save and SF-18 UI remain unimplemented. No deployment or accounting-signoff claim.
 
 ## Outstanding release verification
 

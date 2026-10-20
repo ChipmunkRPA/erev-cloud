@@ -483,7 +483,7 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     group_ids = [uuid4(), uuid4()]
     release_id = uuid4()
 
-    def side(bundle: InputBundle, day: int) -> Side:
+    def side(bundle: InputBundle, day: int, keep: tuple[int, ...] = (0, 1)) -> Side:
         scope = locked.LockScope(
             uuid4(), entity_id, "Mock Entity 2", "ASC606", period_id, "FY2023-P05"
         )
@@ -491,6 +491,8 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         contracts = {}
         amounts = {}
         for number, group_id in enumerate(group_ids, start=2):
+            if number - 2 not in keep:
+                continue
             named = upgrade.decode_input(
                 upgrade.encode_input(bundle).replace(b"Contract 2", f"Contract {number}".encode())
             )
@@ -629,25 +631,29 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     from erev_api.domain.reports.builders import ADAPTER, ReportParams, SourceBinding
     from sqlalchemy.orm import Session
 
-    sides: list[dict[str, Any]] = []
-    for source_side in (pair.earlier, pair.later):
-        sides.append(
-            {
-                "lock_id": str(source_side.frozen.scope.lock_id),
-                "contracts": {
-                    name: str(identity)
-                    for name, identity in source_side.contract_computations.items()
-                },
-                "computations": {
-                    str(identity): {
-                        "group_id": str(source.group_id),
-                        "input_sha256": source.bundle.sha256(),
-                        "output_sha256": source.output_sha256,
-                    }
-                    for identity, source in source_side.computations.items()
-                },
-            }
-        )
+    def identities(value: Pair) -> list[dict[str, Any]]:
+        sides: list[dict[str, Any]] = []
+        for source_side in (value.earlier, value.later):
+            sides.append(
+                {
+                    "lock_id": str(source_side.frozen.scope.lock_id),
+                    "contracts": {
+                        name: str(identity)
+                        for name, identity in source_side.contract_computations.items()
+                    },
+                    "computations": {
+                        str(identity): {
+                            "group_id": str(source.group_id),
+                            "input_sha256": source.bundle.sha256(),
+                            "output_sha256": source.output_sha256,
+                        }
+                        for identity, source in source_side.computations.items()
+                    },
+                }
+            )
+        return sides
+
+    sides = identities(pair)
     binding = SourceBinding(
         cutoff=after.known_at,
         versions={},
@@ -712,6 +718,69 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         variance_presentation.dataset(pair, replace(result, driver_totals={}))
     with pytest.raises(Problem, match="no retained source"):
         variance_groups.execute(replace(pair, later=replace(pair.later, contract_computations={})))
+
+    for entering in (True, False):
+        population_pair = Pair(
+            side(before, 1, (0,) if entering else (0, 1)),
+            side(after, 3, (0, 1) if entering else (0,)),
+            (entity_id,),
+        )
+        population = variance_groups.execute(population_pair)
+        rendered = variance_presentation.dataset(population_pair, population)
+        evidence = rendered.evidence["groups"][str(group_ids[1])]
+        absent = "earlier" if entering else "later"
+        assert evidence[absent] is None
+        assert evidence["executions"][0]["changed_fields"] == (
+            "population.entered" if entering else "population.left",
+        )
+        pop_sides = identities(population_pair)
+        pop_binding = replace(
+            binding,
+            evidence={
+                "close_variance_sources": {
+                    "version": 1,
+                    "sides": pop_sides,
+                    "required_entity_ids": [str(entity_id)],
+                },
+                "close_variance_contributors": rendered.evidence,
+                "close_variance_evidence_sha256": sha256_hex(rendered.evidence),
+            },
+        )
+        pop_params = replace(
+            params,
+            binding=pop_binding,
+            parameters={
+                "from_period_lock_id": pop_sides[0]["lock_id"],
+                "to_period_lock_id": pop_sides[1]["lock_id"],
+            },
+        )
+
+        class PopulationLookup:
+            def __init__(self, records: list[dict[str, Any]]) -> None:
+                self.records = records
+
+            def execute(self, statement: Any) -> Any:
+                filters = statement.compile().params
+                name = filters["external_id_1"]
+                expected = (
+                    self.records[1]["contracts"].get(name) or self.records[0]["contracts"][name]
+                )
+                assert str(filters["contract_computation_id_1"]) == expected
+                return SimpleNamespace(scalar_one_or_none=lambda: contract_ids[name])
+
+        rows = [
+            row for row in rendered.data.rows if row.get("contract_external_id") == "Contract 3"
+        ]
+        assert rows
+        for row in rows:
+            value, contributors = variance_cells.cell(
+                cast(Session, PopulationLookup(pop_sides)), pop_params, row["row_key"], "change"
+            )
+            assert value == row["change"]
+            assert any(
+                "population." in detail for item in contributors for detail in item["details"]
+            )
+        assert all(item.sums_exactly for item in population.measures.values())
 
 
 @pytest.mark.parametrize("fault", ["version", "source", "weight", "existing"])

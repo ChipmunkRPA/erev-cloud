@@ -2,8 +2,8 @@
 
 This worker calculation runs after source loading has closed its transaction. It
 keeps currency/measure totals separate and retains each group's execution evidence.
-New, removed or regrouped contracts need explicit population replay, never an
-invented empty input bundle.
+Independent groups entering/leaving the population have explicit source-backed
+contributions. Regrouping still needs membership replay, never an invented empty bundle.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from erev_engine.stages.s15_disclosures.variance import Decomposition
 
 from erev_api.problems import Problem
 
-from . import variance_execution, variance_measures
+from . import variance_execution, variance_measures, variance_population
 from .computation_sources import VerifiedComputation
 from .variance_measures import MeasureKey
 from .variance_replay import Engine
@@ -28,7 +28,7 @@ from .variance_sources import Pair, Side
 
 @dataclass(frozen=True)
 class GroupReplay:
-    groups: Mapping[UUID, variance_execution.RetainedReplay]
+    groups: Mapping[UUID, variance_execution.RetainedReplay | variance_population.PopulationReplay]
     measures: Mapping[MeasureKey, Decomposition]
     driver_totals: Mapping[tuple[str, str, str], Fraction]  # currency, measure, driver
     required_entity_ids: tuple[UUID, ...]
@@ -67,12 +67,8 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
         if any(key.contract_external_id not in side.contract_computations for key in amounts):
             raise _refuse("a frozen monetary contract has no retained source.")
     old, new = _groups(pair.earlier), _groups(pair.later)
-    if (
-        old.keys() != new.keys()
-        or pair.earlier.contract_computations.keys() != pair.later.contract_computations.keys()
-    ):
-        raise _refuse("new or removed groups/contracts require population replay.")
-    for name, identity in pair.earlier.contract_computations.items():
+    for name in pair.earlier.contract_computations.keys() & pair.later.contract_computations.keys():
+        identity = pair.earlier.contract_computations[name]
         later_identity = pair.later.contract_computations[name]
         if (
             pair.earlier.computations[identity].group_id
@@ -80,10 +76,42 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
         ):
             raise _refuse("a regrouped contract requires membership replay.")
     scope = pair.earlier.frozen.scope
-    runs = {}
+    runs: dict[UUID, variance_execution.RetainedReplay | variance_population.PopulationReplay] = {}
     measures = {}
     totals: dict[tuple[str, str, str], Fraction] = {}
-    for group_id in sorted(old, key=str):
+    for group_id in sorted(old.keys() | new.keys(), key=str):
+        if group_id not in old or group_id not in new:
+            entering = group_id not in old
+            side = pair.later if entering else pair.earlier
+            source = new[group_id] if entering else old[group_id]
+            names = {
+                name
+                for name, identity in side.contract_computations.items()
+                if identity == source.computation_id
+            }
+            endpoint = later if entering else earlier
+            population = variance_population.execute(
+                source,
+                {
+                    key: point.amount
+                    for key, point in endpoint.items()
+                    if key.contract_external_id in names
+                },
+                entering=entering,
+                entity_code=scope.entity_code,
+                book_code=scope.book_code,
+                period_key=scope.period_key,
+                engine=engine,
+            )
+            runs[group_id] = population
+            for key, decomposition in population.replay.measures.items():
+                if key in measures or key.contract_external_id not in names:
+                    raise _refuse("a population change duplicates an attributed contract.")
+                measures[key] = decomposition
+                for effect in decomposition.effects:
+                    total_key = key.currency, key.measure, effect.driver
+                    totals[total_key] = totals.get(total_key, Fraction(0)) + effect.amount
+            continue
         names = {
             name
             for name, identity in pair.earlier.contract_computations.items()

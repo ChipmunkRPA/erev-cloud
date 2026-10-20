@@ -88,6 +88,36 @@ def _readback_books(
     return tuple(books), tuple(normalized)
 
 
+def verify_source(
+    source: VerifiedComputation,
+    expected: Metrics,
+    *,
+    entity_code: str,
+    book_code: str,
+    period_key: str,
+    currency_view: Literal["transaction", "functional"] = "transaction",
+    engine: Engine = compute,
+) -> tuple[SourceExecution, OutputBundle]:
+    if source.bundle.engine_version != ENGINE_VERSION:
+        raise _refuse("the retained engine runtime is unavailable.")
+    if any(not isinstance(value, Fraction) for value in expected.values()):
+        raise _refuse("frozen amounts must be exact fractions.")
+    output = engine(source.bundle)
+    if (
+        output.engine_version != source.bundle.engine_version
+        or output.input_sha256 != source.bundle.sha256()
+        or output.sha256() != source.output_sha256
+    ):
+        raise _refuse("the original computation does not reproduce its retained output.")
+    actual = Projection(source.bundle, entity_code, book_code, period_key, currency_view)(output)
+    if any(
+        actual.get(key, Fraction(0)) != expected.get(key, Fraction(0))
+        for key in actual.keys() | expected.keys()
+    ):
+        raise _refuse("the original computation does not reproduce its frozen endpoint.")
+    return SourceExecution(source.computation_id, source.bundle.sha256(), output.sha256()), output
+
+
 def execute(
     earlier: VerifiedComputation,
     later: VerifiedComputation,
@@ -116,30 +146,24 @@ def execute(
         if any(not isinstance(value, Fraction) for value in expected.values()):
             raise _refuse("frozen amounts must be exact fractions.")
 
-    def verify(
-        source: VerifiedComputation, expected: Metrics
-    ) -> tuple[SourceExecution, OutputBundle]:
-        output = engine(source.bundle)
-        if (
-            output.engine_version != source.bundle.engine_version
-            or output.input_sha256 != source.bundle.sha256()
-            or output.sha256() != source.output_sha256
-        ):
-            raise _refuse("the original computation does not reproduce its retained output.")
-        actual = Projection(source.bundle, entity_code, book_code, period_key, currency_view)(
-            output
-        )
-        if any(
-            actual.get(key, Fraction(0)) != expected.get(key, Fraction(0))
-            for key in actual.keys() | expected.keys()
-        ):
-            raise _refuse("the original computation does not reproduce its frozen endpoint.")
-        return SourceExecution(
-            source.computation_id, source.bundle.sha256(), output.sha256()
-        ), output
-
-    before, earlier_output = verify(earlier, earlier_metrics)
-    after, _ = verify(later, later_metrics)
+    before, earlier_output = verify_source(
+        earlier,
+        earlier_metrics,
+        entity_code=entity_code,
+        book_code=book_code,
+        period_key=period_key,
+        currency_view=currency_view,
+        engine=engine,
+    )
+    after, _ = verify_source(
+        later,
+        later_metrics,
+        entity_code=entity_code,
+        book_code=book_code,
+        period_key=period_key,
+        currency_view=currency_view,
+        engine=engine,
+    )
     if earlier.computation_id == later.computation_id:
         if earlier.bundle != later.bundle or before != after:
             raise _refuse("one computation identity has inconsistent retained sources.")
