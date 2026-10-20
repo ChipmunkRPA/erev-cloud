@@ -91,7 +91,7 @@ from support.factories import (
 )
 from support.ledger_door import keyless
 from support.principals import Actor, colleague, enrolled, member
-from support.reference import approve, assign, holding, post, put
+from support.reference import approve, assign, get, holding, post, put
 from support.worlds import approved_manual_events
 
 ENTITY = "AVM-UK"
@@ -794,3 +794,136 @@ def test_layer_movements_are_persisted_with_version_owner_rates_and_immutability
     )
     with tenant_session(hidden_entity, read_only=True) as session:
         assert session.execute(select(fx_layer_movement)).all() == []
+
+
+def test_multiple_liability_layers_flow_through_functional_report(world: World) -> None:
+    from erev_api.db.tables import contract, legal_entity
+    from erev_api.domain.reports import tie_outs
+    from erev_api.jobs.context import JobRuntime
+    from support import worlds
+    from support.factories import drafted_override
+
+    contract_id, group_id = _advance_received(world)
+    identifier = drafted_override(
+        world.place, contract_id, "fx.cl_historical_layering", "DISABLED_REMEASURE_AS_MONETARY"
+    )
+    sent = post(world.app, f"/api/v1/policy-overrides/{identifier}/submit", world.maya, {})
+    assert sent.status_code == 200, sent.text
+    decided = approve(world.app, sent.json()["approval_request_id"], world.marcus)
+    assert decided.status_code == 200, decided.text
+    for number, day in (("ADV-2", "2026-09-01"), ("ADV-3", "2026-09-02")):
+        head = world.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+        )
+        _recorded(world, contract_id, int(head), _invoice(number, day, "10000.00"))
+    computed(world.place, group_id)
+    for month in (7, 8, 9):
+        run_id, _ = close_runs.started(
+            world.app, world.marcus, entity_code=ENTITY, period_key=f"FY2026-P{month:02d}"
+        )
+        with world.place.uow() as uow:
+            row = (
+                uow.session.execute(select(close_run).where(close_run.c.id == UUID(run_id)))
+                .mappings()
+                .one()
+            )
+            scope = gates.scope_of_period(uow.session, row["entity_id"], BOOK, row["period_id"])
+            assert scope is not None
+            period_end.post_pass(
+                uow,
+                close_run_id=UUID(run_id),
+                close_run_no=row["close_run_no"],
+                scope=scope,
+                pass_name=period_end.FX_REMEASUREMENT,
+            )
+            uow.commit()
+    entity_id = world.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == ENTITY))
+    reporting = worlds.ReportWorld(
+        place=world.place,
+        priya=world.priya,
+        marcus=world.marcus,
+        runtime=JobRuntime(
+            clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+        ),
+        entity_id=entity_id,
+        contracts={},
+    )
+    params = {
+        "entity_codes": [ENTITY],
+        "book": BOOK,
+        "currency_view": "functional",
+        "from_period_key": "FY2026-P09",
+        "to_period_key": "FY2026-P09",
+    }
+    run, rows = worlds.report_run(reporting, "contract_balance_rollforward", params)
+    found = {row["row_key"]: row for row in rows}
+    assert found["CLOSING"]["contract_liability"] == {"amount": "94600.00", "currency": "GBP"}
+    assert (
+        next(
+            check
+            for check in run["tie_out_results"]
+            if check["code"] == tie_outs.TO_ROLLFORWARD_BALANCES
+        )["result"]
+        == "PASS"
+    )
+    assert Decimal(found["FX_REMEASUREMENT"]["contract_liability"]["amount"]) != 0
+    approved_manual_events(
+        world.place,
+        world.priya,
+        contract_id,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-09-20",
+            "payload": {"obligation_key": "O1", "quantity": "100", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    cancelled = close_runs.cancel(
+        world.app, world.marcus, run_id, "Delivery changes require a new close pass"
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    previous_run = run_id
+    run_id, _ = close_runs.started(
+        world.app, world.marcus, entity_code=ENTITY, period_key="FY2026-P09"
+    )
+    assert run_id != previous_run
+    with world.place.uow() as uow:
+        row = (
+            uow.session.execute(select(close_run).where(close_run.c.id == UUID(run_id)))
+            .mappings()
+            .one()
+        )
+        scope = gates.scope_of_period(uow.session, row["entity_id"], BOOK, row["period_id"])
+        assert scope is not None
+        period_end.post_pass(
+            uow,
+            close_run_id=UUID(run_id),
+            close_run_no=row["close_run_no"],
+            scope=scope,
+            pass_name=period_end.FX_REMEASUREMENT,
+        )
+        uow.commit()
+    after, later = worlds.report_run(reporting, "contract_balance_rollforward", params)
+    later_rows = {row["row_key"]: row for row in later}
+    assert later_rows["CLOSING"]["contract_liability"] == {"amount": "55900.00", "currency": "GBP"}
+    assert later_rows["REVENUE_FROM_OPENING"]["contract_liability"] == {
+        "amount": "-37575.00",
+        "currency": "GBP",
+    }
+    assert (
+        next(
+            check
+            for check in after["tie_out_results"]
+            if check["code"] == tie_outs.TO_ROLLFORWARD_BALANCES
+        )["result"]
+        == "PASS"
+    )
+    started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(reporting, UUID(started.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        world.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows

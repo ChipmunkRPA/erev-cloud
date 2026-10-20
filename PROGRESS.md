@@ -6,6 +6,24 @@
 
 
 
+## Layer-specific liability FX attribution — October 20, 2026
+
+- Functional balance rollforwards now retain new billing layer identities and read verified
+  liability creation/remeasurement movements. Period totals must equal posted control FX;
+  missing layers, inconsistent traces/currencies or mismatched totals are refused explicitly.
+- Opening layers retain their original range-opening classification; new layers remain separate.
+  Revenue-relief FX precedes revenue and closing FX follows it. Billing settlement FX also carries
+  its source layer identity. No functional-balance-weight apportionment is used. Source movement
+  membership is retained for reruns; existing transaction paths and locked schemas are unchanged.
+- Necessary real API witness: approved POL-163 override, one opening advance plus two new advances,
+  monthly close FX, then delivery and a new close pass. Closing GBP 94,600 becomes GBP 55,900;
+  revenue from opening is GBP 37,575, and balance ties pass. The pre-delivery report reruns unchanged.
+  FIFO layer unit checks and ERP/ENGINE functional-invoice regressions pass; lint/types checked.
+- This supersedes the blanket multi-open-layer FX refusal for attributable movements. Combined
+  contract layer ownership and late-carried FX that cannot match dated movement evidence remain
+  separate work, along with group-membership variance attribution and broader release acceptance.
+  No deployment or independent accounting sign-off claimed.
+
 ## RPO rollforward currency attribution — October 20, 2026
 
 - Functional/reporting RPO rollforwards now translate month-by-month: business movements at
@@ -205,25 +223,6 @@
 - Full functional movement attribution, reporting-currency translation, additional captions
   without engine functional targets, population replay and RPO partial exclusions remain open.
   This is a functional balance checkpoint, not completion of all reporting currencies. No deployment.
-
-## Reporting reference/FX attribution and GL tie-out — October 20, 2026
-
-- Close variance now replays retained reference inputs before business events and FX rates
-  afterward. Each phase retains its input/output hashes and changed fields; cell details expose
-  the changed inputs. Original/final frozen endpoints must still match exactly. Group additions,
-  removals/regrouping and calendar changes remain outstanding.
-- Contract balances and balance rollforward now consume cutoff-qualified uploaded/pulled GL reconciliation
-  role totals, compares each entity/role independently and retains those source facts for reruns.
-  Missing sources, unsupported currencies and shared/unavailable role bases remain explicit;
-  offsetting differences cannot pass. Viewer and XLSX/PDF expose comparison details.
-- Necessary validation: 27 variance checks (including real-engine policy and FX changes), two
-  GL comparison/rebuild checks, real upload/reconciliation/report and existing rollforward API
-  journeys, and targeted viewer checks pass. Python/TypeScript checks are recorded with the commit.
-- User priority remains completing attribution, multi-currency, RPO exemptions and GL matching.
-  This is an implementation checkpoint, not completion of those four workstreams. Foreign-currency
-  rollforward valuation, broader GL coverage, population replay and dated POL-200 exclusions remain.
-  POL-199's zero royalty exclusion can be correct under the engine's realization model; the older
-  blanket description of both exemptions as missing was too broad. No deployment.
 
 ## Outstanding release verification
 

@@ -37,8 +37,9 @@ The functional view reads dated engine balance targets and posted functional con
 Billing is valued from retained historical layer creation/settlement amounts and, in ENGINE
 posting mode, must equal posted functional billing. Settlement FX is moved before its billing
 flow with an equal offset to period-end FX. Layer identities and verified traces are retained
-for reruns. FX on more than one open liability layer still needs explicit per-layer attribution
-and is refused rather than apportioned using functional balances as weights.
+for reruns. Liability FX uses verified creation and remeasurement identities: opening layers
+remain in the range-opening bucket, new billing layers keep their own keys, and relief FX
+precedes revenue while closing FX follows it. Layer totals must match posted period FX.
 
 The reporting view translates monthly functional paths using the engine's S12-R-18 helper:
 opening at the preceding closing rate, flows at each posting period's average rate, closing
@@ -184,6 +185,8 @@ class Flow:
     amount: Decimal
     is_revenue: bool
     kind: str = ""
+    layer_key: str | None = None
+    liability_fx: tuple[tuple[str | None, Decimal], ...] = ()
 
 
 def family_of(flow: Flow) -> str:
@@ -229,12 +232,31 @@ def path(
         lines["CLOSING"][balance] = closing.get(balance, ZERO)
     layers: list[list[Any]] = []
     if opening.get(LIABILITY, ZERO) > 0:
-        layers.append(["OPENING", opening[LIABILITY]])
+        layers.append(["OPENING", opening[LIABILITY], None])
     asset = {UNBILLED: opening.get(UNBILLED, ZERO), ASSET: opening.get(ASSET, ZERO)}
     for flow in flows:
         family = family_of(flow)
         label = FAMILY_LINES[family]
         if family == FX:
+            if flow.liability_fx:
+                if sum((amount for _, amount in flow.liability_fx), ZERO) != flow.amount:
+                    raise tie_outs.invalid(
+                        "currency_view", "Layer FX differs from its posted total."
+                    )
+                for key, amount in flow.liability_fx:
+                    matches = [
+                        layer
+                        for layer in layers
+                        if layer[2] == key
+                        and (layer[0] == "OPENING" if key is None else layer[0] == "NEW")
+                    ]
+                    if len(matches) != 1 or matches[0][1] < amount:
+                        raise tie_outs.invalid(
+                            "currency_view", "FX has no matching open liability layer."
+                        )
+                    matches[0][1] -= amount
+                    lines[label][LIABILITY] -= amount
+                continue
             live = [layer for layer in layers if layer[1] > 0]
             if live:
                 if len(live) > 1:
@@ -261,7 +283,7 @@ def path(
                 left -= take
                 lines[label][role] -= take
             if left > 0:
-                layers.append(["NEW", left])
+                layers.append(["NEW", left, flow.layer_key])
                 lines[label][LIABILITY] += left
             continue
         need = flow.amount
@@ -463,6 +485,8 @@ def rollforwards(
                         "currency_view",
                         "Dated billing layers differ from posted functional billing.",
                     )
+    if functional and documents:
+        _liability_fx(session, posted, transaction_ends, periods, params)
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
         described = closing if closing is not None else opening
@@ -643,6 +667,128 @@ def _lines(
     return found
 
 
+def _liability_fx(
+    session: Session,
+    posted: dict[tuple[UUID, UUID], list[Entry]],
+    rows: Mapping[tuple[UUID, UUID], BalanceRow],
+    periods: Mapping[UUID, tuple[PeriodRef, ...]],
+    params: ReportParams,
+) -> None:
+    """Attach verified layer remeasurement to its posted control movement.
+
+    Opening layers share the range-opening bucket. New layers retain their creation
+    identity, so an FX change cannot change which billing later revenue relieves.
+    Settlement FX is already placed at its billing event by _functional_documents.
+    """
+    consumed: list[UUID] = []
+    for key, entries in posted.items():
+        row = rows.get(key)
+        if row is None or not periods[row.entity_id]:
+            continue
+        selected = tuple(
+            session.execute(
+                select(fx_layer_movement).where(
+                    fx_layer_movement.c.contract_version_id == row.version_id,
+                    fx_layer_movement.c.contract_id == row.contract_id,
+                    fx_layer_movement.c.entity_id == row.entity_id,
+                    fx_layer_movement.c.balance_role == LIABILITY_ROLE,
+                    fx_layer_movement.c.movement_kind.in_(
+                        ("LIABILITY_LAYER_CREATED", "LIABILITY_LAYER_REMEASURED")
+                    ),
+                )
+            ).mappings()
+        )
+        billing_events = set(
+            session.execute(
+                select(contract_event.c.id).where(
+                    contract_event.c.contract_id == row.contract_id,
+                    contract_event.c.event_type.in_(DOCUMENT_TYPES),
+                )
+            ).scalars()
+        )
+        relevant = [
+            item
+            for item in selected
+            if item["movement_kind"] == "LIABILITY_LAYER_REMEASURED"
+            and item["source_event_id"] not in billing_events
+        ]
+        if not relevant:
+            continue
+        trace = trace_store.load_trace(session, row.version_id)
+        if trace is None:
+            raise tie_outs.invalid("currency_view", "Liability FX trace is unavailable.")
+        nodes = {node.id: node for node in trace.nodes}
+        currency = tie_outs.entities(session, (row.entity_id,), params=params)[
+            0
+        ].functional_currency
+        created = {
+            str(item["layer_key"]): item
+            for item in selected
+            if item["movement_kind"] == "LIABILITY_LAYER_CREATED"
+        }
+        beginning = periods[row.entity_id][0].start
+        for period in periods[row.entity_id]:
+            movements = [
+                item for item in relevant if period.start <= item["effective_date"] <= period.end
+            ]
+            if not movements:
+                continue
+            fx_entries = [
+                entry for entry in entries if entry.period_id == period.id and entry.flow.kind == FX
+            ]
+            amount = sum((entry.flow.amount for entry in fx_entries), ZERO)
+            if -sum((Decimal(item["amount_functional"]) for item in movements), ZERO) != amount:
+                raise tie_outs.invalid(
+                    "currency_view", "Liability layer FX differs from posted period FX."
+                )
+            groups: dict[tuple[date, bool], dict[str | None, Decimal]] = {}
+            for item in movements:
+                creation = created.get(str(item["layer_key"]))
+                if creation is None:
+                    raise tie_outs.invalid(
+                        "currency_view", "Liability FX layer has no creation source."
+                    )
+                for source in (creation, item):
+                    node = nodes.get(str(source["trace_node_id"]))
+                    if (
+                        node is None
+                        or node.currency != str(source["functional_currency"]).strip()
+                        or Decimal(node.value) != Decimal(source["amount_functional"])
+                        or str(source["txn_currency"]).strip() != row.currency
+                        or str(source["functional_currency"]).strip() != currency
+                    ):
+                        raise tie_outs.invalid(
+                            "currency_view", "Liability FX evidence differs from its trace."
+                        )
+                    consumed.append(UUID(str(source["id"])))
+                identity = (
+                    None if creation["effective_date"] < beginning else str(item["layer_key"])
+                )
+                closing = nodes[str(item["trace_node_id"])].formula_id == "fx.remeasure.closing.v1"
+                parts = groups.setdefault((item["effective_date"], closing), {})
+                parts[identity] = parts.get(identity, ZERO) - Decimal(item["amount_functional"])
+            entries[:] = [entry for entry in entries if entry not in fx_entries]
+            for (day, closing), parts in sorted(groups.items()):
+                # Relief remeasurement precedes that day's revenue; closing FX follows it.
+                recorded = (
+                    params.known_at
+                    if closing
+                    else datetime.min.replace(tzinfo=params.known_at.tzinfo)
+                )
+                entries.append(
+                    Entry(
+                        order=(day, LINE_RANK, period.end, recorded, 0, "liability-layer-fx"),
+                        flow=Flow(
+                            sum(parts.values(), ZERO), False, FX, liability_fx=tuple(parts.items())
+                        ),
+                        period_id=period.id,
+                        entry_kind="FX_REMEASUREMENT",
+                    )
+                )
+    tie_outs.require_members(params, "liability_fx_layer", consumed)
+    tie_outs.record_members(params, "liability_fx_layer", consumed)
+
+
 def _functional_documents(
     session: Session,
     entries: Mapping[tuple[UUID, UUID], list[Entry]],
@@ -740,21 +886,75 @@ def _functional_documents(
                     )
                 settlement_key = (*key, entry.period_id)
                 settlements[settlement_key] = settlements.get(settlement_key, ZERO) + settlement
+                parts: dict[str | None, Decimal] = {}
+                if all(item["balance_role"] == LIABILITY_ROLE for item in remeasured):
+                    for item in remeasured:
+                        creation = (
+                            session.execute(
+                                select(fx_layer_movement).where(
+                                    fx_layer_movement.c.contract_version_id == row.version_id,
+                                    fx_layer_movement.c.contract_id == row.contract_id,
+                                    fx_layer_movement.c.entity_id == row.entity_id,
+                                    fx_layer_movement.c.layer_key == item["layer_key"],
+                                    fx_layer_movement.c.movement_kind == "LIABILITY_LAYER_CREATED",
+                                )
+                            )
+                            .mappings()
+                            .one_or_none()
+                        )
+                        node = (
+                            None if creation is None else nodes.get(str(creation["trace_node_id"]))
+                        )
+                        if (
+                            creation is None
+                            or node is None
+                            or node.currency != currency
+                            or Decimal(node.value) != Decimal(creation["amount_functional"])
+                        ):
+                            raise tie_outs.invalid(
+                                "currency_view",
+                                "Settlement FX layer lacks verified creation evidence.",
+                            )
+                        consumed.append(UUID(str(creation["id"])))
+                        identity = (
+                            None
+                            if creation["effective_date"] < periods[row.entity_id][0].start
+                            else str(item["layer_key"])
+                        )
+                        parts[identity] = parts.get(identity, ZERO) - Decimal(
+                            item["amount_functional"]
+                        )
                 translated.append(
                     replace(
                         entry,
                         order=(*entry.order, 0),
-                        flow=Flow(settlement, False, FX),
+                        flow=Flow(settlement, False, FX, liability_fx=tuple(parts.items())),
                     )
                 )
-            amount = sum((Decimal(item["amount_functional"]) for item in found), ZERO)
-            translated.append(
-                replace(
-                    entry,
-                    order=(*entry.order, 1),
-                    flow=Flow(-amount if entry.flow.amount < 0 else amount, False, BILLING),
+            for index, item in enumerate(
+                sorted(
+                    found,
+                    key=lambda item: (
+                        item["movement_kind"] == "LIABILITY_LAYER_CREATED",
+                        str(item["id"]),
+                    ),
                 )
-            )
+            ):
+                amount = Decimal(item["amount_functional"])
+                translated.append(
+                    replace(
+                        entry,
+                        order=(*entry.order, 1, index),
+                        flow=Flow(
+                            -amount if entry.flow.amount < 0 else amount,
+                            False,
+                            BILLING,
+                            layer_key=str(item["layer_key"])
+                            if item["movement_kind"] == "LIABILITY_LAYER_CREATED"
+                            else None,
+                        ),
+                    )
+                )
         result[key] = translated
     # Settlement FX belongs immediately before the invoice. Remove that same
     # amount from period-end posted FX, retaining its net movement exactly.

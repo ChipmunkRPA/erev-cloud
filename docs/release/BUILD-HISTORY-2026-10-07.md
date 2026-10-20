@@ -8780,3 +8780,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   four computation boundary checks, frontend rendering, Python lint/types and API generation pass.
   This is concrete FCS-6 case evidence, not independent accounting sign-off or full browser/release
   acceptance. No deployment.
+
+## Reporting reference/FX attribution and GL tie-out — October 20, 2026
+
+- Close variance now replays retained reference inputs before business events and FX rates
+  afterward. Each phase retains its input/output hashes and changed fields; cell details expose
+  the changed inputs. Original/final frozen endpoints must still match exactly. Group additions,
+  removals/regrouping and calendar changes remain outstanding.
+- Contract balances and balance rollforward now consume cutoff-qualified uploaded/pulled GL reconciliation
+  role totals, compares each entity/role independently and retains those source facts for reruns.
+  Missing sources, unsupported currencies and shared/unavailable role bases remain explicit;
+  offsetting differences cannot pass. Viewer and XLSX/PDF expose comparison details.
+- Necessary validation: 27 variance checks (including real-engine policy and FX changes), two
+  GL comparison/rebuild checks, real upload/reconciliation/report and existing rollforward API
+  journeys, and targeted viewer checks pass. Python/TypeScript checks are recorded with the commit.
+- User priority remains completing attribution, multi-currency, RPO exemptions and GL matching.
+  This is an implementation checkpoint, not completion of those four workstreams. Foreign-currency
+  rollforward valuation, broader GL coverage, population replay and dated POL-200 exclusions remain.
+  POL-199's zero royalty exclusion can be correct under the engine's realization model; the older
+  blanket description of both exemptions as missing was too broad. No deployment.

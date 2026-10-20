@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current liability-layer FX update (October 20): functional/reporting balance rollforward paths
+now preserve billing layer keys and apply trace-verified per-layer FX, with relief FX before
+revenue and closing FX afterward. Opening versus current-range billing classifications remain
+intact. Layer movement totals must agree with posted period FX. The real API witness covers an
+approved monetary override, three advances, close passes, subsequent delivery and retained rerun;
+ERP/ENGINE invoice regressions pass. Combined-contract ownership and late-carried differences
+without matching dated evidence still require work; this does not complete all variance or
+release acceptance gaps. No deployment or accounting sign-off claimed.
+
+
 Current RPO rollforward update (October 20): functional/reporting views now use monthly average
 rates for business movements and dated closing rates for endpoints. The endpoints share RPO's
 obligation-level gross/exclusion projection. FX and rounding are separate lines, and source

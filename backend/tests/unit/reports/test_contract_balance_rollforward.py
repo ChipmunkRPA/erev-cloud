@@ -65,6 +65,7 @@ def test_every_entry_kind_has_a_family_and_every_family_a_line() -> None:
         cbr.BILLING: "BILLINGS",
         cbr.REVENUE: "REVENUE_FROM_PERIOD_BILLINGS",
         cbr.RECLASSIFICATION: "RECLASSIFICATIONS",
+        cbr.FX: "FX_REMEASUREMENT",
     }
     assert set(cbr.FAMILY_LINES.values()) <= set(cbr.LINES)
     for kind in SubledgerEntryKind:
@@ -242,7 +243,7 @@ def test_documents_enter_at_their_dates_and_before_the_lines_of_that_date() -> N
         (date(2026, 9, 1), D("-36000.00"), cbr.BILLING),
         (date(2026, 9, 20), D("500.00"), cbr.BILLING),
     ]
-    assert all(entry.period_id is None and entry.entry_kind is None for entry in entries)
+    assert all(entry.period_id == SEPTEMBER.id and entry.entry_kind is None for entry in entries)
     revenue = line(SEPTEMBER, "REVENUE_RECOGNITION", "2956.20", date(2026, 9, 1))
     ordered = sorted([revenue, *entries], key=lambda entry: entry.order)
     assert [entry.flow.amount for entry in ordered] == [D("-36000.00"), D("2956.20"), D("500.00")]
@@ -340,3 +341,22 @@ def test_the_billing_events_are_a_bound_source_and_an_ipe_source() -> None:
     logic = catalogue.DEFINITIONS_BY_CODE[cbr.CODE].ipe_logic
     assert {"contract_event", "calc_trace"} <= set(logic["source_tables"])
     assert any("billed_unconditional_cum" in item for item in logic["filters"])
+
+
+def test_layer_fx_preserves_opening_and_new_billing_fifo() -> None:
+    flows = [
+        cbr.Flow(D("-100"), False, cbr.BILLING, layer_key="new-a"),
+        cbr.Flow(D("-200"), False, cbr.BILLING, layer_key="new-b"),
+        cbr.Flow(
+            D("-45"),
+            False,
+            cbr.FX,
+            liability_fx=((None, D("-5")), ("new-a", D("-10")), ("new-b", D("-30"))),
+        ),
+        cbr.Flow(D("225"), True, cbr.REVENUE),
+    ]
+    result = cbr.path({**NONE, LIABILITY: D("100")}, flows, {**NONE, LIABILITY: D("220")})
+    assert result["FX_REMEASUREMENT"][LIABILITY] == D("45")
+    assert result["REVENUE_FROM_OPENING"][LIABILITY] == D("-105")
+    assert result["REVENUE_FROM_PERIOD_BILLINGS"][LIABILITY] == D("-120")
+    assert result["OTHER"][LIABILITY] == 0
