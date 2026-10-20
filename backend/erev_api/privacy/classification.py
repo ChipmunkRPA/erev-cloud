@@ -2521,6 +2521,19 @@ TABLES: Final[tuple[TableClassification, ...]] = (
     ),
     # ---- CON tables (04 T-CON-nn)
     _table(
+        "close_pass_evidence",
+        "T-CLS-10",
+        "Encrypted calculation evidence of a sealed close-pass posting.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id subledger_posting_id combination_group_id pass_name "
+                "file_id document_sha256 created_at created_by created_by_kind"
+            ),
+            SPEC_C2_LEDGER: _cols("entry_numbers"),
+        },
+    ),
+    _table(
         "computation_evidence",
         "T-CON-25",
         (

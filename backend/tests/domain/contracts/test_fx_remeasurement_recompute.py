@@ -640,6 +640,35 @@ def test_contract_period_override_close_pass_posts_liability_fx_once(
         ("FX_GAIN_LOSS", Decimal("0"), Decimal("5400.00"), Decimal("0.86")),
     ]
     assert _fx_lines(world, contract_id) == expected
+    from erev_api.db.tables import close_pass_evidence
+    from erev_api.domain.close import pass_evidence
+    from erev_api.explain.store import trace_from_row
+
+    with world.place.uow() as uow:
+        line = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id == contract_id,
+                    subledger_line.c.entry_kind == FX,
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
+            )
+            .mappings()
+            .one()
+        )
+        retained = pass_evidence.read_for_line(uow, line["id"])
+        assert retained is not None
+        assert retained["pass_name"] == FX
+        trace = trace_from_row({"id": retained["id"], **retained["trace_record"]})
+        deltas = [
+            node
+            for node in trace.nodes
+            if node.formula_id == "post.delta.v1" and node.inputs[0] == line["trace_node_id"]
+        ]
+        assert any(Decimal(node.value) == Decimal("-5400.00") for node in deltas)
+        evidence_count = uow.session.execute(
+            select(func.count()).select_from(close_pass_evidence)
+        ).scalar_one()
     count = _line_count(world, contract_id)
     assert post_fx().postings == 0
     computed(world.place, group_id)
@@ -647,6 +676,21 @@ def test_contract_period_override_close_pass_posts_liability_fx_once(
     assert _fx_lines(world, contract_id) == expected
     assert _line_count(world, contract_id) == count
     assert _unstamped_foreign_lines(world, contract_id) == 0
+    assert (
+        world.place.scalar(select(func.count()).select_from(close_pass_evidence)) == evidence_count
+    )
+    with world.place.uow() as uow:
+        assert pass_evidence.read_for_line(uow, line["id"]) == retained
+    from erev_api.db.session import DbContext, tenant_session
+    from sqlalchemy import update
+    from sqlalchemy.exc import DBAPIError
+
+    with pytest.raises(DBAPIError), world.place.uow() as uow:
+        uow.session.execute(update(close_pass_evidence).values(document_sha256="0" * 64))
+    with tenant_session(
+        DbContext(tenant_id=UUID(int=0), user_id=None, entity_scope="*")
+    ) as session:
+        assert session.execute(select(close_pass_evidence)).all() == []
 
 
 def test_unreconciled_policy_transition_keeps_the_persisted_calculation_unchanged(

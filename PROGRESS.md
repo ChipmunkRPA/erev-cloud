@@ -6,6 +6,25 @@
 
 
 
+## Retained close-pass calculation evidence — October 20, 2026
+
+- Found the underlying CLOSE-PASS-TRACE-1 gap: actual close-pass ledger lines have no contract
+  version/trace record. Latest contract traces cannot establish what an earlier pass posted.
+  Revision 0192 now retains each actual pass's typed input, explicit pass name, selected book
+  output, trace and selected line fields in encrypted storage, atomically with its sealed
+  posting. Group entry indexes distinguish pooled postings. Source reads check file, logical
+  input/output and trace hashes and the selected ledger line; historical absence stays absent.
+- Added immutable tenant-scoped links, file ownership/retention holds, privacy classification
+  and scenario regeneration rules. FX pass/idempotence, populated foreign public lock and
+  automatic netting reversal checks pass; evidence remains after recomputation. Mutation and
+  cross-tenant checks, 12 scoped file-registry/census checks, lint and scoped types pass.
+- Not complete: reporting must consume this evidence and reconstruct attributed paid history
+  for combined/late-carried liability FX; existing historical passes cannot be silently rebuilt.
+  A broader registry check also exposed pre-existing unclassified evidence_sample_file,
+  forecast_actuals_capture, scenario_refresh and forecast/import fields, plus stale snapshot
+  reference-count/excluded-column expectations. Those remain release work (four checks fail
+  after updating the regenerated-table census). No deployment or accounting acceptance.
+
 ## Currency exports in close evidence packs — October 20, 2026
 
 - Close/re-lock packs now include functional and reporting CSVs for all six retained currency
@@ -207,21 +226,6 @@
 - Still open: alternate-currency frozen datasets and close-report integration; mixed contract/
   estimate/reference changes; missing members; group-level posting redistribution; combined
   contract/late-carried liability FX. No deployment or accounting sign-off claimed.
-
-## Membership plus business-event variance replay — October 20, 2026
-
-- Group merges/splits can now coexist with newly recorded business events. The replay first
-  evaluates the new partition without those business events, then adds consecutive event-driver
-  runs in effective-date/sequence order. Late-event precedence remains explicit. Each phase
-  retains its input/output hashes and source event keys; final metrics must match frozen values.
-- The targeted real-engine witness now combines a nonzero merge redistribution with a late
-  delivery. Membership effects equal the isolated merge; delivery effects equal an independent
-  before/after engine projection. Report/cell amounts and retained source identities reconcile.
-  Existing reverse split, population and export checks in the same journey pass; lint/types pass.
-- This supersedes the simultaneous-business-event refusal below. Mixed contract/estimate record,
-  policy/reference or FX changes, missing member sources, group-level posted redistribution,
-  combined-contract FX ownership and late-carried FX remain open. This is authored frozen-data
-  validation, not full lock-flow acceptance. No deployment or accounting sign-off claimed.
 
 ## Outstanding release verification
 

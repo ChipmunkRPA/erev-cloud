@@ -1898,6 +1898,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `POSTING_RESPONSE` | `posting_ack.response_file_id` | route: internal | - |
 | `COMPUTATION_INPUT` | `computation_evidence.input_file_id` | route: internal | - |
 | `COMPUTATION_OUTPUT` | `computation_evidence.output_file_id` | route: internal | - |
+| `COMPUTATION_OUTPUT` | `close_pass_evidence.file_id` | route: internal | - |
 | `VALIDATION_DATASET` | `release_validation_attempt.dataset_file_id` | route: internal | - |
 | `VALIDATION_DATASET` | `computation_verification.difference_file_id` | route: internal | - |
 | `AI_PROMPT_LOG` | none | nobody | - |
@@ -8807,3 +8808,37 @@ reads reauthorize tenant-wide evidence/access.approve, current campaign/file ass
 source availability. Original snapshot bytes captured in the archive remain fixed when later
 review decisions occur. Legacy v1/v3 register-only ACCESS bindings remain identifiable as
 incomplete historical source formats; the public parent lifecycle remains to be added.
+
+
+### T-CLS-10 `close_pass_evidence`
+
+Revision 0192. Tenant-scoped append-only accounting evidence (IM-A, RLS-T).
+
+| Column | Type | Null | Constraints and notes |
+|---|---|---|---|
+| SC-T | | | Tenant-scoped primary key |
+| `subledger_posting_id` | uuid | N | Tenant FK to sealed posting |
+| `combination_group_id` | uuid | N | Tenant FK to source group |
+| `pass_name` | text | N | Explicit engine pass |
+| `entry_numbers` | jsonb | N | Selected posting entry numbers |
+| `file_id` | uuid | N | Tenant FK to encrypted file_object |
+| `document_sha256` | char(64) | N | Canonical envelope digest |
+| SC-C | | | Requester and creation time |
+
+ Required tenant foreign keys `subledger_posting_id`,
+`combination_group_id` and `file_id`; unique `(tenant_id, subledger_posting_id, combination_group_id)`.
+`pass_name` is one of FX_REMEASUREMENT, CLOSE_RELEASE or NETTING_RECLASS. `entry_numbers jsonb`
+identifies the group's selected entries in the pooled posting; `document_sha256 char(64)`
+binds the full canonical evidence envelope in encrypted COMPUTATION_OUTPUT storage.
+
+The format-1 envelope retains the typed input codec (including record cutoff), logical input
+hash, explicit engine pass, selected book output and hash, calculation trace and hash, and the
+selected line fields. The input logical hash follows CV-25; the envelope hash also binds the
+cutoff and pass. Records and file references are written in the posting's transaction, with no
+contract-version creation. Reading rechecks the entry index, selected line, purpose, byte hash,
+input/output hashes and trace node. Historical absent evidence stays absent. Raw group data is
+internal and requires authorization for every source entity before any external disclosure;
+a visible line alone does not grant access to other group members. Audit retention and file
+shredding holds apply. Scenario snapshots regenerate this derived evidence. Downgrade refuses
+while evidence exists. The source record does not itself complete layer-level posted-history
+attribution or provide an independent accounting sign-off.

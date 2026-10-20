@@ -405,6 +405,7 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
             _C.REPLAY_REFERENCE, _K.REPLAY_REFERENCE, "replay source of locks (SBX-04)"
         ),
         # --- regenerated: derived by recompute (SBX-03 never copies derived data) ---------------
+        "close_pass_evidence": _regenerated(_K.DERIVED, "retained close-pass calculation"),
         "computation_evidence": _regenerated(_K.DERIVED, "recomputed typed evidence"),
         "release_validation": _regenerated(_K.DERIVED, "workspace release verification"),
         "release_validation_attempt": _regenerated(_K.DERIVED, "workspace release verification"),

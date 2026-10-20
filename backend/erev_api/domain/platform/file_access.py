@@ -64,6 +64,7 @@ from erev_api.db.tables import (
     ai_proposal,
     approval_request,
     audit_chain_verification,
+    close_pass_evidence,
     computation_evidence,
     computation_verification,
     contract,
@@ -1136,7 +1137,10 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
             owners=(FileOwner(computation_evidence, "input_file_id", route=INTERNAL),),
         ),
         FilePurpose.COMPUTATION_OUTPUT: PurposeAccess(
-            owners=(FileOwner(computation_evidence, "output_file_id", route=INTERNAL),),
+            owners=(
+                FileOwner(computation_evidence, "output_file_id", route=INTERNAL),
+                FileOwner(close_pass_evidence, "file_id", route=INTERNAL),
+            ),
         ),
         FilePurpose.VALIDATION_DATASET: PurposeAccess(
             owners=(

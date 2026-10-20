@@ -246,3 +246,19 @@ period_reopen_basis: Final = Table(
     Column("judgement_record_id", Uuid(), nullable=True),
     *_sc_c_sc_m(),
 )
+
+
+# Immutable evidence of the actual engine pass behind a sealed close posting.
+close_pass_evidence: Final = Table(
+    "close_pass_evidence",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("subledger_posting_id", Uuid(), nullable=False),
+    Column("combination_group_id", Uuid(), nullable=False),
+    Column("pass_name", Text(), nullable=False),
+    Column("entry_numbers", JSONB(), nullable=False),
+    Column("file_id", Uuid(), nullable=False),
+    Column("document_sha256", CHAR(64), nullable=False),
+    *_sc_c(),
+)

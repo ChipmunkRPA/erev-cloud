@@ -528,6 +528,9 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
         entities=_event_entity,
     ),
     EvidenceReference(
+        "close_pass_evidence", "file_id", "the retained calculation of a close posting"
+    ),
+    EvidenceReference(
         "computation_evidence",
         "input_file_id",
         "the retained input of a computation",

@@ -110,10 +110,10 @@ the three steps. In the first step the group is not passed, so it is not marked:
 computation left stands, the gate reads the run as out of date, and the next run — on a later
 cutoff — posts the group. The cutoff is not moved: what a step read stays one instant.
 
-[J] Known limitation CLOSE-PASS-TRACE-1 (R-79 (d)): a pass stores sealed postings only — no
-computation row, no contract version and no calculation trace — so a close-run line carries its
-contract, period, role and trace node id and has no stored trace or replay evidence until the pass
-is a member of the canonical input (item ENG-PASS-CANONICAL-1).
+Close passes retain their actual input bundle, explicit pass name, selected book output and
+calculation trace alongside each sealed posting (close_pass_evidence, revision 0192). The
+posting entry numbers identify each group's lines in a pooled pass. No contract version is
+invented. Historical postings without this evidence remain explicitly unavailable.
 
 [J] A group that is dirty (a waived quarantine, or an event recorded since ``RECOMPUTE_DIRTY``) is
 left out and counted: its ledger is not what its events say, so a pass over it would post against
@@ -130,7 +130,7 @@ process pool (RCP-23) are item PERF-CLOSE-FANOUT-1.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
@@ -142,7 +142,7 @@ from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import combination_group, contract, period, period_state, subledger_line
-from erev_api.domain.close import run_inputs
+from erev_api.domain.close import pass_evidence, run_inputs
 from erev_api.domain.contracts import bundles, computation, period_ends, repo
 from erev_api.domain.contracts.period_ends import (
     CLOSE_RELEASE,
@@ -232,6 +232,7 @@ class _Planned:
     description: str
     group_id: UUID | None
     lines: list[dict[str, Any]]
+    evidence: list[tuple[UUID, dict[str, Any]]] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +245,7 @@ class _GroupPass:
     lines: list[dict[str, Any]]
     entries: int
     earlier: tuple[date, str] | None
+    evidence: tuple[dict[str, Any], ...] = ()
 
 
 def _groups(session: Session, scope: PeriodScope) -> list[tuple[UUID, bool]]:
@@ -502,6 +504,7 @@ def _group_lines(
     if earlier is not None:
         return _GroupPass(code=code, lines=[], entries=0, earlier=earlier)
     lines: list[dict[str, Any]] = []
+    evidence: list[dict[str, Any]] = []
     entries = 0
     for book_output in books:
         intents = sorted(
@@ -528,9 +531,12 @@ def _group_lines(
         }
         for line in book_lines:
             line["effective_date"] = dated[int(line["entry_no"])]
+        evidence.append(pass_evidence.capture(bundle, book_output, pass_name, book_lines))
         lines += book_lines
         entries += len(intents)
-    return _GroupPass(code=code, lines=lines, entries=entries, earlier=None)
+    return _GroupPass(
+        code=code, lines=lines, entries=entries, earlier=None, evidence=tuple(evidence)
+    )
 
 
 def post_pass(
@@ -557,6 +563,7 @@ def post_pass(
     planned: list[_Planned] = []
     pooled: list[dict[str, Any]] = []
     passed: list[UUID] = []
+    pooled_evidence: list[tuple[UUID, dict[str, Any]]] = []
     entries = skipped = 0
     earliest: tuple[date, str] | None = None
     waited_for: dict[date, tuple[date, str] | None] | None = {} if pass_name == PASSES[0] else None
@@ -590,10 +597,12 @@ def post_pass(
                     description=DESCRIPTIONS[pass_name].format(group=found.code, **named),
                     group_id=group_id,
                     lines=found.lines,
+                    evidence=[(group_id, document) for document in found.evidence],
                 )
             )
         else:
             pooled += found.lines
+            pooled_evidence.extend((group_id, document) for document in found.evidence)
             entries += found.entries
     if earliest is not None:
         # R-112: the earliest such period over every group, so that the closes are run in order
@@ -610,6 +619,7 @@ def post_pass(
                 description=DESCRIPTIONS[pass_name].format(**named),
                 group_id=None,
                 lines=pooled,
+                evidence=pooled_evidence,
             )
         )
     line_count = 0
@@ -631,6 +641,10 @@ def post_pass(
             raise ValueError(
                 f"posting {item.key} exists and the {PASS_LABELS[pass_name]} still has amounts "
                 "to post (T-SL-01)"
+            )
+        for group_id, document in item.evidence:
+            pass_evidence.persist(
+                uow, posting_id=posted.posting_id, group_id=group_id, document=document
             )
         line_count += len(posted.line_ids)
     if pass_name == PASSES[0]:

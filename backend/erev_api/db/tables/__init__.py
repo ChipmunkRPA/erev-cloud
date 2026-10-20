@@ -16,6 +16,7 @@ from erev_api.db.tables.ai import ai_call_intent, ai_model_log, ai_proposal  # n
 from erev_api.db.tables.close import (  # noqa: E402
     close_checklist_item,
     close_checklist_template,
+    close_pass_evidence,
     close_run,
     lock_snapshot,
     period_lock,
@@ -244,6 +245,7 @@ __all__ = [
     "close_checklist_item",
     "close_checklist_template",
     "close_run",
+    "close_pass_evidence",
     "combination_group",
     "combination_group_member",
     "contract",

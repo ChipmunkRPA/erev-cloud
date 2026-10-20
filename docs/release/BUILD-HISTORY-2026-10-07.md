@@ -9038,3 +9038,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still open: simultaneous membership/business/reference replay, members entering/leaving a
   surviving group without a prior source, group-level posted redistribution, combined-contract
   FX ownership and late-carried FX. No deployment or accounting sign-off claimed.
+
+## Membership plus business-event variance replay — October 20, 2026
+
+- Group merges/splits can now coexist with newly recorded business events. The replay first
+  evaluates the new partition without those business events, then adds consecutive event-driver
+  runs in effective-date/sequence order. Late-event precedence remains explicit. Each phase
+  retains its input/output hashes and source event keys; final metrics must match frozen values.
+- The targeted real-engine witness now combines a nonzero merge redistribution with a late
+  delivery. Membership effects equal the isolated merge; delivery effects equal an independent
+  before/after engine projection. Report/cell amounts and retained source identities reconcile.
+  Existing reverse split, population and export checks in the same journey pass; lint/types pass.
+- This supersedes the simultaneous-business-event refusal below. Mixed contract/estimate record,
+  policy/reference or FX changes, missing member sources, group-level posted redistribution,
+  combined-contract FX ownership and late-carried FX remain open. This is authored frozen-data
+  validation, not full lock-flow acceptance. No deployment or accounting sign-off claimed.
