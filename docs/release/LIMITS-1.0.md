@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Currency exports in close evidence packs — October 20, 2026
+
+- Close/re-lock packs now include functional and reporting CSVs for all six retained currency
+  snapshot kinds, alongside the existing transaction paths. Snapshot identities retain original
+  bundle hashes/counts and list each delivered view's path, hash, row count and control totals.
+  Each export uses its retained column schema and spreadsheet formula guard. Historical
+  single-view locks remain single-view; no current rates or live rebuilds are substituted.
+- Targeted archive checks cover actual snapshot production, legacy locks, manifest/hash/count
+  refusal and formula guards. Combined/late-carried liability FX and populated foreign two-lock
+  acceptance remain outstanding. No deployment or production-readiness claim.
+
+
 ## Populated foreign-currency public lock — October 20, 2026
 
 - The public lock witness now includes a EUR contract of a USD entity reporting in EUR. It runs

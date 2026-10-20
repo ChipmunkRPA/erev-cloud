@@ -18,7 +18,7 @@ from sqlalchemy import select
 
 from erev_api.db.tables import lock_snapshot, period_lock
 from erev_api.domain.close.snapshots import DatasetFile, manifest_of
-from erev_api.domain.reports import locked, snapshots
+from erev_api.domain.reports import locked, snapshot_views, snapshots
 from erev_api.domain.reports.evidence_archive import PackFile
 from erev_api.domain.reports.evidence_selection import SourceSelection, resolve
 from erev_api.problems import Problem
@@ -162,10 +162,31 @@ def frozen_payloads(source: FrozenClose) -> tuple[PackFile, ...]:
     for report in source.reports:
         report_code, frozen = report.report_code, report.dataset
         kind = frozen.kind
-        columns = snapshots.declared_kinds(kind, locked.headers_of(frozen), frozen.control_totals)
+        headers, rows, controls = locked.currency_rows(frozen)
+        columns = snapshots.declared_kinds(kind, headers, controls or frozen.control_totals)
         content, output_hash = locked.export_csv(frozen, columns)
         path = PATHS.get(report_code, f"reports/{report_code}.csv")
         files.append(PackFile(path, content, report_run_id=report.report_run_id))
+        exports = []
+        if controls is not None:
+            for view in snapshot_views.VIEWS:
+                view_headers, view_rows, view_controls = locked.currency_rows(frozen, view)
+                view_path = path if view == "transaction" else f"reports/{view}/{report_code}.csv"
+                view_kinds = snapshots.declared_kinds(kind, view_headers, view_controls or {})
+                view_content, view_hash = locked.export_csv(frozen, view_kinds, view)
+                if view != "transaction":
+                    files.append(
+                        PackFile(view_path, view_content, report_run_id=report.report_run_id)
+                    )
+                exports.append(
+                    {
+                        "currency_view": view,
+                        "path": view_path,
+                        "export_sha256": view_hash,
+                        "row_count": len(view_rows),
+                        "control_totals": view_controls,
+                    }
+                )
         identities.append(
             {
                 "snapshot_id": report.snapshot_id,
@@ -178,6 +199,8 @@ def frozen_payloads(source: FrozenClose) -> tuple[PackFile, ...]:
                 "control_totals": dict(frozen.control_totals),
                 "path": path,
                 "export_sha256": output_hash,
+                "export_row_count": len(rows),
+                **({"currency_exports": exports} if exports else {}),
             }
         )
     scope = source.scope

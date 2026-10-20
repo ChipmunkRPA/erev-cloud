@@ -341,6 +341,7 @@ def _freeze_for_pack(
     *,
     fault: str | None = None,
     formula_cells: bool = False,
+    currency_variants: bool = True,
     certification_rows: list[dict[str, Any]] | None = None,
     audit_head: tuple[int, str | None] | None = None,
 ) -> dict[str, Any]:
@@ -350,7 +351,12 @@ def _freeze_for_pack(
         assert scope is not None
         datasets = list(
             close_snapshots.freeze_datasets(
-                uow, scope.entity_id, scope.book_code, scope.period_id, uow.now
+                uow,
+                scope.entity_id,
+                scope.book_code,
+                scope.period_id,
+                uow.now,
+                currency_variants=currency_variants,
             )
         )
         if formula_cells or fault == "row-key":
@@ -403,10 +409,14 @@ def _freeze_for_pack(
     return {**sources.close, "period_lock_id": str(identity)}
 
 
+@pytest.mark.parametrize("currency_variants", [False, True])
 def test_close_collector_uses_actual_frozen_sources_and_produces_verifiable_archive(
     sources: Sources,
+    currency_variants: bool,
 ) -> None:
-    request = ADAPTER.validate_python(_freeze_for_pack(sources))
+    request = ADAPTER.validate_python(
+        _freeze_for_pack(sources, currency_variants=currency_variants)
+    )
     with sources.world.place.uow(sources.principal) as uow:
         selection = resolve(uow, request)
         assert selection.lock is not None
@@ -416,7 +426,7 @@ def test_close_collector_uses_actual_frozen_sources_and_produces_verifiable_arch
         sources_doc = json.loads(payloads["lock/snapshots.json"])
         assert sources_doc["period_lock_id"] == str(selection.lock.lock_id)
         assert len(sources_doc["snapshots"]) == 12
-        assert len(files) == 14
+        assert len(files) == (26 if currency_variants else 14)
         for snapshot in sources_doc["snapshots"]:
             frozen = locked.locked_dataset(
                 uow, report_code=snapshot["report_code"], lock_id=selection.lock.lock_id
@@ -426,6 +436,21 @@ def test_close_collector_uses_actual_frozen_sources_and_produces_verifiable_arch
             assert (
                 snapshot["export_sha256"] == hashlib.sha256(payloads[snapshot["path"]]).hexdigest()
             )
+            exports = snapshot.get("currency_exports", [])
+            if exports:
+                assert [item["currency_view"] for item in exports] == [
+                    "transaction",
+                    "functional",
+                    "reporting",
+                ]
+            for export in exports:
+                headers, rows, controls = locked.currency_rows(frozen, export["currency_view"])
+                assert export["row_count"] == len(rows)
+                assert export["control_totals"] == controls
+                assert (
+                    export["export_sha256"] == hashlib.sha256(payloads[export["path"]]).hexdigest()
+                )
+                assert payloads[export["path"]].decode().splitlines()[0] == ",".join(headers)
         archive = evidence_archive.build(files)
         assert (
             evidence_archive.verify(
