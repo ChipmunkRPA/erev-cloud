@@ -405,6 +405,27 @@ def test_eng_fxrem_ratepin_1_a_posted_settlement_survives_the_next_computations(
         ("FX_GAIN_LOSS", Decimal("0"), Decimal("-1080.00"), Decimal("0.84")),
     ]
     assert _fx_lines(world, contract_id) == settlement
+    from erev_api.domain.close import pass_evidence
+
+    with world.place.uow() as uow:
+        line = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id == contract_id,
+                    subledger_line.c.entry_kind == FX,
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
+            )
+            .mappings()
+            .one()
+        )
+        attributed = pass_evidence.liability_attribution(
+            uow, line["id"], owners={CONTRACT: contract_id}
+        )
+        assert attributed is not None
+        assert attributed.amount == Decimal("1080.00")
+        assert {item.balance_role for item in attributed.movements} == {"CONTRACT_ASSET"}
+        assert all(not item.closing for item in attributed.movements)
     posted_lines = _line_count(world, contract_id)
 
     # The next computation reads the settlement back under its stored subject <group>@<entity>
@@ -498,6 +519,31 @@ def test_a_reversal_of_a_posted_settlement_takes_the_rate_stamped_on_it(world: W
     # nil per role.
     reversal = [(role, txn, -functional, rate) for role, txn, functional, rate in settlement]
     assert sorted(_fx_lines(world, contract_id)) == sorted([*settlement, *reversal])
+    from erev_api.domain.close import pass_evidence
+
+    with world.place.uow() as uow:
+        lines = uow.session.execute(
+            select(subledger_line.c.id, subledger_line.c.amount_functional).where(
+                subledger_line.c.contract_id == contract_id,
+                subledger_line.c.entry_kind == FX,
+                subledger_line.c.account_role == "CONTRACT_LIABILITY",
+            )
+        ).mappings().all()
+        original = next(item for item in lines if item["amount_functional"] > 0)
+        reversed_line = next(item for item in lines if item["amount_functional"] < 0)
+        saved = pass_evidence.read_for_line(uow, reversed_line["id"])
+        assert saved is not None
+        assert len(saved["posted_lines"]) == 1
+        assert saved["posted_lines"][0]["id"] == str(original["id"])
+        attributed = pass_evidence.liability_attribution(
+            uow, reversed_line["id"], owners={CONTRACT: contract_id}
+        )
+        assert attributed is not None
+        assert attributed.amount == Decimal("-540.00")
+        assert attributed.paid_line_ids == (original["id"],)
+        assert len(attributed.evidence) == 2
+        assert {item.balance_role for item in attributed.movements} == {"CONTRACT_ASSET"}
+        assert all(not item.closing for item in attributed.movements)
     assert _unstamped_foreign_lines(world, contract_id) == 0
     revenue = world.place.rows(
         select(subledger_line.c.amount_txn, subledger_line.c.amount_functional).where(

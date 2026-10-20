@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Contract-computation FX evidence — October 20, 2026
+
+- The shared FX attribution reader now adapts original command-computation input/output
+  evidence as well as close-pass envelopes. It authorizes the complete retained group,
+  verifies the encrypted source hashes, version trace and exact posting intent, and uses
+  the original per-book seal cutoff to select historical paid lines. Version evidence keeps
+  its real version identity; no synthetic close record or current-rate reconstruction is used.
+- Paid attribution now follows actual command settlement and reversal histories recursively.
+  Necessary checks passed: actual GBP 1,080 settlement and GBP 540 reversal with the original
+  paid-line identity and both computation evidence hashes, plus scoped lint/types.
+- Still open: public rollforward EVENT settlement timing must consume these sources without
+  duplicating the existing before-invoice settlement flow and period-end offset. The TIME
+  report path is unchanged. Split targets, regrouped/keyless historical subjects, combined
+  and late-carried public acceptance, populated foreign two-lock acceptance, recorded registry
+  gaps and final accounting/release acceptance remain open. No deployment or readiness claim.
+
 ## Mixed asset/liability FX sources — October 20, 2026
 
 - Signed control-target attribution now admits retained contract-asset and liability

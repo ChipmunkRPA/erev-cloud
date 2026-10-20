@@ -190,7 +190,11 @@ def read_for_line(uow: UnitOfWork, line_id: UUID) -> dict[str, Any] | None:
         matches.append({"id": str(record["id"]), "sha256": record["document_sha256"], **document})
     if len(matches) > 1:
         raise ValueError("Close-pass line has ambiguous retained evidence.")
-    return matches[0] if matches else None
+    if matches:
+        return matches[0]
+    from erev_api.domain.reports import command_fx_evidence
+
+    return command_fx_evidence.read(uow, dict(line))
 
 
 def liability_attribution(
@@ -272,6 +276,8 @@ def capture_posted_lines(
     uow: UnitOfWork,
     contract_ids: Sequence[UUID],
     book_code: str,
+    *,
+    ledger_cutoff: int | None = None,
 ) -> list[dict[str, Any]]:
     """Freeze the exact FX control population visible to this group's pass.
 
@@ -301,6 +307,11 @@ def capture_posted_lines(
             subledger_line.c.book_code == book_code,
             subledger_line.c.entry_kind == "FX_REMEASUREMENT",
             subledger_line.c.account_role == "CONTRACT_LIABILITY",
+            *(
+                (subledger_posting_seal.c.chain_seq <= ledger_cutoff,)
+                if ledger_cutoff is not None
+                else ()
+            ),
         )
         .order_by(subledger_line.c.recorded_at, subledger_line.c.entry_no, subledger_line.c.id)
     ).mappings()
