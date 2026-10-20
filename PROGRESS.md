@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Explicit measurement-only estimate evidence — October 20, 2026
+
+- Stage 08 now retains whether an estimate changes measurement only, is absorbed at inception,
+  or routes a later allocation change. The report accepts a measurement-only pin as explicit
+  zero allocation impact after verifying its original estimate-version reference. Missing or
+  legacy pins and inception changes remain unsupported for this decomposition.
+- The flag is emitted after contract royalty-accrual routing is resolved, so those reallocating
+  estimates are not incorrectly labelled measurement-only. No posting amounts were changed.
+- The actual J-06 approval-to-report journey passes: September modification 150,000.00,
+  VC change 200,000.00, revenue/restatement -91,463.41 and closing RPO 658,536.59 USD.
+  This journey applies approvals separately; it does not claim one combined approval.
+- 56 scoped engine/report tests, Ruff and targeted mypy pass. Migration 0211 updates the report
+  calculation description. Independent accounting acceptance remains open; no deployment.
+
+
 ## Event-backed mixed RPO changes — October 20, 2026
 
 - Mixed modification/estimate versions now split original estimate-event allocations into
@@ -213,30 +228,6 @@
   close-only revenue posting still needs an end-to-end attribution scenario; mixed TIME/EVENT,
   intercompany reversal and asset/new-liability presentation remain open, as do the other
   documented feature/release gaps and independent accounting sign-off.
-
-## Transaction-currency revenue reversal disclosure — October 20, 2026
-
-- Ordinary transaction opening-liability disclosure now attributes negative revenue through
-  original signed transaction source quantities and recursively verified paid lines. Original
-  layer creation dates identify opening consumption; the recognizing member is not capped by
-  its own opening balance. Reversal groups still must reconcile their complete control path.
-- The shared source projection retains signed integer coefficients independently of rounded
-  functional amounts, so a zero functional source does not erase a nonzero transaction amount
-  or reverse its sign. No inverse FX conversion is used. Original layer dates are reconciled
-  across historical computations; attribution caches cannot mix currency views.
-- Reversal method, source identities, creation dates, paid lines and evidence hashes are bound
-  for rerun, with an explanatory footnote. Earlier bindings retain their original builder;
-  intercompany transaction reversals retain the earlier path pending counterpart attribution.
-  Migration 0201 updates the disclosure IPE description.
-- Necessary checks passed: the real combined-member delivery/return sequence reports
-  USD 58,500 transaction revenue and opening relief, alongside GBP 46,800 functional values;
-  transaction, functional and reporting reruns match. Existing single-contract results and
-  catalogue migration pass. Fifteen source/delta checks, including zero-rounded source signs,
-  and lint/types pass. No deployment.
-- Still open: intercompany reversal attribution, mixed TIME/EVENT source allocation,
-  close-pass-only revenue histories, asset/new-liability reversal presentation, per-obligation
-  opening consumption and complex membership/carry histories. Final release verification
-  and independent accounting acceptance remain open; Reporting is not yet complete.
 
 ## Outstanding release verification
 

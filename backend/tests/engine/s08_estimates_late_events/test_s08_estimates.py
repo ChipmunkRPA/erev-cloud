@@ -534,6 +534,18 @@ def test_s08_r02_measure_only_kinds() -> None:
     ]
     pin = trace.nodes[0]
     assert Fraction(Decimal(pin.value)) == 900
+    from erev_api.domain.reports.rpo_estimate_changes import allocations
+
+    assert pin.params["allocation_effect"] == "MEASUREMENT"
+    assert allocations(trace, frozenset({second.event_key})) == {}
+    for effect in (None, "INCEPTION", "ROUTED"):
+        params = dict(pin.params)
+        if effect is None:
+            params.pop("allocation_effect")
+        else:
+            params["allocation_effect"] = effect
+        legacy = dataclasses.replace(trace, nodes=(dataclasses.replace(pin, params=params),))
+        assert allocations(legacy, frozenset({second.event_key})) is None
     assert (pin.params["v_old"], pin.params["v_new"]) == (eac_1.version_key, eac_2.version_key)
 
     # RETURN_RATE: the expected returns are re-measured at the pin, with Σ a_posted unchanged.

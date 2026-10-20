@@ -808,6 +808,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "mixed modification and estimate changes use original event-specific estimate shares "
             "reconciled to each price delta; unsupported or incomplete evidence stays unexplained",
             _as_locked("RPO_ROLLFORWARD"),
+            "measurement-only estimate pins prove no allocation movement; inception estimates "
+            "and legacy pins without an explicit effect are not assumed to have zero impact",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

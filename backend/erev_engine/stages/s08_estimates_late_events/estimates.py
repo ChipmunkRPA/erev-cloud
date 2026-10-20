@@ -139,6 +139,7 @@ def _emit_pin(
     ev: EventView,
     version: EstimateVersionInput,
     previous: EstimateVersionInput | None,
+    allocation_effect: str,
 ) -> str:
     member, value = _pin_member(version)
     source = SourceRef(
@@ -158,6 +159,7 @@ def _emit_pin(
         params={
             "effective_date": version.effective_date.isoformat(),
             "kind": version.estimate_kind,
+            "allocation_effect": allocation_effect,
             "v_new": version.version_key,
             "v_old": "-" if previous is None else previous.version_key,
         },
@@ -209,9 +211,16 @@ def apply(
         raise _invariant(
             "the estimate kind has no effect", ev, rule="S08-R-02", kind=version.estimate_kind
         )
-    _emit_pin(tb, ev, version, previous)
     if effect == MEASURE and _contract_royalty_accrual(st, ev, version):
         effect = REALLOCATE  # D-88 L7-5-Q-8: ΔTP routes on the inception basis (S08-R-03)
+    allocation_effect = (
+        "MEASUREMENT"
+        if effect == MEASURE or version.allocation_target == INCREMENTS
+        else "INCEPTION"
+        if ev.effective_date <= st.inception_date
+        else "ROUTED"
+    )
+    _emit_pin(tb, ev, version, previous, allocation_effect)
     if effect == MEASURE or version.allocation_target == INCREMENTS:
         return st
     if ev.effective_date <= st.inception_date:

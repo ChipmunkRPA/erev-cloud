@@ -3500,6 +3500,31 @@ def test_j_06_the_change_order_and_its_linked_versions_in_the_built_order(
         for item in applied["linked_estimate_versions"]
     ] == [("BONUS-CB-01", 2, "APPROVED"), ("EAC", 2, "APPROVED")]
 
+    from support.worlds import report_run
+
+    run, rows = report_run(
+        world.report,
+        "rpo_rollforward",
+        {
+            "entity_codes": ["AVM-US"],
+            "book": "ASC606",
+            "from_period_key": "FY2026-P09",
+            "to_period_key": "FY2026-P09",
+            "currency_view": "transaction",
+        },
+    )
+    amounts = {
+        str(row["row_key"]): Decimal(0) if row["rpo"] is None else Decimal(row["rpo"]["amount"])
+        for row in rows
+    }
+    assert amounts["OPENING"] == Decimal("400000.00")
+    assert amounts["MODIFICATIONS"] == Decimal("150000.00")
+    assert amounts["VC_ESTIMATE_CHANGES"] == Decimal("200000.00")
+    assert amounts["REVENUE"] + amounts["LATE_EVENTS"] == Decimal("-91463.41")
+    assert amounts["CLOSING"] == Decimal("658536.59")
+    assert amounts["UNEXPLAINED"] == 0
+    assert all(item["result"] == "PASS" for item in run["tie_out_results"])
+
 
 # --- Item MOD-REJECTED-REVISE-1 (the supervisor's ruling of 2026-10-01; PRD SM-03 "Revise";
 # 04 §16.14 rev 1.236) ------------------------------------------------------------------------
