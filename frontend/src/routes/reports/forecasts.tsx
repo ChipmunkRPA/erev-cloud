@@ -204,7 +204,10 @@ export function ForecastRunsPage() {
       <ReportsHeader />
       <h2 className="text-heading-md">{t("reports.forecasts.title")}</h2>
       {!enabled ? (
-        <p>{t("reports.forecasts.scenarioOnly")}</p>
+        <div className="flex flex-col gap-2">
+          <p>{t("reports.forecasts.scenarioOnly")}</p>
+          <Link to="/reports/scenarios">{t("reports.scenarios.title")}</Link>
+        </div>
       ) : (
         <>
           {(inputs.isError || entities.isError || periods.isError || runs.isError) && (

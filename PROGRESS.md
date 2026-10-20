@@ -6,6 +6,20 @@
 
 
 
+## Scenario creation and forecast entry — October 19, 2026
+
+- Added /reports/scenarios for production workspace members with tenant-wide scenario.use:
+  named creation with purpose, async copy progress and refusal/network feedback, paginated
+  active/archived scenarios, source cutoff and refresh timestamp. Creation uses the current
+  production cutoff; accepted jobs prevent repeated submission while job metadata loads.
+- Existing scenarios open through the established workspace-session switch, clearing the
+  previous tenant's cache and then navigating to forecasts. The shared helper retains its
+  original home destination for sandbox settings. Forecasts now link to scene management
+  when a scenario workspace is required; a Reports tab exposes the new page.
+- Eighteen scenario/sandbox checks and eight scenario/forecast checks pass (three overlap),
+  plus frontend TypeScript/ESLint. Refresh/event editing, archive UI, populated forecast
+  accounting acceptance and independent sign-off remain open. No deployment.
+
 ## Complete report catalogue coverage — October 19, 2026
 
 - Compared frontend catalogue groups with current backend DEFINITIONS and found four missing
@@ -236,25 +250,6 @@
   checks pass. Broader reporting features and accounting acceptance remain open.
 - Next: continue the RPS/FCS reporting workflow/content gap audit; registration coverage is
   not a completion claim. No deployment.
-
-## Public forecast catalogue reports — October 19, 2026
-
-- Registered forecast_outputs for JSON/CSV/XLSX through ordinary POST /report-runs and
-  REPORT_RUN execution. Creation pins the completed publication before INSERT; execution
-  reauthorizes the requester and renders all five saved sections without recapturing sources.
-- Read/detail/list/download and cached-command access use current scenario/source grants.
-  JSON data reads also authorize the bound publication. CSV remains a five-section ZIP;
-  output_sha256 follows the forecast convention of hashing the canonical five-section dataset.
-- Same-source catalogue reruns preserve the publication and dataset hash. Original forecast
-  computation reruns remain explicitly unsupported; the UI/API must not imply recomputation.
-- Real API creation, worker execution, download and rerun pass for all three formats; removal
-  of scenario.use refuses retained-source access. Twenty-four focused source/export checks
-  and Ruff/Mypy pass. User guide describes saved scope, format retention and hash semantics.
-- Catalogue audit: all 59 definitions now have registered execution paths. This is not full
-  report content, populated business workflow or independent accounting acceptance. Next:
-  audit reporting feature/content gaps and complete the outstanding workflows, including
-  multi-contract samples, reopen/relock, forecast comparisons and report-centre usability.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

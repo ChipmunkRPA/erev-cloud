@@ -261,7 +261,7 @@ function ProductionView({ me, tenantId, tenantName }: ViewProps) {
 }
 
 /** `POST /session/tenant`, then the landing route of the opened workspace (the switcher's steps). */
-function useOpenWorkspace() {
+export function useOpenWorkspace(destination = "/") {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { submit, pending, problem } = useCommand<SessionLoginOut>({
@@ -281,7 +281,7 @@ function useOpenWorkspace() {
     if (outcome.data !== null) {
       queryClient.setQueryData(queryKeys.session(), outcome.data);
     }
-    void navigate("/");
+    void navigate(destination);
     announce(t("shell.tenantSwitcher.switched", { tenant: tenantName }), "polite");
   };
   return {
