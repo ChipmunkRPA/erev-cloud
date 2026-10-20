@@ -1,7 +1,8 @@
-"""Cross-member liability relief checked against actual posted positive revenue.
+"""Cross-member liability relief checked against original posted revenue sources.
 
 Retained liability reliefs must reproduce the full recipient/period posting.
-Carried, reversing or asset-creating histories need their own posting-delta replay;
+Source-proven reversals may reduce original consumed layers. Mixed TIME allocation,
+close-pass-only and asset-creating histories still require additional presentation;
 no difference is apportioned or inferred from the report's OTHER amount.
 """
 
@@ -10,6 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from decimal import Decimal
+from fractions import Fraction
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -20,10 +22,12 @@ from sqlalchemy.orm import Session
 from erev_api.db.tables import fx_layer_movement
 from erev_api.domain.reports import revenue_trace, tie_outs
 from erev_api.explain import store
+from erev_api.uow import UnitOfWork
 
 if TYPE_CHECKING:
     from .builders import ReportParams
     from .builders.contract_balance_rollforward import Entry
+    from .revenue_attribution import Attribution
 
 KEY = "revenue_layer_transfers_v1"
 ZERO = Decimal(0)
@@ -36,6 +40,8 @@ def read(
     rows: Mapping[tuple[UUID, UUID], tie_outs.BalanceRow],
     periods: Mapping[UUID, tuple[tie_outs.PeriodRef, ...]],
     posted: Mapping[tuple[UUID, UUID], list[Entry]],
+    *,
+    uow: UnitOfWork | None = None,
 ) -> tuple[Amounts, Amounts]:
     groups: dict[tuple[UUID, UUID], list[tie_outs.BalanceRow]] = defaultdict(list)
     for row in rows.values():
@@ -48,6 +54,13 @@ def read(
     signed = params.binding is None or signed_key in params.binding.evidence
     signed_evidence: dict[str, Any] = {}
     signed_members: set[UUID] = set()
+    delta_key = "revenue_posted_sources_v1"
+    verify_postings = uow is not None and (
+        params.binding is None or delta_key in params.binding.evidence
+    )
+    posted_evidence: dict[str, Any] = {}
+    posted_ids: set[UUID] = set()
+    attribution_cache: dict[UUID, Attribution] = {}
     for (version, entity), members in groups.items():
         if len(members) < 2 or not periods[entity]:
             continue
@@ -83,6 +96,7 @@ def read(
         amounts: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         original: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         sources: dict[tuple[UUID, UUID], set[UUID]] = defaultdict(set)
+        retained_reliefs: dict[tuple[UUID, UUID, UUID, str], Decimal] = defaultdict(Decimal)
         cross = []
         verified_revenue: dict[str, dict[UUID, revenue_trace.RevenueSource]] = {}
         for movement in movement_rows:
@@ -159,6 +173,7 @@ def read(
             if creation["effective_date"] < periods[entity][0].start:
                 original[source_key] += amount
             owner = UUID(str(movement["contract_id"]))
+            retained_reliefs[(recognizer, at.id, owner, movement["layer_key"])] += amount
             if owner != recognizer:
                 cross.append((owner, recognizer, at.id, amount))
         # Check all periods for affected recipients so the opening/new revenue
@@ -171,8 +186,76 @@ def read(
                     for entry in posted.get((recognizer, entity), ())
                     if entry.period_id == at.id and entry.flow.is_revenue
                 ]
+                verify_period = verify_postings and all(
+                    entry.entry_kind == "REVENUE_RECOGNITION" for entry in entries
+                )
+                if verify_period:
+                    from .revenue_attribution import for_control
+
+                    assert uow is not None
+                    posted_reliefs: dict[tuple[UUID, str], Fraction] = defaultdict(Fraction)
+                    for entry in entries:
+                        if entry.line_id is None:
+                            raise tie_outs.invalid(
+                                "currency_view", "Revenue lacks a posted control line."
+                            )
+                        try:
+                            revenue_id, result = for_control(
+                                uow, entry.line_id, cache=attribution_cache
+                            )
+                        except ValueError as error:
+                            raise tie_outs.invalid("currency_view", str(error)) from error
+                        if result.delta.amount != -entry.flow.amount:
+                            raise tie_outs.invalid(
+                                "currency_view",
+                                "Retained revenue delta differs from the report flow.",
+                            )
+                        for part in result.delta.movements:
+                            if part.amount and part.movement_kind != "LIABILITY_LAYER_CONSUMED":
+                                raise tie_outs.invalid(
+                                    "currency_view",
+                                    "Revenue requires asset or new-liability source presentation.",
+                                )
+                            posted_reliefs[(part.contract_id, part.layer_key)] -= part.amount
+                        posted_ids.update((revenue_id, *result.paid_line_ids))
+                        posted_evidence[str(entry.line_id)] = {
+                            "revenue_line_id": str(revenue_id),
+                            "paid_line_ids": list(map(str, result.paid_line_ids)),
+                            "sources": [str(identity) for identity in result.delta.source_ids],
+                            "evidence": [
+                                [str(identity), digest] for identity, digest in result.evidence
+                            ],
+                            "movements": [
+                                {
+                                    "owner": str(item.contract_id),
+                                    "layer": item.layer_key,
+                                    "kind": item.movement_kind,
+                                    "amount": str(item.amount),
+                                    "date": None
+                                    if item.effective_date is None
+                                    else item.effective_date.isoformat(),
+                                    "source": item.source_key,
+                                    "time": item.time,
+                                }
+                                for item in result.delta.movements
+                            ],
+                        }
+                    expected_reliefs = {
+                        (owner, layer): amount
+                        for (recipient, period_id, owner, layer), amount in retained_reliefs.items()
+                        if recipient == recognizer and period_id == at.id and amount
+                    }
+                    if {
+                        key: amount for key, amount in posted_reliefs.items() if amount
+                    } != expected_reliefs:
+                        raise tie_outs.invalid(
+                            "currency_view",
+                            "Posted revenue owners differ from the retained relief history.",
+                        )
                 total = sum((entry.flow.amount for entry in entries), ZERO)
-                if total != amounts[source_key] or any(entry.flow.amount < 0 for entry in entries):
+                if total != amounts[source_key] or (
+                    not verify_period and any(entry.flow.amount < 0 for entry in entries)
+                ):
                     raise tie_outs.invalid(
                         "currency_view",
                         "Cross-member revenue requires retained posting-delta replay.",
@@ -200,6 +283,14 @@ def read(
         tie_outs.require_members(params, "revenue_signed_layer", signed_members)
         tie_outs.record_members(params, "revenue_signed_layer", signed_members)
         tie_outs.record_evidence(params, signed_key, signed_evidence)
+    if verify_postings:
+        if params.binding is not None and params.binding.evidence[delta_key] != posted_evidence:
+            raise tie_outs.invalid(
+                "currency_view", "Posted revenue sources differ from retained evidence."
+            )
+        tie_outs.require_members(params, "revenue_paid_line", posted_ids)
+        tie_outs.record_members(params, "revenue_paid_line", posted_ids)
+        tie_outs.record_evidence(params, delta_key, posted_evidence)
     tie_outs.require_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_evidence(params, KEY, evidence)

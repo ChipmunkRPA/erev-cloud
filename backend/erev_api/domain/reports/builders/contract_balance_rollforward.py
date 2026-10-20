@@ -557,7 +557,7 @@ def rollforwards(
         from ..revenue_layer_transfers import read as revenue_transfers
 
         revenue_sources, opening_relief = revenue_transfers(
-            session, params, transaction_ends, periods, posted
+            session, params, transaction_ends, periods, posted, uow=uow
         )
         for transfer_key, amount in revenue_sources.items():
             member_transfers[transfer_key] = member_transfers.get(transfer_key, ZERO) + amount

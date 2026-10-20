@@ -6,6 +6,29 @@
 
 
 
+## Cross-member revenue reversals through original posting history — October 20, 2026
+
+- Ordinary revenue attribution now reads original transaction targets and their separately
+  retained functional amounts, projects original owner/layer sources, and recursively
+  subtracts the exact sealed paid-line population. Original role, period, TIME basis,
+  ledger fields, computation hashes and all target/paid/delta amounts must agree. A shared
+  per-report cache avoids repeatedly replaying the same immutable paid history.
+- Live functional/reporting rollforwards and opening-liability disclosures use this proof
+  for ordinary cross-member revenue. Source-proven reversals are now accepted when the
+  complete posted owner/layer relief population equals the retained consumed-layer history.
+  Dependencies and signed movements are retained for rerun. Earlier bindings keep their
+  original path; intercompany entries retain their prior calculation and reversal limits.
+- Necessary public scenario passes: three deliveries across two periods retain the prior
+  same-period posting; a subsequent return reverses the original opening-layer owner's
+  revenue. GBP 50,400 falls to GBP 46,800 for both recognized revenue and opening relief.
+  Functional and reporting views rerun identically. Catalogue migration 0200, lint and types
+  pass. No deployment.
+- Still open: transaction disclosure reversal attribution, mixed TIME/EVENT functional
+  source allocation, close-pass-only revenue history, asset/new-liability source presentation,
+  per-obligation opening consumption and complex membership transitions. This completes the
+  tested ordinary liability-backed return path, not every negative-revenue scenario.
+  Final release verification and independent accounting acceptance remain open.
+
 ## Revenue posting-delta evidence and reconciliation — October 20, 2026
 
 - Added revenue-line evidence reading alongside the existing FX adapter. It verifies the
@@ -210,27 +233,6 @@
 - Still open: public combined-contract credit-memo acceptance, late-carried public acceptance
   without reopening, recorded privacy/snapshot registry gaps and final accounting/release
   acceptance. This closes the ordinary JET-10c source gap, not every FX scenario. No deployment.
-
-## Foreign lock-to-lock business attribution — October 20, 2026
-
-- Difference replay now holds operational period states constant after verifying both original
-  computations and frozen endpoints. A public reopen no longer blocks late-event attribution
-  as an unsupported entity change. Entity, currency, book population and calendar dates remain
-  strict; the evidence records entities.periods.states normalization and the final replay must
-  still reproduce the later frozen money, including posted revenue.
-- Control FX projection verifies the retained settlement formula when S12 emits a zero
-  difference node without a movement row. It does not discard zero cumulative sums, so
-  offsetting owners remain visible; altered rate evidence refuses.
-- Necessary verification passed: actual foreign close/export/acknowledgement/lock, two-controller
-  public reopen, EUR 4,000 late invoice, actual second close/lock, and public variance jobs in
-  transaction, functional and reporting currency. Each attributes the asset reduction solely to
-  LATE_EVENT (EUR 4,000 / USD 4,420 / EUR 4,000) and retains normalization evidence. Reviewed
-  reconciliation rows are fixtures, not independent accounting approval. Scoped unit checks,
-  lint and types pass. No deployment.
-- Still open: credit-memo FX difference attribution (JET-10c has a retained difference trace
-  but no remeasurement movement leaf), end-to-end late-carried public acceptance without
-  reopening, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
-  This populated foreign two-lock witness does not establish every FX or membership scenario.
 
 ## Outstanding release verification
 

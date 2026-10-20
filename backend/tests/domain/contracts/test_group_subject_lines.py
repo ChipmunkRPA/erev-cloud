@@ -868,3 +868,133 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
         assert str(revenue_line["id"]) in paid_ids
         assert str(later["id"]) not in paid_ids
         assert all(row["account_role"] == "REVENUE" for row in retained["posted_lines"])
+
+    from fractions import Fraction
+
+    from erev_api.domain.reports.revenue_attribution import read as revenue_attribution
+
+    with fx.place.uow() as uow:
+        first_sources = revenue_attribution(uow, revenue_line["id"])
+        assert first_sources.delta.amount == Fraction(revenue_line["amount_functional"])
+        assert {part.contract_id for part in first_sources.delta.movements} == {source_id}
+        next_sources = revenue_attribution(uow, later["id"])
+        assert next_sources.delta.amount == Fraction(later["amount_functional"])
+    approved_manual_events(
+        fx.place,
+        fx.priya,
+        recognizer_id,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-09-02",
+            "payload": {"obligation_key": "O1", "quantity": "10", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    with fx.place.uow() as uow:
+        newest = dict(
+            uow.session.execute(
+                select(subledger_line)
+                .where(
+                    subledger_line.c.contract_id == recognizer_id,
+                    subledger_line.c.account_role == "REVENUE",
+                    subledger_line.c.id.not_in([revenue_line["id"], later["id"]]),
+                )
+                .order_by(subledger_line.c.entry_no.desc())
+                .limit(1)
+            )
+            .mappings()
+            .one()
+        )
+        newest_sources = revenue_attribution(uow, newest["id"])
+        assert newest_sources.delta.amount == Fraction(newest["amount_functional"])
+        assert later["id"] in newest_sources.paid_line_ids
+
+    final_run, final_rows = worlds.report_run(
+        reporting,
+        "revenue_from_opening_liability",
+        {
+            "entity_codes": [AVM_UK],
+            "book": "ASC606",
+            "currency_view": "functional",
+            "from_period_key": AUGUST,
+            "to_period_key": SEPTEMBER,
+        },
+    )
+    from erev_api.db.tables import report_run
+
+    binding = fx.place.scalar(
+        select(report_run.c.source_binding).where(report_run.c.id == UUID(final_run["id"]))
+    )
+    retained_postings = binding["evidence"]["revenue_posted_sources_v1"]
+    assert any(str(later["id"]) in item["paid_line_ids"] for item in retained_postings.values())
+    income = next(row for row in final_rows if row.get("contract_external_id") == FIRST_UK)
+    assert income["revenue_recognized"]["amount"] == "50400.00"
+    restarted = post(fx.app, f"/api/v1/report-runs/{final_run['id']}/rerun", fx.maya, {})
+    assert restarted.status_code == 202, restarted.text
+    complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+    assert complete["state"] == "SUCCEEDED", complete
+    repeated = get(
+        fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
+    )
+    assert repeated.status_code == 200 and repeated.json()["items"] == final_rows, repeated.text
+
+    approved_manual_events(
+        fx.place,
+        fx.priya,
+        recognizer_id,
+        {
+            "event_type": "RETURN_RECORDED",
+            "effective_date": "2026-09-03",
+            "payload": {"obligation_key": "O1", "quantity": "10"},
+        },
+        evidence_file_ids=[],
+    )
+    with fx.place.uow() as uow:
+        reversal = dict(
+            uow.session.execute(
+                select(subledger_line)
+                .where(
+                    subledger_line.c.contract_id == recognizer_id,
+                    subledger_line.c.account_role == "REVENUE",
+                    subledger_line.c.amount_txn > 0,
+                )
+                .order_by(subledger_line.c.entry_no.desc())
+                .limit(1)
+            )
+            .mappings()
+            .one()
+        )
+        reversed_sources = revenue_attribution(uow, reversal["id"])
+        assert reversed_sources.delta.amount == Fraction(reversal["amount_functional"])
+        assert reversed_sources.delta.amount > 0
+        assert {part.contract_id for part in reversed_sources.delta.movements} == {source_id}
+        assert {later["id"], newest["id"]} <= set(reversed_sources.paid_line_ids)
+
+    for view in ("functional", "reporting"):
+        returned_run, returned_rows = worlds.report_run(
+            reporting,
+            "revenue_from_opening_liability",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": AUGUST,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        returned_income = next(
+            row for row in returned_rows if row.get("contract_external_id") == FIRST_UK
+        )
+        assert returned_income["revenue_recognized"] == returned_income["revenue_from_opening"]
+        if view == "functional":
+            assert returned_income["revenue_recognized"]["amount"] == "46800.00"
+        restarted = post(fx.app, f"/api/v1/report-runs/{returned_run['id']}/rerun", fx.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == returned_rows, (
+            repeated.text
+        )

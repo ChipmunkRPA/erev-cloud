@@ -546,10 +546,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "each original computation group conserves zero and evidence is bound",
             "new member presentation bridges include all foreign contract/entity endpoints, "
             "even without a memo or FX journal; legacy v1 bindings retain memo-triggered scope",
-            "positive cross-member revenue relief must reproduce the entire recipient-period "
+            "cross-member revenue relief must reproduce the entire recipient-period "
             "posted revenue from retained liability movements; origin layer creation dates "
             "classify opening versus current-range revenue and source transfers "
             "bind original lines",
+            "new source-backed revenue runs recursively reconcile original functional targets, "
+            "prior targets and sealed paid-line history; reversals must reproduce the same "
+            "owner/layer relief population and preserve evidence on rerun",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
@@ -619,6 +622,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "new positive transaction runs pool control flows by retained computation version, "
             "entity and currency; actual opening-layer consumption is assigned to each recognizing "
             "member after prior non-revenue debits; source groups and lines are bound",
+            "functional/reporting cross-member liability relief includes source-proven revenue "
+            "reversals using original functional targets and recursive paid-line attribution",
             "negative transaction revenue preserves the existing net-reversal path pending "
             "original reversal-source replay; earlier bindings retain their original builder",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
