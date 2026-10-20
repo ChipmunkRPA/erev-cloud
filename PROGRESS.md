@@ -6,6 +6,23 @@
 
 
 
+## Scenario-only deal preview save API — October 19, 2026
+
+- Added POST /deal-previews/{id}/save. Requires an ACTIVE registered scenario whose current
+  sandbox is the caller's workspace; production, ordinary sandboxes and stale scenario targets
+  refuse with DEAL_PREVIEW_SAVE_NOT_ALLOWED. The scenario row stays share-locked through commit.
+- Locks the preview, verifies saved input/result fingerprints, rechecks scenario entity access,
+  and creates a normal DRAFT contract with contract.create validation, provisional computation,
+  combination suggestions and holds. Updates saved_contract_id once and records the save audit.
+  The original preview evidence is unchanged; the draft uses current reference validation.
+- Real scenario/API checks pass first save, same-key replay, new-key duplicate refusal and DRAFT
+  status; the production journey passes the explicit 409 refusal. Python types/lint and generated
+  API schema pass. The UI save action and independent accounting acceptance remain open.
+- Reporting correction from current code: Actual vs Forecast already has a registered builder,
+  retained-source capture/rebuild, comparison calculation and UI entry. Populated K11 remains an
+  acceptance gap, not an absent report implementation. K03/close-variance gaps still need specific
+  code/evidence review before classification. No deployment; direct main publication.
+
 ## Deal revenue period matrix and chart — October 19, 2026
 
 - Added per-product/per-period revenue matrix, period totals and all-period product/grand
@@ -220,20 +237,6 @@
 - Six focused creation/list/archive checks pass plus frontend type/lint checks. Refresh needs
   a published-input selector from the source scenario, and event-editing UI remains open.
   Populated accounting acceptance and independent sign-off remain outstanding. No deployment.
-
-## Scenario creation and forecast entry — October 19, 2026
-
-- Added /reports/scenarios for production workspace members with tenant-wide scenario.use:
-  named creation with purpose, async copy progress and refusal/network feedback, paginated
-  active/archived scenarios, source cutoff and refresh timestamp. Creation uses the current
-  production cutoff; accepted jobs prevent repeated submission while job metadata loads.
-- Existing scenarios open through the established workspace-session switch, clearing the
-  previous tenant's cache and then navigating to forecasts. The shared helper retains its
-  original home destination for sandbox settings. Forecasts now link to scene management
-  when a scenario workspace is required; a Reports tab exposes the new page.
-- Eighteen scenario/sandbox checks and eight scenario/forecast checks pass (three overlap),
-  plus frontend TypeScript/ESLint. Refresh/event editing, archive UI, populated forecast
-  accounting acceptance and independent sign-off remain open. No deployment.
 
 ## Outstanding release verification
 

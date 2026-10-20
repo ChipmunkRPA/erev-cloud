@@ -22,13 +22,15 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import deal_preview, legal_entity
-from erev_api.domain.forecast import deal_job, deal_results
+from erev_api.domain.forecast import deal_job, deal_results, deal_save
 from erev_api.problems import Problem
 from erev_api.schemas.common import ListOut
+from erev_api.schemas.contracts import ContractOut
 from erev_api.schemas.deal_previews import (
     DealPreviewCreateIn,
     DealPreviewOut,
     DealPreviewRequestedOut,
+    DealPreviewSaveIn,
     DealPreviewSummaryOut,
 )
 
@@ -148,4 +150,26 @@ def get(preview_id: UUID, response: Response, ctx: Reader) -> DealPreviewOut:
     response.headers["Cache-Control"] = "no-store"
     return DealPreviewOut.model_validate(
         {**row, "presentation": deal_results.project(row["input"], row["result"])}
+    )
+
+
+@router.post(
+    "/deal-previews/{preview_id}/save",
+    operation_id="deal_previews_save",
+    status_code=201,
+    response_model=ContractOut,
+    responses=PROBLEMS,
+)
+def save(
+    preview_id: UUID,
+    body: DealPreviewSaveIn,
+    cmd: Annotated[CommandContext, Depends(command("scenario.use"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: deal_save.save(uow, preview_id, body.contract_external_id),
+        status_code=201,
+        location=lambda out: f"{API_PREFIX}/contracts/{out.id}",
     )

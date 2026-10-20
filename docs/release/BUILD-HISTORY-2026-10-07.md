@@ -8450,3 +8450,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Forty-eight report-page checks pass, covering the added links and AI access, with frontend
   type/lint checks. Other functional gaps, populated accounting acceptance and independent
   sign-off remain open. No deployment.
+
+## Scenario creation and forecast entry — October 19, 2026
+
+- Added /reports/scenarios for production workspace members with tenant-wide scenario.use:
+  named creation with purpose, async copy progress and refusal/network feedback, paginated
+  active/archived scenarios, source cutoff and refresh timestamp. Creation uses the current
+  production cutoff; accepted jobs prevent repeated submission while job metadata loads.
+- Existing scenarios open through the established workspace-session switch, clearing the
+  previous tenant's cache and then navigating to forecasts. The shared helper retains its
+  original home destination for sandbox settings. Forecasts now link to scene management
+  when a scenario workspace is required; a Reports tab exposes the new page.
+- Eighteen scenario/sandbox checks and eight scenario/forecast checks pass (three overlap),
+  plus frontend TypeScript/ESLint. Refresh/event editing, archive UI, populated forecast
+  accounting acceptance and independent sign-off remain open. No deployment.

@@ -6011,6 +6011,10 @@ def test_forecast_event_capture_is_atomic_and_immutable(
 
     exercise_capture(world, source_actor)
 
+    from support.deal_save import exercise_save
+
+    exercise_save(world, sandbox_actor)
+
     from support.forecast_refresh import exercise_refresh_state
 
     exercise_refresh_state(world, source_actor, UUID(created.json()["scenario_id"]), sandbox_actor)
@@ -6713,6 +6717,15 @@ def test_deal_preview_api_worker_retains_readable_result(world: World) -> None:
         ("AVM-US", "1.00"),
         ("OTHER", "0.50"),
     ]
+    forbidden_save = call(
+        world.app,
+        "POST",
+        f"/api/v1/deal-previews/{identity}/save",
+        headers=cookie_headers(world.marcus.token, world.marcus.csrf_token),
+        json={"contract_external_id": "NOT-PRODUCTION"},
+    )
+    assert forbidden_save.status_code == 409, forbidden_save.text
+    assert forbidden_save.json()["errors"][0]["rule_id"] == "DEAL_PREVIEW_SAVE_NOT_ALLOWED"
     listing = call(world.app, "GET", "/api/v1/deal-previews?count=true", headers=headers)
     assert listing.status_code == 200, listing.text
     assert listing.headers["X-Erev-Total-Count"] == "1"

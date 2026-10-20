@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal save update (October 19): scenario-only POST /deal-previews/{id}/save now creates
+one normal DRAFT contract from verified preview evidence, with current contract permissions,
+configuration validation, suggestions and holds. It requires an active registered scenario and
+refuses production saves and duplicate saves. Real scenario/API journeys pass; the UI save
+control is still absent. Independent accounting sign-off and full FCS-6 acceptance remain open.
+Reporting clarification: actual_vs_forecast has a builder, retained source logic and UI; the
+populated K11 item is an outstanding acceptance exercise, not a missing report implementation.
+
 Current deal revenue update (October 19): SF-18 now includes product/period totals and a signed
 revenue chart, with separate entity/currency scopes and 24-period paging. All-period totals
 remain visible across pages and use exact decimal arithmetic. Awaiting-trigger amounts remain
