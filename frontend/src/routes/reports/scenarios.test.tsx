@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router";
 import { ScenarioPage } from "./scenarios";
 const state = vi.hoisted(() => ({
   source: true,
@@ -49,7 +50,9 @@ afterEach(() => {
 function open() {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ScenarioPage />
+      <MemoryRouter>
+        <ScenarioPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -98,4 +101,19 @@ it("prevents a second create while an accepted job is still loading", () => {
     screen.getByRole("textbox", { name: "Scenario name" }).closest("form") as HTMLFormElement,
   );
   expect(state.submit).not.toHaveBeenCalled();
+});
+
+it("applies status filtering on the server before paging", async () => {
+  state.fetch.mockResolvedValue({ items: [], nextCursor: null });
+  open();
+  fireEvent.click(screen.getByRole("combobox", { name: "Scenario status" }));
+  fireEvent.mouseDown(await screen.findByRole("option", { name: "Archived" }));
+  await waitFor(() =>
+    expect(state.fetch).toHaveBeenLastCalledWith(
+      "/api/v1/scenarios",
+      { sort: "-created_at", status: "ARCHIVED" },
+      null,
+      { limit: 50, count: false },
+    ),
+  );
 });

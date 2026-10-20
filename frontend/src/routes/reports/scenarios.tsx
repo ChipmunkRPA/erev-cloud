@@ -1,4 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router";
+import { Field } from "../../components/form/Field";
+import { Select } from "../../components/form/Select";
+import { ArchiveScenario } from "./ArchiveScenario";
 import { useState } from "react";
 import { RefusalBanner } from "../../components/feedback/RefusalBanner";
 import { Banner } from "../../components/feedback/Banner";
@@ -22,6 +26,8 @@ const KEY = queryKey("scenarios", "tenant");
 const label = (key: string) => t(`reports.scenarios.${key}`);
 export function ScenarioPage() {
   const access = useAccess();
+  const [search, setSearch] = useSearchParams();
+  const status = search.get("status") ?? "";
   const me = useMe();
   const tenant = me.data?.memberships.find(
     (m) => m.membership_id === me.data?.active_membership_id,
@@ -31,13 +37,18 @@ export function ScenarioPage() {
   const [purpose, setPurpose] = useState("");
   const [networkError, setNetworkError] = useState(false);
   const records = useInfiniteQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, { status }],
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) =>
-      fetchListPage<Scenario>("/api/v1/scenarios", { sort: "-created_at" }, pageParam, {
-        limit: 50,
-        count: false,
-      }),
+      fetchListPage<Scenario>(
+        "/api/v1/scenarios",
+        { sort: "-created_at", status: status || null },
+        pageParam,
+        {
+          limit: 50,
+          count: false,
+        },
+      ),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     enabled: allowed,
     retry: false,
@@ -66,6 +77,25 @@ export function ScenarioPage() {
         ) : (
           <>
             <p>{label("description")}</p>
+            <Field name="scenario-status" label={label("status")}>
+              {(control) => (
+                <Select
+                  control={control}
+                  value={status}
+                  options={[
+                    { value: "", label: label("all") },
+                    { value: "ACTIVE", label: label("active") },
+                    { value: "ARCHIVED", label: label("archived") },
+                  ]}
+                  onChange={(next) => {
+                    const updated = new URLSearchParams(search);
+                    if (next) updated.set("status", next);
+                    else updated.delete("status");
+                    setSearch(updated);
+                  }}
+                />
+              )}
+            </Field>
             <form
               className="flex flex-col gap-3"
               onSubmit={(event) => {
@@ -141,6 +171,14 @@ export function ScenarioPage() {
                   className="flex flex-col gap-2 rounded border border-default p-3"
                 >
                   <h3 className="text-title-sm">{scenario.name}</h3>
+                  {scenario.status === "ACTIVE" ? (
+                    <ArchiveScenario
+                      key={`${scenario.id}:${scenario.row_version}`}
+                      id={scenario.id}
+                      name={scenario.name}
+                      version={scenario.row_version}
+                    />
+                  ) : null}
                   <p>{scenario.purpose}</p>
                   <p>
                     {label(scenario.status === "ACTIVE" ? "active" : "archived")} ·{" "}

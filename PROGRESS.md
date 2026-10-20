@@ -6,6 +6,19 @@
 
 
 
+## Scenario archive and status filtering — October 19, 2026
+
+- Active scenario records now offer an explicit archive confirmation describing read-only
+  retained evidence. The POST carries the displayed row version; success refreshes the
+  scenario cache. Backend creator/Controller authorization and idle-job checks remain
+  authoritative. Refusals, version conflicts and lost responses remain visible without
+  claiming success. Archived scenarios keep their workspace-read entry.
+- Added URL-backed ACTIVE/ARCHIVED status filtering through the server's list filter before
+  pagination. Creation still invalidates every scenario-list variant.
+- Six focused creation/list/archive checks pass plus frontend type/lint checks. Refresh needs
+  a published-input selector from the source scenario, and event-editing UI remains open.
+  Populated accounting acceptance and independent sign-off remain outstanding. No deployment.
+
 ## Scenario creation and forecast entry — October 19, 2026
 
 - Added /reports/scenarios for production workspace members with tenant-wide scenario.use:
@@ -235,21 +248,6 @@
 - Twenty-two focused format/report-grid/totals checks pass, along with TypeScript and ESLint.
   Populated production-posting accounting acceptance and other reporting workflows remain
   open; no full reporting or production-readiness claim. No deployment.
-
-## Forecast file-format viewing — October 19, 2026
-
-- Fixed the report-centre mismatch where CSV/XLSX forecast detail requested section data but
-  the data route accepted only JSON. Forecast file formats now read their own saved canonical
-  datasets, with parent/publication/digest verification and current export authorization.
-  Other report formats retain their existing data-route rules.
-- The forecast history page offers inline figures for completed CSV/XLSX outputs when the
-  viewer holds export permission for the report's entities. Original forecast publications
-  and ordinary catalogue reports both use the saved format's visibility, without recapture.
-- Real forecast workflow passes with original-publication reads and public catalogue section
-  metadata/paged revenue rows for JSON/CSV/XLSX. Four focused UI checks and backend lint/type
-  checks pass. Broader reporting features and accounting acceptance remain open.
-- Next: continue the RPS/FCS reporting workflow/content gap audit; registration coverage is
-  not a completion claim. No deployment.
 
 ## Outstanding release verification
 

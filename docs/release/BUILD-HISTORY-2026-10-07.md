@@ -8219,3 +8219,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   audit reporting feature/content gaps and complete the outstanding workflows, including
   multi-contract samples, reopen/relock, forecast comparisons and report-centre usability.
   No deployment or production-readiness claim.
+
+## Forecast file-format viewing — October 19, 2026
+
+- Fixed the report-centre mismatch where CSV/XLSX forecast detail requested section data but
+  the data route accepted only JSON. Forecast file formats now read their own saved canonical
+  datasets, with parent/publication/digest verification and current export authorization.
+  Other report formats retain their existing data-route rules.
+- The forecast history page offers inline figures for completed CSV/XLSX outputs when the
+  viewer holds export permission for the report's entities. Original forecast publications
+  and ordinary catalogue reports both use the saved format's visibility, without recapture.
+- Real forecast workflow passes with original-publication reads and public catalogue section
+  metadata/paged revenue rows for JSON/CSV/XLSX. Four focused UI checks and backend lint/type
+  checks pass. Broader reporting features and accounting acceptance remain open.
+- Next: continue the RPS/FCS reporting workflow/content gap audit; registration coverage is
+  not a completion claim. No deployment.
