@@ -43,3 +43,14 @@ class ScenarioRefreshIn(BaseModel):
 
 class ScenarioRefreshRequestedOut(ScenarioRequestedOut):
     refresh_id: UUID
+
+
+class ScenarioInputSummaryOut(BaseModel):
+    """Published refresh choices; captured commands and import payloads remain private."""
+
+    id: UUID
+    code: str
+    name: str
+    version_no: int
+    content_sha256: str
+    published_at: datetime

@@ -5961,6 +5961,40 @@ def test_forecast_event_capture_is_atomic_and_immutable(
             engine=engine(),
         )
 
+    with world.place.uow(principal) as uow:
+        event_sets.create(uow, {"code": "UNPUBLISHED", "name": "Not a refresh choice"})
+        uow.commit()
+    input_path = f"/api/v1/scenarios/{created.json()['scenario_id']}/published-inputs"
+    choices = call(
+        world.app,
+        "GET",
+        input_path,
+        headers=cookie_headers(source_actor.token, source_actor.csrf_token),
+        params={"limit": 1, "count": True},
+    )
+    assert choices.status_code == 200, choices.text
+    assert choices.json()["items"][0]["id"] == str(draft["id"])
+    assert choices.headers["X-Erev-Total-Count"] == "2"
+    assert "api_commands" not in choices.json()["items"][0]
+    assert "import_upload_ids" not in choices.json()["items"][0]
+    assert choices.json()["next_cursor"] is not None
+    following = call(
+        world.app,
+        "GET",
+        input_path,
+        headers=cookie_headers(source_actor.token, source_actor.csrf_token),
+        params={"limit": 1, "cursor": choices.json()["next_cursor"]},
+    )
+    assert following.status_code == 200, following.text
+    assert following.json()["items"][0]["id"] != str(draft["id"])
+    denied_choices = call(
+        world.app,
+        "GET",
+        input_path,
+        headers=cookie_headers(sandbox_actor.token, sandbox_actor.csrf_token),
+    )
+    assert denied_choices.status_code == 403, denied_choices.text
+
     from support.factories import ImportWorld
     from support.forecast_inputs import exercise_forecast_imports
 

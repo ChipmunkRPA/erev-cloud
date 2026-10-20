@@ -6882,6 +6882,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/scenarios/{scenario_id}/published-inputs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Scenarios Published Inputs */
+    get: operations["scenarios_published_inputs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/scenarios/{scenario_id}/refresh": {
     parameters: {
       query?: never;
@@ -16964,6 +16981,13 @@ export interface components {
       /** Next Cursor */
       next_cursor: string | null;
     };
+    /** ListOut[ScenarioInputSummaryOut] */
+    ListOut_ScenarioInputSummaryOut_: {
+      /** Items */
+      items: components["schemas"]["ScenarioInputSummaryOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
     /** ListOut[ScenarioOut] */
     ListOut_ScenarioOut_: {
       /** Items */
@@ -21620,6 +21644,30 @@ export interface components {
        * @description Required for EXPECTED_VALUE; the probabilities sum to 1
        */
       probability?: string | null;
+    };
+    /**
+     * ScenarioInputSummaryOut
+     * @description Published refresh choices; captured commands and import payloads remain private.
+     */
+    ScenarioInputSummaryOut: {
+      /** Code */
+      code: string;
+      /** Content Sha256 */
+      content_sha256: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /**
+       * Published At
+       * Format: date-time
+       */
+      published_at: string;
+      /** Version No */
+      version_no: number;
     };
     /** ScenarioOut */
     ScenarioOut: {
@@ -53165,6 +53213,74 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  scenarios_published_inputs: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path: {
+        scenario_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_ScenarioInputSummaryOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
         headers: {
           [name: string]: unknown;
         };

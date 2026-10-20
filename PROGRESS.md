@@ -6,6 +6,21 @@
 
 
 
+## Authorized scenario refresh choices — October 19, 2026
+
+- Added GET /scenarios/{id}/published-inputs for production USER callers with tenant-wide
+  scenario.use. Resolves an active source-owned scenario, checks its current active sandbox
+  belongs to that production tenant, then lists only that scenario's published input versions.
+  Tenant context is restored even on refusal; no arbitrary target workspace parameter exists.
+- Returns only ID/code/name/version/hash/publication metadata, not captured API commands or
+  uploaded payloads. Supports keyset paging/counts and no-store responses. OpenAPI and generated
+  frontend types are updated. This supplies the missing refresh selector read contract.
+- Real scenario/database journey passes current published choices, draft exclusion, paging,
+  counts, hidden command payloads and sandbox-call denial; existing forecast capture/refresh
+  checks also pass. Python lint/types pass. Disposable database stopped after verification.
+- Refresh UI still needs input selection and refresh-stage tracking; event editing and wider
+  accounting acceptance remain open. No deployment or independent-signoff claim.
+
 ## Scenario archive and status filtering — October 19, 2026
 
 - Active scenario records now offer an explicit archive confirmation describing read-only
@@ -235,19 +250,6 @@
 - Eight focused forecast/comparison interaction checks pass. Broader reporting content,
   populated accounting acceptance and independent accounting sign-off remain open.
   No deployment or production-readiness claim.
-
-## Actual-versus-forecast percentage display — October 19, 2026
-
-- Completed RPT-40's signed variance percentage presentation. API values are already scaled
-  percentages; the formatter shifts decimal strings exactly before percentage rendering,
-  avoiding double scaling and numeric precision loss. Positive values show a plus sign;
-  negatives follow tenant style and zero-base null values retain the no-value dash.
-- Report columns now classify the comparison percentage as a right-aligned numeric value.
-  Currency totals preserve the backend's saved variance percentage and render it as a
-  percentage instead of treating it as currency or omitting it.
-- Twenty-two focused format/report-grid/totals checks pass, along with TypeScript and ESLint.
-  Populated production-posting accounting acceptance and other reporting workflows remain
-  open; no full reporting or production-readiness claim. No deployment.
 
 ## Outstanding release verification
 
