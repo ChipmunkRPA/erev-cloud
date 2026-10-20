@@ -1426,10 +1426,11 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
         clock.set(
             uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
         )
+    permissions = registers.PERMISSIONS | ({"access.approve"} if kind == "ACCESS" else set())
     principal = replace(
         sources.principal,
-        permissions=registers.PERMISSIONS,
-        permission_scopes={permission: "*" for permission in registers.PERMISSIONS},
+        permissions=permissions,
+        permission_scopes={permission: "*" for permission in permissions},
     )
     request = (
         ChangePackCreateIn(kind="CHANGE", from_date=date(2026, 1, 1), to_date=clock.now().date())
@@ -1442,6 +1443,7 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
             sources.world.tenant_id, **bound.pack_values(), created_at=uow.now
         )
         uow.session.execute(insert(evidence_pack).values(**pack))
+        registers.retain(uow, pack["id"], bound)
         uow.commit()
     for report in bound.reports:
         finished = run_journal_job(sources.world, report.job_id, attempts=1)
@@ -1449,7 +1451,7 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
     with sources.world.place.uow(principal) as uow:
         files = registers.collect(uow, pack["id"])
         assert registers.load(uow, pack["id"]) == bound
-        assert len(files) == 8
+        assert len(files) == (11 if kind == "ACCESS" else 8)
         if kind == "CHANGE":
             release = json.loads(
                 next(

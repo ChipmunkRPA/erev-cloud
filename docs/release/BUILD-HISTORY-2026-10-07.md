@@ -7841,3 +7841,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Ten focused mapper/comparison checks and the real archived-forecast refresh journey pass;
   Ruff/Mypy pass. Actual-side dimension mapping, report builder/registration and UI still
   remain. FCS-4 is not yet runnable; no deployment.
+
+
+## Actual dimensions and comparison assembly — October 19, 2026
+
+- Actuals capture now freezes immutable contract external IDs and category availability. A
+  single obligation/product history and a product unchanged since the cutoff establish the
+  category; changed/ambiguous/missing history stays explicitly unknown rather than becoming
+  Unassigned. Contract mapping still works when only category history is unavailable.
+- Added actual-line projection using saved transaction/functional credit minus debit. Connected
+  both authorized retained-source readers to the comparison projector, with refresh-race checks
+  and pre-aggregation fact/digest evidence for the forthcoming report-framework adapter.
+- Seven focused dimension checks pass. The real scenario journey verifies populated obligation
+  label lookup, historical absence and archived forecast plus empty actuals comparison. Ruff/
+  Mypy pass. Populated production-posting accounting acceptance is still outstanding.
+- Report-framework registration, same-source rebuilding and UI remain open; the internal
+  comparison path is implemented but the public report is not yet runnable. No deployment.

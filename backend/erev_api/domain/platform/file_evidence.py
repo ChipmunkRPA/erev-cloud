@@ -442,7 +442,7 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
     EvidenceReference(
         "evidence_sample_file",
         "file_id",
-        "retained contract sample evidence",
+        "retained evidence-pack source files",
         entities=lambda t: t.c.entity_ids,
     ),
     EvidenceReference(

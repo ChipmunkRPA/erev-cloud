@@ -399,6 +399,7 @@ def test_access_pack_collection_keeps_historical_decisions_and_source_permission
     world: World,
     keyring: KeyRing,
     app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from dataclasses import replace
     from datetime import timedelta
@@ -487,3 +488,55 @@ def test_access_pack_collection_keeps_historical_decisions_and_source_permission
         with pytest.raises(Problem) as error:
             evidence.collect(uow, as_of=clock.now())
         assert error.value.slug == "forbidden"
+
+    from erev_api.db.tables import evidence_pack
+    from erev_api.domain.platform import file_evidence
+    from erev_api.domain.reports import evidence_access_snapshot as snapshots
+    from sqlalchemy import insert
+    from support.rows import evidence_pack_values
+
+    with unit_of_work(context, clock=clock, keyring=keyring, files=store) as uow:
+        retained = snapshots.capture(uow, as_of=clock.now())
+        pack = evidence_pack_values(
+            world.tenant_id,
+            as_of_date=clock.now().date(),
+            source_binding={"access_reviews": retained.model_dump(mode="json")},
+            created_at=uow.now,
+        )
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        with pytest.raises(Problem, match="retention is incomplete"):
+            snapshots.verify_links(uow, pack["id"], retained)
+        snapshots.retain(uow, pack["id"], retained)
+        snapshots.verify_links(uow, pack["id"], retained)
+        source_files = snapshots.files(uow, retained)
+        assert COMMENT not in retained.model_dump_json()
+        for dependency in retained.dependency_ids():
+            holds = file_evidence.holds_in(uow.session, dependency)
+            assert any(hold.reference.table == "evidence_sample_file" for hold in holds)
+            assert file_evidence.first_refusing(holds) is not None
+        meta = (
+            uow.session.execute(select(file_object).where(file_object.c.id == retained.file_id))
+            .mappings()
+            .one()
+        )
+        assert store.exists(meta["storage_key"] + ".dek")
+        with store.open(meta["storage_key"]) as encrypted:
+            assert not encrypted.read().startswith(b"PK")
+        uow.commit()
+
+    def no_recollection(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("Saved access evidence must not be recollected")
+
+    monkeypatch.setattr(evidence, "collect", no_recollection)
+    with unit_of_work(context, clock=clock, keyring=keyring, files=store) as uow:
+        snapshots.verify_links(uow, pack["id"], retained)
+        assert snapshots.files(uow, retained) == source_files
+        with pytest.raises(Problem, match="verification"):
+            snapshots.files(uow, retained.model_copy(update={"sha256": "0" * 64}))
+    with unit_of_work(denied, clock=clock, keyring=keyring, files=store) as uow:
+        with pytest.raises(Problem) as refused:
+            snapshots.files(uow, retained)
+        assert refused.value.slug == "forbidden"
+    for suffix in ("", "/content"):
+        response = get(app, f"/api/v1/files/{retained.file_id}{suffix}", world.tomas)
+        assert response.status_code == 404, response.text

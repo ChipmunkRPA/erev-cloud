@@ -1,9 +1,9 @@
 """Retained report sections for CHANGE/ACCESS evidence packs.
 
 This boundary queues and binds report sources, then collects their original CSV and IPE
-manifest bytes under current authorization. It does not claim a complete pack: CHANGE
-retains registry manifest facts; ACCESS retains the role matrix and still needs
-access-review evidence.
+manifest bytes under current authorization. CHANGE retains registry manifest facts;
+ACCESS retains the role matrix and encrypted review evidence. Insert the pack and call
+retain() in the same transaction as prepare().
 No parent job, pack completion or public endpoint is enabled here.
 """
 
@@ -30,6 +30,7 @@ from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.tables import evidence_pack, legal_entity, report_run
 from erev_api.domain.reports import (
     evidence_access_roles,
+    evidence_access_snapshot,
     evidence_change_releases,
     evidence_reports,
     evidence_selection,
@@ -122,8 +123,7 @@ class ChangeSources(_RegisterSources):
         return self
 
 
-class AccessSources(_RegisterSources):
-    format: Literal["erev.register-evidence.sources.v3"] = "erev.register-evidence.sources.v3"
+class _AccessSources(_RegisterSources):
     role_matrix: evidence_access_roles.RoleMatrix
 
     @model_validator(mode="after")
@@ -138,7 +138,27 @@ class AccessSources(_RegisterSources):
         return self
 
 
-type RegisterBinding = RegisterSources | ChangeSources | AccessSources
+class AccessSources(_AccessSources):
+    format: Literal["erev.register-evidence.sources.v3"] = "erev.register-evidence.sources.v3"
+
+
+class CompleteAccessSources(_AccessSources):
+    format: Literal["erev.register-evidence.sources.v4"] = "erev.register-evidence.sources.v4"
+    access_reviews: evidence_access_snapshot.ReviewSnapshot
+
+    @model_validator(mode="after")
+    def matching_reviews(self) -> Self:
+        scope = self.access_reviews.scope
+        if (
+            scope.tenant_id != self.tenant_id
+            or scope.known_at != self.known_at
+            or scope.as_of != self.role_matrix.as_of
+        ):
+            raise ValueError("Access-review snapshot differs from the ACCESS request.")
+        return self
+
+
+type RegisterBinding = RegisterSources | ChangeSources | AccessSources | CompleteAccessSources
 _BINDING: TypeAdapter[RegisterBinding] = TypeAdapter(
     Annotated[RegisterBinding, Field(discriminator="format")]
 )
@@ -224,6 +244,11 @@ def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -
         if isinstance(request, AccessPackCreateIn)
         else None
     )
+    review_snapshot = (
+        evidence_access_snapshot.capture(uow, as_of=role_matrix.as_of)
+        if role_matrix is not None
+        else None
+    )
     reports = []
     for body in requests(request, entity_codes=entity_codes, known_at=selection.known_at):
         run_id, job = framework.create_run(uow, body)
@@ -258,8 +283,10 @@ def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -
     )
     if release_evidence is not None:
         return ChangeSources(**values, release_evidence=release_evidence)
-    if role_matrix is not None:
-        return AccessSources(**values, role_matrix=role_matrix)
+    if role_matrix is not None and review_snapshot is not None:
+        return CompleteAccessSources(
+            **values, role_matrix=role_matrix, access_reviews=review_snapshot
+        )
     return RegisterSources(**values)
 
 
@@ -298,8 +325,10 @@ def load(uow: UnitOfWork, pack_id: UUID) -> RegisterBinding:
         raise Problem("not-found")
     bound = checked_row(dict(row))
     authorize(uow, bound.entity_ids)
-    if isinstance(bound, AccessSources):
+    if isinstance(bound, _AccessSources):
         evidence_access_roles.authorize(uow)
+    if isinstance(bound, CompleteAccessSources):
+        evidence_access_snapshot.verify_links(uow, pack_id, bound.access_reviews)
     jobs = {
         identity: job_id
         for identity, job_id in uow.session.execute(
@@ -323,8 +352,13 @@ def collect(uow: UnitOfWork, pack_id: UUID) -> tuple[PackFile, ...]:
     return (
         *files,
         *(
+            evidence_access_snapshot.files(uow, bound.access_reviews)
+            if isinstance(bound, CompleteAccessSources)
+            else ()
+        ),
+        *(
             evidence_access_roles.files(bound.role_matrix)
-            if isinstance(bound, AccessSources)
+            if isinstance(bound, _AccessSources)
             else ()
         ),
         *(
@@ -334,3 +368,9 @@ def collect(uow: UnitOfWork, pack_id: UUID) -> tuple[PackFile, ...]:
         ),
         PackFile("registers/source_binding.json", canonical_bytes(bound.model_dump(mode="json"))),
     )
+
+
+def retain(uow: UnitOfWork, pack_id: UUID, bound: RegisterBinding) -> None:
+    """Call after inserting the pack, in the same creation transaction."""
+    if isinstance(bound, CompleteAccessSources):
+        evidence_access_snapshot.retain(uow, pack_id, bound.access_reviews)

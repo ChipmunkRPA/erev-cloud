@@ -6,6 +6,18 @@
 
 
 
+## Encrypted ACCESS review retention — October 19, 2026
+
+- ACCESS v4 now includes encrypted retained review evidence, with only IDs, cutoffs, hashes
+  and file metadata in source_binding. Reports, role matrix and review files collect together.
+- Reuses the existing immutable pack/file registry for tenant-wide archive/original-file holds;
+  retain() belongs to pack creation's transaction. Reads verify complete dependencies,
+  campaign associations, current permissions and archive/scope integrity without recollection.
+- Actual populated API review capture verifies encryption, source deletion holds, hidden generic
+  file routes, hash refusal and repeat reads with the live collector disabled. CHANGE/ACCESS
+  report-worker collection also passes; Mypy and Ruff pass.
+- Next: parent job/storage and public CHANGE/ACCESS API/UI. No deployment or readiness claim.
+
 ## As-of access-review evidence collection — October 19, 2026
 
 - Added campaign/item evidence with original membership snapshots, counts and transition
@@ -230,21 +242,6 @@
   source-contract/rebuild checks pass; Ruff/Mypy pass.
 - Dedicated UI selection, all file-format verification and populated accounting acceptance
   remain. FCS-4 is now registered/runnable, but its acceptance is not complete. No deployment.
-
-## Actual dimensions and comparison assembly — October 19, 2026
-
-- Actuals capture now freezes immutable contract external IDs and category availability. A
-  single obligation/product history and a product unchanged since the cutoff establish the
-  category; changed/ambiguous/missing history stays explicitly unknown rather than becoming
-  Unassigned. Contract mapping still works when only category history is unavailable.
-- Added actual-line projection using saved transaction/functional credit minus debit. Connected
-  both authorized retained-source readers to the comparison projector, with refresh-race checks
-  and pre-aggregation fact/digest evidence for the forthcoming report-framework adapter.
-- Seven focused dimension checks pass. The real scenario journey verifies populated obligation
-  label lookup, historical absence and archived forecast plus empty actuals comparison. Ruff/
-  Mypy pass. Populated production-posting accounting acceptance is still outstanding.
-- Report-framework registration, same-source rebuilding and UI remain open; the internal
-  comparison path is implemented but the public report is not yet runnable. No deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

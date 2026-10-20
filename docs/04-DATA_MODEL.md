@@ -1956,7 +1956,7 @@ without override.
 | `journal_batch.export_file_id`, `journal_batch.detail_file_id`; `posting_ack.response_file_id` | always | CTL-021; R-30 |
 | `report_run.output_file_id`, `report_run.manifest_file_id` | the run is bound to a period lock (`period_lock_id IS NOT NULL`) | CTL-029; R-30 |
 | `evidence_pack.file_id` | always | CTL-041 |
-| `evidence_sample_file.file_id` | always; immutable sample source archive and original document dependencies; no shred override | CTL-041 |
+| `evidence_sample_file.file_id` | always; immutable sample/access source archives and original dependencies; no shred override | CTL-041 |
 | `forecast_actuals_capture.dataset_file_id` | always; immutable captured production actuals | T-FC-06 |
 | `approval_request.impact_preview_file_id`; `modification.impact_preview_file_id`; `manual_adjustment.impact_preview_file_id` | always | REQ-PLT-015; R-30 |
 | `account_mapping_version.impact_simulation_file_id`; `registry_version.impact_simulation_file_id`; `rule_set_version.impact_simulation_file_id` | always | REQ-POL-006 |
@@ -8698,7 +8698,7 @@ neither opens archived report downloads nor grants access to unrelated scenarios
 ### T-RPT-05 `evidence_sample_file`
 
 Revision 0188. Tenant-scoped append-only (IM-A, RLS-T) retained dependency links for a
-contract sample. Standard tenant/id and SC-C columns; `evidence_pack_id` and `file_id`
+contract sample or access-review capture (the original table name is retained). Standard tenant/id and SC-C columns; `evidence_pack_id` and `file_id`
 are required tenant foreign keys. Unique `(tenant_id, evidence_pack_id, file_id)`.
 Nullable `entity_ids uuid[]` freezes the full authorized source entity population; NULL
 means all entities. Creation locks every referenced file against shredding and writes links
@@ -8790,3 +8790,20 @@ membership_snapshot.json for campaigns already started. Source file IDs accompan
 for dependency retention. These payloads contain member data and must be stored encrypted;
 they are not embedded in the immutable source-binding JSON. Encryption/dependency integration,
 parent completion and public ACCESS endpoints are still pending.
+
+### Encrypted access-review retention — October 19, 2026
+
+ACCESS source v4 adds access_reviews, a pointer/hash/size/manifest binding to an encrypted
+SNAPSHOT_DATASET ZIP. Its embedded scope names the tenant, effective/known instants, campaigns
+and original membership snapshot file identities. Member emails, comments and snapshot content
+are inside the encrypted archive, not source-binding JSON. All review files, scope and manifest
+are verified before collection; retries never run the live collector again.
+
+Creation must insert the pack and retain() its dependency links in the same transaction.
+The existing evidence_sample_file registry also holds ACCESS dependencies with entity_ids NULL:
+both the encrypted archive and original membership snapshots receive permanent deletion holds.
+No generic file route gains access. Retained loads reject missing, extra or non-global links;
+reads reauthorize tenant-wide evidence/access.approve, current campaign/file associations and
+source availability. Original snapshot bytes captured in the archive remain fixed when later
+review decisions occur. Legacy v1/v3 register-only ACCESS bindings remain identifiable as
+incomplete historical source formats; the public parent lifecycle remains to be added.
