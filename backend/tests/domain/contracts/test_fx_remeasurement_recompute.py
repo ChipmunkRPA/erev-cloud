@@ -666,6 +666,19 @@ def test_contract_period_override_close_pass_posts_liability_fx_once(
             if node.formula_id == "post.delta.v1" and node.inputs[0] == line["trace_node_id"]
         ]
         assert any(Decimal(node.value) == Decimal("-5400.00") for node in deltas)
+        delta = next(node for node in deltas if Decimal(node.value) == Decimal("-5400.00"))
+        attributed = pass_evidence.liability_attribution(
+            uow,
+            line["id"],
+            owners={CONTRACT: contract_id},
+            paid=(),
+        )
+        assert attributed is not None
+        assert attributed.node_id == delta.id
+        assert attributed.amount == Decimal("-5400.00")
+        assert {item.contract_id for item in attributed.movements} == {contract_id}
+        assert all(item.closing for item in attributed.movements)
+        assert attributed.source_ids
         evidence_count = uow.session.execute(
             select(func.count()).select_from(close_pass_evidence)
         ).scalar_one()

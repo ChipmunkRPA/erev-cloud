@@ -22,6 +22,7 @@ from sqlalchemy import insert, select
 
 from erev_api.db import new_id
 from erev_api.db.tables import close_pass_evidence, subledger_line, subledger_posting
+from erev_api.domain.reports.liability_fx_trace import LayerDelta, PostingDelta, from_pass
 from erev_api.enums import FilePurpose
 from erev_api.explain.store import MAX_TRACE_BYTES, trace_document, trace_from_row
 from erev_api.files.store import open_file, store_file
@@ -185,3 +186,57 @@ def read_for_line(uow: UnitOfWork, line_id: UUID) -> dict[str, Any] | None:
     if len(matches) > 1:
         raise ValueError("Close-pass line has ambiguous retained evidence.")
     return matches[0] if matches else None
+
+
+def liability_attribution(
+    uow: UnitOfWork,
+    line_id: UUID,
+    *,
+    owners: Mapping[str, UUID],
+    paid: Sequence[LayerDelta],
+) -> PostingDelta | None:
+    """Resolve one retained FX control line to its actual signed layer delta.
+
+    Paid layers are supplied by an authorized historical-ledger reader, never
+    inferred from their net amount. None means missing historical evidence.
+    This internal operation exposes no additional document permissions.
+    """
+    from erev_api.db.tables import legal_entity, period
+
+    source = (
+        uow.session.execute(
+            select(subledger_line, legal_entity.c.code.label("entity_code"), period.c.period_key)
+            .join(legal_entity, legal_entity.c.id == subledger_line.c.entity_id)
+            .join(period, period.c.id == subledger_line.c.period_id)
+            .where(subledger_line.c.id == line_id)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if source is None:
+        return None
+    if source["entry_kind"] != "FX_REMEASUREMENT" or source["account_role"] != "CONTRACT_LIABILITY":
+        raise ValueError("Liability FX attribution requires an FX control line.")
+    document = read_for_line(uow, line_id)
+    if document is None:
+        return None
+    trace = trace_from_row({"id": document["id"], **document["trace_record"]})
+    candidates = [
+        node
+        for node in trace.nodes
+        if node.formula_id == "post.delta.v1"
+        and node.inputs
+        and node.inputs[0] == source["trace_node_id"]
+        and node.id.endswith(":" + source["period_key"])
+        and node.currency == str(source["functional_currency"]).strip()
+        and Decimal(node.value) == Decimal(source["amount_functional"])
+    ]
+    if len(candidates) != 1:
+        raise ValueError("The retained FX line does not identify one posting delta.")
+    return from_pass(
+        document,
+        delta_node_id=candidates[0].id,
+        entity_code=source["entity_code"],
+        owners=owners,
+        paid=paid,
+    )

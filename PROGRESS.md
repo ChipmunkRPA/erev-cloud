@@ -6,6 +6,24 @@
 
 
 
+## Signed liability FX posting attribution — October 20, 2026
+
+- Added a signed trace projection from retained S14 targets through S12 cumulative sums to
+  actual liability layer owners. The posting calculation subtracts the prior target and
+  explicitly supplied attributed paid layers, distinguishes TIME from EVENT, and verifies
+  every intermediate sum, retained time component, paid total and final journal delta.
+  Missing/corrupt sources, unknown split formulas and unprovided nonzero paid history refuse.
+- The internal close-pass reader now resolves a selected sealed FX control line to its unique
+  retained delta by target, posting period, currency and amount. Its evidence adapter keeps
+  source identities scoped to the immutable close record rather than inventing version rows.
+  A real GBP 5,400 close-pass delta reproduces with its actual contract/layer ownership. Two
+  synthetic two-owner cases verify TIME/EVENT subtraction, differing owner shares and refusal
+  of missing paid/source evidence. Scoped lint/types and these necessary checks pass.
+- Still unfinished: selecting/authorizing and recursively attributing historical paid lines,
+  command-computation evidence adapters, wiring attribution into rollforward presentation and
+  acceptance for combined/late-carried cases. No report-completion or production-readiness
+  claim; no deployment. Registry issues recorded in the preceding checkpoint remain open.
+
 ## Retained close-pass calculation evidence — October 20, 2026
 
 - Found the underlying CLOSE-PASS-TRACE-1 gap: actual close-pass ledger lines have no contract
@@ -209,23 +227,6 @@
 - Remaining: contract/estimate record replay, incompatible earlier reference/policy bases,
   missing member sources, group-level posting redistribution, combined/late-carried liability
   FX, and alternate-currency locked datasets/close-report integration.
-
-## FX after membership/event variance replay — October 20, 2026
-
-- Reorganized groups now replay membership and business events on the coherent earlier FX
-  basis, then apply the later source rates in a separate FX phase. Rates no longer have to
-  remain identical across the two closes. Inconsistent earlier-group rate bases are refused
-  explicitly rather than choosing one member's rates. Final frozen endpoint checks remain.
-- The retained membership worker accepts an explicit transaction/functional projection, used
-  consistently for original-source verification and every intermediate phase. Actual source
-  and counterfactual hashes remain separate. Existing frozen CSV currency schemas are unchanged.
-- Necessary real-engine witness merges two EUR contracts of a USD entity and revises rates:
-  each contract's functional revenue increases by USD 60 under FX. Membership and FX effects
-  independently equal their projected endpoint differences. Existing grouped replay, reverse
-  split, mixed delivery, report/cell and export journey also passes; lint/types pass.
-- Still open: alternate-currency frozen datasets and close-report integration; mixed contract/
-  estimate/reference changes; missing members; group-level posting redistribution; combined
-  contract/late-carried liability FX. No deployment or accounting sign-off claimed.
 
 ## Outstanding release verification
 

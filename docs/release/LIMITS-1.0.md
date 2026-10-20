@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Signed liability FX posting attribution — October 20, 2026
+
+- Added a signed trace projection from retained S14 targets through S12 cumulative sums to
+  actual liability layer owners. The posting calculation subtracts the prior target and
+  explicitly supplied attributed paid layers, distinguishes TIME from EVENT, and verifies
+  every intermediate sum, retained time component, paid total and final journal delta.
+  Missing/corrupt sources, unknown split formulas and unprovided nonzero paid history refuse.
+- The internal close-pass reader now resolves a selected sealed FX control line to its unique
+  retained delta by target, posting period, currency and amount. Its evidence adapter keeps
+  source identities scoped to the immutable close record rather than inventing version rows.
+  A real GBP 5,400 close-pass delta reproduces with its actual contract/layer ownership. Two
+  synthetic two-owner cases verify TIME/EVENT subtraction, differing owner shares and refusal
+  of missing paid/source evidence. Scoped lint/types and these necessary checks pass.
+- Still unfinished: selecting/authorizing and recursively attributing historical paid lines,
+  command-computation evidence adapters, wiring attribution into rollforward presentation and
+  acceptance for combined/late-carried cases. No report-completion or production-readiness
+  claim; no deployment. Registry issues recorded in the preceding checkpoint remain open.
+
+
 ## Retained close-pass calculation evidence — October 20, 2026
 
 - Found the underlying CLOSE-PASS-TRACE-1 gap: actual close-pass ledger lines have no contract
