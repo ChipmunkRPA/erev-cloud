@@ -8842,3 +8842,21 @@ a visible line alone does not grant access to other group members. Audit retenti
 shredding holds apply. Scenario snapshots regenerate this derived evidence. Downgrade refuses
 while evidence exists. The source record does not itself complete layer-level posted-history
 attribution or provide an independent accounting sign-off.
+
+
+**Close-pass format 2 and rollforward attribution (October 20, 2026).** New captures additionally
+retain the exact sealed FX control-line population read by the pass, including zero-net history.
+The format-1 reader remains available, but it cannot supply automatic paid-line attribution.
+The internal resolver filters history by retained role key, currency, posting class, reason
+variant and origin/anchor period, verifies each selected line against the authorized ledger,
+and recursively attributes earlier retained close passes. Nonzero missing paid sources refuse;
+no aggregate amount is proportionally spread across layers. Per-call memoization avoids
+re-expanding shared historical dependencies. Result evidence identifies paid lines and all
+retained evidence hashes consumed.
+
+Functional/reporting contract-balance rollforwards use this path for retained liability TIME
+postings. Original layer creation dates distinguish opening from current-range billing layers;
+flows remain in their posting periods. Source bindings retain the attribution dependencies and
+verify them on rerun. Asset-only FX retains its existing path. Mixed asset/liability targets,
+command-generated paid sources, and combined-membership changes still require complete
+attribution support; broader late-carried/combined public acceptance remains outstanding.

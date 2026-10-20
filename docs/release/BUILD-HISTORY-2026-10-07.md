@@ -9070,3 +9070,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still open: alternate-currency frozen datasets and close-report integration; mixed contract/
   estimate/reference changes; missing members; group-level posting redistribution; combined
   contract/late-carried liability FX. No deployment or accounting sign-off claimed.
+
+## Reference/policy phases with group changes — October 20, 2026
+
+- Membership replay now reconstructs prior member policies for the new group, carrying only
+  member-owned contract/obligation/contract-period policies and remapping group ownership.
+  Shared prior policies and reference bases must agree; conflicts cannot silently become the
+  baseline. Unknown policy scopes require an explicit ownership rule.
+- The next OTHER phase applies later SSP/template/rule references and resolved policies together,
+  before business events and FX. Execution hashes and changed-field names retain the basis of
+  this attribution. Contract headers and estimate records still require separate handling.
+- Necessary real-engine/frozen-data witness covers merge + RPO original-duration exemption
+  election + late delivery, independently reconciles all three effects, and checks report/cell
+  amounts and source details. Conflicting earlier policy bases are rejected. Existing reverse
+  split and functional FX checks remain included. No deployment or accounting sign-off claimed.
+- Remaining: contract/estimate record replay, incompatible earlier reference/policy bases,
+  missing member sources, group-level posting redistribution, combined/late-carried liability
+  FX, and alternate-currency locked datasets/close-report integration.

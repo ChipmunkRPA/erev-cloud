@@ -39,7 +39,11 @@ posting mode, must equal posted functional billing. Settlement FX is moved befor
 flow with an equal offset to period-end FX. Layer identities and verified traces are retained
 for reruns. Liability FX uses verified creation and remeasurement identities: opening layers
 remain in the range-opening bucket, new billing layers keep their own keys, and relief FX
-precedes revenue while closing FX follows it. Layer totals must match posted period FX.
+precedes revenue while closing FX follows it. New close-pass TIME lines use their actual
+retained target/prior/paid decomposition, with recursive historical line dependencies and
+original layer creation dates bound into reruns. Historical passes without source evidence
+retain the legacy path; mixed/command attribution without complete evidence refuses. Layer
+totals must match posted period FX.
 
 The reporting view translates monthly functional paths using the engine's S12-R-18 helper:
 opening at the preceding closing rate, flows at each posting period's average rate, closing
@@ -77,7 +81,8 @@ from erev_engine import billing_identity
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract_event, fx_layer_movement, subledger_line
+from erev_api.db.tables import contract_event, fx_layer_movement, subledger_line, subledger_posting
+from erev_api.domain.close import pass_evidence
 from erev_api.domain.reports import (
     functional_balances,
     locked_ends,
@@ -341,6 +346,7 @@ def rollforwards(
     functional: bool = False,
     period_detail: bool = False,
     locked: tie_outs.LockedEnds | None = None,
+    uow: UnitOfWork | None = None,
 ) -> tuple[ContractRollforward, ...]:
     """The rollforward of every member contract and entity with a balance at either end.
     ``documents`` False leaves the billing that posts no line out of the path: a caller that reads
@@ -486,7 +492,10 @@ def rollforwards(
                         "Dated billing layers differ from posted functional billing.",
                     )
     if functional and documents:
-        _liability_fx(session, posted, transaction_ends, periods, params)
+        handled = (
+            _retained_time_fx(uow, posted, transaction_ends, periods, params) if uow else set()
+        )
+        _liability_fx(session, posted, transaction_ends, periods, params, handled=handled)
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
         described = closing if closing is not None else opening
@@ -578,6 +587,8 @@ class Entry:
     flow: Flow
     period_id: UUID | None = None
     entry_kind: str | None = None
+    line_id: UUID | None = None
+    posting_kind: str | None = None
 
 
 def _lines(
@@ -602,26 +613,35 @@ def _lines(
         tie_outs.require_members(params, "subledger_line", ())
         tie_outs.record_members(params, "subledger_line", ())
         return {}
-    statement = select(
-        subledger_line.c.id,
-        subledger_line.c.contract_id,
-        subledger_line.c.entity_id,
-        subledger_line.c.period_id,
-        subledger_line.c.effective_date,
-        subledger_line.c.period_end_date,
-        subledger_line.c.recorded_at,
-        subledger_line.c.entry_no,
-        subledger_line.c.amount_txn,
-        subledger_line.c.amount_functional,
-        subledger_line.c.entry_kind,
-    ).where(
-        subledger_line.c.book_code == book_code,
-        subledger_line.c.account_role == LIABILITY_ROLE,
-        subledger_line.c.entity_id.in_(list(entity_ids)),
-        subledger_line.c.period_id.in_(period_ids),
-        tie_outs.line_recorded_by(params, known_at),
-        subledger_line.c.entry_kind.not_in(sorted(NETTING_KINDS)),
-        *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),
+    statement = (
+        select(
+            subledger_line.c.id,
+            subledger_line.c.contract_id,
+            subledger_line.c.entity_id,
+            subledger_line.c.period_id,
+            subledger_line.c.effective_date,
+            subledger_line.c.period_end_date,
+            subledger_line.c.recorded_at,
+            subledger_line.c.entry_no,
+            subledger_line.c.amount_txn,
+            subledger_line.c.amount_functional,
+            subledger_line.c.entry_kind,
+            subledger_posting.c.posting_kind,
+        )
+        .select_from(
+            subledger_line.join(
+                subledger_posting, subledger_posting.c.id == subledger_line.c.subledger_posting_id
+            )
+        )
+        .where(
+            subledger_line.c.book_code == book_code,
+            subledger_line.c.account_role == LIABILITY_ROLE,
+            subledger_line.c.entity_id.in_(list(entity_ids)),
+            subledger_line.c.period_id.in_(period_ids),
+            tie_outs.line_recorded_by(params, known_at),
+            subledger_line.c.entry_kind.not_in(sorted(NETTING_KINDS)),
+            *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),
+        )
     )
     if contract_id is not None:
         statement = statement.where(subledger_line.c.contract_id == contract_id)
@@ -660,11 +680,96 @@ def _lines(
                 ),
                 period_id=UUID(str(row["period_id"])),
                 entry_kind=entry_kind,
+                line_id=UUID(str(row["id"])),
+                posting_kind=str(row["posting_kind"]),
             )
         )
     tie_outs.require_members(params, "subledger_line", consumed)
     tie_outs.record_members(params, "subledger_line", consumed)
     return found
+
+
+def _retained_time_fx(
+    uow: UnitOfWork,
+    posted: dict[tuple[UUID, UUID], list[Entry]],
+    rows: Mapping[tuple[UUID, UUID], BalanceRow],
+    periods: Mapping[UUID, tuple[PeriodRef, ...]],
+    params: ReportParams,
+) -> set[tuple[UUID, UUID, UUID]]:
+    """Place actual close-pass TIME deltas on their retained member layers."""
+    evidence_key = "liability_posted_fx_v1"
+    if params.binding is not None and evidence_key not in params.binding.evidence:
+        return set()  # Preserve the explicitly retained historical report path.
+    owners = {row.external_id: row.contract_id for row in rows.values()}
+    handled: set[tuple[UUID, UUID, UUID]] = set()
+    facts: dict[str, Any] = {}
+    additions: dict[tuple[UUID, UUID], list[Entry]] = {}
+    for key, entries in list(posted.items()):
+        for entry in tuple(entries):
+            if entry.posting_kind != "FX_REMEASUREMENT" or entry.line_id is None:
+                continue
+            document = pass_evidence.read_for_line(uow, entry.line_id)
+            if document is None:
+                continue
+            # Asset-only FX retains the existing asset path. Mixed control targets
+            # require a complete source decomposition, never a liability-only plug.
+            if not any(
+                item["columns"]["movement_kind"] == "LIABILITY_LAYER_REMEASURED"
+                for item in document["book_output"]["fx_layer_movements"]
+            ):
+                continue
+            try:
+                result = pass_evidence.liability_attribution(uow, entry.line_id, owners=owners)
+            except ValueError as error:
+                raise tie_outs.invalid("currency_view", str(error)) from error
+            if result is None or result.amount != entry.flow.amount:
+                raise tie_outs.invalid(
+                    "currency_view", "Retained FX delta differs from the posted flow."
+                )
+            period = next(item for item in periods[key[1]] if item.id == entry.period_id)
+            beginning = periods[key[1]][0].start
+            groups: dict[tuple[UUID, date], dict[str | None, Decimal]] = {}
+            for movement in result.movements:
+                if not movement.closing or movement.created_on is None:
+                    raise tie_outs.invalid(
+                        "currency_view", "Close TIME attribution lacks dated layer evidence."
+                    )
+                owner_key = (movement.contract_id, key[1])
+                if owner_key not in rows:
+                    raise tie_outs.invalid(
+                        "currency_view", "FX source owner is outside the report population."
+                    )
+                day = max(period.start, min(period.end, movement.effective_date))
+                layer = None if movement.created_on < beginning else movement.layer_key
+                parts = groups.setdefault((movement.contract_id, day), {})
+                parts[layer] = parts.get(layer, ZERO) + movement.amount
+                handled.add((*owner_key, period.id))
+            handled.add((*key, period.id))
+            for (owner, day), parts in groups.items():
+                additions.setdefault((owner, key[1]), []).append(
+                    Entry(
+                        order=(day, LINE_RANK, period.end, params.known_at, 0, str(entry.line_id)),
+                        flow=Flow(
+                            sum(parts.values(), ZERO), False, FX, liability_fx=tuple(parts.items())
+                        ),
+                        period_id=period.id,
+                        entry_kind="FX_REMEASUREMENT",
+                    )
+                )
+            entries.remove(entry)
+            facts[str(entry.line_id)] = {
+                "delta": result.node_id,
+                "paid_line_ids": [str(identity) for identity in result.paid_line_ids],
+                "evidence": [[str(identity), digest] for identity, digest in result.evidence],
+            }
+    for key, entries in additions.items():
+        posted.setdefault(key, []).extend(entries)
+    if params.binding is not None and params.binding.evidence[evidence_key] != facts:
+        raise tie_outs.invalid(
+            "currency_view", "Retained FX source attribution differs from the report binding."
+        )
+    tie_outs.record_evidence(params, evidence_key, facts)
+    return handled
 
 
 def _liability_fx(
@@ -673,6 +778,8 @@ def _liability_fx(
     rows: Mapping[tuple[UUID, UUID], BalanceRow],
     periods: Mapping[UUID, tuple[PeriodRef, ...]],
     params: ReportParams,
+    *,
+    handled: set[tuple[UUID, UUID, UUID]] | None = None,
 ) -> None:
     """Attach verified layer remeasurement to its posted control movement.
 
@@ -729,12 +836,23 @@ def _liability_fx(
         beginning = periods[row.entity_id][0].start
         for period in periods[row.entity_id]:
             movements = [
-                item for item in relevant if period.start <= item["effective_date"] <= period.end
+                item
+                for item in relevant
+                if period.start <= item["effective_date"] <= period.end
+                and not (
+                    handled
+                    and (*key, period.id) in handled
+                    and nodes[str(item["trace_node_id"])].formula_id == "fx.remeasure.closing.v1"
+                )
             ]
             if not movements:
                 continue
             fx_entries = [
-                entry for entry in entries if entry.period_id == period.id and entry.flow.kind == FX
+                entry
+                for entry in entries
+                if entry.period_id == period.id
+                and entry.flow.kind == FX
+                and not entry.flow.liability_fx
             ]
             amount = sum((entry.flow.amount for entry in fx_entries), ZERO)
             if -sum((Decimal(item["amount_functional"]) for item in movements), ZERO) != amount:
@@ -1373,6 +1491,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         functional=view in {"functional", "reporting"},
         period_detail=view == "reporting",
         locked=ends,
+        uow=uow,
     )
     _check_view(params, found, items)
     functional_items = items

@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from decimal import Decimal
 from io import BytesIO
 from typing import Any
@@ -18,6 +19,7 @@ from uuid import UUID
 from erev_engine import upgrade
 from erev_engine.bundle import BookOutput, InputBundle
 from erev_engine.canonical import canonical_bytes, sha256_hex
+from erev_engine.trace import TraceNode
 from sqlalchemy import insert, select
 
 from erev_api.db import new_id
@@ -60,10 +62,12 @@ def capture(
     output: BookOutput,
     pass_name: str,
     lines: Sequence[Mapping[str, Any]],
+    *,
+    posted_lines: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     trace = output.trace
     document = {
-        "format_version": 1,
+        "format_version": 2,
         "pass_name": pass_name,
         "input_sha256": bundle.sha256(),
         "input": json.loads(upgrade.encode_input(bundle)),
@@ -78,6 +82,7 @@ def capture(
         },
         "entries": sorted({int(line["entry_no"]) for line in lines}),
         "selected_lines": [_line_values(line) for line in lines],
+        "posted_lines": list(posted_lines),
     }
     content = canonical_bytes(document)
     if len(content) > MAX_TRACE_BYTES:
@@ -166,7 +171,7 @@ def read_for_line(uow: UnitOfWork, line_id: UUID) -> dict[str, Any] | None:
             raise ValueError("Close-pass selected line differs from its sealed ledger line.")
         output = document["book_output"]
         if (
-            document["format_version"] != 1
+            document["format_version"] not in {1, 2}
             or document["pass_name"] != record["pass_name"]
             or document["pass_name"]
             != str(getattr(record["posting_kind"], "value", record["posting_kind"]))
@@ -193,16 +198,24 @@ def liability_attribution(
     line_id: UUID,
     *,
     owners: Mapping[str, UUID],
-    paid: Sequence[LayerDelta],
+    paid: Sequence[LayerDelta] | None = None,
+    _active: frozenset[UUID] = frozenset(),
+    _cache: dict[UUID, PostingDelta] | None = None,
 ) -> PostingDelta | None:
     """Resolve one retained FX control line to its actual signed layer delta.
 
-    Paid layers are supplied by an authorized historical-ledger reader, never
-    inferred from their net amount. None means missing historical evidence.
+    With no explicit paid projection, recurse through the retained source-line
+    population. Each historical line must still match the authorized ledger and
+    have its own calculation evidence. None means missing historical evidence.
     This internal operation exposes no additional document permissions.
     """
     from erev_api.db.tables import legal_entity, period
 
+    if line_id in _active:
+        raise ValueError("Cycle in retained FX posting history.")
+    cache = {} if _cache is None else _cache
+    if line_id in cache:
+        return cache[line_id]
     source = (
         uow.session.execute(
             select(subledger_line, legal_entity.c.code.label("entity_code"), period.c.period_key)
@@ -233,10 +246,164 @@ def liability_attribution(
     ]
     if len(candidates) != 1:
         raise ValueError("The retained FX line does not identify one posting delta.")
-    return from_pass(
+    paid_ids: tuple[UUID, ...] = ()
+    evidence: tuple[tuple[UUID, str], ...] = ()
+    if paid is None:
+        paid, paid_ids, evidence = _paid_layers(
+            uow, dict(source), document, candidates[0], owners, _active | {line_id}, cache
+        )
+    result = from_pass(
         document,
         delta_node_id=candidates[0].id,
         entity_code=source["entity_code"],
         owners=owners,
         paid=paid,
     )
+    result = replace(
+        result,
+        paid_line_ids=paid_ids,
+        evidence=tuple(sorted(set((*result.evidence, *evidence)), key=str)),
+    )
+    cache[line_id] = result
+    return result
+
+
+def capture_posted_lines(
+    uow: UnitOfWork,
+    contract_ids: Sequence[UUID],
+    book_code: str,
+) -> list[dict[str, Any]]:
+    """Freeze the exact FX control population visible to this group's pass.
+
+    Record identities even for lines that net to zero: they can transfer the
+    attribution between layers without changing the aggregate paid amount.
+    """
+    from erev_api.db.tables import period, subledger_posting_seal
+    from erev_api.domain.journals.subledger import POSTING_CLASSES
+
+    origin = period.alias("fx_history_origin")
+    rows = uow.session.execute(
+        select(
+            subledger_line,
+            period.c.period_key,
+            origin.c.period_key.label("origin_key"),
+            subledger_posting.c.posting_kind,
+        )
+        .join(subledger_posting, subledger_posting.c.id == subledger_line.c.subledger_posting_id)
+        .join(
+            subledger_posting_seal,
+            subledger_posting_seal.c.subledger_posting_id == subledger_posting.c.id,
+        )
+        .join(period, period.c.id == subledger_line.c.period_id)
+        .outerjoin(origin, origin.c.id == subledger_line.c.origin_period_id)
+        .where(
+            subledger_line.c.contract_id.in_(contract_ids),
+            subledger_line.c.book_code == book_code,
+            subledger_line.c.entry_kind == "FX_REMEASUREMENT",
+            subledger_line.c.account_role == "CONTRACT_LIABILITY",
+        )
+        .order_by(subledger_line.c.recorded_at, subledger_line.c.entry_no, subledger_line.c.id)
+    ).mappings()
+    return [
+        {
+            **_line_values(dict(row)),
+            "id": str(row["id"]),
+            "book_code": str(row["book_code"]),
+            "period_key": row["period_key"],
+            "origin_key": row["origin_key"],
+            "reason_code": row["reason_code"],
+            "posting_class": POSTING_CLASSES[str(row["posting_kind"])],
+        }
+        for row in rows
+    ]
+
+
+def _paid_layers(
+    uow: UnitOfWork,
+    line: Mapping[str, Any],
+    document: Mapping[str, Any],
+    delta: TraceNode,
+    owners: Mapping[str, UUID],
+    active: frozenset[UUID],
+    cache: dict[UUID, PostingDelta],
+) -> tuple[tuple[LayerDelta, ...], tuple[UUID, ...], tuple[tuple[UUID, str], ...]]:
+    from erev_engine.trace import SourceRef
+
+    if document["format_version"] < 2 or "posted_lines" not in document:
+        raise ValueError("This historical pass did not retain its paid-line population.")
+    source = delta.inputs[-1]
+    if not isinstance(source, SourceRef):
+        raise ValueError("FX delta has no retained paid source.")
+    target_period = source.ref_id.rsplit("/", 2)[-2]
+    prior_period = (
+        str(delta.inputs[1]).rsplit(":", 1)[-1] if delta.params["previous"] == "true" else None
+    )
+    bundle = upgrade.decode_input(canonical_bytes(document["input"]))
+    entity = next(item for item in bundle.entities if item.code == line["entity_code"])
+    positions = {item.period_key: index for index, item in enumerate(entity.periods)}
+    if target_period not in positions or (
+        prior_period is not None and prior_period not in positions
+    ):
+        raise ValueError("FX paid-source periods are absent from the retained calendar.")
+    basis = delta.params["class"]
+    base = f"posting_target:{line['subject_key']}/FX_REMEASUREMENT/CONTRACT_LIABILITY"
+    target_subject = str(delta.inputs[0]).rsplit(":", 1)[0]
+    if target_subject == base:
+        split = False
+    elif target_subject == base + "/" + (
+        str(line["reason_code"]) if line["reason_code"] else "UNTAGGED"
+    ):
+        split = True
+    else:
+        raise ValueError("FX paid-source subject differs from the retained role key.")
+    selected: list[LayerDelta] = []
+    dependencies: set[UUID] = set()
+    evidence: set[tuple[UUID, str]] = set()
+    identities: set[UUID] = set()
+    for saved in document["posted_lines"]:
+        identity = UUID(saved["id"])
+        if identity in identities:
+            raise ValueError("Duplicate line in retained FX history.")
+        identities.add(identity)
+        if (
+            saved["entity_id"] != str(line["entity_id"])
+            or saved["book_code"] != str(line["book_code"])
+            or saved["subject_key"] != line["subject_key"]
+            or saved["txn_currency"] != str(line["txn_currency"]).strip()
+            or saved["functional_currency"] != str(line["functional_currency"]).strip()
+            or (basis != "ALL" and saved["posting_class"] != basis)
+            or (split and saved["reason_code"] != line["reason_code"])
+        ):
+            continue
+        origin = saved["origin_key"] or saved["period_key"]
+        if basis == "TIME":
+            if origin not in positions:
+                raise ValueError("FX history has a period outside its retained calendar.")
+            if not (
+                (positions[prior_period] if prior_period is not None else -1)
+                < positions[origin]
+                <= positions[target_period]
+            ):
+                continue
+        elif origin != target_period:
+            continue
+        if UUID(saved["contract_id"]) not in owners.values():
+            raise ValueError("FX history includes a contract outside the authorized owners.")
+        current = (
+            uow.session.execute(select(subledger_line).where(subledger_line.c.id == identity))
+            .mappings()
+            .one_or_none()
+        )
+        if current is None or canonical_bytes(_line_values(dict(current))) != canonical_bytes(
+            {key: saved[key] for key in LINE_FIELDS}
+        ):
+            raise ValueError("Retained paid line differs from the authorized ledger.")
+        attributed = liability_attribution(
+            uow, identity, owners=owners, _active=active, _cache=cache
+        )
+        if attributed is None:
+            raise ValueError("A paid FX line lacks retained calculation evidence.")
+        selected.extend(attributed.movements)
+        dependencies.update((identity, *attributed.paid_line_ids))
+        evidence.update(attributed.evidence)
+    return tuple(selected), tuple(sorted(dependencies, key=str)), tuple(sorted(evidence, key=str))

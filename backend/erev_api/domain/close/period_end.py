@@ -531,7 +531,19 @@ def _group_lines(
         }
         for line in book_lines:
             line["effective_date"] = dated[int(line["entry_no"])]
-        evidence.append(pass_evidence.capture(bundle, book_output, pass_name, book_lines))
+        evidence.append(
+            pass_evidence.capture(
+                bundle,
+                book_output,
+                pass_name,
+                book_lines,
+                posted_lines=pass_evidence.capture_posted_lines(
+                    uow,
+                    [row["id"] for row in found.contracts.values()],
+                    scope.book_code,
+                ),
+            )
+        )
         lines += book_lines
         entries += len(intents)
     return _GroupPass(

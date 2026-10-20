@@ -8,7 +8,7 @@ No proportional allocation, live rate lookup or residual bucket is permitted.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -29,6 +29,7 @@ class LayerSource:
     effective_date: date
     closing: bool
     amount: Decimal
+    created_on: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +143,7 @@ def project(
                 leaves[key]["effective_date"],
                 nodes[key].formula_id == "fx.remeasure.closing.v1",
                 amount,
+                leaves[key].get("created_on"),
             )
             for key, amount in sorted(values.items())
         ),
@@ -155,6 +157,7 @@ class LayerDelta:
     effective_date: date
     closing: bool
     amount: Decimal
+    created_on: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +166,8 @@ class PostingDelta:
     currency: str
     movements: tuple[LayerDelta, ...]
     source_ids: tuple[UUID, ...]
+    paid_line_ids: tuple[UUID, ...] = ()
+    evidence: tuple[tuple[UUID, str], ...] = ()
 
     @property
     def amount(self) -> Decimal:
@@ -215,10 +220,10 @@ def posting_delta(
             "Attributed posted layers differ from the retained paid amount."
         )
     sources: set[UUID] = set()
-    values: dict[tuple[UUID, str, date, bool], Decimal] = {}
+    values: dict[tuple[UUID, str, date, bool, date | None], Decimal] = {}
 
     def add(item: LayerSource | LayerDelta, sign: int) -> None:
-        key = (item.contract_id, item.layer_key, item.effective_date, item.closing)
+        key = (item.contract_id, item.layer_key, item.effective_date, item.closing, item.created_on)
         values[key] = values.get(key, Decimal(0)) + sign * item.amount
 
     for index, target_id in enumerate(node.inputs[:-1]):
@@ -240,7 +245,7 @@ def posting_delta(
         node_id,
         currency,
         tuple(
-            LayerDelta(*key, amount)
+            LayerDelta(*key[:4], amount, key[4])
             for key, amount in sorted(values.items(), key=lambda item: tuple(map(str, item[0])))
             if amount
         ),
@@ -282,6 +287,12 @@ def from_pass(
     currency = entity.functional_currency
     trace = trace_from_row({"id": document["id"], **document["trace_record"]})
     evidence_id = UUID(str(document["id"]))
+    creations = {
+        (item["columns"]["contract_key"], item["columns"]["layer_key"]): item["columns"]
+        for item in document["book_output"]["fx_layer_movements"]
+        if item["columns"]["entity"] == entity_code
+        and item["columns"]["movement_kind"] == "LIABILITY_LAYER_CREATED"
+    }
     movements = []
     for item in document["book_output"]["fx_layer_movements"]:
         values = item["columns"]
@@ -293,6 +304,9 @@ def from_pass(
         owner = owners.get(values["contract_key"])
         if owner is None or values["contract_key"] not in bundle.group.member_contract_keys:
             raise InvalidLiabilityTrace("Liability source has no authorized member owner.")
+        creation = creations.get((values["contract_key"], values["layer_key"]))
+        if creation is None:
+            raise InvalidLiabilityTrace("Liability remeasurement has no retained creation source.")
         node_id = item["trace_nodes"]["amount_functional"]
         movements.append(
             {
@@ -301,12 +315,13 @@ def from_pass(
                 "contract_id": owner,
                 "trace_node_id": node_id,
                 "effective_date": date.fromisoformat(values["effective_date"]),
+                "created_on": date.fromisoformat(creation["effective_date"]),
                 "amount_functional": minor_to_decimal(
                     values["amount_functional"], bundle.currencies[currency].minor_unit
                 ),
             }
         )
-    return posting_delta(
+    result = posting_delta(
         trace,
         delta_node_id,
         movements,
@@ -314,3 +329,4 @@ def from_pass(
         minor_unit=bundle.currencies[currency].minor_unit,
         paid=paid,
     )
+    return replace(result, evidence=((evidence_id, str(document["sha256"])),))

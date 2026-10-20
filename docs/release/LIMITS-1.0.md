@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Historical paid FX and rollforward integration — October 20, 2026
+
+- Close-pass evidence format 2 freezes the exact sealed FX control-line population read by
+  the pass, including zero-net histories. The reader selects paid lines by retained role,
+  currency, class, reason and origin/anchor periods, verifies their ledger fields and recursively
+  resolves their retained close-pass deltas. Per-call memoization shares repeated dependencies;
+  results bind every paid line and retained evidence hash. Format 1 remains readable but cannot
+  establish automatic paid attribution; missing history refuses rather than allocating a plug.
+- Functional/reporting contract-balance rollforwards now consume retained liability TIME
+  deltas. Original creation dates keep opening/current-range layer identities, and group-level
+  amounts follow source owners. New source bindings retain and recheck attribution dependencies;
+  old bindings keep their original path. Asset-only FX remains on its existing path.
+- Necessary checks passed: actual same-period second close after delivery, with nonzero prior
+  paid amounts and explicit report source-binding assertions; original report rerun; the single
+  liability close; ERP/ENGINE functional invoice paths; 25 focused projection/path checks and
+  scoped lint/types. No deployment.
+- Still open: command-computation paid adapters, mixed asset/liability target decomposition,
+  combined-membership and late-carried public acceptance, populated foreign two-lock acceptance,
+  recorded privacy/snapshot registry gaps and final release/accounting acceptance. Current tests
+  do not establish completion of all combined/late-carried FX or production readiness.
+
+
 ## Signed liability FX posting attribution — October 20, 2026
 
 - Added a signed trace projection from retained S14 targets through S12 cumulative sums to

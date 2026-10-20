@@ -40,7 +40,7 @@ read-back for a line without a key), so the next computations post nothing.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -960,7 +960,49 @@ def test_multiple_liability_layers_flow_through_functional_report(world: World) 
             pass_name=period_end.FX_REMEASUREMENT,
         )
         uow.commit()
+    from erev_api.domain.close import pass_evidence
+
+    with world.place.uow() as uow:
+        posted_fx = (
+            uow.session.execute(
+                select(subledger_line)
+                .join(
+                    subledger_posting,
+                    subledger_posting.c.id == subledger_line.c.subledger_posting_id,
+                )
+                .where(
+                    subledger_line.c.contract_id == contract_id,
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                    subledger_line.c.period_end_date == date(2026, 9, 30),
+                    subledger_posting.c.posting_kind == "FX_REMEASUREMENT",
+                )
+            )
+            .mappings()
+            .all()
+        )
+        assert len(posted_fx) >= 2
+        for fx_line in posted_fx:
+            attribution = pass_evidence.liability_attribution(
+                uow,
+                fx_line["id"],
+                owners={CONTRACT: contract_id},
+            )
+            assert attribution is not None
+            assert attribution.amount == Decimal(fx_line["amount_functional"])
     after, later = worlds.report_run(reporting, "contract_balance_rollforward", params)
+    from erev_api.db.tables import report_run
+    from erev_api.domain.reports.builders import SourceBinding
+
+    binding = SourceBinding.from_stored(
+        world.place.scalar(
+            select(report_run.c.source_binding).where(report_run.c.id == UUID(after["id"]))
+        )
+    )
+    assert binding is not None
+    attributed_sources = binding.evidence["liability_posted_fx_v1"]
+    assert set(attributed_sources) == {str(item["id"]) for item in posted_fx}
+    assert any(item["paid_line_ids"] for item in attributed_sources.values())
+    assert all(item["evidence"] for item in attributed_sources.values())
     later_rows = {row["row_key"]: row for row in later}
     assert later_rows["CLOSING"]["contract_liability"] == {"amount": "55900.00", "currency": "GBP"}
     assert later_rows["REVENUE_FROM_OPENING"]["contract_liability"] == {
