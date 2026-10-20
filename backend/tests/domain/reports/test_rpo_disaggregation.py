@@ -861,6 +861,9 @@ def test_waterfall_uses_posted_functional_revenue_and_retained_average_rates(
     closed = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key="FY2026-P08")
     assert closed["status"] == "SUCCEEDED"
     world = runs.journal_posted(world, clock, closed["journal_run_id"])
+    from support.record_clock import on_record_time
+
+    world = on_record_time(world)
     params = {
         "entity_codes": [AVM_US],
         "book": "ASC606",
@@ -890,6 +893,34 @@ def test_waterfall_uses_posted_functional_revenue_and_retained_average_rates(
     assert sum(
         Decimal(item["value"]["amount"]) for item in explained.json()["contributors"]["items"]
     ) == Decimal("10000.00")
+    from dataclasses import replace
+
+    from erev_api.db.tables import legal_entity, period
+    from erev_api.domain.close import freeze
+    from erev_api.domain.reports import snapshots
+
+    with world.place.uow() as uow:
+        period_id = uow.session.execute(
+            select(period.c.id)
+            .join(legal_entity, legal_entity.c.calendar_id == period.c.calendar_id)
+            .where(legal_entity.c.id == world.entity_id, period.c.period_key == "FY2026-P08")
+        ).scalar_one()
+        scope = snapshots.SnapshotScope(
+            entity_id=world.entity_id,
+            book_code="ASC606",
+            period_id=period_id,
+            known_at=tie_outs.version_cutoff(uow.session, uow.now),
+            currency_view="reporting",
+        )
+        with freeze.system_unit(uow) as reader:
+            frozen_reporting = snapshots.freeze_waterfall(reader, scope)
+            frozen_functional = snapshots.freeze_waterfall(
+                reader, replace(scope, currency_view="functional")
+            )
+        assert frozen_reporting.control_totals["recognized_total"] == {"EUR": "10000.00"}
+        assert frozen_functional.control_totals["recognized_total"] == {"USD": "11000.00"}
+        assert frozen_reporting.control_totals["currency_view"] == "reporting"
+
     listed = get(app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
     (average,) = [item for item in listed.json()["items"] if item["code"] == "AVM-RATES-AVERAGE"]
     draft = post(
@@ -933,3 +964,9 @@ def test_waterfall_uses_posted_functional_revenue_and_retained_average_rates(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == rows
+
+    with world.place.uow() as uow:
+        with freeze.system_unit(uow) as reader:
+            retained_snapshot = snapshots.freeze_waterfall(reader, scope)
+        assert retained_snapshot.content == frozen_reporting.content
+        assert retained_snapshot.control_totals == frozen_reporting.control_totals

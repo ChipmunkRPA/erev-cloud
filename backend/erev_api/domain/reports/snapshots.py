@@ -57,7 +57,7 @@ the registry alone closes nothing.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 from types import MappingProxyType
@@ -119,13 +119,16 @@ class SnapshotScope:
     """The lock's scope a dataset is frozen for (F-CLO-prep :101): one entity, its book, the
     period, the cutoff instant and — A2-4 — the freeze instant (``None`` = the cutoff). The lock
     decision and the close run's ``DATASET_FREEZE`` step both pass one instant as ``known_at`` and
-    as ``frozen_at`` (ENGINE_SPEC_B S15-R-18 rev 1.82, S15-R-18c)."""
+    as ``frozen_at`` (ENGINE_SPEC_B S15-R-18 rev 1.82, S15-R-18c). An explicit
+    ``currency_view`` selects a supported producer basis; None preserves report defaults.
+    This does not itself add a currency selector to existing stored lock datasets."""
 
     entity_id: UUID
     book_code: str
     period_id: UUID
     known_at: datetime
     frozen_at: datetime | None = None
+    currency_view: str | None = None
 
 
 type DatasetBuilder = Callable[["UnitOfWork", SnapshotScope], engine.Encoded]
@@ -422,6 +425,10 @@ def scope_parameters(
     else:
         given["from_period_key"] = period_key
         given["to_period_key"] = period_key
+    if scope.currency_view is not None:
+        if "currency_view" not in properties:
+            raise SnapshotRefusal(kind, f"{code} does not support a currency view.")
+        given["currency_view"] = scope.currency_view
     given[framework.KNOWN_AT] = utc_text(known_at or scope.known_at)
     findings = framework.parameter_errors(schema, given)
     if findings:
@@ -585,13 +592,28 @@ def _params(uow: UnitOfWork, kind: str, code: str, scope: SnapshotScope) -> Repo
     )
 
 
+def _encode_scoped(
+    kind: str, data: ReportData, scope: SnapshotScope, *, drop_presentation_totals: bool
+) -> engine.Encoded:
+    if scope.currency_view is not None:
+        data = replace(
+            data,
+            control_totals={
+                **data.control_totals,
+                "currency_view": scope.currency_view,
+                "currency_known_at": utc_text(cutoff_of(kind, scope)),
+            },
+        )
+    return encode_report(kind, data, drop_presentation_totals=drop_presentation_totals)
+
+
 def _wrapped(kind: str, code: str) -> DatasetBuilder:
     """The eight wrapped kinds: the REAL builder's rows, presentation totals removed."""
 
     def build(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
         params = _params(uow, kind, code, scope)
         data = framework.BUILDERS[code](uow, params)
-        return encode_report(kind, data, drop_presentation_totals=True)
+        return _encode_scoped(kind, data, scope, drop_presentation_totals=True)
 
     build.__name__ = build.__qualname__ = f"freeze_{code}"
     return build
@@ -671,7 +693,7 @@ def freeze_waterfall(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
             "awaiting_trigger_total": tie_outs.by_currency(awaiting),
         },
     )
-    return encode_report("WATERFALL", data, drop_presentation_totals=False)
+    return _encode_scoped("WATERFALL", data, scope, drop_presentation_totals=False)
 
 
 # --- RPO: long form from the report's real population (A2-1) --------------------------------------
@@ -775,7 +797,7 @@ def freeze_rpo(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
             "rpo_relief_elected": elected,
         },
     )
-    return encode_report("RPO", data, drop_presentation_totals=False)
+    return _encode_scoped("RPO", data, scope, drop_presentation_totals=False)
 
 
 _LONG_FORM: Final[Mapping[str, DatasetBuilder]] = MappingProxyType(

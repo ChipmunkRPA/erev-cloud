@@ -6,6 +6,21 @@
 
 
 
+## Explicit currency bases for snapshot producers — October 20, 2026
+
+- SnapshotScope now carries an optional currency view. Producers normalize it through the
+  actual report parameter schema, reject unsupported/invalid views and use the report's existing
+  currency calculations. None preserves current defaults, including functional-only registers.
+  Explicit-view output controls name the view and exact historical currency cutoff.
+- Real database witnesses cover functional/reporting waterfall amounts (USD 11,000 / EUR 10,000),
+  reporting RPO bands/totals and re-generation at the original cutoff after a revised approved rate.
+  The latter follows the record clock before publishing the revision, so the temporal assertion
+  is meaningful. Existing snapshot unit checks pass after updating stale adapter stub signatures.
+- This is producer support, not completed lock integration: lock publication still stores each
+  kind's default view, and as-locked currency selection remains unsupported. Next work must bind
+  alternative datasets to immutable lock evidence and serve those retained variants, preserving
+  existing default datasets and reconciliation behavior. No deployment or accounting sign-off.
+
 ## Contract records and combined-template modifications — October 20, 2026
 
 - Both ordinary and membership variance replay now introduce retained contract-record changes

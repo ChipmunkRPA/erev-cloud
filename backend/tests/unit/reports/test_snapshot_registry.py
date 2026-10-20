@@ -496,7 +496,7 @@ def _stub_rollforward_reads(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cbr_builder, "rollforwards", lambda session, **_: balances)
     monkeypatch.setattr(rpo_builder, "load", lambda session, **_: None)
     # S15-R-08 rev 1.127 (RPT-ASOF-FIGURES-1): the builder reads its obligations at its dates
-    monkeypatch.setattr(rpo_builder, "measure", lambda session, store, days: None)
+    monkeypatch.setattr(rpo_builder, "measure", lambda session, store, days, **kwargs: None)
     monkeypatch.setattr(rpo_builder, "applied_expedients", lambda session, found, **_: {})
     monkeypatch.setattr(rpo_builder, "rollforward_lines", lambda store, **_: rpo_lines)
     monkeypatch.setattr(rpo_builder, "rows_at", lambda store, **_: ())
@@ -790,7 +790,7 @@ def test_rpo_is_frozen_long_form_one_row_per_obligation_with_exempt_rows_and_no_
         applied={},
         found=items,
     )
-    monkeypatch.setattr(rpo_builder, "_run", lambda session, params: run)
+    monkeypatch.setattr(rpo_builder, "_run", lambda session, params, uow=None: run)
     monkeypatch.setattr(
         elections,
         "entity_elections",
@@ -1056,7 +1056,7 @@ def test_rpo_keeps_both_collision_pairs_as_four_distinct_rows(
         applied={},
         found=items,
     )
-    monkeypatch.setattr(rpo_builder, "_run", lambda session, params: run)
+    monkeypatch.setattr(rpo_builder, "_run", lambda session, params, uow=None: run)
     monkeypatch.setattr(
         elections,
         "entity_elections",
@@ -1130,3 +1130,30 @@ def test_f_clo_exposes_the_machine_artefact_constants_the_db_witness_imports() -
     assert (
         close_snapshots.dataset_filename("WATERFALL") == f"WATERFALL{close_snapshots.FILE_SUFFIX}"
     )
+
+
+@pytest.mark.parametrize("code", ["revenue_waterfall", "rpo", "contract_balances"])
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_snapshot_scope_selects_explicit_currency_basis(code: str, view: str) -> None:
+    from dataclasses import replace
+
+    parameters, historical = snapshots.scope_parameters(
+        _definition(code),
+        replace(SCOPE, currency_view=view),
+        entity_code="AVM-US",
+        period_key="FY2026-P09",
+    )
+    assert parameters["currency_view"] == view
+    assert historical
+
+
+def test_snapshot_scope_rejects_invalid_currency_basis() -> None:
+    from dataclasses import replace
+
+    with pytest.raises(snapshots.SnapshotRefusal, match="currency_view"):
+        snapshots.scope_parameters(
+            _definition("rpo"),
+            replace(SCOPE, currency_view="EUR"),
+            entity_code="AVM-US",
+            period_key="FY2026-P09",
+        )

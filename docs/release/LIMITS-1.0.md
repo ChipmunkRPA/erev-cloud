@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current snapshot-currency update (October 20): snapshot producers can now explicitly select
+transaction/functional/reporting currency through their actual report schemas. Output controls
+record the chosen view and historical cutoff; omitted selection preserves existing defaults.
+Database witnesses cover waterfall/RPO conversion and the original-cutoff waterfall after later
+rate publication. Lock publication still saves only default datasets, and as-locked currency
+selection remains unfinished. This is a prerequisite, not completion of alternate-currency
+frozen close integration. Other documented accounting/release gaps remain; no deployment.
+
+
 Current contract-record update (October 20): ordinary and membership replay now phase retained
 contract-record updates before application events, keeping identity, transaction currency,
 contracting entity and inception fixed. A combined-contract legacy template bug found in the

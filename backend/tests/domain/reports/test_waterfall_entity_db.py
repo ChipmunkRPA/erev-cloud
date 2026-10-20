@@ -416,6 +416,29 @@ def test_rpo_currency_bands_exemption_and_retained_rates(
         == expected
     )
 
+    from erev_api.db.tables import period
+    from erev_api.domain.close import freeze
+    from erev_api.domain.reports import snapshots
+
+    uk_id = world.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK))
+    with world.place.uow() as uow:
+        period_id = uow.session.execute(
+            select(period.c.id)
+            .join(legal_entity, legal_entity.c.calendar_id == period.c.calendar_id)
+            .where(legal_entity.c.id == uk_id, period.c.period_key == MAY)
+        ).scalar_one()
+        scope = snapshots.SnapshotScope(
+            entity_id=uk_id,
+            book_code="ASC606",
+            period_id=period_id,
+            known_at=tie_outs.version_cutoff(uow.session, uow.now),
+            currency_view="reporting",
+        )
+        with freeze.system_unit(uow) as reader:
+            frozen = snapshots.freeze_rpo(reader, scope)
+        assert frozen.control_totals["total"] == {"USD": str(expected)}
+        assert frozen.control_totals["currency_view"] == "reporting"
+
     # A foreign functional-currency projection must conserve gross/net/excluded
     # even where independent rounding of net would lose a cent.
     from dataclasses import replace
