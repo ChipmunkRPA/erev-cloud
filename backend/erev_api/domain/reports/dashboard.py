@@ -408,7 +408,9 @@ def _rpo(session: Session, context: HomeContext) -> DashboardRpoOut:
         session, context.entities, book_code=context.book_code, known_at=context.known_at
     )
     as_of = {item.id: context.at(item.id).end for item in context.entities}
-    rpo.measure(session, store, {entity_id: (day,) for entity_id, day in as_of.items()})
+    rpo.measure(
+        session, store, {entity_id: (day,) for entity_id, day in as_of.items()}, applied=applied
+    )
     found = rpo.rows_at(store, as_of=as_of, bands=rpo.DEFAULT_BANDS, applied=applied)
     total = within = ZERO
     for item in found:

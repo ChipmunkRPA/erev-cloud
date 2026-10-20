@@ -303,6 +303,7 @@ def test_ctl_030_rpo_rollforward_ties(
         ("NEW_CONTRACTS", "0.00"),
         ("MODIFICATIONS", "0.00"),  # +60,000.00 waits for CR-MARROWBY-2026-09 (R-RC-1)
         ("VC_ESTIMATE_CHANGES", "0.00"),
+        ("EXEMPTIONS", "0.00"),
         ("LATE_EVENTS", "0.00"),  # the row of S15-R-12 rev 1.161 (supervisor ruling R-121 (g))
         ("REVENUE", "-9863.01"),
         ("CANCELLATIONS", "0.00"),

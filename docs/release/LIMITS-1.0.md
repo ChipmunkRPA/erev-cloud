@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current partial RPO update (October 20): POL-200 now reads dated targeted allocation/share
+traces and immutable estimate eligibility, preserves fixed/untargeted consideration, apportions
+net bands and reports the excluded portion. Dashboard, frozen obligation rows, rollforward
+EXEMPTIONS movement and close-variance replay share this basis. Real-engine allocation/history
+and performance-release checks pass; populated partial-exemption API/lock/export acceptance
+remains. Older statements that POL-200 always excludes zero are superseded for supported traces.
+
 Current functional balance update (October 20): contract balances now uses dated retained engine
 functional targets, including historical periods and verified locked transaction endpoints.
 GL reconciliation uses the same targets, and selected source versions are retained for report

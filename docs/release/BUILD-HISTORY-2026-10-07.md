@@ -8584,3 +8584,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   resolution and bundle construction, retained audited jobs/API, result presentation, scenario
   save and SF-18 UI remain to implement. Tamsin acceptance and accounting sign-off remain open.
   No deployment or production-readiness claim.
+
+## Deal preview authorized bundle assembly — October 19, 2026
+
+- Added deal_bundle booking conversion and assembly: resolve the active contracting entity,
+  enforce its scenario.use scope and functional currency, then use existing booking and
+  bundle resolution for products, approved SSP, templates, policies and accounting books.
+- Internal booking runs in a savepoint under system authority only after authorization. Both
+  success and errors roll back temporary contract/group/customer/obligation rows and buffered
+  audits; no computation persistence, file write or job enqueue is invoked inside the boundary.
+- Proposed lines get stable keys and term end dates. Synthetic booking evidence uses the
+  proposal's customer reference and sequence, removing rolled-back surrogate/sequence IDs
+  that initially caused repeated-input fingerprints to differ. Calendar overflow is refused.
+- Real database verification covers ASC606 allocation of USD 120000.00, repeatable input hashes,
+  permission refusal, injected resolution failure and unchanged row/audit counts after commit.
+  Python lint/types pass. Sequence allocation may leave harmless gaps after scratch rollback.
+- Job/API retention, result presentation, scenario save and SF-18 UI remain unfinished, as do
+  Tamsin acceptance and independent accounting sign-off. No deployment.

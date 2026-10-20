@@ -38,6 +38,7 @@ LABELS: Final[Mapping[str, str]] = {
     "NEW_CONTRACTS": "New contracts",
     "MODIFICATIONS": "Modifications",
     "VC_ESTIMATE_CHANGES": "Variable consideration estimate changes",
+    "EXEMPTIONS": "Disclosure exemption changes",
     "LATE_EVENTS": "Late events",
     "REVENUE": "Revenue recognized",
     "CANCELLATIONS": "Cancellations and terminations",
@@ -74,7 +75,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     applied = rpo.applied_expedients(session, found, book_code=book_code, known_at=params.known_at)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates
-    rpo.measure(session, store, ranges)
+    rpo.measure(session, store, ranges, applied=applied)
     items = rpo.rollforward_lines(store, ranges=ranges, applied=applied)
     view = str(params.parameters.get("currency_view") or "transaction")
     functional = {entity.code: entity.functional_currency for entity in found}

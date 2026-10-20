@@ -735,6 +735,18 @@ def freeze_rpo(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
             row["section"] = 1
             row.update(rpo_builder._figures([item], bands, ob.currency))
             tie_outs.add(actual, ob.currency, item.total)
+            if item.partial_exemption is not None:
+                label, description = labels[item.partial_exemption]
+                row.update(
+                    {
+                        "expedient": item.partial_exemption,
+                        "expedient_label": label,
+                        "remaining_duration_months": item.remaining_months,
+                        "excluded_amount": tie_outs.money(item.excluded, ob.currency),
+                        "excluded_descriptor": description,
+                    }
+                )
+                tie_outs.add(excluded, ob.currency, item.excluded)
         else:
             label, description = labels[item.exemption]
             row.update(

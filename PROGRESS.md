@@ -6,6 +6,23 @@
 
 
 
+## Partial RPO targeted-VC exemptions — October 20, 2026
+
+- POL-200 now excludes the dated targeted-VC quota only for wholly unsatisfied obligations
+  with zero recognized revenue. Inception allocation nodes and later allocated deltas supply
+  amounts; immutable estimate identities/version evidence distinguishes targeted from ordinary
+  price changes. Fixed and untargeted consideration remain in disclosed RPO.
+- Net bands and cell contributors are apportioned at currency precision. Reports list the
+  excluded portion; dashboard uses the net amount. Frozen RPO retains net and excluded amounts
+  on one obligation identity. Rollforward has an EXEMPTIONS movement for exclusion/release;
+  close-variance replay shares the quota reader instead of refusing these elections.
+- Three focused checks cover real-engine positive/negative/untargeted changes, historical caps,
+  partial report rows and release on performance; 27 affected replay checks pass. Existing
+  approved-policy and rollforward API journeys pass, with the new movement included. Lint/types pass.
+- Full populated partial-exemption API/lock/export acceptance remains to be completed. This does
+  not complete multi-currency movement translation, population replay or all release acceptance.
+  No deployment; direct main publication.
+
 ## Dated functional contract balances and GL comparison — October 20, 2026
 
 - Contract balances now reads retained engine functional targets at the selected period,
@@ -216,23 +233,6 @@
   Python lint/types pass. No production contract/customer survives the enclosing commit.
 - Asynchronous request/worker wiring, authorized read APIs, user-facing result projection,
   scenario save and SF-18 UI remain unimplemented. No deployment or accounting-signoff claim.
-
-## Deal preview authorized bundle assembly — October 19, 2026
-
-- Added deal_bundle booking conversion and assembly: resolve the active contracting entity,
-  enforce its scenario.use scope and functional currency, then use existing booking and
-  bundle resolution for products, approved SSP, templates, policies and accounting books.
-- Internal booking runs in a savepoint under system authority only after authorization. Both
-  success and errors roll back temporary contract/group/customer/obligation rows and buffered
-  audits; no computation persistence, file write or job enqueue is invoked inside the boundary.
-- Proposed lines get stable keys and term end dates. Synthetic booking evidence uses the
-  proposal's customer reference and sequence, removing rolled-back surrogate/sequence IDs
-  that initially caused repeated-input fingerprints to differ. Calendar overflow is refused.
-- Real database verification covers ASC606 allocation of USD 120000.00, repeatable input hashes,
-  permission refusal, injected resolution failure and unchanged row/audit counts after commit.
-  Python lint/types pass. Sequence allocation may leave harmless gaps after scratch rollback.
-- Job/API retention, result presentation, scenario save and SF-18 UI remain unfinished, as do
-  Tamsin acceptance and independent accounting sign-off. No deployment.
 
 ## Outstanding release verification
 

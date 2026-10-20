@@ -3,8 +3,8 @@
 The transient row adapter uses local UUID keys only to call ``to_date.version_at``;
 it creates no database rows or version history. The calculation is the same dated
 scheduled/awaiting remainder used by the RPO report, with the report's status and
-duration/right-to-invoice exclusions. Amount-specific VC exemptions still require
-their dated evidence and are refused instead of excluding fixed consideration.
+duration/right-to-invoice exclusions. Partial targeted-VC exemptions use dated
+allocation/share traces and retained estimate inputs; fixed consideration remains.
 """
 
 from __future__ import annotations
@@ -19,11 +19,14 @@ from uuid import NAMESPACE_URL, uuid5
 from erev_engine.bundle import BookOutput, InputBundle
 from erev_engine.dates import add_months
 from erev_engine.money import format_exact, minor_to_decimal
-from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
+from erev_engine.stages.s01_canonicalize.convert import (
+    contract_key_from_subject,
+    obligation_subject_key,
+)
 from erev_engine.stages.state import PolicyResolver
 
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import rpo_quotas, tie_outs
 from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
@@ -131,6 +134,15 @@ def project(
     measured = to_date.version_at(
         {"version_no": "DRY_RUN"}, rows, nodes=nodes, external_ids=external_ids, as_of=at
     )
+    quota_history = rpo_quotas.history(
+        book.trace,
+        inception={key: header.inception_date for key, header in contracts.items()},
+        targeted={
+            item.version_key: item.allocation_target == "OBLIGATIONS"
+            and item.parameters.get("allocation_criteria_evidence") not in (None, "")
+            for item in bundle.estimate_versions
+        },
+    )
     result: dict[MeasureKey, Fraction] = {}
     for row in rows:
         contract, currency = ids[row["id"]]
@@ -150,13 +162,21 @@ def project(
             and row["recognition_method"] == "RIGHT_TO_INVOICE"
         ):
             continue
-        if applied("rpo.exemption_royalty_vc") or applied("rpo.exemption_vc_wholly_unsatisfied"):
-            raise _refuse("amount-specific VC exemptions require dated exclusion evidence.")
         if functional and currency != entity.functional_currency:
             raise _refuse("foreign-currency RPO has no supported functional valuation basis.")
         point = measured.obligations[row["id"]]
+        remaining = point.scheduled + point.awaiting
+        if (
+            applied("rpo.exemption_vc_wholly_unsatisfied")
+            and point.satisfaction_status == "UNSATISFIED"
+            and point.revenue == 0
+        ):
+            quota = rpo_quotas.cap(
+                quota_history.get(obligation_subject_key(contract, str(row["obligation_key"])), ()),
+                at,
+            )
+            remaining -= min(max(remaining, Decimal(0)), quota)
+        # Royalties are realized as reported; POL-199 has no unrecognized quota to remove.
         key = MeasureKey(contract, currency, "RPO")
-        result[key] = (
-            result.get(key, Fraction(0)) + Fraction(point.scheduled) + Fraction(point.awaiting)
-        )
+        result[key] = result.get(key, Fraction(0)) + Fraction(remaining)
     return result

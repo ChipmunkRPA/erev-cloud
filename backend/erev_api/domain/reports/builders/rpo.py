@@ -83,8 +83,11 @@ periods is a separate item).
 rows, so the as-of date and the ordered bands are the control totals ``as_of`` and ``bands``;
 section 1 rows carry one money field per band key (the explain ``column_key``), and section 2 rows
 carry ``section`` 2 (RPT-R-09) instead of an ``exemptions`` member.
-[J] L6-3-Q-27 (POL-199, POL-200): persisted versions hold no royalty or targeted VC amount per
-obligation, so ``APPLY`` excludes nothing; fixed consideration is never excluded (50-14B).
+POL-200 reads dated targeted-VC allocations and later allocated deltas from retained traces,
+with immutable estimate versions identifying evidenced targeted changes. Only wholly unsatisfied
+obligations with no revenue qualify. Net bands and contributors retain currency precision; partial
+exclusions are listed separately and their movement is the ``EXEMPTIONS`` rollforward line.
+POL-199's quota is zero under the engine's royalty realization model; fixed consideration remains.
 [J] L6-3-Q-28 (POL-193 ``ELECT``): a JSON (on-screen) run omits the entity's section 1 and 2 rows
 with the RV-12 note; file outputs, which need ``report.export``, keep the dataset.
 """
@@ -100,6 +103,8 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.dates import add_months, month_ends_between
+from erev_engine.formulas import rpo_bands
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -116,11 +121,13 @@ from erev_api.db.tables import (
     schedule_line,
 )
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import cuts, elections, tie_outs
+from erev_api.domain.reports import cuts, elections, rpo_quotas, tie_outs
 from erev_api.domain.reports.builders import ReportParams, filter_problem
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, EntityRef, add
 from erev_api.enums import BookCode
+from erev_api.explain import store as trace_store
+from erev_api.problems import Problem
 from erev_api.registry.resolve import resolve
 from erev_api.uow import UnitOfWork
 
@@ -178,6 +185,7 @@ ROLLFORWARD_LINES: Final = (
     "NEW_CONTRACTS",
     "MODIFICATIONS",
     "VC_ESTIMATE_CHANGES",
+    "EXEMPTIONS",
     "LATE_EVENTS",
     "REVENUE",
     "CANCELLATIONS",
@@ -189,6 +197,7 @@ MOVEMENTS: Final = (
     "NEW_CONTRACTS",
     "MODIFICATIONS",
     "VC_ESTIMATE_CHANGES",
+    "EXEMPTIONS",
     "LATE_EVENTS",
     "REVENUE",
     "CANCELLATIONS",
@@ -305,6 +314,8 @@ class ObligationRpo:
     ]  # (type, id, amount, band, current)
     exemption: str | None
     remaining_months: int
+    excluded: Decimal = ZERO
+    partial_exemption: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,6 +329,8 @@ class Store:
     chains: Mapping[UUID, tuple[_Version, ...]] = field(default_factory=dict)
     # (version, date) → obligation-version row → the obligation at that date (``measure``)
     cuts: dict[tuple[UUID, date], Mapping[UUID, to_date.ObligationAt]] = field(default_factory=dict)
+
+    quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
 
     def version_at(self, contract_id: UUID, day: date) -> _Version | None:
         """The version a contract is read from at ``day``: the last one of its chain effective
@@ -734,7 +747,13 @@ def _exemption(ob: _Ob, applied: frozenset[str], ends: Mapping[UUID, date]) -> s
     return None
 
 
-def measure(session: Session, store: Store, days: Mapping[UUID, Collection[date]]) -> None:
+def measure(
+    session: Session,
+    store: Store,
+    days: Mapping[UUID, Collection[date]],
+    *,
+    applied: Mapping[UUID, frozenset[str]] | None = None,
+) -> None:
     """Read the obligations a run states at the dates it states them (module docstring "RPO of
     an obligation at d"): for every contract the version it is read from at each date of the run,
     measured at every one of those dates — the rollforward takes the revenue of the closing
@@ -755,6 +774,66 @@ def measure(session: Session, store: Store, days: Mapping[UUID, Collection[date]
             if version is not None:
                 wanted.setdefault(version.id, set()).update(measured_days)
     store.cuts.update(cuts.obligations_at(session, wanted))
+    if applied is not None and any("POL-200" in values for values in applied.values()):
+        targets = rpo_quotas.targeted_versions(session, tuple(store.chains))
+        for version_id in wanted:
+            trace = trace_store.load_trace(session, version_id)
+            if trace is None:
+                raise Problem(
+                    "validation-failed", "RPO exemptions require the retained allocation trace."
+                )
+            store.quotas[version_id] = rpo_quotas.history(
+                trace,
+                inception={
+                    ob.external_id: ob.inception for ob in store.obligations.get(version_id, ())
+                },
+                targeted=targets,
+            )
+
+
+def _partial_exclusion(
+    store: Store, ob: _Ob, day: date, total: Decimal, applied: frozenset[str]
+) -> Decimal:
+    at = store.at(ob, day)
+    if "POL-200" not in applied or at.satisfaction_status != "UNSATISFIED" or at.revenue != 0:
+        return ZERO
+    if ob.version_id not in store.quotas:
+        raise Problem("validation-failed", "RPO targeted-VC quota evidence has not been loaded.")
+    points = store.quotas[ob.version_id].get(
+        obligation_subject_key(ob.external_id, ob.obligation_key), ()
+    )
+    return min(max(total, ZERO), rpo_quotas.cap(points, day))
+
+
+def _net_figures(
+    total: Decimal,
+    placed: tuple[Decimal, ...],
+    contributors: tuple[tuple[str, UUID, Decimal, int, bool], ...],
+    *,
+    excluded: Decimal,
+    currency: str,
+) -> tuple[Decimal, tuple[Decimal, ...], Decimal, tuple[tuple[str, UUID, Decimal, int, bool], ...]]:
+    scale = 10 ** tie_outs.minor_unit(currency)
+    net = total - excluded
+    bands = rpo_bands(int(net * scale), [int(amount * scale) for amount in placed])
+    reduced: list[tuple[str, UUID, Decimal, int, bool]] = []
+    for index, amount in enumerate(bands):
+        held = [item for item in contributors if item[3] == index]
+        if not held:
+            if amount:
+                raise Problem("validation-failed", "RPO net band has no disclosure contributors.")
+            continue
+        shares = rpo_bands(amount, [int(item[2] * scale) for item in held])
+        reduced.extend(
+            (item[0], item[1], Decimal(share) / scale, index, item[4])
+            for item, share in zip(held, shares, strict=True)
+        )
+    return (
+        net,
+        tuple(Decimal(value) / scale for value in bands),
+        sum((item[2] for item in reduced if item[4]), ZERO),
+        tuple(reduced),
+    )
 
 
 def rpo_of(
@@ -820,6 +899,18 @@ def rows_at(
                 remaining = (
                     0 if ob.end_date is None else max(month_ends_between(day, ob.end_date), 0)
                 )
+                exemption = _exemption(ob, applied.get(ob.entity_id, frozenset()), ends)
+                excluded = (
+                    ZERO
+                    if exemption is not None
+                    else _partial_exclusion(
+                        store, ob, day, total, applied.get(ob.entity_id, frozenset())
+                    )
+                )
+                if excluded:
+                    total, placed, current, contributors = _net_figures(
+                        total, placed, contributors, excluded=excluded, currency=ob.currency
+                    )
                 found.append(
                     ObligationRpo(
                         ob=ob,
@@ -828,8 +919,10 @@ def rows_at(
                         placed=placed,
                         current=current,
                         contributors=contributors,
-                        exemption=_exemption(ob, applied.get(ob.entity_id, frozenset()), ends),
+                        exemption=exemption,
                         remaining_months=remaining,
+                        excluded=excluded,
+                        partial_exemption="POL-200" if excluded else None,
                     )
                 )
     return tuple(sorted(found, key=lambda item: (item.ob.external_id, item.ob.obligation_key)))
@@ -1008,6 +1101,19 @@ def _obligation_lines(
             # range and the opening did not state (module docstring)
             lines["LATE_EVENTS"] = -(restated - store.at(opening, before).revenue)
         lines["CLOSING"] = rpo_of(closing, end, DEFAULT_BANDS, at_end)[0]
+    opening_excluded = (
+        ZERO
+        if opening is None
+        else _partial_exclusion(store, opening, before, lines["OPENING"], applied)
+    )
+    closing_excluded = (
+        ZERO
+        if closing is None
+        else _partial_exclusion(store, closing, end, lines["CLOSING"], applied)
+    )
+    lines["OPENING"] -= opening_excluded
+    lines["CLOSING"] -= closing_excluded
+    lines["EXEMPTIONS"] = opening_excluded - closing_excluded
     lines["UNEXPLAINED"] = (
         lines["CLOSING"] - lines["OPENING"] - sum((lines[code] for code in MOVEMENTS), ZERO)
     )
@@ -1080,6 +1186,7 @@ def _run(session: Session, params: ReportParams) -> _Run:
             entity_id: (starts[entity_id] - timedelta(days=1), day)
             for entity_id, day in as_of.items()
         },
+        applied=applied,
     )
     found = rows_at(store, as_of=as_of, bands=bands, applied=applied)
     functional = {entity.id: entity.functional_currency for entity in found_entities}
@@ -1181,26 +1288,28 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     labels = {pol: (label, description) for pol, _, label, description in EXPEDIENTS}
     excluded: dict[str, Decimal] = {}
     for item in visible:
-        if item.exemption is None:
+        policy = item.exemption or item.partial_exemption
+        if policy is None:
             continue
-        label, description = labels[item.exemption]
-        exempt_key = f"{item.ob.external_id}:{item.ob.obligation_key}:{item.exemption}"
+        excluded_amount = item.total if item.exemption else item.excluded
+        label, description = labels[policy]
+        exempt_key = f"{item.ob.external_id}:{item.ob.obligation_key}:{policy}"
         rows.append(
             {
                 "row_key": f"exempt:{exempt_key}",
                 "section": 2,
                 "contract_external_id": item.ob.external_id,
                 "obligation_key": item.ob.obligation_key,
-                "expedient": item.exemption,
+                "expedient": policy,
                 "expedient_label": label,
                 "nature": item.ob.product_name,
                 "remaining_duration_months": item.remaining_months,
-                "excluded_amount": tie_outs.money(item.total, item.ob.currency),
+                "excluded_amount": tie_outs.money(excluded_amount, item.ob.currency),
                 "excluded_descriptor": description,
                 "currency": item.ob.currency,
             }
         )
-        add(excluded, item.ob.currency, item.total)
+        add(excluded, item.ob.currency, excluded_amount)
     notes: list[dict[str, Any]] = []
     for entity in run.entities:
         if entity.id in omitted:
@@ -1210,7 +1319,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             notes.append(
                 {"entity_code": entity.code, **elected[entity.id].note(elections.RPO_RELIEF, 2)}
             )
-        elif not any(item.exemption for item in run.found if item.ob.entity_id == entity.id):
+        elif not any(
+            item.exemption or item.partial_exemption
+            for item in run.found
+            if item.ob.entity_id == entity.id
+        ):
             notes.append(
                 {
                     "entity_code": entity.code,
