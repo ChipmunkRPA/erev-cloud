@@ -477,6 +477,7 @@ def rollforwards(
     opening_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     liability_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     asset_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
+    billing_assets: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     booked_billing: dict[tuple[UUID, UUID], list[Entry]] = {}
     if functional and documents:
         # Read billing at its source date in either posting mode. ENGINE totals
@@ -507,6 +508,8 @@ def rollforwards(
             posted,
             periods,
             member_transfers=member_transfers,
+            asset_transfers=asset_transfers,
+            billing_assets=billing_assets,
         )
         for key, entries in booked_billing.items():
             for period_id in {entry.period_id for entry in entries}:
@@ -568,9 +571,11 @@ def rollforwards(
     ):
         from ..revenue_layer_transfers import read as revenue_transfers
 
-        revenue_sources, opening_relief, liability_relief, asset_transfers = revenue_transfers(
-            session, params, transaction_ends, periods, posted, uow=uow
+        revenue_sources, opening_relief, liability_relief, revenue_asset_transfers = (
+            revenue_transfers(session, params, transaction_ends, periods, posted, uow=uow)
         )
+        for transfer_key, amount in revenue_asset_transfers.items():
+            asset_transfers[transfer_key] = asset_transfers.get(transfer_key, ZERO) + amount
         for transfer_key, amount in revenue_sources.items():
             member_transfers[transfer_key] = member_transfers.get(transfer_key, ZERO) + amount
     found: list[ContractRollforward] = []
@@ -655,7 +660,11 @@ def rollforwards(
         and (
             asset_transfers
             or (
-                params.binding is not None and "combined_asset_bridge_v1" in params.binding.evidence
+                params.binding is not None
+                and any(
+                    key in params.binding.evidence
+                    for key in ("combined_asset_bridge_v1", "combined_asset_bridge_v2")
+                )
             )
         )
     ):
@@ -672,6 +681,7 @@ def rollforwards(
                 periods=periods,
                 monthly=monthly,
                 transfers=asset_transfers,
+                billing_assets=billing_assets,
             )
         )
     return tuple(sorted(found, key=lambda item: (item.external_id, item.entity_code)))
@@ -1192,8 +1202,11 @@ def _functional_documents(
     periods: Mapping[UUID, tuple[PeriodRef, ...]],
     *,
     member_transfers: dict[tuple[UUID, UUID, UUID], Decimal],
+    asset_transfers: dict[tuple[UUID, UUID, UUID], Decimal],
+    billing_assets: dict[tuple[UUID, UUID, UUID], Decimal],
 ) -> dict[tuple[UUID, UUID], list[Entry]]:
     """ERP billing takes its actual historical layer carrying, never today's rate."""
+    asset_sources = params.binding is None or "billing_asset_sources_v1" in params.binding.evidence
     result: dict[tuple[UUID, UUID], list[Entry]] = {}
     consumed: list[UUID] = []
     settlements: dict[tuple[UUID, UUID, UUID], Decimal] = {}
@@ -1391,6 +1404,22 @@ def _functional_documents(
                     str(item["trace_node_id"]), Decimal(item["amount_functional"])
                 )
                 source_owner = UUID(str(item["contract_id"]))
+                if asset_sources:
+                    if entry.period_id is None:
+                        raise tie_outs.invalid(
+                            "currency_view", "Billing source lacks a report period."
+                        )
+                    billing_key = (row.contract_id, row.entity_id, entry.period_id)
+                    billing_assets.setdefault(billing_key, ZERO)
+                    if item["balance_role"] == "CONTRACT_ASSET":
+                        signed = -amount if entry.flow.amount < 0 else amount
+                        billing_assets[billing_key] += signed
+                        if source_owner != row.contract_id:
+                            for owner, sign in ((source_owner, 1), (row.contract_id, -1)):
+                                asset_key = (owner, row.entity_id, entry.period_id)
+                                asset_transfers[asset_key] = (
+                                    asset_transfers.get(asset_key, ZERO) + sign * signed
+                                )
                 if str(item["trace_node_id"]) in memo_spot and source_owner != row.contract_id:
                     if entry.period_id is None:
                         raise tie_outs.invalid(
@@ -1429,6 +1458,24 @@ def _functional_documents(
                 entry_kind="FX_REMEASUREMENT",
             )
         )
+    if asset_sources:
+        evidence = {
+            "asset_amounts": {
+                ":".join(map(str, key)): str(value) for key, value in sorted(billing_assets.items())
+            },
+            "transfers": {
+                ":".join(map(str, key)): str(value)
+                for key, value in sorted(asset_transfers.items())
+            },
+        }
+        if (
+            params.binding is not None
+            and params.binding.evidence["billing_asset_sources_v1"] != evidence
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Billing asset sources differ from retained evidence."
+            )
+        tie_outs.record_evidence(params, "billing_asset_sources_v1", evidence)
     tie_outs.require_members(params, "functional_billing_layer", consumed)
     tie_outs.record_members(params, "functional_billing_layer", consumed)
     return result

@@ -1,5 +1,29 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Cross-member billing asset settlement and excess liabilities — October 20, 2026
+
+- Functional/reporting billings now retain signed asset-settlement amounts and both sides of
+  cross-member asset transfers from the original billing layers. Layer currencies, transaction
+  totals, functional amounts and trace identities must already reconcile before presentation.
+- Asset bridge v2 distinguishes billing that settles an asset from excess billing that creates
+  a liability, including when the invoice issuer has no asset of its own. Both billing roles
+  and corresponding member adjustments follow original source amounts, never unexplained OTHER.
+  Monthly and whole-range amounts are bound; earlier asset-bridge v1 bindings retain their path.
+- Billing and revenue-return asset transfers are combined without replacing either population.
+  The billing source method is recorded even for empty populations, preserving rerun scope.
+  Migration 0205 documents the expanded report logic.
+- The real foreign combined scenario invoices USD 60,000 after another member recognizes
+  USD 54,000: at retained spot .84 it settles GBP 45,360 of the other member's asset and creates
+  GBP 5,040 of liability for the issuer. Asset balances close to zero; issuer billing remains
+  split across the two roles and no member has unexplained OTHER.
+- Necessary checks passed: asset and liability report views in functional/reporting currency
+  with identical reruns, cross-member revenue-return regression, catalogue migration consistency,
+  scoped lint and types.
+- Mixed TIME/EVENT source allocation, intercompany counterparts, remaining close-only histories
+  and other documented implementation/release gaps remain open. More complex membership and
+  mixed billing/credit-memo histories still need end-to-end coverage. No deployment or claim
+  of production readiness; independent accounting sign-off remains outstanding.
+
 ## Cross-member asset settlement from revenue returns — October 20, 2026
 
 - Functional/reporting revenue returns can now settle another authorized group member's asset.

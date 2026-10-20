@@ -1214,11 +1214,109 @@ def test_combined_return_settles_another_members_asset(fx: FxWorld) -> None:  # 
         binding = fx.place.scalar(
             select(report_run.c.source_binding).where(report_run.c.id == UUID(run["id"]))
         )
-        bridge = binding["evidence"]["combined_asset_bridge_v1"]
+        bridge = binding["evidence"]["combined_asset_bridge_v2"]
         assert len(bridge["source_transfers"]) == 2
         assert sum(map(Decimal, bridge["source_transfers"].values()), Decimal(0)) == 0
         assert {abs(Decimal(value)) for value in bridge["source_transfers"].values()} == {
             Decimal("45360")
+        }
+        restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+
+
+def test_combined_invoice_settles_another_members_asset(fx: FxWorld) -> None:  # noqa: F811
+    from erev_api.db.tables import close_run, legal_entity, report_run
+    from erev_api.domain.close import gates, period_end
+    from erev_api.jobs.context import JobRuntime
+    from support.reference import get
+    from support.worlds import approved_manual_events
+
+    source_id = _gateways(fx, DELIVERED_UK)
+    issuer_id = _gateways(fx, FIRST_UK)
+    _grouped(fx.app, fx.maya, fx.marcus, [source_id, issuer_id])
+    approved_manual_events(
+        fx.place,
+        fx.priya,
+        source_id,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-07-10",
+            "payload": {"obligation_key": "O1", "quantity": "120", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == issuer_id))
+    _recorded(fx, issuer_id, int(head), _invoice("GROUP-SETTLEMENT", "2026-08-20", "60000.00"))
+    for key in ("FY2026-P07", AUGUST):
+        run_id, _ = runs.started(fx.app, fx.marcus, entity_code=AVM_UK, period_key=key)
+        with fx.place.uow() as uow:
+            run = (
+                uow.session.execute(select(close_run).where(close_run.c.id == UUID(run_id)))
+                .mappings()
+                .one()
+            )
+            scope = gates.scope_of_period(uow.session, run["entity_id"], "ASC606", run["period_id"])
+            assert scope is not None
+            period_end.post_pass(
+                uow,
+                close_run_id=UUID(run_id),
+                close_run_no=run["close_run_no"],
+                scope=scope,
+                pass_name=period_end.FX_REMEASUREMENT,
+            )
+            uow.commit()
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    for role, view in (
+        ("CONTRACT_ASSET", "functional"),
+        ("CONTRACT_ASSET", "reporting"),
+        ("CONTRACT_LIABILITY", "functional"),
+        ("CONTRACT_LIABILITY", "reporting"),
+    ):
+        run, rows = worlds.report_run(
+            reporting,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "balance_role": role,
+                "from_period_key": AUGUST,
+                "to_period_key": AUGUST,
+            },
+        )
+        detail = {
+            row["contract_external_id"]: row for row in rows if row.get("contract_external_id")
+        }
+        assert all(Decimal(row["other"]["amount"]) == 0 for row in detail.values())
+        if role == "CONTRACT_ASSET":
+            assert all(Decimal(row["closing"]["amount"]) == 0 for row in detail.values())
+        if view == "functional":
+            assert detail[FIRST_UK]["billings"]["amount"] == (
+                "-45360.00" if role == "CONTRACT_ASSET" else "5040.00"
+            )
+            if role == "CONTRACT_LIABILITY":
+                assert detail[FIRST_UK]["closing"]["amount"] == "5040.00"
+            assert detail[DELIVERED_UK]["billings"]["amount"] == "0.00"
+        binding = fx.place.scalar(
+            select(report_run.c.source_binding).where(report_run.c.id == UUID(run["id"]))
+        )
+        evidence = binding["evidence"]["billing_asset_sources_v1"]
+        assert set(map(Decimal, evidence["transfers"].values())) == {
+            Decimal("45360"),
+            Decimal("-45360"),
         }
         restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
         assert restarted.status_code == 202, restarted.text

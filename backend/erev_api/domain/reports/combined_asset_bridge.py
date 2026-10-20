@@ -19,7 +19,8 @@ if TYPE_CHECKING:
     from .builders import ReportParams
     from .builders.contract_balance_rollforward import ContractRollforward
 
-KEY = "combined_asset_bridge_v1"
+KEY = "combined_asset_bridge_v2"
+LEGACY_KEY = "combined_asset_bridge_v1"
 ZERO = Decimal(0)
 ROLE = "contract_asset"
 
@@ -35,7 +36,9 @@ def apply(
     periods: Mapping[UUID, tuple[tie_outs.PeriodRef, ...]],
     monthly: Mapping[tuple[UUID, UUID], Mapping[tuple[UUID, UUID], tie_outs.BalanceRow]],
     transfers: Mapping[tuple[UUID, UUID, UUID], Decimal],
+    billing_assets: Mapping[tuple[UUID, UUID, UUID], Decimal],
 ) -> tuple[ContractRollforward, ...]:
+    evidence_key = KEY if params.binding is None or KEY in params.binding.evidence else LEGACY_KEY
     touched = {(owner, entity) for owner, entity, _ in transfers}
     versions = {
         (row.version_id, row.entity_id)
@@ -113,11 +116,21 @@ def apply(
         return amount
 
     def adjusted(
-        lines: Mapping[str, Mapping[str, Decimal]], amount: Decimal
+        lines: Mapping[str, Mapping[str, Decimal]],
+        amount: Decimal,
+        billed_asset: Decimal | None = None,
     ) -> dict[str, dict[str, Decimal]]:
         changed = {name: dict(values) for name, values in lines.items()}
         changed["RECLASSIFICATIONS"][ROLE] += amount
         changed["OTHER"][ROLE] -= amount
+        if evidence_key == KEY and billed_asset is not None:
+            # An invoice can settle another member's asset even when the issuer
+            # has none. Use the original asset amount, never the residual OTHER.
+            shift = billed_asset - changed["BILLINGS"][ROLE]
+            changed["BILLINGS"][ROLE] += shift
+            changed["BILLINGS"]["contract_liability"] += shift
+            changed["OTHER"][ROLE] -= shift
+            changed["OTHER"]["contract_liability"] -= shift
         return changed
 
     output = []
@@ -154,9 +167,24 @@ def apply(
                 monthly[(item.entity_id, period.id)].get(key), period, item.entity_id, period.key
             )
             current = at - initial + cumulative
-            months[period.id] = adjusted(item.period_lines[period.id], current - previous)
+            months[period.id] = adjusted(
+                item.period_lines[period.id],
+                current - previous,
+                billing_assets.get((*key, period.id)),
+            )
             previous = current
-        output.append(replace(item, lines=adjusted(item.lines, total), period_lines=months))
+        asset_values = [
+            value for (owner, entity, _), value in billing_assets.items() if (owner, entity) == key
+        ]
+        output.append(
+            replace(
+                item,
+                lines=adjusted(
+                    item.lines, total, sum(asset_values, ZERO) if asset_values else None
+                ),
+                period_lines=months,
+            )
+        )
     if any(conservation.values()) or sum(transfers.values(), ZERO) != 0:
         raise tie_outs.invalid(
             "currency_view", "Member asset bridge does not conserve the full group."
@@ -167,11 +195,15 @@ def apply(
             ":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())
         },
     }
-    if params.binding is not None and params.binding.evidence[KEY] != evidence:
+    if evidence_key == KEY:
+        evidence["billing_assets"] = {
+            ":".join(map(str, key)): str(value) for key, value in sorted(billing_assets.items())
+        }
+    if params.binding is not None and params.binding.evidence[evidence_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Member asset bridge differs from retained evidence."
         )
     tie_outs.require_members(params, "combined_asset_movement", consumed)
     tie_outs.record_members(params, "combined_asset_movement", consumed)
-    tie_outs.record_evidence(params, KEY, evidence)
+    tie_outs.record_evidence(params, evidence_key, evidence)
     return tuple(output)

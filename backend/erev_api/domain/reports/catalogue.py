@@ -559,6 +559,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "cross-member revenue asset settlements retain their original layer owner and "
             "signed member transfers; an asset bridge reconciles original carrying to presented "
             "contract-asset/unbilled endpoints and conserves the full group at each endpoint",
+            "cross-member billing asset settlements retain original asset amounts and owner "
+            "transfers; asset bridge v2 separates settled assets from any excess billing that "
+            "creates a liability, with independently reconciled per-period billing roles",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
@@ -634,6 +637,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "both complete-range and return-month-only views retain prior-period dependencies",
             "returns settling another member's asset retain signed settlement transfers and "
             "the original asset carrying bridge; asset settlement never becomes opening relief",
+            "cross-member invoices likewise distinguish original asset settlement from newly "
+            "created liability before subsequent opening-liability consumption",
             "functional/reporting cross-member liability relief includes source-proven revenue "
             "reversals using original functional targets and recursive paid-line attribution",
             "ordinary transaction revenue reversals use original signed transaction sources, "

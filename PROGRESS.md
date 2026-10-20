@@ -2,6 +2,30 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Cross-member billing asset settlement and excess liabilities — October 20, 2026
+
+- Functional/reporting billings now retain signed asset-settlement amounts and both sides of
+  cross-member asset transfers from the original billing layers. Layer currencies, transaction
+  totals, functional amounts and trace identities must already reconcile before presentation.
+- Asset bridge v2 distinguishes billing that settles an asset from excess billing that creates
+  a liability, including when the invoice issuer has no asset of its own. Both billing roles
+  and corresponding member adjustments follow original source amounts, never unexplained OTHER.
+  Monthly and whole-range amounts are bound; earlier asset-bridge v1 bindings retain their path.
+- Billing and revenue-return asset transfers are combined without replacing either population.
+  The billing source method is recorded even for empty populations, preserving rerun scope.
+  Migration 0205 documents the expanded report logic.
+- The real foreign combined scenario invoices USD 60,000 after another member recognizes
+  USD 54,000: at retained spot .84 it settles GBP 45,360 of the other member's asset and creates
+  GBP 5,040 of liability for the issuer. Asset balances close to zero; issuer billing remains
+  split across the two roles and no member has unexplained OTHER.
+- Necessary checks passed: asset and liability report views in functional/reporting currency
+  with identical reruns, cross-member revenue-return regression, catalogue migration consistency,
+  scoped lint and types.
+- Mixed TIME/EVENT source allocation, intercompany counterparts, remaining close-only histories
+  and other documented implementation/release gaps remain open. More complex membership and
+  mixed billing/credit-memo histories still need end-to-end coverage. No deployment or claim
+  of production readiness; independent accounting sign-off remains outstanding.
+
 ## Cross-member asset settlement from revenue returns — October 20, 2026
 
 - Functional/reporting revenue returns can now settle another authorized group member's asset.
@@ -195,24 +219,6 @@
 - Remaining Reporting work is unchanged: original negative-revenue reversal attribution,
   per-obligation opening consumption, complex cross-member asset/carried histories and
   pre-close FX paths. Final release checks and independent accounting acceptance are open.
-
-## Transaction opening-liability group consumption — October 20, 2026
-
-- Positive transaction RPT-04 now pools control flows by retained computation version,
-  entity and currency, assigning actual opening-layer consumption to the recognizing
-  member. Earlier credit-memo debits reduce the available opening layer. Opening holders
-  remain visible even when another member recognizes the revenue; groups and source
-  method are retained for identical reruns. Migration 0199 updates the IPE description.
-- Necessary verification: the combined-member disclosure reports USD 54,000 opening relief
-  for an August-start range and zero for a July-start range, with unchanged USD 54,000
-  recognized revenue and identical bound reruns. Existing single-contract results pass.
-  All 28 control-path unit checks pass, including credit-memo consumption before revenue;
-  implementation lint and types pass.
-- Negative transaction revenue deliberately retains the existing net-reversal calculation;
-  original reversal-source attribution remains unfinished. Per-obligation consumption,
-  cross-member asset-creating/carried/other-control histories, pre-close unposted FX paths,
-  recorded registry gaps and final accounting/release acceptance remain open. Reporting
-  is not yet complete. No deployment.
 
 ## Outstanding release verification
 

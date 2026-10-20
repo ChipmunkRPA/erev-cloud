@@ -9555,3 +9555,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   underlying posting-delta replay gaps. This new disclosure path currently requires reconciled
   source balance movements; pre-close paths with unposted FX are not accepted. Recorded
   registry gaps and final accounting/release acceptance remain; Reporting is not complete.
+
+## Transaction opening-liability group consumption — October 20, 2026
+
+- Positive transaction RPT-04 now pools control flows by retained computation version,
+  entity and currency, assigning actual opening-layer consumption to the recognizing
+  member. Earlier credit-memo debits reduce the available opening layer. Opening holders
+  remain visible even when another member recognizes the revenue; groups and source
+  method are retained for identical reruns. Migration 0199 updates the IPE description.
+- Necessary verification: the combined-member disclosure reports USD 54,000 opening relief
+  for an August-start range and zero for a July-start range, with unchanged USD 54,000
+  recognized revenue and identical bound reruns. Existing single-contract results pass.
+  All 28 control-path unit checks pass, including credit-memo consumption before revenue;
+  implementation lint and types pass.
+- Negative transaction revenue deliberately retains the existing net-reversal calculation;
+  original reversal-source attribution remains unfinished. Per-obligation consumption,
+  cross-member asset-creating/carried/other-control histories, pre-close unposted FX paths,
+  recorded registry gaps and final accounting/release acceptance remain open. Reporting
+  is not yet complete. No deployment.
