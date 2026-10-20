@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current membership/reference update (October 20): merges/splits can now coexist with changes
+to SSP/template/rule references and resolved accounting policies. Membership first uses prior
+member policies and a coherent prior reference basis; a distinct OTHER phase applies later
+references/policies before events and FX. Contract-scoped policies follow their members and
+shared-policy conflicts are rejected. The real-engine witness combines merge, an RPO exemption
+election and late delivery with independent phase and report/cell reconciliation. Contract and
+estimate-record changes, incompatible prior bases, missing members, group-level postings,
+combined/late-carried liability FX and alternate-currency frozen close integration remain open.
+This supersedes the blanket mixed-reference refusal below. No deployment or accounting sign-off.
+
+
 Current membership/FX update (October 20): membership and new business events now run on the
 earlier coherent FX basis, followed by a separate later-rate FX phase. A real-engine witness
 for two merged EUR contracts shows USD 60 functional revenue FX movement per contract and

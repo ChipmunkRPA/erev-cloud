@@ -8843,3 +8843,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   member additions/removals within a retained group still requires membership replay.
 - The 27 focused replay checks pass, including real-engine group entry/exit, exact endpoints,
   presentation and cell source selection. Python lint/types pass. No deployment.
+
+## Functional contract-balance movements — October 20, 2026
+
+- Contract balance rollforward now supports functional currency using dated engine balances,
+  posted functional control flows and historical billing-layer carrying. Revenue, reclassification
+  and FX remain distinct. Closing balances and GL comparisons use the same functional basis.
+- Both ERP and ENGINE billing use dated source documents; ENGINE amounts must match posted
+  functional billing. Layer amounts must match retained, hash-verified trace nodes and transaction
+  amounts. Consumed layer IDs are retained for reruns; missing evidence is refused.
+- Settlement FX is placed immediately before its own invoice, with an equal adjustment to
+  period-end FX, preserving posted net FX and avoiding a spurious liability/billing split.
+- Targeted journeys pass: EUR receivable August/September with GL tie-outs, ERP and ENGINE
+  invoice settlement plus rerun, locked-period functional movement and existing transaction
+  invoice rollforward. ERP: opening USD 11,050 + FX 50 - billing 11,100 = zero. Lint/types pass.
+- Remaining: FX attribution across multiple open monetary liability layers, combined-contract
+  layer attribution, reporting-currency translation and broader report coverage. Ambiguous
+  multi-layer FX remains refused. Full four-workstream completion is not claimed. No deployment.

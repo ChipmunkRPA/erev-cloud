@@ -913,8 +913,77 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         for effect in change.effects
         if effect.driver == "LATE_EVENT"
     )
-    shown = variance_presentation.dataset(mixed_pair, mixed_result)
-    sides = identities(mixed_pair)
+    # The exemption election changes in the same close as merge and delivery.
+    elected = replace(
+        joined,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(policy, value="APPLY")
+                    if policy.code == "rpo.exemption_original_duration_one_year"
+                    else policy
+                    for policy in book.policies
+                ),
+            )
+            for book in joined.books
+        ),
+    )
+    elected_delivery = replace(mixed, books=elected.books)
+    elected_pair = replace(
+        membership_pair, later=side(elected_delivery, 2, prepared=((merged_id, elected_delivery),))
+    )
+    elected_result = variance_groups.execute(elected_pair)
+    reference_metrics = Projection(elected, "Mock Entity 2", "ASC606", "FY2023-P05")(
+        compute(elected)
+    )
+    final_metrics = Projection(elected_delivery, "Mock Entity 2", "ASC606", "FY2023-P05")(
+        compute(elected_delivery)
+    )
+    for key, change in elected_result.measures.items():
+        assert change.sums_exactly
+        assert (
+            sum(e.amount for e in change.effects if e.driver == "MODIFICATION")
+            == membership.measures[key].total
+        )
+        assert sum(
+            e.amount for e in change.effects if e.driver == "OTHER"
+        ) == reference_metrics.get(key, Fraction(0)) - joined_metrics.get(key, Fraction(0))
+        assert sum(
+            e.amount for e in change.effects if e.driver == "LATE_EVENT"
+        ) == final_metrics.get(key, Fraction(0)) - reference_metrics.get(key, Fraction(0))
+    assert any(
+        e.amount
+        for change in elected_result.measures.values()
+        for e in change.effects
+        if e.driver == "OTHER"
+    )
+    conflicting_second = replace(
+        second,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(policy, value="APPLY")
+                    if policy.code == "rpo.exemption_original_duration_one_year"
+                    else policy
+                    for policy in book.policies
+                ),
+            )
+            for book in second.books
+        ),
+    )
+    with pytest.raises(Problem, match="(conflicting|inconsistent).*policy bases"):
+        variance_groups.execute(
+            replace(
+                membership_pair,
+                earlier=side(
+                    before, 1, prepared=((group_ids[0], before), (group_ids[1], conflicting_second))
+                ),
+            )
+        )
+    shown = variance_presentation.dataset(elected_pair, elected_result)
+    sides = identities(elected_pair)
     rebound = replace(
         binding,
         row_keys=frozenset(row["row_key"] for row in shown.data.rows),
@@ -949,7 +1018,7 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
             value["amount"]
         )
         assert any(
-            "group.membership" in detail or delivery.event_key in detail
+            "group.membership" in detail or delivery.event_key in detail or "books" in detail
             for item in contributors
             for detail in item["details"]
         )

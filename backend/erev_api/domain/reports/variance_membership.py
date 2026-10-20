@@ -1,7 +1,7 @@
-"""Replay membership, then new business events, then changed FX rates.
+"""Replay membership, references/policies, new business events and FX rates.
 
-Both frozen sides are reproduced on the earlier posted basis. Reference, policy
-and contract-record changes still require a separate counterfactual phase.
+Both frozen sides are reproduced on the earlier posted basis. Contract and
+estimate-record changes still require a separate counterfactual phase.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from erev_engine.bundle import EventInput, InputBundle
+from erev_engine.bundle import EventInput, InputBundle, ResolvedPolicyInput
 from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
@@ -104,9 +104,6 @@ def execute(
         "tenant_preset",
         "currencies",
         "entities",
-        "ssp_versions",
-        "pob_template_versions",
-        "rule_set_versions",
     )
     for field in shared:
         if len({canonical_bytes(getattr(source.bundle, field)) for source in sources}) != 1:
@@ -149,34 +146,54 @@ def execute(
     if len({books(source) for source in sources}) != 1:
         raise _refuse("book configuration differs between group partitions.")
 
-    def policies(side: Mapping[UUID, VerifiedComputation]) -> set[bytes]:
-        return {
-            canonical_bytes(
-                (
-                    book.book_code,
-                    replace(policy, subject_key="") if policy.scope == "GROUP" else policy,
+    reference_fields = ("ssp_versions", "pob_template_versions", "rule_set_versions")
+    for field in reference_fields:
+        if len({canonical_bytes(getattr(source.bundle, field)) for source in old.values()}) != 1:
+            raise _refuse(f"earlier groups have inconsistent {field} bases.")
+    old_references = {
+        field: getattr(next(iter(old.values())).bundle, field) for field in reference_fields
+    }
+
+    def prior_basis(target: InputBundle) -> InputBundle:
+        members = set(target.group.member_contract_keys)
+        donors = [old[key].bundle for key in sorted({old_owner[name] for name in members})]
+        prior_books = []
+        for target_book in target.books:
+            policies: dict[tuple[str, str, str], ResolvedPolicyInput] = {}
+            shared_policy_bases = []
+            for donor in donors:
+                book = next(b for b in donor.books if b.book_code == target_book.book_code)
+                shared_policy_bases.append(
+                    {
+                        canonical_bytes(
+                            replace(policy, subject_key="") if policy.scope == "GROUP" else policy
+                        )
+                        for policy in book.policies
+                        if policy.scope in {"GROUP", "ENTITY", "PERIOD", "PRODUCT"}
+                    }
                 )
+                for policy in book.policies:
+                    if policy.scope == "CONTRACT":
+                        if policy.subject_key not in members:
+                            continue
+                    elif policy.scope in {"OBLIGATION", "CONTRACT_PERIOD"}:
+                        if contract_key_from_subject(policy.subject_key) not in members:
+                            continue
+                    elif policy.scope == "GROUP":
+                        policy = replace(policy, subject_key="")
+                    elif policy.scope not in {"ENTITY", "PERIOD", "PRODUCT"}:
+                        raise _refuse("a policy scope requires a membership mapping rule.")
+                    identity = (policy.code, policy.scope, policy.subject_key)
+                    if identity in policies and policies[identity] != policy:
+                        raise _refuse("earlier members have conflicting policy bases.")
+                    policies[identity] = policy
+            if any(basis != shared_policy_bases[0] for basis in shared_policy_bases[1:]):
+                raise _refuse("earlier members have inconsistent shared policy bases.")
+            prior_books.append(
+                replace(target_book, policies=tuple(policies[k] for k in sorted(policies)))
             )
-            for source in side.values()
-            for book in source.bundle.books
-            for policy in book.policies
-        }
+        return replace(target, books=tuple(prior_books), **old_references)
 
-    if policies(old) != policies(new):
-        raise _refuse("membership is mixed with policy or recorded-choice changes.")
-    # Even equal unions must not mask different group policies swapped between members.
-    for name in old_owner:
-
-        def group_policies(source: VerifiedComputation) -> set[bytes]:
-            return {
-                canonical_bytes((book.book_code, replace(policy, subject_key="")))
-                for book in source.bundle.books
-                for policy in book.policies
-                if policy.scope == "GROUP"
-            }
-
-        if group_policies(old[old_owner[name]]) != group_policies(new[new_owner[name]]):
-            raise _refuse("a member changes its group policy basis.")
     old_events = {
         event.event_key: event for source in old.values() for event in source.bundle.events
     }
@@ -328,15 +345,25 @@ def execute(
                     )
 
                 business_basis = replace(bundle, fx_rates=earlier_fx)
+                membership_basis = prior_basis(business_basis)
                 states.append(
                     evaluate(
                         "MODIFICATION",
                         membership_events,
-                        business_basis,
+                        membership_basis,
                         accumulated,
                         ("group.membership",),
                     )
                 )
+                changed_references = tuple(
+                    field
+                    for field in ("books", *reference_fields)
+                    if getattr(membership_basis, field) != getattr(business_basis, field)
+                )
+                if changed_references:
+                    states.append(
+                        evaluate("OTHER", (), business_basis, accumulated, changed_references)
+                    )
                 for name, events in event_runs:
                     accumulated.extend(events)
                     states.append(
@@ -354,9 +381,7 @@ def execute(
                     final.get(k, Fraction(0)) != expected.get(k, Fraction(0))
                     for k in final.keys() | expected.keys()
                 ):
-                    raise _refuse(
-                        "membership, business and FX phases do not reproduce the frozen endpoint."
-                    )
+                    raise _refuse("the final phased replay does not reproduce the frozen endpoint.")
                 phases[key] = states
             else:
                 baselines[key] = Execution(

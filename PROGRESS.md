@@ -6,6 +6,23 @@
 
 
 
+## Reference/policy phases with group changes — October 20, 2026
+
+- Membership replay now reconstructs prior member policies for the new group, carrying only
+  member-owned contract/obligation/contract-period policies and remapping group ownership.
+  Shared prior policies and reference bases must agree; conflicts cannot silently become the
+  baseline. Unknown policy scopes require an explicit ownership rule.
+- The next OTHER phase applies later SSP/template/rule references and resolved policies together,
+  before business events and FX. Execution hashes and changed-field names retain the basis of
+  this attribution. Contract headers and estimate records still require separate handling.
+- Necessary real-engine/frozen-data witness covers merge + RPO original-duration exemption
+  election + late delivery, independently reconciles all three effects, and checks report/cell
+  amounts and source details. Conflicting earlier policy bases are rejected. Existing reverse
+  split and functional FX checks remain included. No deployment or accounting sign-off claimed.
+- Remaining: contract/estimate record replay, incompatible earlier reference/policy bases,
+  missing member sources, group-level posting redistribution, combined/late-carried liability
+  FX, and alternate-currency locked datasets/close-report integration.
+
 ## FX after membership/event variance replay — October 20, 2026
 
 - Reorganized groups now replay membership and business events on the coherent earlier FX
@@ -215,23 +232,6 @@
 - Remaining: reporting-currency movement reports need opening/flow/closing rate treatment and
   explicit translation differences; broader report coverage, multi-layer FX and combined-contract
   attribution remain open. This is an incremental feature completion, not four-workstream closure.
-
-## Functional contract-balance movements — October 20, 2026
-
-- Contract balance rollforward now supports functional currency using dated engine balances,
-  posted functional control flows and historical billing-layer carrying. Revenue, reclassification
-  and FX remain distinct. Closing balances and GL comparisons use the same functional basis.
-- Both ERP and ENGINE billing use dated source documents; ENGINE amounts must match posted
-  functional billing. Layer amounts must match retained, hash-verified trace nodes and transaction
-  amounts. Consumed layer IDs are retained for reruns; missing evidence is refused.
-- Settlement FX is placed immediately before its own invoice, with an equal adjustment to
-  period-end FX, preserving posted net FX and avoiding a spurious liability/billing split.
-- Targeted journeys pass: EUR receivable August/September with GL tie-outs, ERP and ENGINE
-  invoice settlement plus rerun, locked-period functional movement and existing transaction
-  invoice rollforward. ERP: opening USD 11,050 + FX 50 - billing 11,100 = zero. Lint/types pass.
-- Remaining: FX attribution across multiple open monetary liability layers, combined-contract
-  layer attribution, reporting-currency translation and broader report coverage. Ambiguous
-  multi-layer FX remains refused. Full four-workstream completion is not claimed. No deployment.
 
 ## Outstanding release verification
 
