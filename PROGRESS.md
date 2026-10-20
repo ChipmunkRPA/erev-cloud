@@ -6,6 +6,19 @@
 
 
 
+## Report filters and saved-link preservation — October 19, 2026
+
+- Added field/value filter rows to report toolbars whose schema declares filters. Users can
+  add/remove conditions without entering JSON. Incomplete/duplicate fields remain editable
+  and block live report submission instead of overwriting another condition.
+- Report parameter conversion now produces the filters object; saved-report links retain
+  string-valued objects. Previously opening a file report could omit its filters when creating
+  the view run. Values containing punctuation survive the full saved-link round trip.
+- Four focused toolbar checks and twenty-six run-record checks pass; TypeScript/ESLint pass.
+  Backend authorization and supported-field validation remain authoritative. Richer record
+  selectors, other reporting workflows and independent accounting acceptance remain open.
+  No deployment or production-readiness claim.
+
 ## Declared report parameter controls — October 19, 2026
 
 - Removed the fixed-toolbar-only limitation for ordinary scalar/list report parameters.
@@ -234,19 +247,6 @@
   file routes, hash refusal and repeat reads with the live collector disabled. CHANGE/ACCESS
   report-worker collection also passes; Mypy and Ruff pass.
 - Next: parent job/storage and public CHANGE/ACCESS API/UI. No deployment or readiness claim.
-
-## As-of access-review evidence collection — October 19, 2026
-
-- Added campaign/item evidence with original membership snapshots, counts and transition
-  references. Historical output distinguishes pending decisions, requested revocation, confirmed
-  revocation and later cancellation; future comments/reviewer identities do not leak backwards.
-- Verifies source permission, snapshot hash/canonical bytes and complete member population.
-  Uses tenant-wide access.approve, matching the source API, plus evidence permissions.
-- Actual API create/start/decision/revoke/confirm/cancel collection passes. Seven focused
-  timestamp/state checks, Mypy and Ruff pass. The audit slice is not full-chain verification.
-- Collector returns personal payloads for encrypted storage; no personal source data is placed
-  in source-binding JSON. Encrypted retention/dependency links and public CHANGE/ACCESS
-  lifecycle/UI remain next. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

@@ -21,6 +21,8 @@ import { formatDate, NO_VALUE } from "../../../lib/format";
 import { hasMessage, t } from "../../../lib/i18n/t";
 import { TextField } from "../../contracts/drawers/common";
 import { parameterKeys, type ReportContext } from "./specs";
+import { ReportFilters } from "./ReportFilters";
+import { filterRows, validFilterRows } from "./filterValues";
 
 /**
  * The keys a toolbar field edits, in §5.6 parameter-table order; every other key is context or source.
@@ -74,7 +76,8 @@ export function toolbarKeys(definition: ReportDefinition): readonly string[] {
     (key) =>
       !ordered.includes(key) &&
       !CONTEXT_KEYS.has(key) &&
-      ["string", "integer", "boolean", "array"].includes(String(schemaOf(definition, key).type)),
+      (["string", "integer", "boolean", "array"].includes(String(schemaOf(definition, key).type)) ||
+        (key === "filters" && schemaOf(definition, key).type === "object")),
   );
   return [...ordered, ...additional];
 }
@@ -238,6 +241,17 @@ export function ParametersToolbar({
         const value = values[key] ?? "";
         const error = errors[key];
         switch (key) {
+          case "filters":
+            return (
+              <div key={key}>
+                <ReportFilters
+                  value={value}
+                  disabled={disabled}
+                  onChange={(next) => onChange(key, next)}
+                />
+                {error && <p role="alert">{error}</p>}
+              </div>
+            );
           case "from_period_key":
           case "to_period_key":
             return (
@@ -391,7 +405,17 @@ export function ParametersToolbar({
         }
       })}
       {children}
-      <Button variant="primary" onClick={onRun}>
+      <Button
+        variant="primary"
+        onClick={onRun}
+        disabledReason={
+          !disabled &&
+          keys.includes("filters") &&
+          !validFilterRows(filterRows(values.filters ?? ""))
+            ? t("reports.filters.invalid")
+            : undefined
+        }
+      >
         {t("reports.parameters.run")}
       </Button>
     </div>

@@ -85,3 +85,57 @@ it("does not silently truncate invalid numeric parameters", () => {
   );
   expect(runParameters(numeric, context, { count: "12" }).count).toBe(12);
 });
+
+it("edits filters as field/value rows and preserves them through saved-report links", async () => {
+  const { reportViewSearch } = await import("../run-links");
+  const filtered = {
+    ...definition,
+    parameters_schema: {
+      properties: {
+        filters: { type: "object", additionalProperties: { type: "string" } },
+      },
+    },
+  };
+  const submit = vi.fn();
+  function Form() {
+    const [values, setValues] = useState<Record<string, string>>({});
+    return (
+      <ParametersToolbar
+        definition={filtered}
+        context={context}
+        values={values}
+        errors={{}}
+        timeBands={null}
+        onChange={(key, value) => setValues((old) => ({ ...old, [key]: value }))}
+        onRun={() => submit(runParameters(filtered, context, values))}
+      />
+    );
+  }
+  render(<Form />);
+  fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
+  expect(screen.getByRole("button", { name: "Run report" }).getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Filter 1 field" }), {
+    target: { value: "customer_name" },
+  });
+  fireEvent.change(screen.getByRole("textbox", { name: "Filter 1 value" }), {
+    target: { value: "A&B = US" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Run report" }));
+  const parameters = { filters: { customer_name: "A&B = US" } };
+  expect(submit).toHaveBeenCalledWith(parameters);
+  const search = reportViewSearch({ id: "run", parameters, output: null });
+  const restored = new URLSearchParams(search).get("p.filters");
+  expect(runParameters(filtered, context, { filters: restored ?? "" })).toEqual(parameters);
+  fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Filter 2 field" }), {
+    target: { value: "customer_name" },
+  });
+  fireEvent.change(screen.getByRole("textbox", { name: "Filter 2 value" }), {
+    target: { value: "Other" },
+  });
+  expect(screen.getByRole("button", { name: "Run report" }).getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+});

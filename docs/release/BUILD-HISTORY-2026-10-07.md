@@ -8069,3 +8069,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Actual CHANGE/ACCESS report-worker collection and 17 focused checks pass; Mypy/Ruff pass.
 - Still open: access-review evidence, parent job/storage, public CHANGE/ACCESS API/UI,
   populated re-lock acceptance and the wider reporting backlog. No deployment.
+
+## As-of access-review evidence collection — October 19, 2026
+
+- Added campaign/item evidence with original membership snapshots, counts and transition
+  references. Historical output distinguishes pending decisions, requested revocation, confirmed
+  revocation and later cancellation; future comments/reviewer identities do not leak backwards.
+- Verifies source permission, snapshot hash/canonical bytes and complete member population.
+  Uses tenant-wide access.approve, matching the source API, plus evidence permissions.
+- Actual API create/start/decision/revoke/confirm/cancel collection passes. Seven focused
+  timestamp/state checks, Mypy and Ruff pass. The audit slice is not full-chain verification.
+- Collector returns personal payloads for encrypted storage; no personal source data is placed
+  in source-binding JSON. Encrypted retention/dependency links and public CHANGE/ACCESS
+  lifecycle/UI remain next. No deployment or production-readiness claim.

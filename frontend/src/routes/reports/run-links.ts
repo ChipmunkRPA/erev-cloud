@@ -36,6 +36,13 @@ function carried(value: unknown): string | null {
   ) {
     return value.join(",");
   }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((item) => typeof item === "string")
+  )
+    return JSON.stringify(value);
   return null;
 }
 

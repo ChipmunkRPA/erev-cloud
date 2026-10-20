@@ -6,6 +6,7 @@
 // drillable figures come from the specification of each field. Totals rows (`row_key` `total:<ISO>`)
 // become DS-CMP-10 totals rows; sections come from the row field `section` (RPT-R-09), so `rpo` section
 // 2 rows are the exempt contracts (L6-3-Q-26).
+import { filterValue } from "./filterValues";
 import { rpoBandLabels } from "../../../components/charts/RpoTimeBands";
 import { testIdKey } from "../../../components/data-grid/DataGrid";
 import type { GridTotalsRow } from "../../../components/data-grid/types";
@@ -284,6 +285,8 @@ function integerInput(raw: string): number | string {
 /** The `p.<key>` value typed by the schema; invalid values remain invalid for API validation. */
 function typed(schema: Schema | undefined, raw: string): unknown {
   switch (schema?.type) {
+    case "object":
+      return filterValue(raw);
     case "array": {
       const items = raw.split(",").map(item => item.trim()).filter((item) => item !== "");
       const itemType = (schema.items as Schema | undefined)?.type;
