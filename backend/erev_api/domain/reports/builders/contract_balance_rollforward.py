@@ -51,6 +51,10 @@ totals must match posted period FX. Credit-memo reliefs use their original order
 transaction portions and pinned spot rate, cumulatively rounded to the memo total.
 Their billed amounts include this same spot conversion; the historical-to-spot
 difference enters the specific liability layers immediately before the memo.
+For a combined-member memo, an independently sourced bridge reconciles original
+layer owners with the engine's member presentation. Endpoint carrying and memo
+issuer/source transfers are bound as evidence, conserve the original group, and
+are shown as RECLASSIFICATIONS rather than unexplained OTHER.
 
 The reporting view translates monthly functional paths using the engine's S12-R-18 helper:
 opening at the preceding closing rate, flows at each posting period's average rate, closing
@@ -463,6 +467,7 @@ def rollforwards(
         params=params,
         functional=functional,
     )
+    member_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     booked_billing: dict[tuple[UUID, UUID], list[Entry]] = {}
     if functional and documents:
         # Read billing at its source date in either posting mode. ENGINE totals
@@ -486,7 +491,13 @@ def rollforwards(
         )
     if functional and documents:
         unposted = _functional_documents(
-            session, unposted, transaction_ends, params, posted, periods
+            session,
+            unposted,
+            transaction_ends,
+            params,
+            posted,
+            periods,
+            member_transfers=member_transfers,
         )
         for key, entries in booked_billing.items():
             for period_id in {entry.period_id for entry in entries}:
@@ -565,6 +576,26 @@ def rollforwards(
                     if period_detail
                     else {}
                 ),
+            )
+        )
+    if (
+        functional
+        and documents
+        and (params.binding is None or "combined_liability_bridge_v1" in params.binding.evidence)
+    ):
+        from ..combined_liability_bridge import apply
+
+        found = list(
+            apply(
+                session,
+                params,
+                found,
+                opening=opening_rows,
+                closing=closing_rows,
+                before=before,
+                periods=periods,
+                monthly=monthly,
+                transfers=member_transfers,
             )
         )
     return tuple(sorted(found, key=lambda item: (item.external_id, item.entity_code)))
@@ -1083,6 +1114,8 @@ def _functional_documents(
     params: ReportParams,
     posted: dict[tuple[UUID, UUID], list[Entry]],
     periods: Mapping[UUID, tuple[PeriodRef, ...]],
+    *,
+    member_transfers: dict[tuple[UUID, UUID, UUID], Decimal],
 ) -> dict[tuple[UUID, UUID], list[Entry]]:
     """ERP billing takes its actual historical layer carrying, never today's rate."""
     result: dict[tuple[UUID, UUID], list[Entry]] = {}
@@ -1107,7 +1140,14 @@ def _functional_documents(
                 session.execute(
                     select(fx_layer_movement).where(
                         fx_layer_movement.c.contract_version_id == row.version_id,
-                        fx_layer_movement.c.contract_id == row.contract_id,
+                        fx_layer_movement.c.contract_id.in_(
+                            [
+                                owner.contract_id
+                                for owner in rows.values()
+                                if owner.version_id == row.version_id
+                                and owner.entity_id == row.entity_id
+                            ]
+                        ),
                         fx_layer_movement.c.entity_id == row.entity_id,
                         fx_layer_movement.c.source_event_id == event_id,
                         fx_layer_movement.c.balance_role.in_(
@@ -1243,7 +1283,9 @@ def _functional_documents(
                     raw.append(
                         {
                             **item,
-                            "contract_key": row.external_id,
+                            "contract_key": rows[
+                                (UUID(str(item["contract_id"])), row.entity_id)
+                            ].external_id,
                             "source_key": str(event_id),
                             "functional_currency": currency,
                             "effective_date": item["effective_date"].isoformat(),
@@ -1272,6 +1314,17 @@ def _functional_documents(
                 amount = memo_spot.get(
                     str(item["trace_node_id"]), Decimal(item["amount_functional"])
                 )
+                source_owner = UUID(str(item["contract_id"]))
+                if str(item["trace_node_id"]) in memo_spot and source_owner != row.contract_id:
+                    if entry.period_id is None:
+                        raise tie_outs.invalid(
+                            "currency_view", "Member memo lacks a posting period."
+                        )
+                    for owner, sign in ((source_owner, -1), (row.contract_id, 1)):
+                        transfer_key = (owner, row.entity_id, entry.period_id)
+                        member_transfers[transfer_key] = (
+                            member_transfers.get(transfer_key, ZERO) + sign * amount
+                        )
                 translated.append(
                     replace(
                         entry,
@@ -1796,7 +1849,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             book_code=book_code,
             locked=ends,
         )
-    movement_check = balances_tie(totals)
+    movement_check = balances_tie(totals, functional_items)
     balance_check = balances_equal_tie(closing_balances, functional_items)
     gl_check = rollforward_gl.build(
         session,
@@ -1839,7 +1892,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
 
 
-def balances_tie(totals: Mapping[str, Lines]) -> dict[str, Any]:
+def balances_tie(
+    totals: Mapping[str, Lines], items: Sequence[ContractRollforward] = ()
+) -> dict[str, Any]:
     """``TO_ROLLFORWARD_BALANCES``: opening plus explained activity equals closing, per currency
     over the three balances; any non-zero ``OTHER`` fails (S15-R-07)."""
     expected: dict[str, Decimal] = {}
@@ -1856,6 +1911,11 @@ def balances_tie(totals: Mapping[str, Lines]) -> dict[str, Any]:
     result = tie_outs.compared(tie_outs.TO_ROLLFORWARD_BALANCES, expected, actual)
     if unexplained:
         result["result"] = tie_outs.FAIL
+    if any(item.lines["OTHER"][balance] != 0 for item in items for balance in ROLLFORWARD_BALANCES):
+        result["result"] = tie_outs.FAIL
+        result.setdefault("details", []).append(
+            {"reason": "Individual contract movements contain unexplained OTHER."}
+        )
     return result
 
 

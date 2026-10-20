@@ -9245,3 +9245,33 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Next implementation must reconcile retained target/posted history and source-layer ownership;
   direct allocation from an assumed ledger layer key would be unsupported. Combined/late-carried
   liability FX remains unfinished. No deployment or production-readiness claim.
+
+## Retained close-pass calculation evidence — October 20, 2026
+
+- Found the underlying CLOSE-PASS-TRACE-1 gap: actual close-pass ledger lines have no contract
+  version/trace record. Latest contract traces cannot establish what an earlier pass posted.
+  Revision 0192 now retains each actual pass's typed input, explicit pass name, selected book
+  output, trace and selected line fields in encrypted storage, atomically with its sealed
+  posting. Group entry indexes distinguish pooled postings. Source reads check file, logical
+  input/output and trace hashes and the selected ledger line; historical absence stays absent.
+- Added immutable tenant-scoped links, file ownership/retention holds, privacy classification
+  and scenario regeneration rules. FX pass/idempotence, populated foreign public lock and
+  automatic netting reversal checks pass; evidence remains after recomputation. Mutation and
+  cross-tenant checks, 12 scoped file-registry/census checks, lint and scoped types pass.
+- Not complete: reporting must consume this evidence and reconstruct attributed paid history
+  for combined/late-carried liability FX; existing historical passes cannot be silently rebuilt.
+  A broader registry check also exposed pre-existing unclassified evidence_sample_file,
+  forecast_actuals_capture, scenario_refresh and forecast/import fields, plus stale snapshot
+  reference-count/excluded-column expectations. Those remain release work (four checks fail
+  after updating the regenerated-table census). No deployment or accounting acceptance.
+
+## Currency exports in close evidence packs — October 20, 2026
+
+- Close/re-lock packs now include functional and reporting CSVs for all six retained currency
+  snapshot kinds, alongside the existing transaction paths. Snapshot identities retain original
+  bundle hashes/counts and list each delivered view's path, hash, row count and control totals.
+  Each export uses its retained column schema and spreadsheet formula guard. Historical
+  single-view locks remain single-view; no current rates or live rebuilds are substituted.
+- Targeted archive checks cover actual snapshot production, legacy locks, manifest/hash/count
+  refusal and formula guards. Combined/late-carried liability FX and populated foreign two-lock
+  acceptance remain outstanding. No deployment or production-readiness claim.

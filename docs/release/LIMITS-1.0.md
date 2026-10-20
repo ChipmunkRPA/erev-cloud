@@ -1,5 +1,28 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Combined-member credit-memo presentation — October 20, 2026
+
+- Functional billing now reads source layers across the report's authorized members of the
+  same immutable group version and entity. A credit memo can therefore price a relief whose
+  layer belongs to another member, retaining the real source owner and movement identities.
+- Added a combined-liability presentation bridge for in-range cross-member memos. It computes
+  each endpoint's original layer carrying versus the engine's member presentation, then adds
+  the known memo issuer/source transfers. Each original computation group must conserve zero.
+  The independently derived amounts appear as RECLASSIFICATIONS; no amount is inferred from
+  OTHER. Bound endpoint facts, movements and transfers are checked on rerun, including monthly
+  reporting-currency paths. Historical bindings without the bridge retain the previous path.
+- Fixed a separate false-PASS: unexplained OTHER on an individual contract now fails the
+  movement tie-out even when opposing contract errors cancel in the currency total. Migration
+  0195 and the IPE catalogue describe the expanded source scope, bridge and per-contract check.
+- Necessary checks passed: public two-member memo consuming another member's layer, same and
+  different historical rates, exact member closing/reclassification amounts, bound reruns,
+  reporting-currency monthly projection, 27 scoped path checks and lint/types. The differing
+  rate case closes at GBP 74,314.29 / 41,285.71 with GBP +714.29 / -714.29 reclassification;
+  every member has zero unexplained OTHER. No deployment.
+- Still open: general member reallocations without an in-range cross-member memo, more complex
+  carried EVENT corrections, recorded privacy/snapshot registry gaps and final accounting/
+  release acceptance. These cases do not establish every membership transition or readiness.
+
 ## Locked-period foreign invoice carry — October 20, 2026
 
 - The populated foreign lock witness now also follows the no-reopen path: an EUR 4,000

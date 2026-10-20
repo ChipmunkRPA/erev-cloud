@@ -501,3 +501,104 @@ def test_when_the_listing_member_leaves_later_lines_are_listed_under_the_next(
         ]
         == "PASS"
     )
+
+
+@pytest.mark.parametrize("invoice_day", ["2026-08-10", "2026-08-20"])
+def test_combined_credit_memo_consumes_another_members_layer(fx: FxWorld, invoice_day: str) -> None:  # noqa: F811
+    from erev_api.db.tables import legal_entity
+    from erev_api.jobs.context import JobRuntime
+    from test_fx_remeasurement_recompute import _advance_received
+
+    owner_id, _ = _advance_received(fx)
+    issuer_id = _gateways(fx, FIRST_UK)
+    _grouped(fx.app, fx.maya, fx.marcus, [owner_id, issuer_id])
+    head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == issuer_id))
+    _recorded(fx, issuer_id, int(head), _invoice("OTHER-ADV", invoice_day, "90000.00"))
+    head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == issuer_id))
+    _recorded(
+        fx,
+        issuer_id,
+        int(head),
+        {
+            "event_type": "CREDIT_MEMO_RECORDED",
+            "effective_date": "2026-08-20",
+            "payload": {
+                "credit_memo_number": "GROUP-CM",
+                "obligation_key": "O1",
+                "amount": {"amount": "40000.00", "currency": "USD"},
+                "issue_date": "2026-08-20",
+            },
+        },
+    )
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    run, rows = worlds.report_run(
+        reporting,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [AVM_UK],
+            "book": "ASC606",
+            "currency_view": "functional",
+            "from_period_key": AUGUST,
+            "to_period_key": AUGUST,
+        },
+    )
+    assert (
+        next(item for item in run["tie_out_results"] if item["code"] == "TO_ROLLFORWARD_BALANCES")[
+            "result"
+        ]
+        == "PASS"
+    ), (run, rows)
+    detail = [row for row in rows if row.get("contract_external_id")]
+    assert detail
+    assert all(Decimal(row["other"]["amount"]) == 0 for row in detail), detail
+    shown = {row["contract_external_id"]: row for row in detail}
+    expected = (
+        {FIRST_UK: ("40000.00", "1600.00"), DELIVERED_UK: ("72000.00", "-1600.00")}
+        if invoice_day.endswith("10")
+        else {FIRST_UK: ("41285.71", "-714.29"), DELIVERED_UK: ("74314.29", "714.29")}
+    )
+    for name, (closing, transfer) in expected.items():
+        assert shown[name]["closing"]["amount"] == closing
+        assert shown[name]["reclassifications"]["amount"] == transfer
+    from support.reference import get
+
+    started = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+    assert started.status_code == 202, started.text
+    completed = worlds.run_now(reporting, UUID(started.json()["id"]))
+    assert completed["state"] == "SUCCEEDED", completed
+    repeated = get(
+        fx.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", fx.maya
+    )
+    assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+    if invoice_day.endswith("20"):
+        translated, presented = worlds.report_run(
+            reporting,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": "reporting",
+                "from_period_key": AUGUST,
+                "to_period_key": AUGUST,
+            },
+        )
+        assert (
+            next(
+                check
+                for check in translated["tie_out_results"]
+                if check["code"] == "TO_ROLLFORWARD_BALANCES"
+            )["result"]
+            == "PASS"
+        ), translated
+        assert all(
+            Decimal(row["other"]["amount"]) == 0
+            for row in presented
+            if row.get("contract_external_id")
+        ), presented

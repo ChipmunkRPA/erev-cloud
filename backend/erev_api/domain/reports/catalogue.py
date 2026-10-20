@@ -539,6 +539,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "unavailable source attribution refuses",
             "EVENT FX nets actual retained deltas by dated source before billing or revenue; "
             "source-backed reports replace synthetic settlement offsets",
+            "combined memo billing reads authorized same-version member layers; credit-memo "
+            "spot portions follow retained relief order with cumulative rounding",
+            "combined liability reclassifications bridge original layer carrying and retained "
+            "member presentation at each endpoint, plus cross-member memo source transfers; "
+            "each original computation group conserves zero and evidence is bound",
+            "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),

@@ -6,6 +6,29 @@
 
 
 
+## Combined-member credit-memo presentation — October 20, 2026
+
+- Functional billing now reads source layers across the report's authorized members of the
+  same immutable group version and entity. A credit memo can therefore price a relief whose
+  layer belongs to another member, retaining the real source owner and movement identities.
+- Added a combined-liability presentation bridge for in-range cross-member memos. It computes
+  each endpoint's original layer carrying versus the engine's member presentation, then adds
+  the known memo issuer/source transfers. Each original computation group must conserve zero.
+  The independently derived amounts appear as RECLASSIFICATIONS; no amount is inferred from
+  OTHER. Bound endpoint facts, movements and transfers are checked on rerun, including monthly
+  reporting-currency paths. Historical bindings without the bridge retain the previous path.
+- Fixed a separate false-PASS: unexplained OTHER on an individual contract now fails the
+  movement tie-out even when opposing contract errors cancel in the currency total. Migration
+  0195 and the IPE catalogue describe the expanded source scope, bridge and per-contract check.
+- Necessary checks passed: public two-member memo consuming another member's layer, same and
+  different historical rates, exact member closing/reclassification amounts, bound reruns,
+  reporting-currency monthly projection, 27 scoped path checks and lint/types. The differing
+  rate case closes at GBP 74,314.29 / 41,285.71 with GBP +714.29 / -714.29 reclassification;
+  every member has zero unexplained OTHER. No deployment.
+- Still open: general member reallocations without an in-range cross-member memo, more complex
+  carried EVENT corrections, recorded privacy/snapshot registry gaps and final accounting/
+  release acceptance. These cases do not establish every membership transition or readiness.
+
 ## Locked-period foreign invoice carry — October 20, 2026
 
 - The populated foreign lock witness now also follows the no-reopen path: an EUR 4,000
@@ -196,36 +219,6 @@
   command-computation evidence adapters, wiring attribution into rollforward presentation and
   acceptance for combined/late-carried cases. No report-completion or production-readiness
   claim; no deployment. Registry issues recorded in the preceding checkpoint remain open.
-
-## Retained close-pass calculation evidence — October 20, 2026
-
-- Found the underlying CLOSE-PASS-TRACE-1 gap: actual close-pass ledger lines have no contract
-  version/trace record. Latest contract traces cannot establish what an earlier pass posted.
-  Revision 0192 now retains each actual pass's typed input, explicit pass name, selected book
-  output, trace and selected line fields in encrypted storage, atomically with its sealed
-  posting. Group entry indexes distinguish pooled postings. Source reads check file, logical
-  input/output and trace hashes and the selected ledger line; historical absence stays absent.
-- Added immutable tenant-scoped links, file ownership/retention holds, privacy classification
-  and scenario regeneration rules. FX pass/idempotence, populated foreign public lock and
-  automatic netting reversal checks pass; evidence remains after recomputation. Mutation and
-  cross-tenant checks, 12 scoped file-registry/census checks, lint and scoped types pass.
-- Not complete: reporting must consume this evidence and reconstruct attributed paid history
-  for combined/late-carried liability FX; existing historical passes cannot be silently rebuilt.
-  A broader registry check also exposed pre-existing unclassified evidence_sample_file,
-  forecast_actuals_capture, scenario_refresh and forecast/import fields, plus stale snapshot
-  reference-count/excluded-column expectations. Those remain release work (four checks fail
-  after updating the regenerated-table census). No deployment or accounting acceptance.
-
-## Currency exports in close evidence packs — October 20, 2026
-
-- Close/re-lock packs now include functional and reporting CSVs for all six retained currency
-  snapshot kinds, alongside the existing transaction paths. Snapshot identities retain original
-  bundle hashes/counts and list each delivered view's path, hash, row count and control totals.
-  Each export uses its retained column schema and spreadsheet formula guard. Historical
-  single-view locks remain single-view; no current rates or live rebuilds are substituted.
-- Targeted archive checks cover actual snapshot production, legacy locks, manifest/hash/count
-  refusal and formula guards. Combined/late-carried liability FX and populated foreign two-lock
-  acceptance remain outstanding. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

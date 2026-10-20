@@ -391,3 +391,25 @@ def test_repeated_closing_fx_nets_before_touching_a_settled_layer() -> None:
     ]
     # The final adjustment is zero even if UUID order puts the reversal first.
     assert cbr._net_time_fx(entries) == ()
+
+
+def test_offsetting_member_errors_do_not_pass_the_aggregate_tie() -> None:
+    members = tuple(
+        cbr.ContractRollforward(
+            UUID(int=i),
+            f"C{i}",
+            None,
+            UUID(int=3),
+            "E",
+            "USD",
+            cbr.path(
+                {**NONE, LIABILITY: max(-value, D(0))},
+                (),
+                {**NONE, LIABILITY: max(value, D(0))},
+            ),
+        )
+        for i, value in ((1, D("5")), (2, D("-5")))
+    )
+    totals = {"USD": cbr.path({**NONE, LIABILITY: D(5)}, (), {**NONE, LIABILITY: D(5)})}
+    assert cbr.balances_tie(totals)["result"] == "PASS"
+    assert cbr.balances_tie(totals, members)["result"] == "FAIL"
