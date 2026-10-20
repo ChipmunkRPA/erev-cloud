@@ -275,18 +275,24 @@ function fixedValue(schema: Schema | undefined): string | null {
     : null;
 }
 
-/** The `p.<key>` value typed by the key's schema: arrays split on commas, booleans and integers. */
+function integerInput(raw: string): number | string {
+  const value = raw.trim();
+  const number = Number(value);
+  return /^-?\d+$/.test(value) && Number.isSafeInteger(number) ? number : raw;
+}
+
+/** The `p.<key>` value typed by the schema; invalid values remain invalid for API validation. */
 function typed(schema: Schema | undefined, raw: string): unknown {
   switch (schema?.type) {
     case "array": {
-      const items = raw.split(",").filter((item) => item !== "");
+      const items = raw.split(",").map(item => item.trim()).filter((item) => item !== "");
       const itemType = (schema.items as Schema | undefined)?.type;
-      return itemType === "integer" ? items.map((item) => Number.parseInt(item, 10)) : items;
+      return itemType === "integer" ? items.map(integerInput) : items;
     }
     case "boolean":
-      return raw === "true";
+      return raw === "true" ? true : raw === "false" ? false : raw;
     case "integer":
-      return Number.parseInt(raw, 10);
+      return integerInput(raw);
     default:
       return raw;
   }

@@ -5893,6 +5893,7 @@
   "reports.parameters.granularity.MONTH": "Month",
   "reports.parameters.granularity.QUARTER": "Quarter",
   "reports.parameters.granularity.YEAR": "Year",
+  "reports.parameters.listHelp": "Separate values with commas.",
   "reports.parameters.label": "Report parameters",
   "reports.parameters.measure": "Measure",
   "reports.parameters.measure.BY_STATE": "By state",

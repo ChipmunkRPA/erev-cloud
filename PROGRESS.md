@@ -6,6 +6,20 @@
 
 
 
+## Declared report parameter controls — October 19, 2026
+
+- Removed the fixed-toolbar-only limitation for ordinary scalar/list report parameters.
+  Declared strings, dates, integers, booleans, enums and arrays now receive controls after
+  the existing ordered fields. Entity/book/period/source controls remain in their context UI.
+  Contract-sample IDs, forecast references and close-comparison lock IDs can be entered on
+  the report page rather than requiring manually constructed p.* URL parameters.
+- New fields use declared titles or readable labels, required flags, date inputs, enum/boolean
+  choices and comma-separated list help. Lists trim separator whitespace. Invalid integers
+  and booleans are preserved for API rejection rather than silently converted/truncated.
+- Forty-five existing report-page checks and three focused parameter checks pass, plus
+  TypeScript/ESLint. Object-valued advanced filters and richer record pickers remain separate
+  UI work; broader reporting and accounting acceptance remain open. No deployment.
+
 ## Forecast run-record re-export — October 19, 2026
 
 - Original succeeded forecast records now offer Re-export saved forecast instead of an
@@ -233,20 +247,6 @@
 - Collector returns personal payloads for encrypted storage; no personal source data is placed
   in source-binding JSON. Encrypted retention/dependency links and public CHANGE/ACCESS
   lifecycle/UI remain next. No deployment or production-readiness claim.
-
-## Release provenance and access-role evidence — October 19, 2026
-
-- CHANGE source v2 now captures requesting-process release registry facts and all registrations
-  in the requested range, preserving recorded gates and explicitly distinguishing registered
-  facts from original build-manifest bytes and independent approval.
-- ACCESS source v3 now captures the complete role/permission matrix, including inactive roles,
-  at its selected instant. Missing historical definitions refuse. Capture/read require
-  tenant-wide evidence grants; a list of current entity IDs is not treated as that grant.
-- Both emit fixed JSON evidence alongside retained report CSV/IPE outputs. Retries do not
-  replace snapshots with current release/role values. v1 sources remain readable.
-- Actual CHANGE/ACCESS report-worker collection and 17 focused checks pass; Mypy/Ruff pass.
-- Still open: access-review evidence, parent job/storage, public CHANGE/ACCESS API/UI,
-  populated re-lock acceptance and the wider reporting backlog. No deployment.
 
 ## Outstanding release verification
 

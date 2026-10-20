@@ -18,7 +18,7 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import type { ReportDefinition } from "../../../lib/api/queries/reports";
 import { periodLabel } from "../../../lib/api/queries/tenant";
 import { formatDate, NO_VALUE } from "../../../lib/format";
-import { t } from "../../../lib/i18n/t";
+import { hasMessage, t } from "../../../lib/i18n/t";
 import { TextField } from "../../contracts/drawers/common";
 import { parameterKeys, type ReportContext } from "./specs";
 
@@ -53,11 +53,30 @@ function enumOf(definition: ReportDefinition, key: string): readonly string[] {
 }
 
 /** The toolbar fields of a definition in §5.6 order. */
+const CONTEXT_KEYS = new Set([
+  "entity_codes",
+  "book",
+  "period_key",
+  "period_lock_id",
+  "known_at",
+  "known_at_basis",
+]);
+function schemaOf(definition: ReportDefinition, key: string): Readonly<Record<string, unknown>> {
+  const properties = definition.parameters_schema.properties as
+    Record<string, Record<string, unknown>> | undefined;
+  return properties?.[key] ?? {};
+}
+
 export function toolbarKeys(definition: ReportDefinition): readonly string[] {
-  const keys = new Set(parameterKeys(definition));
-  return FIELD_ORDER.filter(
-    (key) => keys.has(key) && (key !== "mode" || definition.code.startsWith("extract_")),
+  const declared = parameterKeys(definition);
+  const ordered = FIELD_ORDER.filter((key) => declared.includes(key));
+  const additional = declared.filter(
+    (key) =>
+      !ordered.includes(key) &&
+      !CONTEXT_KEYS.has(key) &&
+      ["string", "integer", "boolean", "array"].includes(String(schemaOf(definition, key).type)),
   );
+  return [...ordered, ...additional];
 }
 
 /** A compact DS-CMP-21 select of the one-row toolbar (RV-08). */
@@ -181,11 +200,31 @@ export function ParametersToolbar({
     value: item.period.period_key,
     label: periodLabel(item.period),
   }));
-  const label = (key: string) => t(`reports.parameters.${key}`);
+  const label = (key: string) => {
+    const message = `reports.parameters.${key}`;
+    if (hasMessage(message)) return t(message);
+    const title = schemaOf(definition, key).title;
+    return typeof title === "string"
+      ? title
+      : key
+          .split("_")
+          .map((word, index) =>
+            word === "id"
+              ? "ID"
+              : word === "ids"
+                ? "IDs"
+                : index === 0
+                  ? word[0]?.toUpperCase() + word.slice(1)
+                  : word,
+          )
+          .join(" ");
+  };
   const choiceLabel = (key: string, value: string) =>
     key === "currency_view"
       ? t(`reports.parameters.currencyView.${value}`)
-      : t(`reports.parameters.${key}.${value}`);
+      : hasMessage(`reports.parameters.${key}.${value}`)
+        ? t(`reports.parameters.${key}.${value}`)
+        : value;
 
   const toolbar = (
     <div
@@ -294,13 +333,53 @@ export function ParametersToolbar({
                 disabled={disabled}
               />
             );
-          default:
+          default: {
+            const schema = schemaOf(definition, key);
+            const required =
+              Array.isArray(definition.parameters_schema.required) &&
+              definition.parameters_schema.required.includes(key);
+            if (schema.format === "date")
+              return (
+                <DateParameter
+                  key={`${key}:${value}`}
+                  name={`p-${key}`}
+                  label={label(key)}
+                  value={value}
+                  error={error}
+                  disabled={disabled}
+                  onChange={(next) => onChange(key, next)}
+                />
+              );
+            if (schema.type === "boolean" || enumOf(definition, key).length > 0) {
+              const options =
+                schema.type === "boolean"
+                  ? [
+                      { value: "true", label: t("common.grid.yes") },
+                      { value: "false", label: t("common.grid.no") },
+                    ]
+                  : enumOf(definition, key).map((item) => ({ value: item, label: item }));
+              return (
+                <ChoiceField
+                  key={key}
+                  name={`p-${key}`}
+                  label={label(key)}
+                  options={options}
+                  value={value || null}
+                  error={error}
+                  disabled={disabled}
+                  onChange={(next) => onChange(key, next)}
+                />
+              );
+            }
             return (
               <TextField
                 key={key}
                 name={`p-${key}`}
                 label={label(key)}
-                optional
+                optional={!required}
+                required={required}
+                help={schema.type === "array" ? t("reports.parameters.listHelp") : undefined}
+                inputMode={schema.type === "integer" ? "numeric" : "text"}
                 width="money"
                 value={value}
                 onChange={(next) => onChange(key, next)}
@@ -308,6 +387,7 @@ export function ParametersToolbar({
                 disabled={disabled}
               />
             );
+          }
         }
       })}
       {children}

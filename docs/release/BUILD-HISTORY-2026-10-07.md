@@ -8055,3 +8055,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   includes real memberships. Revoked export is refused; Mypy and Ruff pass.
 - This is the retained report section, not completed CHANGE/ACCESS packs. Release evidence,
   role matrix/access reviews, parent retention/API/UI remain next development work. No deployment.
+
+## Release provenance and access-role evidence — October 19, 2026
+
+- CHANGE source v2 now captures requesting-process release registry facts and all registrations
+  in the requested range, preserving recorded gates and explicitly distinguishing registered
+  facts from original build-manifest bytes and independent approval.
+- ACCESS source v3 now captures the complete role/permission matrix, including inactive roles,
+  at its selected instant. Missing historical definitions refuse. Capture/read require
+  tenant-wide evidence grants; a list of current entity IDs is not treated as that grant.
+- Both emit fixed JSON evidence alongside retained report CSV/IPE outputs. Retries do not
+  replace snapshots with current release/role values. v1 sources remain readable.
+- Actual CHANGE/ACCESS report-worker collection and 17 focused checks pass; Mypy/Ruff pass.
+- Still open: access-review evidence, parent job/storage, public CHANGE/ACCESS API/UI,
+  populated re-lock acceptance and the wider reporting backlog. No deployment.
