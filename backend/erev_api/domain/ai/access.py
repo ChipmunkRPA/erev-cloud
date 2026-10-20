@@ -48,7 +48,7 @@ def job_requester(
     context: JobContext,
     session: Session,
     *,
-    kind: Literal[JobKind.AI_TASK, JobKind.REPORT_RUN, JobKind.EVIDENCE_PACK],
+    kind: Literal[JobKind.AI_TASK, JobKind.REPORT_RUN, JobKind.EVIDENCE_PACK, JobKind.DEAL_PREVIEW],
 ) -> Principal:
     """Refresh a persisted attempt's active human initiator; callers must check source grants.
 

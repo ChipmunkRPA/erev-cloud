@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal API update (October 19): asynchronous POST /deal-previews and the DEAL_PREVIEW
+worker now retain real engine results. Scoped list/detail reads and fingerprint checks are
+implemented, with job-subject migration 0189. Scenario save, user-facing result projection
+and SF-18 remain unfinished. The end-to-end fixture is not the required Tamsin accounting
+acceptance or independent sign-off. Earlier notes describing absent worker/read APIs are history.
+
+
 Current deal retention update (October 19): an idempotent domain service retains canonical
 proposal/bundle/result evidence, engine release, reference pins and one run audit. It verifies
 existing hashes and rejects changed input under the same identity. Worker/request/read APIs,

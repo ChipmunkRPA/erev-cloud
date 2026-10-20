@@ -8383,3 +8383,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Eight focused selector/toolbar checks pass, covering older-page selection, retained IDs and
   permission gating, plus TypeScript/ESLint. Other report selectors, populated accounting
   acceptance and independent sign-off remain open. No deployment.
+
+## Close variance snapshot selection — October 19, 2026
+
+- Variance-between-closes parameters now choose Earlier close and Later close from authorized
+  history for the selected entity, book and period. Options show the recorded timestamp,
+  actor and approval number; only dataset-freezing LOCK records are offered, not REOPEN or
+  PERMANENT_LOCK. Both selectors share the existing period-history cache.
+- Explicit saved IDs remain intact outside the current context/list. Without a resolvable
+  period or config.read scope, the manual parameter remains and no history read is made.
+  Loading, empty and retry states are shown; the backend still validates source compatibility
+  and chronological ordering before executing the comparison.
+- Seven focused selector/toolbar checks pass with TypeScript/ESLint. Populated close-variance
+  acceptance, remaining report workflows and independent accounting sign-off are still open.
+  No deployment.

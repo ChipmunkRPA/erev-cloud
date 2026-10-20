@@ -10866,6 +10866,346 @@
         "title": "DaysToCloseOut",
         "type": "object"
       },
+      "DealInputIn": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "entity_code": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Entity Code",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DealLineIn"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_code",
+          "start_date",
+          "lines"
+        ],
+        "title": "DealInputIn",
+        "type": "object"
+      },
+      "DealLineIn": {
+        "additionalProperties": false,
+        "properties": {
+          "performing_entity_code": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Performing Entity Code"
+          },
+          "price": {
+            "$ref": "#/components/schemas/MoneyIn"
+          },
+          "product_code": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Product Code",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "string"
+          },
+          "term_months": {
+            "anyOf": [
+              {
+                "maximum": 1200.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Term Months"
+          }
+        },
+        "required": [
+          "product_code",
+          "quantity",
+          "price"
+        ],
+        "title": "DealLineIn",
+        "type": "object"
+      },
+      "DealPreviewCreateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/DealInputIn"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "DealPreviewCreateIn",
+        "type": "object"
+      },
+      "DealPreviewOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "engine_release_id": {
+            "format": "uuid",
+            "title": "Engine Release Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_sha256": {
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "pinned_refs": {
+            "additionalProperties": true,
+            "title": "Pinned Refs",
+            "type": "object"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/DealInputIn"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
+          "result_sha256": {
+            "title": "Result Sha256",
+            "type": "string"
+          },
+          "saved_contract_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Contract Id"
+          }
+        },
+        "required": [
+          "id",
+          "proposal",
+          "input_sha256",
+          "result_sha256",
+          "engine_release_id",
+          "saved_contract_id",
+          "created_at",
+          "result",
+          "pinned_refs"
+        ],
+        "title": "DealPreviewOut",
+        "type": "object"
+      },
+      "DealPreviewRequestedOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/ActorOut"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "preview_id": {
+            "format": "uuid",
+            "title": "Preview Id",
+            "type": "string"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProblemOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "$ref": "#/components/schemas/JobProgressOut"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "progress",
+          "result",
+          "problem",
+          "created_by",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "preview_id"
+        ],
+        "title": "DealPreviewRequestedOut",
+        "type": "object"
+      },
+      "DealPreviewSummaryOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "engine_release_id": {
+            "format": "uuid",
+            "title": "Engine Release Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_sha256": {
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/DealInputIn"
+          },
+          "result_sha256": {
+            "title": "Result Sha256",
+            "type": "string"
+          },
+          "saved_contract_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Contract Id"
+          }
+        },
+        "required": [
+          "id",
+          "proposal",
+          "input_sha256",
+          "result_sha256",
+          "engine_release_id",
+          "saved_contract_id",
+          "created_at"
+        ],
+        "title": "DealPreviewSummaryOut",
+        "type": "object"
+      },
       "DerivedBlockerCode": {
         "description": "E-122 ``derived_blocker_code`` (04 §3.4; API only).",
         "enum": [
@@ -21642,6 +21982,34 @@
           "next_cursor"
         ],
         "title": "ListOut[CustomerOut]",
+        "type": "object"
+      },
+      "ListOut_DealPreviewSummaryOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DealPreviewSummaryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ListOut[DealPreviewSummaryOut]",
         "type": "object"
       },
       "ListOut_DimensionOut_": {
@@ -60890,6 +61258,439 @@
           "API-R-50 Dashboard"
         ],
         "x-erev-permission": "contract.read"
+      }
+    },
+    "/api/v1/deal-previews": {
+      "get": {
+        "operationId": "deal_previews_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Count",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOut_DealPreviewSummaryOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition, idempotency-in-progress"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          }
+        },
+        "summary": "Listing",
+        "tags": [
+          "API-R-46 Scenarios and forecasts"
+        ],
+        "x-erev-permission": "scenario.use"
+      },
+      "post": {
+        "operationId": "deal_previews_create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DealPreviewCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealPreviewRequestedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition, idempotency-in-progress"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "API-R-46 Scenarios and forecasts"
+        ],
+        "x-erev-permission": "scenario.use"
+      }
+    },
+    "/api/v1/deal-previews/{preview_id}": {
+      "get": {
+        "operationId": "deal_previews_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Preview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition, idempotency-in-progress"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          }
+        },
+        "summary": "Get",
+        "tags": [
+          "API-R-46 Scenarios and forecasts"
+        ],
+        "x-erev-permission": "scenario.use"
       }
     },
     "/api/v1/dimensions": {

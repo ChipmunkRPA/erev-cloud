@@ -31,9 +31,7 @@ _SUBJECT_COLUMN: Final = 1
 _JOB_COLUMN: Final = 2
 _OUTBOX_COLUMN: Final = 3
 
-PENDING_JOB_HANDLERS: tuple[tuple[str, str], ...] = (
-    ("DEAL_PREVIEW", "FCS"),
-)
+PENDING_JOB_HANDLERS: tuple[tuple[str, str], ...] = ()
 
 
 def _cells(line: str) -> list[str]:
@@ -160,10 +158,11 @@ def test_dg_arc_08_job_registries() -> None:
     assert findings(pending=(*PENDING_JOB_HANDLERS, ("AI_TASK", "AIX"))) == [
         "AI_TASK is registered and pending"
     ]
-    assert findings(pending=(*PENDING_JOB_HANDLERS, ("DEAL_PREVIEW", "FCS"))) == [
-        "PENDING_JOB_HANDLERS repeats a literal"
-    ]
-    assert findings(pending=(("DEAL_PREVIEW", "PLF"), *PENDING_JOB_HANDLERS[1:])) == [
+    assert findings(
+        handlers=handlers - {"DEAL_PREVIEW"},
+        pending=(("DEAL_PREVIEW", "FCS"), ("DEAL_PREVIEW", "FCS")),
+    ) == ["PENDING_JOB_HANDLERS repeats a literal"]
+    assert findings(handlers=handlers - {"DEAL_PREVIEW"}, pending=(("DEAL_PREVIEW", "PLF"),)) == [
         "DEAL_PREVIEW is built in FCS, not PLF (PHASES §5.3)"
     ]
 

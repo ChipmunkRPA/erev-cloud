@@ -6,6 +6,24 @@
 
 
 
+## Asynchronous deal preview API and worker — October 19, 2026
+
+- Added POST /deal-previews with idempotent command admission and a reserved preview identity;
+  registered DEAL_PREVIEW worker execution. It reloads the active human initiator and current
+  grants, uses fenced units of work, checks cancellation and retains the computed evidence.
+  Already-retained previews refuse later cancellation; job results carry identity/hash/link only.
+- Added scoped GET list and detail. Entity authorization filters before pagination/counting;
+  lists return proposal metadata without engine traces, details verify input/result hashes
+  and return retained result/pins without exposing the internal input bundle. Both use no-store.
+- Migration 0189 adds deal_preview to the job subject constraint. Downgrade refuses while such
+  jobs remain. Removed the pending-handler entry and retained registry negative-case checks.
+- Real API/worker/database journey passes duplicate-request identity, successful USD 120000.00
+  allocation, one retained preview, zero production contracts, summary/detail reads and entity
+  scope filtering. Five registry checks, Python lint/types and OpenAPI generation pass.
+- Scenario save, user-facing allocation/range/indicator projection and SF-18 UI still need
+  implementation. Tamsin accounting acceptance, broader release verification and independent
+  sign-off remain open. No deployment.
+
 ## Immutable deal preview retention — October 19, 2026
 
 - Added retain service under a tenant/preview advisory lock. Every attempt rechecks scenario
@@ -224,20 +242,6 @@
   so no speculative calculation rewrite was made. Disclosure lock-time orchestration was
   already implemented (see archived publication/frozen-execution entries); the earlier status
   here was stale. Populated accounting acceptance and independent sign-off remain open.
-
-## Close variance snapshot selection — October 19, 2026
-
-- Variance-between-closes parameters now choose Earlier close and Later close from authorized
-  history for the selected entity, book and period. Options show the recorded timestamp,
-  actor and approval number; only dataset-freezing LOCK records are offered, not REOPEN or
-  PERMANENT_LOCK. Both selectors share the existing period-history cache.
-- Explicit saved IDs remain intact outside the current context/list. Without a resolvable
-  period or config.read scope, the manual parameter remains and no history read is made.
-  Loading, empty and retry states are shown; the backend still validates source compatibility
-  and chronological ordering before executing the comparison.
-- Seven focused selector/toolbar checks pass with TypeScript/ESLint. Populated close-variance
-  acceptance, remaining report workflows and independent accounting sign-off are still open.
-  No deployment.
 
 ## Outstanding release verification
 

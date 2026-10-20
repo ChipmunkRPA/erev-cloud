@@ -1,12 +1,13 @@
 """Deal-desk request contracts; compute/save orchestration is implemented separately."""
 
-from datetime import date
-from typing import Self
+from datetime import date, datetime
+from typing import Any, Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from erev_api.events.payloads import NonNegativeMoney, PositiveDecimal
+from erev_api.schemas.common import JobOut
 
 
 class DealLineIn(BaseModel):
@@ -53,3 +54,22 @@ class DealPreviewCreateIn(BaseModel):
 class DealPreviewSaveIn(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     contract_external_id: str = Field(min_length=1, max_length=128)
+
+
+class DealPreviewRequestedOut(JobOut):
+    preview_id: UUID
+
+
+class DealPreviewSummaryOut(BaseModel):
+    id: UUID
+    proposal: DealInputIn
+    input_sha256: str
+    result_sha256: str
+    engine_release_id: UUID
+    saved_contract_id: UUID | None
+    created_at: datetime
+
+
+class DealPreviewOut(DealPreviewSummaryOut):
+    result: dict[str, Any]
+    pinned_refs: dict[str, Any]

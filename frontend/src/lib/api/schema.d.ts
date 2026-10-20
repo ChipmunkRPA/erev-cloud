@@ -2175,6 +2175,41 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/deal-previews": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Listing */
+    get: operations["deal_previews_list"];
+    put?: never;
+    /** Create */
+    post: operations["deal_previews_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/deal-previews/{preview_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get */
+    get: operations["deal_previews_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/dimensions": {
     parameters: {
       query?: never;
@@ -12495,6 +12530,126 @@ export interface components {
       /** Period Key */
       period_key: string;
     };
+    /** DealInputIn */
+    DealInputIn: {
+      /** Customer Id */
+      customer_id?: string | null;
+      /** Customer Name */
+      customer_name?: string | null;
+      /** Entity Code */
+      entity_code: string;
+      /** Lines */
+      lines: components["schemas"]["DealLineIn"][];
+      /**
+       * Start Date
+       * Format: date
+       */
+      start_date: string;
+    };
+    /** DealLineIn */
+    DealLineIn: {
+      /** Performing Entity Code */
+      performing_entity_code?: string | null;
+      price: components["schemas"]["MoneyIn"];
+      /** Product Code */
+      product_code: string;
+      /** Quantity */
+      quantity: string;
+      /** Term Months */
+      term_months?: number | null;
+    };
+    /** DealPreviewCreateIn */
+    DealPreviewCreateIn: {
+      input: components["schemas"]["DealInputIn"];
+    };
+    /** DealPreviewOut */
+    DealPreviewOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Engine Release Id
+       * Format: uuid
+       */
+      engine_release_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Input Sha256 */
+      input_sha256: string;
+      /** Pinned Refs */
+      pinned_refs: {
+        [key: string]: unknown;
+      };
+      proposal: components["schemas"]["DealInputIn"];
+      /** Result */
+      result: {
+        [key: string]: unknown;
+      };
+      /** Result Sha256 */
+      result_sha256: string;
+      /** Saved Contract Id */
+      saved_contract_id: string | null;
+    };
+    /** DealPreviewRequestedOut */
+    DealPreviewRequestedOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /** Finished At */
+      finished_at: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["JobKind"];
+      /** Mode */
+      mode?: string | null;
+      /**
+       * Preview Id
+       * Format: uuid
+       */
+      preview_id: string;
+      problem: components["schemas"]["ProblemOut"] | null;
+      progress: components["schemas"]["JobProgressOut"];
+      result: components["schemas"]["JobResultOut"] | null;
+      /** Started At */
+      started_at: string | null;
+      state: components["schemas"]["JobState"];
+    };
+    /** DealPreviewSummaryOut */
+    DealPreviewSummaryOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Engine Release Id
+       * Format: uuid
+       */
+      engine_release_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Input Sha256 */
+      input_sha256: string;
+      proposal: components["schemas"]["DealInputIn"];
+      /** Result Sha256 */
+      result_sha256: string;
+      /** Saved Contract Id */
+      saved_contract_id: string | null;
+    };
     /**
      * DerivedBlockerCode
      * @description E-122 ``derived_blocker_code`` (04 §3.4; API only).
@@ -16603,6 +16758,13 @@ export interface components {
     ListOut_CustomerOut_: {
       /** Items */
       items: components["schemas"]["CustomerOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ListOut[DealPreviewSummaryOut] */
+    ListOut_DealPreviewSummaryOut_: {
+      /** Items */
+      items: components["schemas"]["DealPreviewSummaryOut"][];
       /** Next Cursor */
       next_cursor: string | null;
     };
@@ -33717,6 +33879,261 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  deal_previews_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_DealPreviewSummaryOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  deal_previews_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DealPreviewCreateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DealPreviewRequestedOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  deal_previews_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        preview_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DealPreviewOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
       422: {
         headers: {
           [name: string]: unknown;

@@ -6592,3 +6592,80 @@ def test_deal_preview_bundle_leaves_no_contract_or_audit(
         assert before == [
             uow.session.scalar(select(func.count()).select_from(table)) for table in tables
         ]
+
+
+def test_deal_preview_api_worker_retains_readable_result(world: World) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import deal_preview, job
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+    from support.http import call
+    from support.principals import cookie_headers
+
+    headers = cookie_headers(world.marcus.token, world.marcus.csrf_token)
+    body = {
+        "input": {
+            "customer_id": str(world.customer_id),
+            "entity_code": "AVM-US",
+            "start_date": "2026-01-01",
+            "lines": [
+                {
+                    "product_code": PLATFORM,
+                    "quantity": "1",
+                    "term_months": 12,
+                    "price": {"amount": "120000.00", "currency": "USD"},
+                }
+            ],
+        }
+    }
+    requested = call(world.app, "POST", "/api/v1/deal-previews", headers=headers, json=body)
+    assert requested.status_code == 202, requested.text
+    repeated = call(world.app, "POST", "/api/v1/deal-previews", headers=headers, json=body)
+    assert repeated.json() == requested.json(), repeated.text
+    identity = UUID(requested.json()["preview_id"])
+    job_id = UUID(requested.json()["id"])
+    with world.place.uow() as uow:
+        task_id = uow.session.scalar(select(job.c.procrastinate_job_id).where(job.c.id == job_id))
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"), {"id": task_id}
+        )
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+        uow.commit()
+    run_job(job_id, world.place.tenant_id, attempt=1, runtime=runtime)
+    with world.place.uow() as uow:
+        finished = uow.session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        assert finished["state"] == "SUCCEEDED", finished["problem"]
+        assert uow.session.scalar(select(func.count()).select_from(deal_preview)) == 1
+        assert uow.session.scalar(select(func.count()).select_from(contract)) == 0
+    detail = call(world.app, "GET", f"/api/v1/deal-previews/{identity}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    from erev_api.schemas.deal_previews import DealInputIn
+
+    assert detail.json()["proposal"] == DealInputIn.model_validate(body["input"]).model_dump(
+        mode="json"
+    )
+    assert "input" not in detail.json()
+    assert (
+        detail.json()["result"]["books"][0]["obligation_versions"][0]["columns"]["allocated_amount"]
+        == 12000000
+    )
+    listing = call(world.app, "GET", "/api/v1/deal-previews?count=true", headers=headers)
+    assert listing.status_code == 200, listing.text
+    assert listing.headers["X-Erev-Total-Count"] == "1"
+    assert listing.json()["items"][0]["id"] == str(identity)
+    assert "result" not in listing.json()["items"][0]
+
+    from erev_api.api.v1.deal_previews import visible
+
+    restricted = replace(
+        world.place.principal,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            "scenario.use": (UUID("00000000-0000-0000-0000-000000000001"),),
+        },
+    )
+    with world.place.uow(restricted) as uow:
+        assert uow.session.execute(visible(uow.ctx, detail=True)).mappings().all() == []
