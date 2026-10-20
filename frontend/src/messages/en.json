@@ -7786,7 +7786,7 @@
   "deal.amount": "Amount",
   "deal.noSchedule": "No revenue is scheduled yet. Review the awaiting-trigger amount and the product recognition conditions.",
   "deal.noResults": "No allocation results are available for this preview.",
-  "deal.notice": "Preview only. No contract is created. Calculation evidence is retained.",
+  "deal.notice": "Running a preview does not create a contract. Calculation evidence is retained.",
   "deal.invalidLink": "This preview link is invalid.",
   "deal.loadError": "Could not load preview data.",
   "deal.retry": "Retry",
@@ -7828,5 +7828,12 @@
   "deal.next": "Next periods",
   "deal.firstPage": "This is the first page.",
   "deal.lastPage": "This is the last page.",
-  "deal.page": "Page {current} of {total}"
+  "deal.page": "Page {current} of {total}",
+  "deal.saved": "This preview has been saved as a scenario draft contract.",
+  "deal.openDraft": "Open draft contract",
+  "deal.saveTitle": "Save as scenario draft",
+  "deal.saveExplanation": "Create a draft in this scenario using current configuration. Its calculated amounts may differ from this retained preview. Saving does not activate the contract or post revenue.",
+  "deal.externalId": "Contract external ID",
+  "deal.externalIdRequired": "Enter a contract external ID.",
+  "deal.saveNetworkError": "Could not confirm the save. Retry with the same external ID to recover the result."
 }

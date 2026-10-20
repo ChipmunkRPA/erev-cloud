@@ -16,6 +16,7 @@ import { entitiesKey, fetchActiveEntities } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import { t } from "../../lib/i18n/t";
 import { DealResults } from "./DealResults";
+import { SaveDealPreview } from "./SaveDealPreview";
 
 const text = (key: string) => t(`deal.${key}`);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -58,6 +59,7 @@ function Preview() {
   const [lines, setLines] = useState([0]);
   const nextLine = useRef(1);
   const [confirm, setConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [networkError, setNetworkError] = useState(false);
   const command = useCommand({ method: "POST", path: "/api/v1/deal-previews" });
   const inFlight = useRef(false);
@@ -275,10 +277,13 @@ function Preview() {
         />
       )}
       {!invalidLink && preview.data && <DealResults preview={preview.data} />}
+      {!invalidLink && preview.data && (
+        <SaveDealPreview key={preview.data.id} preview={preview.data} onBusy={setSaving} />
+      )}
       {locked && (
         <Button
           variant="secondary"
-          disabledReason={running && !invalidLink ? text("wait") : undefined}
+          disabledReason={saving || (running && !invalidLink) ? text("wait") : undefined}
           onClick={() => setConfirm(true)}
         >
           {text("restart")}

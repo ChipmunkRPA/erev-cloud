@@ -6,6 +6,21 @@
 
 
 
+## Scenario draft save UI — October 19, 2026
+
+- Preview detail now advertises save_allowed only for an unsaved preview in an active registered
+  scenario where the caller holds entity-scoped contract.create. The save command still locks
+  and rechecks the scenario and preview; the read flag is not an authorization token.
+- SF-18 exposes external-ID entry and Save as scenario draft only when eligible. Keeps input
+  through network errors, uses the common idempotent command flow, invalidates preview/contracts,
+  and presents the saved draft link after save or on reopening. Start over is blocked during save.
+  Copy distinguishes current-reference draft calculation from retained preview evidence.
+- Six focused frontend tests and two real scenario/production API journeys pass, including
+  eligibility before/after save and production refusal. Python/TypeScript checks and lint pass.
+- Product picker and real Tamsin/browser acceptance remain open; independent accounting sign-off
+  is not obtained. Other report acceptance/implementation gaps remain under the broader goal.
+  No deployment; changes go directly to main.
+
 ## Scenario-only deal preview save API — October 19, 2026
 
 - Added POST /deal-previews/{id}/save. Requires an ACTIVE registered scenario whose current
@@ -224,19 +239,6 @@
   checks also pass. Python lint/types pass. Disposable database stopped after verification.
 - Refresh UI still needs input selection and refresh-stage tracking; event editing and wider
   accounting acceptance remain open. No deployment or independent-signoff claim.
-
-## Scenario archive and status filtering — October 19, 2026
-
-- Active scenario records now offer an explicit archive confirmation describing read-only
-  retained evidence. The POST carries the displayed row version; success refreshes the
-  scenario cache. Backend creator/Controller authorization and idle-job checks remain
-  authoritative. Refusals, version conflicts and lost responses remain visible without
-  claiming success. Archived scenarios keep their workspace-read entry.
-- Added URL-backed ACTIVE/ARCHIVED status filtering through the server's list filter before
-  pagination. Creation still invalidates every scenario-list variant.
-- Six focused creation/list/archive checks pass plus frontend type/lint checks. Refresh needs
-  a published-input selector from the source scenario, and event-editing UI remains open.
-  Populated accounting acceptance and independent sign-off remain outstanding. No deployment.
 
 ## Outstanding release verification
 

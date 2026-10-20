@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current scenario save UI update (October 19): SF-18 now exposes server-qualified save eligibility,
+external-ID entry, retry with retained input, and a link to the saved draft. Reopening a saved
+preview keeps the link and does not offer another save. Real scenario and production journeys
+verify eligibility changes and refusal; the write command independently rechecks authorization.
+Product picker, real Tamsin/browser acceptance, other report gaps and independent sign-off remain
+open. Earlier statements that the save button is absent are historical. No deployment.
+
 Current deal save update (October 19): scenario-only POST /deal-previews/{id}/save now creates
 one normal DRAFT contract from verified preview evidence, with current contract permissions,
 configuration validation, suggestions and holds. It requires an active registered scenario and

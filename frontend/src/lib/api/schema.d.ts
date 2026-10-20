@@ -12651,6 +12651,8 @@ export interface components {
       };
       /** Result Sha256 */
       result_sha256: string;
+      /** Save Allowed */
+      save_allowed: boolean;
       /** Saved Contract Id */
       saved_contract_id: string | null;
     };

@@ -8464,3 +8464,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Eighteen scenario/sandbox checks and eight scenario/forecast checks pass (three overlap),
   plus frontend TypeScript/ESLint. Refresh/event editing, archive UI, populated forecast
   accounting acceptance and independent sign-off remain open. No deployment.
+
+## Scenario archive and status filtering — October 19, 2026
+
+- Active scenario records now offer an explicit archive confirmation describing read-only
+  retained evidence. The POST carries the displayed row version; success refreshes the
+  scenario cache. Backend creator/Controller authorization and idle-job checks remain
+  authoritative. Refusals, version conflicts and lost responses remain visible without
+  claiming success. Archived scenarios keep their workspace-read entry.
+- Added URL-backed ACTIVE/ARCHIVED status filtering through the server's list filter before
+  pagination. Creation still invalidates every scenario-list variant.
+- Six focused creation/list/archive checks pass plus frontend type/lint checks. Refresh needs
+  a published-input selector from the source scenario, and event-editing UI remains open.
+  Populated accounting acceptance and independent sign-off remain outstanding. No deployment.

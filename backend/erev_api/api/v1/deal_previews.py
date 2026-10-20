@@ -62,7 +62,12 @@ def visible(ctx: RequestContext, *, detail: bool = False) -> Select[Any]:
         deal_preview.c.created_at,
     ]
     if detail:
-        columns += [deal_preview.c.input, deal_preview.c.result, deal_preview.c.pinned_refs]
+        columns += [
+            deal_preview.c.input,
+            deal_preview.c.result,
+            deal_preview.c.pinned_refs,
+            legal_entity.c.id.label("entity_id"),
+        ]
     statement = (
         select(*columns)
         .join(
@@ -140,6 +145,17 @@ def get(preview_id: UUID, response: Response, ctx: Reader) -> DealPreviewOut:
             .mappings()
             .one_or_none()
         )
+        create_scope = ctx.principal.permission_scopes.get("contract.create")
+        save_allowed = (
+            row is not None
+            and row["saved_contract_id"] is None
+            and "contract.create" in ctx.principal.permissions
+            and (
+                create_scope == "*"
+                or str(row["entity_id"]) in {str(value) for value in create_scope or ()}
+            )
+            and deal_save.active_scenario(session, ctx.principal.db_context)
+        )
     if row is None:
         raise Problem("not-found")
     if (
@@ -149,7 +165,11 @@ def get(preview_id: UUID, response: Response, ctx: Reader) -> DealPreviewOut:
         raise Problem("precondition-failed", "The retained preview evidence failed verification.")
     response.headers["Cache-Control"] = "no-store"
     return DealPreviewOut.model_validate(
-        {**row, "presentation": deal_results.project(row["input"], row["result"])}
+        {
+            **row,
+            "save_allowed": save_allowed,
+            "presentation": deal_results.project(row["input"], row["result"]),
+        }
     )
 
 

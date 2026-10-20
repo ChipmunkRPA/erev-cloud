@@ -9,6 +9,7 @@ it("shows the saved allocation and explains revenue awaiting a trigger without i
   const money = { amount: "90071992547409.01", currency: "USD" };
   const preview: DealPreview = {
     id: "preview",
+    save_allowed: false,
     created_at: "2026-10-19",
     engine_release_id: "release",
     saved_contract_id: null,

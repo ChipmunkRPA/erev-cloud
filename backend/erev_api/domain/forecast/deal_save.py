@@ -4,6 +4,7 @@ from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 from erev_api.db.session import DbContext, set_tenant_context
 from erev_api.db.tables import deal_preview, scenario, tenant
@@ -15,9 +16,8 @@ from erev_api.schemas.deal_previews import DealInputIn
 from erev_api.uow import UnitOfWork
 
 
-def _active_scenario(uow: UnitOfWork) -> None:
-    context = uow.principal.db_context
-    parent = uow.session.execute(
+def active_scenario(session: Session, context: DbContext, *, lock: bool = False) -> bool:
+    parent = session.execute(
         select(tenant.c.source_tenant_id).where(
             tenant.c.id == context.tenant_id,
             tenant.c.kind == "sandbox",
@@ -27,22 +27,25 @@ def _active_scenario(uow: UnitOfWork) -> None:
     found = None
     if parent is not None:
         set_tenant_context(
-            uow.session, DbContext(tenant_id=parent, user_id=context.user_id, entity_scope="*")
+            session, DbContext(tenant_id=parent, user_id=context.user_id, entity_scope="*")
         )
         try:
-            # Hold the current scenario pointer until booking commits, excluding refresh/archive.
-            found = uow.session.scalar(
-                select(scenario.c.id)
-                .where(
-                    scenario.c.tenant_id == parent,
-                    scenario.c.scenario_tenant_id == context.tenant_id,
-                    scenario.c.status == "ACTIVE",
-                )
-                .with_for_update(read=True)
+            statement = select(scenario.c.id).where(
+                scenario.c.tenant_id == parent,
+                scenario.c.scenario_tenant_id == context.tenant_id,
+                scenario.c.status == "ACTIVE",
             )
+            # Save holds the pointer through commit; a read only advertises current eligibility.
+            if lock:
+                statement = statement.with_for_update(read=True)
+            found = session.scalar(statement)
         finally:
-            set_tenant_context(uow.session, context)
-    if found is None:
+            set_tenant_context(session, context)
+    return found is not None
+
+
+def _active_scenario(uow: UnitOfWork) -> None:
+    if not active_scenario(uow.session, uow.principal.db_context, lock=True):
         raise Problem(
             "invalid-transition",
             "A preview can only be saved in its active registered scenario.",

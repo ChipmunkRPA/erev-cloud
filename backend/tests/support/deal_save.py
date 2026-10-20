@@ -40,6 +40,9 @@ def exercise_save(world: Any, actor: Any) -> None:
     path = f"/api/v1/deal-previews/{preview_id}/save"
     body = {"contract_external_id": "DEAL-SAVED-001"}
     headers = cookie_headers(actor.token, actor.csrf_token)
+    detail = call(world.app, "GET", f"/api/v1/deal-previews/{preview_id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["save_allowed"] is True
     saved = call(world.app, "POST", path, headers=headers, json=body)
     assert saved.status_code == 201, saved.text
     repeated = call(world.app, "POST", path, headers=headers, json=body)
@@ -48,6 +51,9 @@ def exercise_save(world: Any, actor: Any) -> None:
         world.app, "POST", path, headers=cookie_headers(actor.token, actor.csrf_token), json=body
     )
     assert refused.status_code == 409, refused.text
+    detail = call(world.app, "GET", f"/api/v1/deal-previews/{preview_id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["save_allowed"] is False
     with world.place.uow() as uow:
         saved_id = UUID(saved.json()["id"])
         assert (

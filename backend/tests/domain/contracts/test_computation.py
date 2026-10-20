@@ -6652,6 +6652,7 @@ def test_deal_preview_api_worker_retains_readable_result(world: World) -> None:
         mode="json"
     )
     assert "input" not in detail.json()
+    assert detail.json()["save_allowed"] is False
     assert (
         detail.json()["result"]["books"][0]["obligation_versions"][0]["columns"]["allocated_amount"]
         == 12000000

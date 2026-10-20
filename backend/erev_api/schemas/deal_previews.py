@@ -108,6 +108,7 @@ class DealBookOut(BaseModel):
 
 
 class DealPreviewOut(DealPreviewSummaryOut):
+    save_allowed: bool
     presentation: list[DealBookOut]
     result: dict[str, Any]
     pinned_refs: dict[str, Any]

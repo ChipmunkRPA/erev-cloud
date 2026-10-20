@@ -11193,6 +11193,10 @@
             "title": "Result Sha256",
             "type": "string"
           },
+          "save_allowed": {
+            "title": "Save Allowed",
+            "type": "boolean"
+          },
           "saved_contract_id": {
             "anyOf": [
               {
@@ -11214,6 +11218,7 @@
           "engine_release_id",
           "saved_contract_id",
           "created_at",
+          "save_allowed",
           "presentation",
           "result",
           "pinned_refs"
