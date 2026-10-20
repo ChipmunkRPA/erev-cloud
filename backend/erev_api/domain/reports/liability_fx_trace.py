@@ -11,10 +11,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
+from fractions import Fraction
 from typing import Any
 from uuid import UUID
 
-from erev_engine.trace import Trace
+from erev_engine.formulas import FORMULAS
+from erev_engine.trace import SourceRef, Trace, TraceNode
 
 
 class InvalidLiabilityTrace(ValueError):
@@ -51,6 +53,36 @@ class Target:
         for item in self.sources:
             result[item.contract_id] = result.get(item.contract_id, Decimal(0)) + item.amount
         return result
+
+
+def _zero_settlement(node: TraceNode) -> bool:
+    """S12 omits zero movement rows but retains the settlement difference node.
+
+    Verify that specific formula from its original rate/portion inputs. Never
+    discard a zero cumulative sum, which can contain offsetting owner movements.
+    """
+    if not (
+        node.formula_id == "fx.settlement.spot.v1"
+        and node.measure == "fx_layer_remeasured"
+        and node.params.get("output") == "DIFFERENCE"
+        and Decimal(node.value) == 0
+    ):
+        return False
+    try:
+        inputs = []
+        for source in node.inputs:
+            if not isinstance(source, SourceRef) or source.ref_type != "fx_rate":
+                raise ValueError("Settlement rate source is not retained.")
+            if source.detail.get("quote") != node.currency:
+                raise ValueError("Settlement rate currency differs from the target.")
+            inputs.append(Fraction(source.detail["value"]))
+        if FORMULAS[node.formula_id](inputs, node.params) != 0:
+            raise ValueError("Settlement formula does not reproduce zero.")
+    except (KeyError, ValueError, ZeroDivisionError) as error:
+        raise InvalidLiabilityTrace(
+            "Zero settlement source failed formula verification."
+        ) from error
+    return True
 
 
 def project(
@@ -106,10 +138,12 @@ def project(
             ):
                 raise InvalidLiabilityTrace("Liability movement differs from its retained trace.")
             result = {key: amount}
+        elif _zero_settlement(node):
+            result = {}
         else:
             if node.formula_id not in {"post.role_target.v1", "fx.gain_loss.sum.v1"}:
                 raise InvalidLiabilityTrace(
-                    "Liability target has an unattributed calculation source."
+                    f"Liability target has an unattributed calculation source ({node.formula_id})."
                 )
             # Split targets need their explicit apportionment semantics; treating
             # them as an ordinary signed sum would silently change ownership.

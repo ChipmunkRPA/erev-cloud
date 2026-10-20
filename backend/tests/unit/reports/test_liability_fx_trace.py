@@ -175,3 +175,47 @@ def test_mixed_control_target_keeps_asset_and_liability_sources_separate() -> No
         (UUID(int=1), "CONTRACT_LIABILITY"): D("-10"),
         (UUID(int=2), "CONTRACT_ASSET"): D("4"),
     }
+
+
+@pytest.mark.parametrize("rate", ["1.1", "1.2"])
+def test_zero_settlement_without_movement_row_requires_formula_verification(rate: str) -> None:
+    from erev_api.domain.reports.liability_fx_trace import project
+
+    settlement = TraceNode(
+        "settlement",
+        "fx_layer_remeasured",
+        "0.00",
+        "USD",
+        "fx.settlement.spot.v1",
+        (SourceRef("fx_rate", "spot", {"value": rate, "quote": "USD"}),),
+        {
+            "output": "DIFFERENCE",
+            "amount_txn": "400000",
+            "open_before": "1000000",
+            "carrying_before": "1100000",
+            "minor_unit": "2",
+            "txn_minor_unit": "2",
+            "rate_input": "true",
+            "rate": "11/10" if rate == "1.1" else "6/5",
+        },
+        "0",
+        "fx.settlement.spot",
+    )
+    target = TraceNode(
+        "target",
+        "posting_target",
+        "0.00",
+        "USD",
+        "post.role_target.v1",
+        ("settlement",),
+        {"signs": "1"},
+        "0",
+        "post.role_target",
+    )
+    trace = Trace(1, "test", (settlement, target), {})
+    if rate == "1.1":
+        result = project(trace, "target", (), currency="USD")
+        assert result.amount == 0 and result.sources == ()
+    else:
+        with pytest.raises(InvalidLiabilityTrace, match="formula verification"):
+            project(trace, "target", (), currency="USD")

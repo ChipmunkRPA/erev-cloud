@@ -6,6 +6,27 @@
 
 
 
+## Foreign lock-to-lock business attribution — October 20, 2026
+
+- Difference replay now holds operational period states constant after verifying both original
+  computations and frozen endpoints. A public reopen no longer blocks late-event attribution
+  as an unsupported entity change. Entity, currency, book population and calendar dates remain
+  strict; the evidence records entities.periods.states normalization and the final replay must
+  still reproduce the later frozen money, including posted revenue.
+- Control FX projection verifies the retained settlement formula when S12 emits a zero
+  difference node without a movement row. It does not discard zero cumulative sums, so
+  offsetting owners remain visible; altered rate evidence refuses.
+- Necessary verification passed: actual foreign close/export/acknowledgement/lock, two-controller
+  public reopen, EUR 4,000 late invoice, actual second close/lock, and public variance jobs in
+  transaction, functional and reporting currency. Each attributes the asset reduction solely to
+  LATE_EVENT (EUR 4,000 / USD 4,420 / EUR 4,000) and retains normalization evidence. Reviewed
+  reconciliation rows are fixtures, not independent accounting approval. Scoped unit checks,
+  lint and types pass. No deployment.
+- Still open: credit-memo FX difference attribution (JET-10c has a retained difference trace
+  but no remeasurement movement leaf), end-to-end late-carried public acceptance without
+  reopening, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
+  This populated foreign two-lock witness does not establish every FX or membership scenario.
+
 ## Exact paid-origin window for carried FX — October 20, 2026
 
 - TIME FX historical attribution now selects the target period plus its immediately preceding
@@ -204,24 +225,6 @@
   late-carried liability FX, other documented reporting gaps and final release verification.
   Older locks missing required currency/rate evidence cannot be silently reconstructed.
   No deployment or independent accounting sign-off; production readiness remains unproven.
-
-## Retained reporting-rate projection — October 20, 2026
-
-- Added a reporting-rate basis read only from verified WATERFALL, CONTRACT_BALANCES and RPO
-  currency bundles. The basis binds source hashes and selected rate identities; balances must
-  supply their own closing rate, conflicting retained conversions refuse, and nonzero revenue
-  cannot borrow a closing rate when its average rate is absent.
-- The replay projection now supports reporting amounts using per-line average revenue rates,
-  separately rounded balance components, and sequential functional/reporting rounding of gross
-  RPO and its exemptions per obligation. Original-source verification accepts this explicit basis.
-- Necessary checks cover real-engine projected amounts and source reproduction, missing rates,
-  corrupted snapshot hashes and conflicting metadata. A database witness reads all three actual
-  snapshot producers and retains USD 11,000 -> EUR 10,000 revenue conversion. Targeted lint/types pass.
-- This is the projection prerequisite: the public variance report still offers transaction and
-  functional views only. Reporting rates must next be bound through each replay phase, with a
-  separate reporting FX change (including unchanged engine inputs) and population/membership
-  handling. Public reporting-currency variance, populated foreign lock-to-lock acceptance and
-  the other documented gaps remain. No deployment or independent accounting sign-off.
 
 ## Outstanding release verification
 

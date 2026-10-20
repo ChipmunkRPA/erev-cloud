@@ -9189,3 +9189,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: reporting-currency close variance (not offered yet), populated foreign-currency
   lock-to-lock acceptance, combined/late-carried liability FX and documented release gaps.
   No deployment or independent accounting sign-off; the overall objective remains unfinished.
+
+## Retained reporting-rate projection — October 20, 2026
+
+- Added a reporting-rate basis read only from verified WATERFALL, CONTRACT_BALANCES and RPO
+  currency bundles. The basis binds source hashes and selected rate identities; balances must
+  supply their own closing rate, conflicting retained conversions refuse, and nonzero revenue
+  cannot borrow a closing rate when its average rate is absent.
+- The replay projection now supports reporting amounts using per-line average revenue rates,
+  separately rounded balance components, and sequential functional/reporting rounding of gross
+  RPO and its exemptions per obligation. Original-source verification accepts this explicit basis.
+- Necessary checks cover real-engine projected amounts and source reproduction, missing rates,
+  corrupted snapshot hashes and conflicting metadata. A database witness reads all three actual
+  snapshot producers and retains USD 11,000 -> EUR 10,000 revenue conversion. Targeted lint/types pass.
+- This is the projection prerequisite: the public variance report still offers transaction and
+  functional views only. Reporting rates must next be bound through each replay phase, with a
+  separate reporting FX change (including unchanged engine inputs) and population/membership
+  handling. Public reporting-currency variance, populated foreign lock-to-lock acceptance and
+  the other documented gaps remain. No deployment or independent accounting sign-off.

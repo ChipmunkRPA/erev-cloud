@@ -906,6 +906,161 @@ def test_contract_balances_snapshot_k01(
                 else None,
             )
             assert verified.output_sha256 == computation.output_sha256
+        _foreign_relock_variance(
+            pellworth, clock, monkeypatch, controller, UUID(str(lock_id)), period_id
+        )
+
+
+def _foreign_relock_variance(
+    world: Any,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+    controller: Actor,
+    first_lock: UUID,
+    period_id: UUID,
+) -> None:
+    from support import close_run_worlds, worlds
+    from support import close_runs as runs
+
+    app = world.app
+
+    def state() -> dict[str, Any]:
+        return next(
+            item
+            for item in periods(app, world.maya, entity="AVM-US")
+            if item["period"]["period_key"] == "FY2026-P08"
+        )
+
+    reviewer = actor_with_role(
+        app, clock, world.tenant_id, "revenue_reviewer", name="late-reviewer"
+    )
+    second = actor_with_role(app, clock, world.tenant_id, "controller", name="late-controller")
+    shown = state()
+    requested = post(
+        app,
+        f"{PERIODS}/{shown['id']}/request-reopen",
+        reviewer,
+        {
+            "reason_code": "LATE_SOURCE_DATA",
+            "comment": "Late EUR invoice received after close",
+        },
+        if_match=f'"r{shown["row_version"]}"',
+    )
+    assert requested.status_code == 200, requested.text
+    for actor in (controller, second):
+        response = approve(app, requested.json()["approval_request_id"], actor)
+        assert response.status_code == 200, response.text
+    assert state()["state"] == "reopened"
+    identity = UUID(str(world.contracts[close_run_worlds.EUR_CONTRACT].contract["id"]))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == identity)
+    )
+    response = post(
+        app,
+        f"/api/v1/contracts/{identity}/events",
+        world.maya,
+        {
+            "events": [
+                {
+                    "event_type": "BILLING_RECORDED",
+                    "effective_date": "2026-08-31",
+                    "payload": {
+                        "invoice_number": "LATE-EUR",
+                        "line_external_id": "LATE-EUR-1",
+                        "obligation_key": "O1",
+                        "issue_date": "2026-08-31",
+                        "amount": {"amount": "4000.00", "currency": "EUR"},
+                    },
+                }
+            ],
+        },
+        if_match=f'"s{head}"',
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["computation"]["status"] == "SUCCEEDED", response.json()
+    clock.set(world.place.scalar(select(func.clock_timestamp())) + timedelta(seconds=1))
+    shown = state()
+    started = post(
+        app,
+        f"{PERIODS}/{shown['id']}/start-close",
+        world.maya,
+        {"comment": "Close after late EUR invoice"},
+        if_match=f'"r{shown["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    closed = runs.closed(world, monkeypatch, entity_code="AVM-US", period_key="FY2026-P08")
+    assert closed["status"] == "SUCCEEDED", json.dumps(closed)
+    world = runs.journal_posted(world, clock, closed["journal_run_id"])
+    with tenant_session(
+        DbContext(tenant_id=world.tenant_id, user_id=None, entity_scope="*")
+    ) as session:
+        reviewed_reconciliations_for(
+            session,
+            tenant_id=world.tenant_id,
+            entity_id=world.entity_id,
+            period_id=period_id,
+            now=clock.now(),
+        )
+    with world.place.uow() as uow:
+        requested_lock = close_commands.request_lock(
+            uow,
+            state_id=UUID(str(shown["id"])),
+            body=PeriodLockRequestIn(certification_comment="Late invoice reconciled"),
+            check_version=lambda actual: None,
+        )
+        uow.commit()
+    response = approve(app, str(requested_lock.approval_request_id), controller)
+    assert response.status_code == 200, response.text
+    later_lock = UUID(str(state()["current_lock"]["id"]))
+    assert later_lock != first_lock
+    recorded = world.place.scalar(
+        select(func.max(period_lock.c.created_at)).where(
+            period_lock.c.id.in_((first_lock, later_lock))
+        )
+    )
+    clock.set(
+        max(clock.now(), recorded, world.place.scalar(select(func.clock_timestamp())))
+        + timedelta(seconds=1)
+    )
+    for view, currency, delta in (
+        ("transaction", "EUR", "-4000.00"),
+        ("functional", "USD", "-4420.00"),
+        ("reporting", "EUR", "-4000.00"),
+    ):
+        run, rows = worlds.report_run(
+            world,
+            "variance_between_closes",
+            {
+                "entity_codes": ["AVM-US"],
+                "currency_view": view,
+                "from_period_lock_id": str(first_lock),
+                "to_period_lock_id": str(later_lock),
+            },
+        )
+        total = next(
+            row
+            for row in rows
+            if row["row_key"] == f"TOTAL:{currency}:CONTRACT_ASSET_AND_UNBILLED:1"
+        )
+        assert total["change"] == {"amount": delta, "currency": currency}, rows
+        prefix = f"driver:{currency}:CONTRACT_ASSET_AND_UNBILLED:"
+        drivers = [row for row in rows if row["row_key"].startswith(prefix)]
+        assert [(row["row_key"], row["change"]) for row in drivers] == [
+            (prefix + "LATE_EVENT", {"amount": delta, "currency": currency})
+        ], drivers
+        from erev_api.domain.reports.builders import SourceBinding
+
+        binding = SourceBinding.from_stored(
+            world.place.scalar(
+                select(report_run.c.source_binding).where(report_run.c.id == UUID(run["id"]))
+            )
+        )
+        assert binding is not None
+        groups = binding.evidence["close_variance_contributors"]["groups"]
+        assert groups
+        assert all(
+            "entities.periods.states" in group["normalized_fields"] for group in groups.values()
+        )
 
 
 def test_lock_certifies_reconciliations(world: CloseWorld, clock: FrozenClock) -> None:

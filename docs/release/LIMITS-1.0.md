@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Foreign lock-to-lock business attribution — October 20, 2026
+
+- Difference replay now holds operational period states constant after verifying both original
+  computations and frozen endpoints. A public reopen no longer blocks late-event attribution
+  as an unsupported entity change. Entity, currency, book population and calendar dates remain
+  strict; the evidence records entities.periods.states normalization and the final replay must
+  still reproduce the later frozen money, including posted revenue.
+- Control FX projection verifies the retained settlement formula when S12 emits a zero
+  difference node without a movement row. It does not discard zero cumulative sums, so
+  offsetting owners remain visible; altered rate evidence refuses.
+- Necessary verification passed: actual foreign close/export/acknowledgement/lock, two-controller
+  public reopen, EUR 4,000 late invoice, actual second close/lock, and public variance jobs in
+  transaction, functional and reporting currency. Each attributes the asset reduction solely to
+  LATE_EVENT (EUR 4,000 / USD 4,420 / EUR 4,000) and retains normalization evidence. Reviewed
+  reconciliation rows are fixtures, not independent accounting approval. Scoped unit checks,
+  lint and types pass. No deployment.
+- Still open: credit-memo FX difference attribution (JET-10c has a retained difference trace
+  but no remeasurement movement leaf), end-to-end late-carried public acceptance without
+  reopening, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
+  This populated foreign two-lock witness does not establish every FX or membership scenario.
+
 ## Exact paid-origin window for carried FX — October 20, 2026
 
 - TIME FX historical attribution now selects the target period plus its immediately preceding

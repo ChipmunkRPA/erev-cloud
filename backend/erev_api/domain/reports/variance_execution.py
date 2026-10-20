@@ -15,7 +15,7 @@ from typing import Literal
 from uuid import UUID
 
 from erev_engine import ENGINE_VERSION, compute
-from erev_engine.bundle import BookInput, InputBundle, OutputBundle
+from erev_engine.bundle import BookInput, EntityInput, InputBundle, OutputBundle
 from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
 
 from erev_api.problems import Problem
@@ -129,6 +129,43 @@ def verify_source(
     return SourceExecution(source.computation_id, source.bundle.sha256(), output.sha256()), output
 
 
+def _calendar_states(
+    earlier: InputBundle, later: InputBundle
+) -> tuple[tuple[EntityInput, ...], tuple[str, ...]]:
+    """Hold operational period states constant after verifying the actual endpoints.
+
+    Reopening a period is not a monetary reference driver. No calendar date,
+    entity, book or currency change is admitted by this normalization. The final
+    replay must still equal the later frozen money, including posted revenue.
+    """
+    if earlier.entities == later.entities:
+        return later.entities, ()
+    old = {entity.code: entity for entity in earlier.entities}
+    if len(old) != len(later.entities) or set(old) != {entity.code for entity in later.entities}:
+        raise _refuse("entity/calendar changes require a separate basis migration.")
+    result = []
+    for entity in later.entities:
+        previous = old[entity.code]
+        if replace(entity, periods=previous.periods) != previous:
+            raise _refuse("entity/calendar changes require a separate basis migration.")
+        periods = {period.period_key: period for period in previous.periods}
+        if len(periods) != len(entity.periods):
+            raise _refuse("entity/calendar changes require a separate basis migration.")
+        aligned = []
+        for period in entity.periods:
+            before = periods.get(period.period_key)
+            if (
+                before is None
+                or replace(period, states=before.states) != before
+                or tuple(code for code, _ in period.states)
+                != tuple(code for code, _ in before.states)
+            ):
+                raise _refuse("entity/calendar changes require a separate basis migration.")
+            aligned.append(before)
+        result.append(replace(entity, periods=tuple(aligned)))
+    return tuple(result), ("entities.periods.states",)
+
+
 def execute(
     earlier: VerifiedComputation,
     later: VerifiedComputation,
@@ -220,9 +257,12 @@ def execute(
         normalized.append("group.previous_stream_heads")
     books, readbacks = _readback_books(earlier.bundle, later.bundle, earlier_output)
     normalized.extend(readbacks)
+    entities, calendar_fields = _calendar_states(earlier.bundle, later.bundle)
+    normalized.extend(calendar_fields)
     counterfactual = replace(
         later.bundle,
         books=books,
+        entities=entities,
         posted=earlier.bundle.posted,
         group=replace(
             later.bundle.group,

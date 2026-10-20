@@ -1692,3 +1692,33 @@ def test_reporting_replay_separates_business_and_reporting_fx_including_same_com
     for key, change in entering.replay.measures.items():
         assert change.effects[0].amount == unchanged_rates.get(key, Fraction(0))
         assert change.effects[-1].amount == later[key] - unchanged_rates.get(key, Fraction(0))
+
+
+def test_reopen_normalization_retains_calendar_and_entity_basis() -> None:
+    from erev_api.domain.reports.variance_execution import _calendar_states
+
+    before, _ = _active_pair()
+    entity = before.entities[0]
+    period = entity.periods[0]
+    reopened = replace(period, states=tuple((book, "reopened") for book, _ in period.states))
+    after = replace(
+        before,
+        entities=(replace(entity, periods=(reopened, *entity.periods[1:])), *before.entities[1:]),
+    )
+    normalized, fields = _calendar_states(before, after)
+    assert normalized == before.entities
+    assert fields == ("entities.periods.states",)
+    assert after.entities[0].periods[0] == reopened  # original evidence stays intact
+    for changed in (
+        replace(after.entities[0], functional_currency="JPY"),
+        replace(
+            after.entities[0],
+            periods=(
+                replace(reopened, end_date=period.end_date + timedelta(days=1)),
+                *entity.periods[1:],
+            ),
+        ),
+        replace(after.entities[0], periods=(replace(reopened, states=()), *entity.periods[1:])),
+    ):
+        with pytest.raises(Problem, match="basis migration"):
+            _calendar_states(before, replace(after, entities=(changed, *before.entities[1:])))
