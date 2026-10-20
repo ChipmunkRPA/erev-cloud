@@ -6,7 +6,7 @@ WinAnsiEncoding, uncompressed content streams and no creation date. The first pa
 stamp lines (report name and version, run number, entity, book, as of, source, engine release, run
 by, run time, rows, output SHA-256, every parameter, the control totals and tie-outs), then the grid
 header and the rows; a page that continues the grid repeats its header. Every page footer reads
-"Run <run no> · page <n> of <m>". Single-table reports retain their compact layout when content fits;
+"Run <run no> · page <n> of <m>". Single-table reports use compact layout when content fits;
 otherwise they use the chapter layout with wrapped text and horizontal column groups instead of
 truncating cells.
 """
