@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from fractions import Fraction
 from types import MappingProxyType
+from typing import Literal
 from uuid import UUID
 
 from erev_engine import compute
@@ -35,6 +36,7 @@ class GroupReplay:
     driver_totals: Mapping[tuple[str, str, str], Fraction]  # currency, measure, driver
     required_entity_ids: tuple[UUID, ...]
     contract_groups: Mapping[str, UUID] = field(default_factory=dict)
+    currency_view: Literal["transaction", "functional"] = "transaction"
 
 
 def _refuse(detail: str) -> Problem:
@@ -60,12 +62,17 @@ def _groups(side: Side) -> dict[UUID, VerifiedComputation]:
     return groups
 
 
-def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
+def execute(
+    pair: Pair,
+    *,
+    engine: Engine = compute,
+    currency_view: Literal["transaction", "functional"] = "transaction",
+) -> GroupReplay:
     """Reproduce every monetary endpoint and then aggregate exact driver effects."""
     # Also verifies lock ordering, scope and complete frozen monetary datasets.
-    variance_measures.compare(pair.earlier.frozen, pair.later.frozen)
-    earlier = variance_measures.endpoints(pair.earlier.frozen)
-    later = variance_measures.endpoints(pair.later.frozen)
+    variance_measures.compare(pair.earlier.frozen, pair.later.frozen, currency_view)
+    earlier = variance_measures.endpoints(pair.earlier.frozen, currency_view)
+    later = variance_measures.endpoints(pair.later.frozen, currency_view)
     for side, amounts in ((pair.earlier, earlier), (pair.later, later)):
         if any(key.contract_external_id not in side.contract_computations for key in amounts):
             raise _refuse("a frozen monetary contract has no retained source.")
@@ -125,6 +132,7 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
             book_code=scope.book_code,
             period_key=scope.period_key,
             engine=engine,
+            currency_view=currency_view,
         )
         runs.update(membership)
         for result in membership.values():
@@ -158,6 +166,7 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
                 book_code=scope.book_code,
                 period_key=scope.period_key,
                 engine=engine,
+                currency_view=currency_view,
             )
             runs[group_id] = population
             for key, decomposition in population.replay.measures.items():
@@ -190,6 +199,7 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
                 if key.contract_external_id in names
             },
             engine=engine,
+            currency_view=currency_view,
         )
         runs[group_id] = result
         for key, decomposition in result.replay.measures.items():
@@ -205,4 +215,5 @@ def execute(pair: Pair, *, engine: Engine = compute) -> GroupReplay:
         MappingProxyType(totals),
         pair.required_entity_ids,
         MappingProxyType(aliases),
+        currency_view,
     )

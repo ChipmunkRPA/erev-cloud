@@ -4,7 +4,7 @@ import csv
 import hashlib
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from decimal import localcontext
+from decimal import Decimal, localcontext
 from io import StringIO
 from uuid import uuid4
 
@@ -157,3 +157,68 @@ def test_bad_sources_refuse(fault: str) -> None:
         after = _rewrite(after, "WATERFALL", b"FY2026-P09", b"FY2026-P10")
     with pytest.raises(Problem):
         variance_measures.compare(before, after)
+
+
+def test_selected_currency_endpoints_use_only_retained_variant() -> None:
+    from erev_api.domain.reports import snapshot_views
+    from erev_engine.stages.s15_disclosures import snapshots as engine
+
+    before, after = _pair()
+
+    def bundled(source: FrozenClose) -> FrozenClose:
+        reports = []
+        for report in source.reports:
+            original = report.dataset
+            headers, rows = snapshot_views.raw(original.content)
+
+            def encode(
+                functional: bool,
+                rows: list[dict[str, str]] = rows,
+                kind: str = original.kind,
+                headers: list[str] = headers,
+            ) -> engine.Encoded:
+                items = []
+                for row in rows:
+                    item = dict(row)
+                    if functional:
+                        item["currency"] = "EUR"
+                        for field in (
+                            "recognised",
+                            "contract_liability",
+                            "contract_asset",
+                            "unbilled_receivable",
+                            "total",
+                        ):
+                            if item.get(field):
+                                item[field] = str(Decimal(item[field]) * 2)
+                    items.append(item)
+                return engine.encode(
+                    engine.Dataset(
+                        kind,
+                        tuple(engine.Column(h, "text") for h in headers),
+                        tuple(items),
+                    )
+                )
+
+            packed = snapshot_views.pack(
+                {view: encode(view == "functional") for view in snapshot_views.VIEWS}
+            )
+            reports.append(
+                replace(
+                    report,
+                    dataset=replace(
+                        original,
+                        content=packed.content,
+                        file_sha256=packed.file_sha256,
+                        row_count=packed.row_count,
+                        control_totals=packed.control_totals,
+                    ),
+                )
+            )
+        return replace(source, reports=tuple(reports))
+
+    with pytest.raises(locked.LockedRefusal, match="no retained dataset"):
+        variance_measures.compare(before, after, "functional")
+    result = variance_measures.compare(bundled(before), bundled(after), "functional")
+    revenue = next(row for row in result["rows"] if row["measure"] == "REVENUE")
+    assert revenue["currency"] == "EUR" and revenue["change"] == "65117.64"

@@ -39,7 +39,11 @@ def cell(
         evidence = binding.evidence["close_variance_contributors"]
         identity = binding.evidence["close_variance_sources"]
         if (
-            evidence["format"] != "erev.close_variance_presentation.v1"
+            identity.get("currency_view", "transaction")
+            != params.parameters.get("currency_view", "transaction")
+            or evidence.get("currency_view", "transaction")
+            != params.parameters.get("currency_view", "transaction")
+            or evidence["format"] != "erev.close_variance_presentation.v1"
             or identity["version"] != 1
             or binding.report_version != params.report_version
             or sha256_hex(evidence) != binding.evidence["close_variance_evidence_sha256"]

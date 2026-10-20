@@ -18,7 +18,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from erev_engine.bundle import BookOutput, InputBundle
 from erev_engine.dates import add_months
-from erev_engine.money import format_exact, minor_to_decimal
+from erev_engine.money import format_exact, minor_to_decimal, round_half_up
 from erev_engine.stages.s01_canonicalize.convert import (
     contract_key_from_subject,
     obligation_subject_key,
@@ -162,10 +162,9 @@ def project(
             and row["recognition_method"] == "RIGHT_TO_INVOICE"
         ):
             continue
-        if functional and currency != entity.functional_currency:
-            raise _refuse("foreign-currency RPO has no supported functional valuation basis.")
         point = measured.obligations[row["id"]]
         remaining = point.scheduled + point.awaiting
+        excluded = Decimal(0)
         if (
             applied("rpo.exemption_vc_wholly_unsatisfied")
             and point.satisfaction_status == "UNSATISFIED"
@@ -175,7 +174,30 @@ def project(
                 quota_history.get(obligation_subject_key(contract, str(row["obligation_key"])), ()),
                 at,
             )
-            remaining -= min(max(remaining, Decimal(0)), quota)
+            excluded = min(max(remaining, Decimal(0)), quota)
+        if functional and currency != entity.functional_currency:
+            candidates = [
+                rate
+                for rate in bundle.fx_rates
+                if rate.rate_type == "closing"
+                and rate.base_currency == currency
+                and rate.quote_currency == entity.functional_currency
+                and rate.effective_date == at
+            ]
+            matched = [rate for rate in candidates if rate.period_key == period_key]
+            if not matched:
+                matched = candidates
+            if len(matched) != 1 or not matched[0].rate.is_finite() or matched[0].rate <= 0:
+                raise _refuse("one positive retained closing rate is required for foreign RPO.")
+            currency = entity.functional_currency
+            if currency not in bundle.currencies:
+                raise _refuse("the functional currency has no retained precision.")
+            places = bundle.currencies[currency].minor_unit
+            rate = Fraction(matched[0].rate)
+            # Match the disclosure: round gross and excluded amounts independently per obligation.
+            remaining = minor_to_decimal(round_half_up(Fraction(remaining) * rate, places), places)
+            excluded = minor_to_decimal(round_half_up(Fraction(excluded) * rate, places), places)
+        remaining -= excluded
         # Royalties are realized as reported; POL-199 has no unrecognized quota to remove.
         key = MeasureKey(contract, currency, "RPO")
         result[key] = result.get(key, Fraction(0)) + Fraction(remaining)

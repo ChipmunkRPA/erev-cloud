@@ -562,6 +562,20 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
                 {},
                 content,
             )
+            from erev_api.domain.reports import snapshot_views
+            from erev_engine.stages.s15_disclosures import snapshots as snapshot_engine
+
+            variant = snapshot_engine.Encoded(
+                kind, content, dataset.file_sha256, len(contracts), {}
+            )
+            packed = snapshot_views.pack({view: variant for view in snapshot_views.VIEWS})
+            dataset = replace(
+                dataset,
+                content=packed.content,
+                file_sha256=packed.file_sha256,
+                row_count=packed.row_count,
+                control_totals=packed.control_totals,
+            )
             reports.append(FrozenReport(kind, uuid4(), None, dataset))
         frozen = FrozenClose(
             scope,
@@ -587,6 +601,11 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     from erev_api.domain.reports.outputs.xlsx import render_xlsx
     from erev_engine.canonical import canonical_bytes
 
+    functional = variance_groups.execute(pair, currency_view="functional")
+    assert functional.measures == result.measures
+    projected = variance_presentation.dataset(pair, functional)
+    assert projected.data.control_totals["currency_view"] == "functional"
+    assert projected.evidence["currency_view"] == "functional"
     presentation = variance_presentation.dataset(pair, result)
     data = presentation.data
     contract_rows = [
@@ -716,6 +735,13 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         )
         assert all(item["object_type"] == "contract" for item in items)
         assert all(any(detail.startswith("Event:") for detail in item["details"]) for item in items)
+    with pytest.raises(Problem):
+        variance_cells.cell(
+            cast(Session, Lookup()),
+            replace(params, parameters={**params.parameters, "currency_view": "functional"}),
+            contract_rows[0]["row_key"],
+            "change",
+        )
     invalid = replace(
         binding, evidence={**binding.evidence, "close_variance_evidence_sha256": "0" * 64}
     )
@@ -1435,3 +1461,85 @@ def test_contract_reference_replay_preserves_accounting_basis(field: str, value:
     before, _ = _active_pair()
     with pytest.raises(Problem, match="basis migration"):
         validate_contract_basis(before.contracts, (replace(before.contracts[0], **{field: value}),))
+
+
+def test_foreign_rpo_projection_uses_retained_closing_rate_and_attributes_fx() -> None:
+    from erev_engine import upgrade
+    from erev_engine.bundle import FxRateInput
+
+    source, _ = _active_pair()
+    source = replace(
+        source,
+        books=tuple(
+            replace(
+                book,
+                account_mapping=bundles.account_mapping(extra=(("FX_GAIN_LOSS", None, "7999"),)),
+            )
+            for book in source.books
+        ),
+    )
+    before = upgrade.decode_input(upgrade.encode_input(source).replace(b"USD", b"EUR"))
+    rates = [
+        FxRateInput(
+            kind + p.period_key, "FX", kind, "EUR", "USD", p.end_date, p.period_key, Decimal("1.2")
+        )
+        for p in source.entities[0].periods
+        for kind in ("closing", "average")
+    ]
+    rates.extend(
+        FxRateInput("spot" + str(day), "FX", "spot", "EUR", "USD", day, None, Decimal("1.2"))
+        for day in {event.effective_date for event in source.events}
+    )
+    before = replace(
+        before,
+        entities=source.entities,
+        currencies={**source.currencies, **before.currencies},
+        fx_rates=tuple(
+            sorted(
+                rates,
+                key=lambda r: (
+                    r.rate_type,
+                    r.base_currency,
+                    r.quote_currency,
+                    r.effective_date,
+                    r.version_key,
+                ),
+            )
+        ),
+    )
+    after = replace(
+        before,
+        known_at=before.known_at + timedelta(days=1),
+        fx_rates=tuple(
+            replace(rate, rate=Decimal("1.3"), version_key="NEW")
+            if rate.rate_type == "closing"
+            else rate
+            for rate in before.fx_rates
+        ),
+    )
+
+    def amounts(bundle: InputBundle) -> dict[MeasureKey, Fraction]:
+        return Projection(bundle, "Mock Entity 2", "ASC606", "FY2023-P05", "functional")(
+            compute(bundle)
+        )
+
+    assert amounts(before)[RPO] == Fraction("954")
+    assert amounts(after)[RPO] == Fraction("1033.51")  # sum of individually rounded obligations
+    result = replay_period_money(
+        before,
+        after,
+        entity_code="Mock Entity 2",
+        book_code="ASC606",
+        period_key="FY2023-P05",
+        earlier_metrics=amounts(before),
+        later_metrics=amounts(after),
+        currency_view="functional",
+    )
+    assert result.measures[RPO].effects[-1].driver == "FX"
+    assert result.measures[RPO].effects[-1].amount == Fraction("79.51")
+    output = compute(before)
+    missing = replace(
+        before, fx_rates=tuple(rate for rate in before.fx_rates if rate.rate_type != "closing")
+    )
+    with pytest.raises(Problem, match="retained closing rate"):
+        Projection(missing, "Mock Entity 2", "ASC606", "FY2023-P05", "functional")(output)

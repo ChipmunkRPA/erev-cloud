@@ -8,6 +8,7 @@ is a scope contribution, not a claim to replay an absent contract's business eve
 from dataclasses import dataclass
 from fractions import Fraction
 from types import MappingProxyType
+from typing import Literal
 
 from erev_engine import ENGINE_VERSION, compute
 from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
@@ -35,6 +36,7 @@ def execute(
     book_code: str,
     period_key: str,
     engine: Engine = compute,
+    currency_view: Literal["transaction", "functional"] = "transaction",
 ) -> PopulationReplay:
     verified, _ = verify_source(
         source,
@@ -43,6 +45,7 @@ def execute(
         book_code=book_code,
         period_key=period_key,
         engine=engine,
+        currency_view=currency_view,
     )
     # Absence alone does not prove termination or a particular business event.
     driver = "NEW_CONTRACT" if entering else "OTHER"

@@ -73,9 +73,9 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
     """Present both sections, preserving drill evidence separately from grid values."""
     if replay.required_entity_ids != pair.required_entity_ids:
         raise _refuse("the replay access scope differs from its source pair.")
-    frozen = variance_measures.compare(pair.earlier.frozen, pair.later.frozen)
-    before = variance_measures.endpoints(pair.earlier.frozen)
-    after = variance_measures.endpoints(pair.later.frozen)
+    frozen = variance_measures.compare(pair.earlier.frozen, pair.later.frozen, replay.currency_view)
+    before = variance_measures.endpoints(pair.earlier.frozen, replay.currency_view)
+    after = variance_measures.endpoints(pair.later.frozen, replay.currency_view)
     zero = Fraction(0)
     keys = before.keys() | after.keys() | replay.measures.keys()
     totals: dict[tuple[str, str], Fraction] = {}
@@ -267,4 +267,7 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
         f"{currency}:{measure}": _money(amount, currency)["amount"]
         for (currency, measure), amount in sorted(totals.items())
     }
+    if replay.currency_view != "transaction":
+        controls["currency_view"] = replay.currency_view
+        evidence["currency_view"] = replay.currency_view
     return Presentation(ReportData(COLUMNS, tuple(summary + rows + total_rows), controls), evidence)

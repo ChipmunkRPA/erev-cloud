@@ -1203,9 +1203,15 @@ def test_close_source_binding_round_trips_without_reselecting_or_requeuing(
     assert error.value.slug == "not-found"
 
 
-@pytest.mark.parametrize("revoke", [False, True])
+@pytest.mark.parametrize(
+    "revoke,currency_view", [(False, "transaction"), (True, "transaction"), (False, "functional")]
+)
 def test_variance_report_worker_and_bound_rerun(
-    sources: Sources, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch, revoke: bool
+    sources: Sources,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+    revoke: bool,
+    currency_view: str,
 ) -> None:
     """Seeded empty locks with actual snapshot files, report jobs, storage and rerun."""
     from erev_api.domain.reports import framework
@@ -1256,6 +1262,7 @@ def test_variance_report_worker_and_bound_rerun(
                 report_code="variance_between_closes",
                 output_format="JSON",
                 parameters={
+                    "currency_view": currency_view,
                     "from_period_lock_id": str(earlier_id),
                     "to_period_lock_id": body["period_lock_id"],
                 },

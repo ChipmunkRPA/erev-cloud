@@ -1757,7 +1757,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         _ALL,
         "Changes in revenue, balances and remaining performance obligations between two locks of "
         "one period, by driver and contract (REQ-RPT-019; REQ-CLS-011).",
-        ("from_period_lock_id", "to_period_lock_id"),
+        ("from_period_lock_id", "to_period_lock_id", "currency_view"),
+        overrides={"currency_view": _one_of("transaction", "functional")},
         sources=("period_lock", "lock_snapshot", "disclosure_snapshot", "contract"),
         joins=(
             "lock_snapshot.period_lock_id = period_lock.id",

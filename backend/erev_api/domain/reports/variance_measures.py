@@ -58,7 +58,9 @@ def _amount(row: Mapping[str, str], column: str) -> Fraction:
     return Fraction(value)
 
 
-def endpoints(source: FrozenClose) -> dict[MeasureKey, Endpoint]:
+def endpoints(
+    source: FrozenClose, currency_view: str = "transaction"
+) -> dict[MeasureKey, Endpoint]:
     """Aggregate frozen rows exactly, retaining their contribution identities.
 
     Blank monetary cells never become zero. Zero is used only for a contract/measure
@@ -74,7 +76,7 @@ def endpoints(source: FrozenClose) -> dict[MeasureKey, Endpoint]:
         if dataset.lock_id != source.scope.lock_id:
             raise _refuse("a monetary dataset belongs to another lock.")
         locked.verify(dataset)
-        headers, reader, _ = locked.currency_rows(dataset)
+        headers, reader, _ = locked.currency_rows(dataset, currency_view)
         required = {"row_key", "currency", *keys, *_VALUES[kind]}
         if len(headers) != len(set(headers)) or not required <= set(headers):
             raise _refuse(f"{kind} has missing or duplicated columns.")
@@ -121,7 +123,9 @@ def endpoints(source: FrozenClose) -> dict[MeasureKey, Endpoint]:
     }
 
 
-def compare(previous: FrozenClose, current: FrozenClose) -> dict[str, Any]:
+def compare(
+    previous: FrozenClose, current: FrozenClose, currency_view: str = "transaction"
+) -> dict[str, Any]:
     """Exact contract movements and totals from two verified, ordered LOCK sources."""
     before, after = previous.scope, current.scope
     if before.kind != LockKind.LOCK or after.kind != LockKind.LOCK:
@@ -137,7 +141,7 @@ def compare(previous: FrozenClose, current: FrozenClose) -> dict[str, Any]:
         or previous.record["created_at"] >= current.record["created_at"]
     ):
         raise _refuse("the later lock must be recorded after the earlier lock.")
-    earlier, later = endpoints(previous), endpoints(current)
+    earlier, later = endpoints(previous, currency_view), endpoints(current, currency_view)
     zero = Endpoint(Fraction(0), ())
     rows = []
     totals: dict[tuple[str, str], Fraction] = {}

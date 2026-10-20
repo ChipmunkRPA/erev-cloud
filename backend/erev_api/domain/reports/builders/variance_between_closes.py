@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
@@ -27,6 +27,7 @@ BINDING: Final = "close_variance_sources"
 class Prepared:
     pair: variance_sources.Pair
     identity: dict[str, Any]
+    currency_view: Literal["transaction", "functional"] = "transaction"
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,12 @@ def _invalid() -> Problem:
 
 def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
     from erev_api.domain.reports import variance_sources
+
+    view = params.parameters.get("currency_view", "transaction")
+    if view not in ("transaction", "functional"):
+        raise Problem(
+            "validation-failed", "Close variance supports transaction or functional currency."
+        )
 
     if (
         params.report_code != CODE
@@ -107,19 +114,23 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
         "sides": sides,
         "required_entity_ids": [str(item) for item in pair.required_entity_ids],
     }
+    if view != "transaction":
+        identity["currency_view"] = view
     if params.binding is not None and (
         params.binding.strategy != ADAPTER
         or params.binding.report_version != params.report_version
         or params.binding.evidence.get(BINDING) != identity
     ):
         raise _invalid()
-    return Prepared(pair, identity)
+    return Prepared(pair, identity, view)
 
 
 def calculate(prepared: Prepared, *, engine: Engine) -> Calculated:
     from erev_api.domain.reports import variance_groups, variance_presentation
 
-    replay = variance_groups.execute(prepared.pair, engine=engine)
+    replay = variance_groups.execute(
+        prepared.pair, engine=engine, currency_view=prepared.currency_view
+    )
     return Calculated(prepared.identity, variance_presentation.dataset(prepared.pair, replay))
 
 
