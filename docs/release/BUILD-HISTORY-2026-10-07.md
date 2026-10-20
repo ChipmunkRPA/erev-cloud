@@ -8247,3 +8247,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Twenty-two focused format/report-grid/totals checks pass, along with TypeScript and ESLint.
   Populated production-posting accounting acceptance and other reporting workflows remain
   open; no full reporting or production-readiness claim. No deployment.
+
+## Forecast comparison entry points — October 19, 2026
+
+- The comparison form now defaults to the latest authorized succeeded forecast and its full
+  saved horizon, matching RPT-40's specified initial selection. Explicit selection, parameter
+  edits, submission and paging retain the selected record instead of following list refreshes.
+- Each succeeded forecast history entry offers an inline comparison form preselected to that
+  exact record, including a record absent from the current choices page. It preserves the
+  saved entity/currency scope and only offers the entry with report access for every entity.
+- Eight focused forecast/comparison interaction checks pass. Broader reporting content,
+  populated accounting acceptance and independent accounting sign-off remain open.
+  No deployment or production-readiness claim.

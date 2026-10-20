@@ -6,6 +6,22 @@
 
 
 
+## Scenario refresh reporting workflow — October 19, 2026
+
+- Production scenario cards now select searchable, paginated published assumptions and request
+  refresh with the displayed row version. The page explains replacement, guards pending
+  submissions and displays durable QUEUED/RUNNING/SUCCEEDED/FAILED outcomes plus job details.
+  Reopening the panel recovers an existing refresh; terminal outcomes reload scenario bindings
+  and choices. A successful copy job alone is not used as proof of the complete refresh.
+- Added source-owned GET /scenarios/{id}/refreshes with cursor paging/counts and no-store;
+  returns outcome metadata only, excluding raw failures and replay/internal workspace payloads.
+- Real forecast journey passes queued, failed and successful outcomes and sandbox denial.
+  Eight focused scenario UI checks pass after correcting a test's tooltip/text ambiguity;
+  frontend types/lint and backend types/lint pass. No deployment.
+- Reporting remains unfinished: assumption editing/publishing UI, deal preview, populated
+  actual-versus-forecast and close-variance accounting acceptance remain outstanding. Catalogue
+  coverage is not completion of all reporting workflows or independent accounting sign-off.
+
 ## Authorized scenario refresh choices — October 19, 2026
 
 - Added GET /scenarios/{id}/published-inputs for production USER callers with tenant-wide
@@ -237,18 +253,6 @@
   field naming and values; frozen textual data is not reinterpreted as a money object.
 - Fifty-one focused report-page, grid and specialized-layout checks pass; TypeScript and
   ESLint pass. Reporting content and populated accounting acceptance remain open.
-  No deployment or production-readiness claim.
-
-## Forecast comparison entry points — October 19, 2026
-
-- The comparison form now defaults to the latest authorized succeeded forecast and its full
-  saved horizon, matching RPT-40's specified initial selection. Explicit selection, parameter
-  edits, submission and paging retain the selected record instead of following list refreshes.
-- Each succeeded forecast history entry offers an inline comparison form preselected to that
-  exact record, including a record absent from the current choices page. It preserves the
-  saved entity/currency scope and only offers the entry with report access for every entity.
-- Eight focused forecast/comparison interaction checks pass. Broader reporting content,
-  populated accounting acceptance and independent accounting sign-off remain open.
   No deployment or production-readiness claim.
 
 ## Outstanding release verification

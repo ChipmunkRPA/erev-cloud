@@ -6013,7 +6013,7 @@ def test_forecast_event_capture_is_atomic_and_immutable(
 
     from support.forecast_refresh import exercise_refresh_state
 
-    exercise_refresh_state(world, source_actor, UUID(created.json()["scenario_id"]))
+    exercise_refresh_state(world, source_actor, UUID(created.json()["scenario_id"]), sandbox_actor)
 
 
 def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(

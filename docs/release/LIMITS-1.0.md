@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current scenario reporting update (October 19): source workspace scenario creation, archive,
+status filtering and refresh UI are implemented. Refresh selects published assumptions and
+tracks durable outcomes, preserving the current copy on failure. Published-input metadata and
+refresh history are source-authorized reads. Assumption authoring/publishing UI, deal preview,
+populated accounting acceptance and independent sign-off remain open. Historical notes below
+must not be interpreted as the current implementation inventory.
+
+
 Current disclosure implementation correction (October 19): older entries below, including
 recent register notes, incorrectly carried forward pre-implementation limitations. Current
 code already captures sixteen inputs at the close cutoff, atomically publishes seven locked

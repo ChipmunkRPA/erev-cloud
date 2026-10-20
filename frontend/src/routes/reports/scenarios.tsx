@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { Field } from "../../components/form/Field";
 import { Select } from "../../components/form/Select";
+import { RefreshScenario } from "./RefreshScenario";
 import { ArchiveScenario } from "./ArchiveScenario";
 import { useState } from "react";
 import { RefusalBanner } from "../../components/feedback/RefusalBanner";
@@ -178,6 +179,9 @@ export function ScenarioPage() {
                       name={scenario.name}
                       version={scenario.row_version}
                     />
+                  ) : null}
+                  {scenario.status === "ACTIVE" ? (
+                    <RefreshScenario id={scenario.id} version={scenario.row_version} />
                   ) : null}
                   <p>{scenario.purpose}</p>
                   <p>

@@ -27,7 +27,7 @@ from erev_api.api.lists import (
 )
 from erev_api.auth.dependencies import require_all_entities
 from erev_api.auth.principal import RequestContext
-from erev_api.db.tables import forecast_event_set, scenario
+from erev_api.db.tables import forecast_event_set, scenario, scenario_refresh
 from erev_api.domain.forecast import archive, creation, refresh_request, scenarios
 from erev_api.enums import ScenarioStatus
 from erev_api.idempotency.store import Replay
@@ -37,6 +37,7 @@ from erev_api.schemas.scenarios import (
     ScenarioInputSummaryOut,
     ScenarioOut,
     ScenarioRefreshIn,
+    ScenarioRefreshOut,
     ScenarioRefreshRequestedOut,
     ScenarioRequestedOut,
 )
@@ -227,5 +228,37 @@ def scenarios_published_inputs(
         response.headers[TOTAL_COUNT_HEADER] = result.total_count
     return ListOut(
         items=[ScenarioInputSummaryOut.model_validate(row) for row in result.items],
+        next_cursor=result.next_cursor,
+    )
+
+
+@router.get(
+    "/scenarios/{scenario_id}/refreshes",
+    operation_id="scenarios_refreshes",
+    response_model=ListOut[ScenarioRefreshOut],
+    responses=problem_responses(
+        "unauthenticated", "session-expired", "forbidden", "not-found", "validation-failed"
+    ),
+)
+def scenarios_refreshes(
+    scenario_id: UUID,
+    response: Response,
+    ctx: Annotated[RequestContext, Depends(require_all_entities("scenario.use"))],
+    params: Annotated[ListParams, Depends(list_params)],
+) -> ListOut[ScenarioRefreshOut]:
+    spec = ListSpec(
+        resource="scenario-refreshes",
+        filters={},
+        default_sort="-created_at",
+        sort_keys={"id": scenario_refresh.c.id, "created_at": scenario_refresh.c.created_at},
+    )
+    result = scenarios.refreshes(
+        ctx, scenario_id, page=lambda session, statement: paginate(session, statement, spec, params)
+    )
+    response.headers["Cache-Control"] = "no-store"
+    if result.total_count is not None:
+        response.headers[TOTAL_COUNT_HEADER] = result.total_count
+    return ListOut(
+        items=[ScenarioRefreshOut.model_validate(row) for row in result.items],
         next_cursor=result.next_cursor,
     )

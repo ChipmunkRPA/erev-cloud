@@ -14,7 +14,9 @@ from support.factories import workspace
 from support.principals import Actor
 
 
-def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -> None:
+def exercise_refresh_state(
+    world: Any, source_actor: Actor, scenario_id: UUID, sandbox_actor: Actor
+) -> None:
     saved_run_id = world.place.scalar(
         select(forecast_run.c.id).where(forecast_run.c.status == "SUCCEEDED").limit(1)
     )
@@ -183,6 +185,25 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
             json={"forecast_event_set_id": str(input_id)},
         )
         assert retried.status_code == 202 and retried.json() == response.json()
+        history = call(
+            world.app,
+            "GET",
+            f"/api/v1/scenarios/{scenario_id}/refreshes?limit=1&count=true",
+            headers=headers,
+        )
+        assert history.status_code == 200, history.text
+        assert history.headers["Cache-Control"] == "no-store"
+        assert history.json()["items"][0]["id"] == response.json()["refresh_id"]
+        assert history.json()["items"][0]["status"] == "QUEUED"
+        assert "source_tenant_id" not in history.json()["items"][0]
+        assert "problem" not in history.json()["items"][0]
+        denied = call(
+            world.app,
+            "GET",
+            f"/api/v1/scenarios/{scenario_id}/refreshes",
+            headers=cookie_headers(sandbox_actor.token, sandbox_actor.csrf_token),
+        )
+        assert denied.status_code == 403, denied.text
         requested_id = UUID(response.json()["id"])
         snapshot_id = UUID(response.json()["tenant_snapshot_id"])
         with source.uow() as uow:
@@ -206,6 +227,14 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
                 )
         else:
             registry.run_job(requested_id, source.principal.tenant_id, attempt=1, runtime=runtime)
+        history = call(
+            world.app, "GET", f"/api/v1/scenarios/{scenario_id}/refreshes?limit=1", headers=headers
+        )
+        assert history.status_code == 200, history.text
+        assert history.json()["items"][0]["status"] == (
+            "FAILED" if fail_completion else "SUCCEEDED"
+        )
+        assert history.json()["items"][0]["finished_at"] is not None
         with source.uow() as uow:
             refreshed = refresh_state.row(uow, pending["id"])
             current = archive._row(uow.session, scenario_id)

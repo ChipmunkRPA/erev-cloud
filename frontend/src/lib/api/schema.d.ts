@@ -6919,6 +6919,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/scenarios/{scenario_id}/refreshes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Scenarios Refreshes */
+    get: operations["scenarios_refreshes"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/schedule-lines": {
     parameters: {
       query?: never;
@@ -16995,6 +17012,13 @@ export interface components {
       /** Next Cursor */
       next_cursor: string | null;
     };
+    /** ListOut[ScenarioRefreshOut] */
+    ListOut_ScenarioRefreshOut_: {
+      /** Items */
+      items: components["schemas"]["ScenarioRefreshOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
     /** ListOut[ScheduleLineOut] */
     ListOut_ScheduleLineOut_: {
       /** Items */
@@ -21719,6 +21743,46 @@ export interface components {
        * Format: uuid
        */
       forecast_event_set_id: string;
+    };
+    /**
+     * ScenarioRefreshOut
+     * @description Durable refresh outcome, without replay payloads or internal workspace identifiers.
+     */
+    ScenarioRefreshOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Finished At */
+      finished_at: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Job Id
+       * Format: uuid
+       */
+      job_id: string;
+      /**
+       * Scenario Id
+       * Format: uuid
+       */
+      scenario_id: string;
+      /**
+       * Source Input Set Id
+       * Format: uuid
+       */
+      source_input_set_id: string;
+      /** Started At */
+      started_at: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
     };
     /** ScenarioRefreshRequestedOut */
     ScenarioRefreshRequestedOut: {
@@ -53380,6 +53444,74 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  scenarios_refreshes: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path: {
+        scenario_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_ScenarioRefreshOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
         headers: {
           [name: string]: unknown;
         };

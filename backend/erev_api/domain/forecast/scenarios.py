@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import DbContext, set_tenant_context, tenant_session
-from erev_api.db.tables import forecast_event_set, scenario, tenant
+from erev_api.db.tables import forecast_event_set, scenario, scenario_refresh, tenant
 from erev_api.domain.platform import actors
 from erev_api.enums import PrincipalKind, TenantKind
 from erev_api.problems import Problem
@@ -91,3 +91,40 @@ def published_inputs[T](
             )
         finally:
             set_tenant_context(session, actor.db_context)
+
+
+def refreshes[T](
+    ctx: RequestContext, scenario_id: UUID, *, page: Callable[[Session, Select[Any]], T]
+) -> T:
+    """Read durable outcomes in the owning production workspace, including archived scenarios."""
+    actor = ctx.principal
+    if (
+        ctx.tenant_kind != TenantKind.PRODUCTION
+        or actor.kind != PrincipalKind.USER
+        or actor.permission_scopes.get("scenario.use") != "*"
+    ):
+        raise Problem("forbidden")
+    with tenant_session(actor.db_context, read_only=True) as session:
+        exists = session.scalar(
+            select(scenario.c.id).where(
+                scenario.c.tenant_id == actor.tenant_id, scenario.c.id == scenario_id
+            )
+        )
+        if exists is None:
+            raise Problem("not-found")
+        return page(
+            session,
+            select(
+                scenario_refresh.c.id,
+                scenario_refresh.c.scenario_id,
+                scenario_refresh.c.source_input_set_id,
+                scenario_refresh.c.job_id,
+                scenario_refresh.c.status,
+                scenario_refresh.c.created_at,
+                scenario_refresh.c.started_at,
+                scenario_refresh.c.finished_at,
+            ).where(
+                scenario_refresh.c.tenant_id == actor.tenant_id,
+                scenario_refresh.c.scenario_id == scenario_id,
+            ),
+        )
