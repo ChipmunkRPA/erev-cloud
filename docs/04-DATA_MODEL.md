@@ -8736,3 +8736,19 @@ driver endpoints remain bound to the frozen closes. v1/v2 first-close bindings r
 The same readiness gate waits for all six runs and the dedicated audit verification. Assembly
 requires the saved comparison, frozen monetary changes, both lock references and the variance
 CSV/manifest/source trio under relock/. No missing comparison is reconstructed on download.
+
+### Change/access register-source bindings — October 19, 2026
+
+The internal erev.register-evidence.sources.v1 binding retains the exact CHANGE/ACCESS
+request, request-known cutoff, selected entity IDs/codes and report/run/job identities with
+normalized parameter hashes. CHANGE queues config_change_register and ssp_change_log;
+ACCESS queues user_access_listing (including removed members) and sod_conflict_report.
+All report outputs are retained CSV with IPE manifest and source metadata. Reads reauthorize
+the complete saved entity population and verify report/job association and output integrity;
+they never select new reports or expand the scope on retry.
+
+Dates use UTC: CHANGE endpoints are inclusive; a past ACCESS day ends at its final microsecond,
+while today's ACCESS request uses the request instant. Future dates refuse. Supporting fields
+with no historical reconstruction retain the underlying report's refusal semantics.
+These are report sections only: release evidence, the role matrix and access-review evidence,
+parent completion/storage, public creation/download/list endpoints and UI are still required.

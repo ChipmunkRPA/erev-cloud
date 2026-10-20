@@ -1410,3 +1410,75 @@ def test_relock_supporting_reports_retain_variance_and_both_locks(
             for report in bound.supporting_reports
             if report.report_code != "variance_between_closes"
         )
+
+
+@pytest.mark.parametrize("kind", ["CHANGE", "ACCESS"])
+def test_register_pack_sources_keep_original_reports_and_current_scope(
+    sources: Sources,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    from erev_api.domain.reports import evidence_register_sources as registers
+    from erev_api.schemas.evidence_packs import AccessPackCreateIn, ChangePackCreateIn
+
+    with sources.world.place.uow() as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+    principal = replace(
+        sources.principal,
+        permissions=registers.PERMISSIONS,
+        permission_scopes={permission: "*" for permission in registers.PERMISSIONS},
+    )
+    request = (
+        ChangePackCreateIn(kind="CHANGE", from_date=date(2026, 1, 1), to_date=clock.now().date())
+        if kind == "CHANGE"
+        else AccessPackCreateIn(kind="ACCESS", as_of=clock.now().date())
+    )
+    with sources.world.place.uow(principal) as uow:
+        bound = registers.prepare(uow, request)
+        pack = evidence_pack_values(
+            sources.world.tenant_id, **bound.pack_values(), created_at=uow.now
+        )
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        uow.commit()
+    for report in bound.reports:
+        finished = run_journal_job(sources.world, report.job_id, attempts=1)
+        assert finished["state"] == "SUCCEEDED", finished
+    with sources.world.place.uow(principal) as uow:
+        files = registers.collect(uow, pack["id"])
+        assert registers.load(uow, pack["id"]) == bound
+        assert len(files) == 7
+        for report in bound.reports:
+            output = next(
+                file
+                for file in files
+                if file.report_run_id == report.run_id and file.path.endswith(".csv")
+            )
+            assert output.content
+        if kind == "ACCESS":
+            users = next(file for file in files if file.path == "access/user_access_listing.csv")
+            assert (
+                len(users.content.splitlines()) > 1
+            )  # Real fixture memberships, not an empty report.
+
+    # Retrying collection cannot create newer runs or silently adopt a larger source population.
+    def no_prepare(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("Retained collection must not requeue reports")
+
+    monkeypatch.setattr(registers, "prepare", no_prepare)
+    with sources.world.place.uow(principal) as uow:
+        assert registers.collect(uow, pack["id"]) == files
+    denied = replace(
+        principal,
+        permissions=principal.permissions - {"evidence.export"},
+        permission_scopes={
+            key: value
+            for key, value in principal.permission_scopes.items()
+            if key != "evidence.export"
+        },
+    )
+    with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+        registers.collect(uow, pack["id"])
+    assert error.value.slug == "forbidden"

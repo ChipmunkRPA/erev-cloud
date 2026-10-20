@@ -7796,3 +7796,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   despite scenario computations and refusal of a sandbox source. Ruff/Mypy pass.
 - Still required: durable capture retention in creation/refresh, category/contract mapping,
   comparison builder/registration and UI. FCS-4 is not yet runnable. No deployment.
+
+
+## Durable actuals capture in creation and refresh — October 19, 2026
+
+- Revision 0186 adds immutable, tenant-scoped forecast_actuals_capture records, unique per
+  source snapshot and linked to encrypted SNAPSHOT_DATASET files. Both ASC606/IFRS15 retain
+  their own cutoff, entity scope and acknowledged revenue lines. Downgrade refuses evidence loss.
+- Scenario creation and refresh workers retain actuals before snapshot completion/replay under
+  the requester's current production permissions. Snapshot-row locking serializes retries;
+  existing captures are reused. Completed legacy snapshots cannot acquire a later baseline.
+  Journals still are not copied into sandboxes; failed-refresh capture evidence is preserved.
+- The real creation/refresh journey passes migration, both-book file digest/content checks and
+  immutable-update refusal. Ruff/Mypy pass. Source actuals require report.run for every captured
+  source entity; no scope is silently omitted.
+- Still open: authorized retained-actuals reader, contract/category mapping, comparison report
+  builder/registration and UI. No deployment or overall production-readiness claim.

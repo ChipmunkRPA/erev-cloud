@@ -6,6 +6,19 @@
 
 
 
+## Change/access report-source implementation — October 19, 2026
+
+- Added immutable CHANGE/ACCESS report-source preparation and retained collection. CHANGE
+  captures configuration/SSP logs; ACCESS captures user-access/SoD reports, including removed
+  members. All use explicit dates, known-at and captured entity scopes through the report framework.
+- Original CSV, IPE manifest and source identities are verified and collected without requeueing.
+  Current source/export permissions are checked on every retained read; newer entities are not
+  silently added. Future dates and empty scopes refuse.
+- Two actual PostgreSQL report-worker journeys and five date/scope checks pass; access output
+  includes real memberships. Revoked export is refused; Mypy and Ruff pass.
+- This is the retained report section, not completed CHANGE/ACCESS packs. Release evidence,
+  role matrix/access reviews, parent retention/API/UI remain next development work. No deployment.
+
 ## Re-lock variance report integration — October 19, 2026
 
 - Close-pack creation now queues the existing variance-between-closes builder for re-locks.
@@ -232,21 +245,6 @@
   retained empty actuals and denies access after permission removal. Ruff/Mypy pass.
 - Remaining FCS-4 work: contract/category dimension mapping, comparison report builder and
   registration, screen connection and populated accounting acceptance. No deployment.
-
-## Durable actuals capture in creation and refresh — October 19, 2026
-
-- Revision 0186 adds immutable, tenant-scoped forecast_actuals_capture records, unique per
-  source snapshot and linked to encrypted SNAPSHOT_DATASET files. Both ASC606/IFRS15 retain
-  their own cutoff, entity scope and acknowledged revenue lines. Downgrade refuses evidence loss.
-- Scenario creation and refresh workers retain actuals before snapshot completion/replay under
-  the requester's current production permissions. Snapshot-row locking serializes retries;
-  existing captures are reused. Completed legacy snapshots cannot acquire a later baseline.
-  Journals still are not copied into sandboxes; failed-refresh capture evidence is preserved.
-- The real creation/refresh journey passes migration, both-book file digest/content checks and
-  immutable-update refusal. Ruff/Mypy pass. Source actuals require report.run for every captured
-  source entity; no scope is silently omitted.
-- Still open: authorized retained-actuals reader, contract/category mapping, comparison report
-  builder/registration and UI. No deployment or overall production-readiness claim.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
