@@ -1,6 +1,8 @@
 import type { DealPreview } from "../../lib/api/queries/deal-previews";
 import { t } from "../../lib/i18n/t";
 
+import { DealRevenue } from "./DealRevenue";
+
 const text = (key: string) => t(`deal.${key}`);
 export function DealResults({ preview }: { preview: DealPreview }) {
   return (
@@ -102,7 +104,7 @@ export function DealResults({ preview }: { preview: DealPreview }) {
               </tbody>
             </table>
           </div>
-          {book.revenue_by_period.length === 0 && <p>{text("noSchedule")}</p>}
+          <DealRevenue key={book.book_code} rows={book.revenue_by_period} />
         </section>
       ))}
       {preview.presentation.length === 0 && <p>{text("noResults")}</p>}

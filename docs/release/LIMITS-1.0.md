@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal revenue update (October 19): SF-18 now includes product/period totals and a signed
+revenue chart, with separate entity/currency scopes and 24-period paging. All-period totals
+remain visible across pages and use exact decimal arithmetic. Awaiting-trigger amounts remain
+outside period totals. Scenario save, product picker and Tamsin/browser acceptance are still
+open, as are the other Reporting gaps and independent sign-off.
+
 Current deal screen update (October 19): SF-18 now supports proposal entry, asynchronous
 calculation, reconnect by job URL, saved preview reads, allocation/SSP and revenue tables.
 This is the first functional screen, not full FCS-6 acceptance: scenario save, product selection

@@ -6,6 +6,21 @@
 
 
 
+## Deal revenue period matrix and chart — October 19, 2026
+
+- Added per-product/per-period revenue matrix, period totals and all-period product/grand
+  totals to SF-18. Entity/currency scopes are selected separately within each book; obligations
+  for the same product aggregate while unassigned subjects retain their own identity.
+- Added signed revenue bars with exact labels and an accessible table. Twenty-four periods
+  display per page; page changes retain all-period totals and a fixed chart scale, and changing
+  entity/currency resets the page. Awaiting-trigger balances are explicitly outside the schedule.
+- Decimal-string totals use scaled BigInt arithmetic; only bounded chart ratios become Number.
+  Grouping indexes rows once instead of repeatedly scanning the schedule for every matrix cell.
+- Four focused calculation/render/pagination checks pass, including large signed amounts,
+  mixed decimal precision, separate entity/currency scopes and cross-page totals. TypeScript
+  and ESLint pass. Scenario save, product picker and Tamsin/browser acceptance remain open;
+  populated K11, multi-contract K03 and close variance remain Reporting priorities. No deployment.
+
 ## Deal preview page — October 19, 2026
 
 - Registered SF-18 at /contracts/deal-preview, enabling the existing Contracts list entry.
@@ -218,31 +233,6 @@
   when a scenario workspace is required; a Reports tab exposes the new page.
 - Eighteen scenario/sandbox checks and eight scenario/forecast checks pass (three overlap),
   plus frontend TypeScript/ESLint. Refresh/event editing, archive UI, populated forecast
-  accounting acceptance and independent sign-off remain open. No deployment.
-
-## Complete report catalogue coverage — October 19, 2026
-
-- Compared frontend catalogue groups with current backend DEFINITIONS and found four missing
-  entries: disclosure_pack, engine_trueup_register, upgrade_validation and ai_call_log_export.
-  Added the first three to their business groups and normal report viewers. AI call log export
-  opens its existing dedicated settings page and is visible only to settings admins/AI users.
-- All 59 backend definitions now occur exactly once in catalogue groups. Conditional forecast,
-  migration and AI permissions still apply; registration/visibility is not accounting acceptance.
-- Forty-eight report-page checks pass, covering the added links and AI access, with frontend
-  type/lint checks. Other functional gaps, populated accounting acceptance and independent
-  sign-off remain open. No deployment.
-
-## Single-table PDF clipping fix — October 19, 2026
-
-- Ordinary report PDFs now retain the compact layout only when every cell/header and source
-  stamp fits. Otherwise they reuse the chapter renderer's wrapped rows, repeated identifiers,
-  horizontal column groups and full source text. Large amounts and long identifiers are no
-  longer silently replaced by ellipses. Existing chapter behavior is reused unchanged.
-- Six focused output checks pass, including extracted large negative values/currencies,
-  continued-page headers and footer page counts; Python typing/lint pass. Rendered a four-page
-  wide sample and visually checked the first two groups: values, currencies and identifiers
-  remain legible with no overlap. Wide reports may now use more pages.
-- This fixes clipping, not the existing WinAnsi font character-set limitation. Full populated
   accounting acceptance and independent sign-off remain open. No deployment.
 
 ## Outstanding release verification

@@ -7816,5 +7816,17 @@
   "deal.BELOW": "Below range",
   "deal.INSIDE": "Inside range",
   "deal.ABOVE": "Above range",
-  "permission.phrase.scenario.use": "using scenarios and deal previews ({code})"
+  "permission.phrase.scenario.use": "using scenarios and deal previews ({code})",
+  "deal.periodSummary": "Revenue schedule by product and period",
+  "deal.revenueScope": "Revenue entity and currency",
+  "deal.scheduleBasis": "Totals include the retained revenue schedule only. Amounts awaiting a trigger are shown separately above. The final row covers all periods, including those on other pages.",
+  "deal.chartSummary": "Scheduled revenue for {entity} in {currency}: {total}. Exact product and period amounts follow in the table.",
+  "deal.signedAxis": "Negative revenue extends left of zero; positive revenue extends right.",
+  "deal.periodTotal": "Period total",
+  "deal.allPeriods": "All periods",
+  "deal.previous": "Previous periods",
+  "deal.next": "Next periods",
+  "deal.firstPage": "This is the first page.",
+  "deal.lastPage": "This is the last page.",
+  "deal.page": "Page {current} of {total}"
 }

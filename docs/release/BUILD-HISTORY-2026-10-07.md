@@ -8425,3 +8425,28 @@ cleanup in the shared database session kernel was also repaired and regression-t
   development work. Full populated accounting acceptance and independent sign-off remain open.
 - Two focused register tests, Python typing/lint, frontend TypeScript/ESLint and the real
   disclosure journey pass. No deployment; the disposable verification database was stopped.
+
+## Single-table PDF clipping fix — October 19, 2026
+
+- Ordinary report PDFs now retain the compact layout only when every cell/header and source
+  stamp fits. Otherwise they reuse the chapter renderer's wrapped rows, repeated identifiers,
+  horizontal column groups and full source text. Large amounts and long identifiers are no
+  longer silently replaced by ellipses. Existing chapter behavior is reused unchanged.
+- Six focused output checks pass, including extracted large negative values/currencies,
+  continued-page headers and footer page counts; Python typing/lint pass. Rendered a four-page
+  wide sample and visually checked the first two groups: values, currencies and identifiers
+  remain legible with no overlap. Wide reports may now use more pages.
+- This fixes clipping, not the existing WinAnsi font character-set limitation. Full populated
+  accounting acceptance and independent sign-off remain open. No deployment.
+
+## Complete report catalogue coverage — October 19, 2026
+
+- Compared frontend catalogue groups with current backend DEFINITIONS and found four missing
+  entries: disclosure_pack, engine_trueup_register, upgrade_validation and ai_call_log_export.
+  Added the first three to their business groups and normal report viewers. AI call log export
+  opens its existing dedicated settings page and is visible only to settings admins/AI users.
+- All 59 backend definitions now occur exactly once in catalogue groups. Conditional forecast,
+  migration and AI permissions still apply; registration/visibility is not accounting acceptance.
+- Forty-eight report-page checks pass, covering the added links and AI access, with frontend
+  type/lint checks. Other functional gaps, populated accounting acceptance and independent
+  sign-off remain open. No deployment.
