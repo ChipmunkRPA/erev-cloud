@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 
 ZERO = Decimal(0)
 ROLE = "contract_liability"
-KEY = "combined_liability_bridge_v1"
+KEY = "combined_liability_bridge_v2"
+LEGACY_KEY = "combined_liability_bridge_v1"
 
 
 def apply(
@@ -41,18 +42,28 @@ def apply(
     periods: Mapping[UUID, tuple[tie_outs.PeriodRef, ...]],
     monthly: Mapping[tuple[UUID, UUID], Mapping[tuple[UUID, UUID], tie_outs.BalanceRow]],
     transfers: Mapping[tuple[UUID, UUID, UUID], Decimal],
+    foreign_members: frozenset[tuple[UUID, UUID]],
 ) -> tuple[ContractRollforward, ...]:
-    touched = {owner for owner, _, _ in transfers}
-    versions = {row.version_id for row in closing if row.contract_id in touched}
-    members = {row.contract_id for row in closing if row.version_id in versions}
+    evidence_key = KEY
+    if params.binding is not None and KEY not in params.binding.evidence:
+        evidence_key = LEGACY_KEY
+        touched = {owner for owner, _, _ in transfers}
+        versions = {row.version_id for row in closing if row.contract_id in touched}
+        members = {
+            (row.contract_id, row.entity_id) for row in closing if row.version_id in versions
+        }
+    else:
+        # Presentation can change when billing is added at a different historical
+        # rate, even with no memo and no FX journal. Include both endpoint populations.
+        members = set(foreign_members)
     consumed: set[UUID] = set()
     facts: dict[str, Any] = {}
-    cache: dict[tuple[UUID, UUID, str], Decimal] = {}
+    cache: dict[tuple[UUID, UUID, UUID, str], Decimal] = {}
 
     def bridge(row: tie_outs.BalanceRow | None, period: tie_outs.PeriodRef | None) -> Decimal:
         if row is None or period is None:
             return ZERO
-        key = (row.version_id, row.contract_id, period.key)
+        key = (row.version_id, row.contract_id, row.entity_id, period.key)
         if key in cache:
             return cache[key]
         trace = store.load_trace(session, row.version_id)
@@ -92,7 +103,10 @@ def apply(
             carrying += signs[source["movement_kind"]] * Decimal(source["amount_functional"])
             consumed.add(source["id"])
         value = row.value(ROLE) - carrying
-        facts[f"{row.version_id}:{row.contract_id}:{period.key}"] = {
+        identity = f"{row.version_id}:{row.contract_id}:{period.key}"
+        if evidence_key == KEY:
+            identity = f"{row.version_id}:{row.contract_id}:{row.entity_id}:{period.key}"
+        facts[identity] = {
             "presented": str(row.value(ROLE)),
             "source_carrying": str(carrying),
         }
@@ -104,7 +118,7 @@ def apply(
     output = []
     conservation: dict[tuple[UUID, UUID | None, str], Decimal] = {}
     for item in items:
-        if item.contract_id not in members:
+        if (item.contract_id, item.entity_id) not in members:
             output.append(item)
             continue
         key = (item.contract_id, item.entity_id)
@@ -161,11 +175,11 @@ def apply(
             ":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())
         },
     }
-    if params.binding is not None and params.binding.evidence[KEY] != evidence:
+    if params.binding is not None and params.binding.evidence[evidence_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Member liability bridge differs from retained evidence."
         )
     tie_outs.require_members(params, "combined_liability_movement", consumed)
     tie_outs.record_members(params, "combined_liability_movement", consumed)
-    tie_outs.record_evidence(params, KEY, evidence)
+    tie_outs.record_evidence(params, evidence_key, evidence)
     return tuple(output)

@@ -581,7 +581,13 @@ def rollforwards(
     if (
         functional
         and documents
-        and (params.binding is None or "combined_liability_bridge_v1" in params.binding.evidence)
+        and (
+            params.binding is None
+            or any(
+                key in params.binding.evidence
+                for key in ("combined_liability_bridge_v1", "combined_liability_bridge_v2")
+            )
+        )
     ):
         from ..combined_liability_bridge import apply
 
@@ -596,6 +602,12 @@ def rollforwards(
                 periods=periods,
                 monthly=monthly,
                 transfers=member_transfers,
+                foreign_members=frozenset(
+                    (row.contract_id, row.entity_id)
+                    for row in (*opening_rows, *closing_rows)
+                    if (row.contract_id, row.entity_id) in transaction_ends
+                    and transaction_ends[(row.contract_id, row.entity_id)].currency != row.currency
+                ),
             )
         )
     return tuple(sorted(found, key=lambda item: (item.external_id, item.entity_code)))

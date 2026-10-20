@@ -602,3 +602,63 @@ def test_combined_credit_memo_consumes_another_members_layer(fx: FxWorld, invoic
             for row in presented
             if row.get("contract_external_id")
         ), presented
+
+
+def test_combined_historical_rates_reallocate_without_a_memo(fx: FxWorld) -> None:  # noqa: F811
+    from erev_api.db.tables import legal_entity
+    from erev_api.jobs.context import JobRuntime
+    from support.reference import get
+    from test_fx_remeasurement_recompute import _advance_received
+
+    owner_id, _ = _advance_received(fx)
+    second_id = _gateways(fx, FIRST_UK)
+    _grouped(fx.app, fx.maya, fx.marcus, [owner_id, second_id])
+    head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == second_id))
+    _recorded(fx, second_id, int(head), _invoice("SECOND-RATE", "2026-08-20", "90000.00"))
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    assert _fx_lines(fx.place, [owner_id, second_id]) == []
+    for view in ("functional", "reporting"):
+        run, rows = worlds.report_run(
+            reporting,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": AUGUST,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        assert (
+            next(
+                check
+                for check in run["tie_out_results"]
+                if check["code"] == "TO_ROLLFORWARD_BALANCES"
+            )["result"]
+            == "PASS"
+        ), run
+        detail = {
+            row["contract_external_id"]: row for row in rows if row.get("contract_external_id")
+        }
+        assert set(detail) == {DELIVERED_UK, FIRST_UK}
+        assert all(Decimal(row["other"]["amount"]) == 0 for row in detail.values()), detail
+        if view == "functional":
+            for name, transfer in ((DELIVERED_UK, "1800.00"), (FIRST_UK, "-1800.00")):
+                assert detail[name]["closing"] == {"amount": "73800.00", "currency": "GBP"}
+                assert detail[name]["reclassifications"] == {"amount": transfer, "currency": "GBP"}
+                assert detail[name]["fx_remeasurement"]["amount"] == "0.00"
+        started = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(reporting, UUID(started.json()["id"]))
+        assert finished["state"] == "SUCCEEDED", finished
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text

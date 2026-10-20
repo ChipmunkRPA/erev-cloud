@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Endpoint-driven member liability presentation — October 20, 2026
+
+- New functional/reporting builds apply the retained member-presentation bridge to all
+  foreign contract/entity endpoints, including periods without a memo or FX journal. This
+  explains historical-rate reallocations when another member adds billing. The v2 binding
+  records entity-qualified endpoint identities; v1 reruns retain their memo-triggered scope.
+  Cache and member selection now distinguish entities so one contract cannot borrow another
+  entity's carrying or presentation evidence. Migration 0196 updates the IPE description.
+- Necessary checks passed: an actual two-member group with USD 90,000 advances at GBP rates
+  0.80 and 0.84, no credit memo and no FX journal. Both members close at GBP 73,800; the
+  independently sourced reclassifications are +1,800 / -1,800, and both OTHER amounts are zero.
+  Functional and reporting views across August–September and their bound reruns pass. The
+  existing monetary multi-layer repeated-close/report flow also passes under the broader
+  source scope. Scoped lint/types pass; no deployment.
+- Still open: cross-member revenue/other control-flow source transfers, more complex carried
+  EVENT corrections and membership transitions, recorded privacy/snapshot registry gaps and
+  final accounting/release acceptance. Generalizing the endpoint trigger does not establish
+  those separate source-flow cases or production readiness.
+
 ## Combined-member credit-memo presentation — October 20, 2026
 
 - Functional billing now reads source layers across the report's authorized members of the

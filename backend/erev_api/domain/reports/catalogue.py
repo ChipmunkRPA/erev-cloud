@@ -544,6 +544,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "combined liability reclassifications bridge original layer carrying and retained "
             "member presentation at each endpoint, plus cross-member memo source transfers; "
             "each original computation group conserves zero and evidence is bound",
+            "new member presentation bridges include all foreign contract/entity endpoints, "
+            "even without a memo or FX journal; legacy v1 bindings retain memo-triggered scope",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
