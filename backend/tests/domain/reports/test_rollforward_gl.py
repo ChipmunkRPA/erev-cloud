@@ -59,6 +59,24 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
         == "NOT_APPLICABLE"
     )
 
+    # Missing GL evidence stays traceable and never becomes a zero balance.
+    rows[0]["source_amount"] = "-100"
+    rows[1]["source_amount"] = "20"
+    rows.pop(0)
+    missing = rollforward_gl.compare([entity], [item], sources)
+    assert missing["result"] == "NOT_APPLICABLE"
+    detail = missing["details"][0]
+    assert detail["reconciliation_id"] == sources[str(entity.id)]["id"]
+    assert detail["rollforward"] == "100"
+    assert "gl" not in detail and "difference" not in detail
+    assert detail["reason"] == "The GL source has no total for this role."
+    rows[0]["currency"] = "EUR"
+    mismatch = rollforward_gl.compare([entity], [item], sources)["details"][1]
+    assert mismatch["period_key"] == "FY2026-P08"
+    assert mismatch["reason"] == (
+        "The GL source currency differs from the entity functional currency."
+    )
+
 
 def test_retained_gl_rebuild_never_reads_current_reconciliation() -> None:
     from typing import cast

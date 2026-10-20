@@ -45,6 +45,11 @@ def compare(
                 {"entity": entity.code, "reason": "No trial balance at the report cutoff."}
             )
             continue
+        reference = {
+            "reconciliation_id": source["id"],
+            **{key: source[key] for key in ("book_code", "period_key") if source.get(key)},
+            **({"source_status": source["status"]} if "status" in source else {}),
+        }
         rows: dict[str, Any] = {}
         for row in source["totals"]:
             role = row.get("account_role")
@@ -57,7 +62,11 @@ def compare(
         if any(item.currency != entity.functional_currency for item in selected):
             incomplete = True
             details.append(
-                {"entity": entity.code, "reason": "GL comparison requires functional balances."}
+                {
+                    "entity": entity.code,
+                    **reference,
+                    "reason": "GL comparison requires functional balances.",
+                }
             )
             continue
         for role, caption in ROLES.items():
@@ -71,13 +80,7 @@ def compare(
                     {
                         "entity": entity.code,
                         "role": role,
-                        "reconciliation_id": source["id"],
-                        **{
-                            key: source[key]
-                            for key in ("book_code", "period_key")
-                            if source.get(key)
-                        },
-                        **({"source_status": source["status"]} if "status" in source else {}),
+                        **reference,
                         "currency": entity.functional_currency,
                         "gl": "0",
                         "rollforward": "0",
@@ -93,8 +96,25 @@ def compare(
                 or row["currency"] != entity.functional_currency
             ):
                 incomplete = True
+                reason = (
+                    "The GL source has no total for this role."
+                    if row is None
+                    else "The GL source marks this role as not stated."
+                    if row.get("not_stated") is not None
+                    else "The GL source has no amount for this role."
+                    if row.get("source_amount") is None
+                    else "The GL source currency differs from the entity functional currency."
+                )
                 details.append(
-                    {"entity": entity.code, "role": role, "reason": "No comparable GL role total."}
+                    {
+                        "entity": entity.code,
+                        "role": role,
+                        **reference,
+                        "currency": entity.functional_currency,
+                        "rollforward": str(report),
+                        "result": tie_outs.NOT_APPLICABLE,
+                        "reason": reason,
+                    }
                 )
                 continue
             gl = Decimal(row["source_amount"]) * (-1 if role == "CONTRACT_LIABILITY" else 1)
@@ -107,9 +127,7 @@ def compare(
                 {
                     "entity": entity.code,
                     "role": role,
-                    "reconciliation_id": source["id"],
-                    **{key: source[key] for key in ("book_code", "period_key") if source.get(key)},
-                    **({"source_status": source["status"]} if "status" in source else {}),
+                    **reference,
                     "currency": entity.functional_currency,
                     "gl": str(gl),
                     "rollforward": str(report),

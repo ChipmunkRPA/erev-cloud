@@ -7,6 +7,8 @@
 - New GL tie-out details retain the source book and period key and link to that exact
   reconciliation in the viewer. Earlier retained evidence without the route metadata still
   renders its amounts without guessing a destination. Re-runs use retained source evidence.
+- Incomplete GL comparisons also retain the source link and distinguish missing role,
+  unstated amount, missing amount and currency mismatch. Two GL tests, lint and types pass.
 - Corrected obsolete B4-3/4/6/8/12 and C-11 inventory claims: 59 of 59 definitions have
   execution paths (55 builders plus four composed reports). Registration is not accounting
   acceptance; the detailed scenario limitations and independent accounting review remain open.
