@@ -23,7 +23,7 @@ function open() {
     >
       <MemoryRouter
         initialEntries={[
-          "/reports/disclosures?entity=US&book=ASC606&period=2026-01&disclosure_kind=RPO",
+          "/reports/disclosures?entity=US&book=ASC606&period=2026-01&disclosure_kind=RPO&source=LOCKED",
         ]}
       >
         <DisclosureRegister />
@@ -50,6 +50,7 @@ it("uses context and disclosure filters, pages metadata, and links the original 
       period: "2026-01",
       disclosure_kind: "RPO",
       sort: "-created_at",
+      source: "LOCKED",
     },
     null,
   );

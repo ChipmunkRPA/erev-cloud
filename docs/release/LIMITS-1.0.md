@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current disclosure implementation correction (October 19): older entries below, including
+recent register notes, incorrectly carried forward pre-implementation limitations. Current
+code already captures sixteen inputs at the close cutoff, atomically publishes seven locked
+snapshots, and rebuilds JSON/XLSX/PDF from verified frozen evidence. See disclosure_freeze.py,
+disclosure_lock.py, disclosure_frozen.py and the archived atomic-publication/frozen-execution
+entries. The register now also supports server-side DRAFT/LOCKED filtering before pagination.
+Full populated accounting acceptance, independent sign-off and broader release verification
+remain outstanding. Older dated descriptions are history, not the current feature inventory.
+
+
 Latest disclosure register update (October 19): /reports/disclosures now lists authorized
 snapshot metadata by entity, book, period and disclosure type, pages older records, and opens
 verified retained detail and original report runs. Draft/locked source is displayed; source-status

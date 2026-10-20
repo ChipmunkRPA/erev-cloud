@@ -1,4 +1,6 @@
 {
+  "reports.disclosures.source": "Snapshot source",
+  "reports.disclosures.allSources": "Draft and locked",
   "reports.tabs.disclosures": "Disclosure snapshots",
   "reports.disclosures.title": "Disclosure snapshots",
   "reports.disclosures.description": "Browse retained disclosure evidence. Draft snapshots are not locked-period evidence. Expand a record to verify its saved source.",

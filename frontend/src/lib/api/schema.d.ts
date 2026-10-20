@@ -33996,6 +33996,7 @@ export interface operations {
         period?: string | null;
         disclosure_kind?: components["schemas"]["DisclosureKind"][] | null;
         report_run_id?: string | null;
+        source?: ("DRAFT" | "LOCKED") | null;
         limit?: number;
         cursor?: string | null;
         sort?: string | null;

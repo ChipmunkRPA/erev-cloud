@@ -8170,3 +8170,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   code. This is registration coverage, not full accounting or release acceptance. Next:
   forecast_outputs entry-point integration; broader multi-contract/re-lock/report acceptance
   and independent accounting sign-off remain open. No deployment or readiness claim.
+
+## Reporting priority and saved forecast reader — October 19, 2026
+
+- Reporting remains a feature-development priority. Catalogue registration counts do not
+  establish report completeness or accounting acceptance.
+- Added a format-specific saved forecast reader for the upcoming forecast_outputs catalogue
+  entry. It reads retained JSON/CSV/XLSX datasets through scenario lineage and current export
+  permissions, checks the parent and file identity, and decodes all five saved sections.
+  It never recaptures the current scenario or substitutes a different format's disclosure.
+- Eight focused forecast-export checks pass, including complete section decoding and rejection
+  of changed/missing sections. The new database reader and public catalogue integration still
+  need integration verification; forecast_outputs remains unregistered.
+- Next development: wire forecast_outputs admission, immutable source binding, worker and
+  report-centre access; then complete remaining report workflows and populated acceptance.
+  No deployment or production-readiness claim.

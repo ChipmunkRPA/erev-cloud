@@ -30,12 +30,14 @@ export function DisclosureRegister() {
   const [search, setSearch] = useSearchParams();
   const kind = search.get("disclosure_kind") ?? "";
   const entity = search.get("entity");
+  const source = search.get("source") ?? "";
   const query = {
     entity: entity === "all" ? null : entity,
     book: search.get("book"),
     period: search.get("period"),
     disclosure_kind: kind || null,
     sort: "-created_at",
+    source: source || null,
   };
   const allowed = access.holdsAnywhere("report.run");
   const snapshots = useInfiniteQuery({
@@ -79,6 +81,27 @@ export function DisclosureRegister() {
                     const updated = new URLSearchParams(search);
                     if (next) updated.set("disclosure_kind", next);
                     else updated.delete("disclosure_kind");
+                    setSearch(updated);
+                  }}
+                />
+              )}
+            </Field>
+            <Field name="disclosure-source" label={t("reports.disclosures.source")}>
+              {(control) => (
+                <Select
+                  control={control}
+                  value={source}
+                  options={[
+                    { value: "", label: t("reports.disclosures.allSources") },
+                    ...["DRAFT", "LOCKED"].map((value) => ({
+                      value,
+                      label: t(`reports.disclosure.snapshots.${value}`),
+                    })),
+                  ]}
+                  onChange={(next) => {
+                    const updated = new URLSearchParams(search);
+                    if (next) updated.set("source", next);
+                    else updated.delete("source");
                     setSearch(updated);
                   }}
                 />

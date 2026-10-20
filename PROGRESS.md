@@ -6,6 +6,20 @@
 
 
 
+## Disclosure source filtering and status correction — October 19, 2026
+
+- Added API source=DRAFT|LOCKED filtering from immutable period_lock_id before pagination and
+  counts, plus a source selector on the snapshot register. Updated generated OpenAPI/client
+  types. The source state is computed from the record, never caller-supplied classification.
+- Revalidated the real disclosure child/parent journey: draft list/count filtering, atomic
+  locked snapshots, opposite-source empty results, frozen JSON/XLSX/PDF rebuild and retained
+  reruns all pass in the existing database scenario with added source-filter assertions.
+- Corrected stale status carried forward in recent notes/LIMITS: lock-time capture and frozen
+  disclosure execution were already implemented in 54bb6fa / 41c8278. They are not remaining
+  development work. Full populated accounting acceptance and independent sign-off remain open.
+- Two focused register tests, Python typing/lint, frontend TypeScript/ESLint and the real
+  disclosure journey pass. No deployment; the disposable verification database was stopped.
+
 ## Disclosure snapshot register — October 19, 2026
 
 - Added /reports/disclosures and a Reports tab for report.run readers. The register queries
@@ -13,11 +27,12 @@
   pages older records, and links each record to its original report run.
 - Reuses the lazy verified snapshot detail panel. Draft versus locked source remains explicit;
   metadata browsing does not fetch all payloads or imply lock-time capture is complete.
-  Source-status filtering is not offered because the current list API does not support it.
+  Source-status filtering was added in the subsequent source-filter update.
 - Four focused register/detail checks pass with TypeScript/ESLint. Actual-versus-forecast
   populated-posting acceptance remains unproven; review found existing computation/cutoff UI,
-  so no speculative calculation rewrite was made. Disclosure lock-time orchestration,
-  populated report acceptance and independent accounting sign-off remain open. No deployment.
+  so no speculative calculation rewrite was made. Disclosure lock-time orchestration was
+  already implemented (see archived publication/frozen-execution entries); the earlier status
+  here was stale. Populated accounting acceptance and independent sign-off remain open.
 
 ## Close variance snapshot selection — October 19, 2026
 
@@ -230,21 +245,6 @@
 - Remaining: public catalogue admission, REPORT_RUN worker and read/list access integration.
   This is an internal completed path, not a publicly registered forecast_outputs report yet.
   Broader reporting workflows and accounting acceptance remain open. No deployment.
-
-## Reporting priority and saved forecast reader — October 19, 2026
-
-- Reporting remains a feature-development priority. Catalogue registration counts do not
-  establish report completeness or accounting acceptance.
-- Added a format-specific saved forecast reader for the upcoming forecast_outputs catalogue
-  entry. It reads retained JSON/CSV/XLSX datasets through scenario lineage and current export
-  permissions, checks the parent and file identity, and decodes all five saved sections.
-  It never recaptures the current scenario or substitutes a different format's disclosure.
-- Eight focused forecast-export checks pass, including complete section decoding and rejection
-  of changed/missing sections. The new database reader and public catalogue integration still
-  need integration verification; forecast_outputs remains unregistered.
-- Next development: wire forecast_outputs admission, immutable source binding, worker and
-  report-centre access; then complete remaining report workflows and populated acceptance.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

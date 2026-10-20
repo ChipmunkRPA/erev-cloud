@@ -1,9 +1,10 @@
 """API-R-42 disclosure snapshot register and verified retained detail."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
+from sqlalchemy import case
 
 from erev_api.api.deps import API_PREFIX, GuardedRoute, problem_responses
 from erev_api.api.lists import (
@@ -33,6 +34,12 @@ SPEC = ListSpec(
     default_sort="-id",
     sort_keys={"id": snapshot.c.id, "created_at": snapshot.c.created_at},
     filters={
+        "source": FilterSpec(
+            "source",
+            case((snapshot.c.period_lock_id.is_(None), "DRAFT"), else_="LOCKED"),
+            "exact",
+            choices=frozenset({"DRAFT", "LOCKED"}),
+        ),
         "entity": FilterSpec("entity", legal_entity.c.code, "in"),
         "book": FilterSpec("book", snapshot.c.book_code, "exact", choices=frozenset(BookCode)),
         "period": FilterSpec("period", period.c.period_key, "exact"),
@@ -59,8 +66,9 @@ def disclosure_snapshots_list(
     period_key: Annotated[str | None, Query(alias="period")] = None,
     disclosure_kind: Annotated[list[DisclosureKind] | None, Query()] = None,
     report_run_id: Annotated[UUID | None, Query()] = None,
+    source: Annotated[Literal["DRAFT", "LOCKED"] | None, Query()] = None,
 ) -> ListOut[DisclosureSnapshotSummaryOut]:
-    del entity, book, period_key, disclosure_kind
+    del entity, book, period_key, disclosure_kind, source
     if len(params.filters.get("report_run_id", ())) > 1:
         raise invalid("report_run_id", "Choose one report run.")
     result = queries.read(

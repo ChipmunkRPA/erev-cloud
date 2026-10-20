@@ -5313,6 +5313,16 @@ def test_disclosure_children_attach_once_and_survive_retry(
     first_items = snapshots_page.json()["items"]
     assert len(first_items) == 3
     assert all(item["source"] == "DRAFT" and "data" not in item for item in first_items)
+    for source, expected in (("DRAFT", 7), ("LOCKED", 0)):
+        selected = get(
+            world.app,
+            "/api/v1/disclosure-snapshots",
+            actor,
+            {"report_run_id": str(parent["id"]), "source": source, "count": True},
+        )
+        assert selected.status_code == 200, selected.text
+        assert len(selected.json()["items"]) == expected
+        assert selected.headers["X-Erev-Total-Count"] == str(expected)
     next_snapshots = get(
         world.app,
         "/api/v1/disclosure-snapshots",
@@ -5600,6 +5610,16 @@ def test_disclosure_children_attach_once_and_survive_retry(
     assert saved.status_code == 200, saved.text
     assert len(saved.json()["items"]) == 7
     assert all(row["source"] == "LOCKED" for row in saved.json()["items"])
+
+    for source, expected in (("LOCKED", 7), ("DRAFT", 0)):
+        selected = get(
+            world.app,
+            "/api/v1/disclosure-snapshots",
+            actor,
+            {"report_run_id": str(frozen_parent_id), "source": source},
+        )
+        assert selected.status_code == 200, selected.text
+        assert len(selected.json()["items"]) == expected
 
     # Frozen exports rebuild from E-65. Child output files and current policy/builders are not read.
     from erev_api.domain.reports import disclosure_frozen
