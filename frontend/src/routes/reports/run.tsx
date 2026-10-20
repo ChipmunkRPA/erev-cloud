@@ -67,15 +67,23 @@ import { TieOutStrip } from "./viewer/TieOutStrip";
 const EVIDENCE_EXPORT_PERMISSION = "evidence.export";
 
 /** RV-03: what a rerun of the run reads. */
-export type RerunOffer = "same-source" | "new-evaluation" | "unbound";
+export type RerunOffer = "same-source" | "new-evaluation" | "unbound" | "saved-forecast";
 
 /**
  * RV-03 (rev 1.19): a run stored before source binding of a builder that binds its source cannot be
  * rerun; an `open` builder's run, and a run that failed before its source was captured, rerun as a new
  * evaluation; every other run reruns from the same source.
  */
-export function rerunOffer(run: Pick<ReportRun, "sources">): RerunOffer {
+export function rerunOffer(
+  run: Pick<ReportRun, "sources"> & Partial<Pick<ReportRun, "report" | "status" | "output">>,
+): RerunOffer {
   const { kind, strategy } = run.sources;
+  if (run.report?.code === "forecast_outputs") {
+    if (kind === "bound" && strategy === "adapter") return "same-source";
+    return kind === "open" && run.status === "SUCCEEDED" && run.output != null
+      ? "saved-forecast"
+      : "unbound";
+  }
   if (kind === "legacy_unbound") {
     return strategy === "open" ? "new-evaluation" : "unbound";
   }
@@ -83,7 +91,11 @@ export function rerunOffer(run: Pick<ReportRun, "sources">): RerunOffer {
 }
 
 /** RV-03 "Sources": the sentence of the run's source binding, by `sources.kind`. */
-export function sourcesText(run: Pick<ReportRun, "sources">): string {
+export function sourcesText(
+  run: Pick<ReportRun, "sources"> & Partial<Pick<ReportRun, "report">>,
+): string {
+  if (run.report?.code === "forecast_outputs" && ["bound", "open"].includes(run.sources.kind))
+    return t("reports.run.sources.savedForecast");
   const sources = run.sources;
   const count = (value: number) => formatNumber(value, { kind: "count" });
   switch (sources.kind) {
@@ -395,6 +407,7 @@ function RunBody({ run, me }: RunBodyProps) {
   const access = useAccess();
   const computing = isRunning(run);
   const result = rerunResultOf(location.state);
+  const offer = rerunOffer(run);
 
   // The job of a run that is still computing (DS-CMP-24), for who may read it (04 API-R-11); another
   // reader sees the run computing without its progress, and the run is read again until it ends.
@@ -403,7 +416,7 @@ function RunBody({ run, me }: RunBodyProps) {
   // RV-03: the rerun is a command that answers 202 with a job; its result names the new run.
   const rerun = useCommand({
     method: "POST",
-    path: `${REPORT_RUNS_PATH}/${run.id}/rerun`,
+    path: offer === "saved-forecast" ? REPORT_RUNS_PATH : `${REPORT_RUNS_PATH}/${run.id}/rerun`,
     invalidates: [EVERY_REPORT_RUN],
   });
   const job = rerun.job;
@@ -430,6 +443,10 @@ function RunBody({ run, me }: RunBodyProps) {
       return;
     }
     opened.current = ended.id;
+    if (offer === "saved-forecast") {
+      void navigate(reportRunRoute(next));
+      return;
+    }
     const state: { readonly rerun: RerunResult } = {
       rerun: {
         ofId: run.id,
@@ -439,11 +456,10 @@ function RunBody({ run, me }: RunBodyProps) {
       },
     };
     void navigate(reportRunRoute(next), { state });
-  }, [ended, navigate, run.id, run.report_run_no]);
+  }, [ended, navigate, offer, run.id, run.report_run_no]);
 
   const status = chipFor("E-67", run.status);
   const label = t("reports.report.running", { name: run.report.name });
-  const offer = rerunOffer(run);
   const view = built.has(REPORT_ROUTE) ? reportViewHref(run) : null;
   const output = run.output;
   const mayDownload = access.holdsAnywhere(
@@ -484,7 +500,9 @@ function RunBody({ run, me }: RunBodyProps) {
     {
       label: t("reports.stamp.source"),
       value:
-        run.period_lock_id === null ? (
+        run.report.code === "forecast_outputs" ? (
+          t("reports.stamp.savedForecast", { at: formatTimestamp(run.known_at) })
+        ) : run.period_lock_id === null ? (
           <span data-volatile="">
             {t("reports.stamp.current", { at: formatTimestamp(run.known_at) })}
           </span>
@@ -645,14 +663,33 @@ function RunBody({ run, me }: RunBodyProps) {
                 variant="primary"
                 loading={rerun.pending || rerunning}
                 disabledReason={
-                  offer === "unbound" ? t("reports.run.sources.legacy_unbound") : undefined
+                  offer === "unbound"
+                    ? t(
+                        run.report.code === "forecast_outputs"
+                          ? "reports.run.sources.forecastUnavailable"
+                          : "reports.run.sources.legacy_unbound",
+                      )
+                    : undefined
                 }
-                onClick={() => void rerun.submit()}
+                onClick={() =>
+                  void rerun.submit(
+                    offer === "saved-forecast"
+                      ? {
+                          report_code: run.report.code,
+                          report_version: run.report.version,
+                          parameters: run.parameters,
+                          output_format: run.output?.format,
+                        }
+                      : undefined,
+                  )
+                }
               >
                 {t(
-                  offer === "new-evaluation"
-                    ? "reports.run.rerun.newEvaluation"
-                    : "reports.runDetails.rerun",
+                  offer === "saved-forecast"
+                    ? "reports.run.rerun.savedForecast"
+                    : offer === "new-evaluation"
+                      ? "reports.run.rerun.newEvaluation"
+                      : "reports.runDetails.rerun",
                 )}
               </Button>
             )}

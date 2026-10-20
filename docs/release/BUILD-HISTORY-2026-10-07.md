@@ -8042,3 +8042,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   real first-close command journey. Focused binding/assembly checks and 34 UI checks pass.
 - Still open: populated re-open/re-lock end-to-end acceptance, cross-contract driver evidence,
   catalogue PACK builders, change/access packs and independent accounting sign-off. No deployment.
+
+## Change/access report-source implementation — October 19, 2026
+
+- Added immutable CHANGE/ACCESS report-source preparation and retained collection. CHANGE
+  captures configuration/SSP logs; ACCESS captures user-access/SoD reports, including removed
+  members. All use explicit dates, known-at and captured entity scopes through the report framework.
+- Original CSV, IPE manifest and source identities are verified and collected without requeueing.
+  Current source/export permissions are checked on every retained read; newer entities are not
+  silently added. Future dates and empty scopes refuse.
+- Two actual PostgreSQL report-worker journeys and five date/scope checks pass; access output
+  includes real memberships. Revoked export is refused; Mypy and Ruff pass.
+- This is the retained report section, not completed CHANGE/ACCESS packs. Release evidence,
+  role matrix/access reviews, parent retention/API/UI remain next development work. No deployment.

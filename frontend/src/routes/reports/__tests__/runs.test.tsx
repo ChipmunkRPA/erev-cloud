@@ -984,3 +984,44 @@ describe("API-S-ReportRun as the screens read it", () => {
     ).toBe(`/reports/rpo?book=ASC606&run=${RUN_ID}&entities=all`);
   });
 });
+
+it("re-exports an original forecast through the catalogue without claiming a computation rerun", async () => {
+  const original = reportRun({
+    report: { code: "forecast_outputs", version: 1, name: "Forecast outputs" },
+    period_lock_id: null,
+    parameters: { forecast_run_id: "parent-forecast", book: "ASC606", entity_codes: ["AVM-US"] },
+    sources: { ...reportRun().sources, kind: "open", strategy: "open", bound: false },
+  });
+  const next = {
+    ...original,
+    id: RERUN_ID,
+    sources: { ...original.sources, kind: "bound", strategy: "adapter", bound: true },
+  };
+  const served = serve([original, next]);
+  const requests: unknown[] = [];
+  server.use(
+    http.post(apiUrl("/api/v1/report-runs"), async ({ request }) => {
+      requests.push(await request.json());
+      return HttpResponse.json(job("QUEUED"), {
+        status: 202,
+        headers: { Location: `/api/v1/jobs/${JOB_ID}` },
+      });
+    }),
+    http.get(apiUrl(`/api/v1/jobs/${JOB_ID}`), () =>
+      HttpResponse.json(job("SUCCEEDED", { report_run_id: RERUN_ID })),
+    ),
+  );
+  const { router } = open(`/reports/runs/${RUN_ID}`);
+  fireEvent.click(await screen.findByRole("button", { name: "Re-export saved forecast" }));
+  await waitFor(() => expect(router.state.location.pathname).toBe(`/reports/runs/${RERUN_ID}`));
+  expect(requests).toEqual([
+    {
+      report_code: "forecast_outputs",
+      report_version: 1,
+      parameters: original.parameters,
+      output_format: "XLSX",
+    },
+  ]);
+  expect(served.reruns).toHaveLength(0);
+  expect(screen.queryByTestId("SF-08-banner-rerun-result")).toBeNull();
+});

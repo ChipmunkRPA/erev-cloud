@@ -6,6 +6,20 @@
 
 
 
+## Forecast run-record re-export — October 19, 2026
+
+- Original succeeded forecast records now offer Re-export saved forecast instead of an
+  unsupported new-computation rerun. The action creates a catalogue report with the original
+  parameters/version/format, follows its REPORT_RUN job and opens the new record.
+- Re-export navigation does not invent CTL-029 comparison results for an original catalogue
+  creation. Bound catalogue reports retain the normal same-source rerun action; incomplete
+  or unbound forecast records do not offer unsupported computation reruns.
+- Forecast record and report-view stamps identify a saved forecast cutoff, and source text
+  explains that exports reuse original figures. Twenty-six run-record checks pass, including
+  the POST /report-runs action and navigation without a misleading equality banner.
+- Broader reporting/business acceptance and independent accounting sign-off remain open.
+  No deployment or production-readiness claim.
+
 ## Report export recovery — October 19, 2026
 
 - Export menus now guard duplicate submissions during the request, the accepted-but-not-yet-
@@ -233,19 +247,6 @@
 - Actual CHANGE/ACCESS report-worker collection and 17 focused checks pass; Mypy/Ruff pass.
 - Still open: access-review evidence, parent job/storage, public CHANGE/ACCESS API/UI,
   populated re-lock acceptance and the wider reporting backlog. No deployment.
-
-## Change/access report-source implementation — October 19, 2026
-
-- Added immutable CHANGE/ACCESS report-source preparation and retained collection. CHANGE
-  captures configuration/SSP logs; ACCESS captures user-access/SoD reports, including removed
-  members. All use explicit dates, known-at and captured entity scopes through the report framework.
-- Original CSV, IPE manifest and source identities are verified and collected without requeueing.
-  Current source/export permissions are checked on every retained read; newer entities are not
-  silently added. Future dates and empty scopes refuse.
-- Two actual PostgreSQL report-worker journeys and five date/scope checks pass; access output
-  includes real memberships. Revoked export is refused; Mypy and Ruff pass.
-- This is the retained report section, not completed CHANGE/ACCESS packs. Release evidence,
-  role matrix/access reviews, parent retention/API/UI remain next development work. No deployment.
 
 ## Outstanding release verification
 
