@@ -6,6 +6,24 @@
 
 
 
+## Signed revenue calculation sources — October 20, 2026
+
+- Added exact signed expansion of retained S12 revenue cumulative targets, preserving each
+  original movement, owner, layer and kind. The reader handles liability consumption, asset
+  creation, asset settlement and liability creation, including negative contributions and
+  opposing owners at a zero net target. Every intermediate total must reproduce its trace;
+  missing, duplicate, cyclic, changed-amount or wrong-currency sources are refused.
+- Combined-member revenue attribution now verifies selected relief against the complete
+  signed target. New runs retain the source projection and movement population for rerun;
+  existing bindings retain their earlier validation path. This connects the source reader
+  to live rollforward and opening-liability disclosures rather than a standalone calculator.
+- Necessary checks: real cross-member functional/reporting disclosures and bound reruns;
+  six signed-source/corruption checks; lint and types. No deployment.
+- This is the source expansion needed for further posting-delta work, not completion of
+  negative-revenue reporting. Original/prior target and paid-history reconciliation, asset
+  presentation transfers, per-obligation opening consumption and complex carried histories
+  remain open. Final release verification and independent accounting acceptance remain open.
+
 ## Reporting and forecast data catalogue reconciliation — October 20, 2026
 
 - Classified the 43 missing code columns across retained evidence-sample dependencies,
@@ -206,27 +224,6 @@
 - Still open: end-to-end late-carried public acceptance, populated foreign two-lock acceptance,
   recorded privacy/snapshot registry gaps and final accounting/release acceptance. Correcting
   this selector does not establish those broader acceptance cases or production readiness.
-
-## Regrouped FX source ownership — October 20, 2026
-
-- Historical FX matching now uses S14's retained-membership regrouping rule. A stored group
-  subject is compared under the computation's original member population; keyless legacy
-  lines use that retained group/entity subject. Neither the sealed ledger fields nor the
-  original source calculation is rewritten. Command intent checks retain exact stored subjects;
-  only a missing subject uses the historical fallback.
-- Necessary checks cover keyless settlement attribution, the actual reversal after the listing
-  member leaves a three-contract group, and a two-contract public functional report. The latter
-  assigns GBP 1,080 to the actual asset owner even though the ledger lists another member.
-  The regrouping reversal retains the original paid-line dependency and delivered owner.
-  The public August–September report after exit nets original/reversal/reposted FX to USD 200
-  and passes the balance tie-out. Scoped lint/type checks pass.
-- Scope correction: current control FX templates JET-10a/b/c select one role on each side;
-  S14 does not emit split-weight targets for these flows. Unknown split formulas still refuse,
-  but are not an outstanding feature for the current FX report path.
-- Still open: late-carried public acceptance, populated foreign two-lock
-  acceptance, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
-  Group settlement/exit cases do not establish every membership transition or production
-  readiness. No deployment.
 
 ## Outstanding release verification
 

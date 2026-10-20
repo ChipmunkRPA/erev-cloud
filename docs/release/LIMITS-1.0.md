@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Signed revenue calculation sources — October 20, 2026
+
+- Added exact signed expansion of retained S12 revenue cumulative targets, preserving each
+  original movement, owner, layer and kind. The reader handles liability consumption, asset
+  creation, asset settlement and liability creation, including negative contributions and
+  opposing owners at a zero net target. Every intermediate total must reproduce its trace;
+  missing, duplicate, cyclic, changed-amount or wrong-currency sources are refused.
+- Combined-member revenue attribution now verifies selected relief against the complete
+  signed target. New runs retain the source projection and movement population for rerun;
+  existing bindings retain their earlier validation path. This connects the source reader
+  to live rollforward and opening-liability disclosures rather than a standalone calculator.
+- Necessary checks: real cross-member functional/reporting disclosures and bound reruns;
+  six signed-source/corruption checks; lint and types. No deployment.
+- This is the source expansion needed for further posting-delta work, not completion of
+  negative-revenue reporting. Original/prior target and paid-history reconciliation, asset
+  presentation transfers, per-obligation opening consumption and complex carried histories
+  remain open. Final release verification and independent accounting acceptance remain open.
+
 ## Reporting and forecast data catalogue reconciliation — October 20, 2026
 
 - Classified the 43 missing code columns across retained evidence-sample dependencies,

@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import fx_layer_movement
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import revenue_trace, tie_outs
 from erev_api.explain import store
 
 if TYPE_CHECKING:
@@ -44,6 +44,10 @@ def read(
     opening: Amounts = {}
     consumed: set[UUID] = set()
     evidence: dict[str, Any] = {}
+    signed_key = "revenue_signed_sources_v1"
+    signed = params.binding is None or signed_key in params.binding.evidence
+    signed_evidence: dict[str, Any] = {}
+    signed_members: set[UUID] = set()
     for (version, entity), members in groups.items():
         if len(members) < 2 or not periods[entity]:
             continue
@@ -59,7 +63,12 @@ def read(
                     fx_layer_movement.c.entity_id == entity,
                     fx_layer_movement.c.contract_id.in_(list(owners.values())),
                     fx_layer_movement.c.movement_kind.in_(
-                        ("LIABILITY_LAYER_CONSUMED", "LIABILITY_LAYER_CREATED")
+                        (
+                            "LIABILITY_LAYER_CONSUMED",
+                            "LIABILITY_LAYER_CREATED",
+                            "ASSET_LAYER_CREATED",
+                            "ASSET_LAYER_SETTLED",
+                        )
                     ),
                 )
             )
@@ -75,6 +84,7 @@ def read(
         original: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         sources: dict[tuple[UUID, UUID], set[UUID]] = defaultdict(set)
         cross = []
+        verified_revenue: dict[str, dict[UUID, revenue_trace.RevenueSource]] = {}
         for movement in movement_rows:
             node = nodes.get(str(movement["trace_node_id"]))
             if (
@@ -111,6 +121,37 @@ def read(
                 raise tie_outs.invalid(
                     "currency_view", "Revenue relief differs from its retained owner/amount."
                 )
+            if signed:
+                # Verify the consumed layer as part of the complete signed revenue
+                # target, including asset creation and negative-revenue source pieces.
+                target = f"revenue_functional:{subject}:{at.key}"
+                if target not in verified_revenue:
+                    try:
+                        verified_revenue[target] = {
+                            source.movement_id: source
+                            for source in revenue_trace.project(
+                                trace, target, movement_rows, currency=node.currency
+                            )
+                        }
+                    except revenue_trace.InvalidRevenueTrace as error:
+                        raise tie_outs.invalid("currency_view", str(error)) from error
+                retained = verified_revenue[target].get(movement["id"])
+                if retained is None or retained.amount != Decimal(movement["amount_functional"]):
+                    raise tie_outs.invalid(
+                        "currency_view",
+                        "Relief is not a positive source of the retained revenue target.",
+                    )
+                signed_evidence[f"{version}:{entity}:{target}"] = [
+                    {
+                        "movement_id": str(source.movement_id),
+                        "contract_id": str(source.contract_id),
+                        "layer_key": source.layer_key,
+                        "movement_kind": source.movement_kind,
+                        "amount": str(source.amount),
+                    }
+                    for source in verified_revenue[target].values()
+                ]
+                signed_members.update(verified_revenue[target])
             source_key = (recognizer, at.id)
             amount = Decimal(movement["amount_functional"])
             amounts[source_key] += amount
@@ -151,6 +192,14 @@ def read(
         raise tie_outs.invalid(
             "currency_view", "Revenue layer transfers differ from retained evidence."
         )
+    if signed:
+        if params.binding is not None and params.binding.evidence[signed_key] != signed_evidence:
+            raise tie_outs.invalid(
+                "currency_view", "Signed revenue sources differ from retained evidence."
+            )
+        tie_outs.require_members(params, "revenue_signed_layer", signed_members)
+        tie_outs.record_members(params, "revenue_signed_layer", signed_members)
+        tie_outs.record_evidence(params, signed_key, signed_evidence)
     tie_outs.require_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_evidence(params, KEY, evidence)
