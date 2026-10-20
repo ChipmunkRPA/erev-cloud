@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Historical time-based schedule projection — October 20, 2026
+
+- Stage 09 now freezes the original deterministic allocation segment at cuts before later
+  fixed-allocation changes, retaining progress, exact targets and posted differences. RPO bands
+  and revenue-waterfall future periods use this dated evidence and reconcile it to the remainder.
+- Explain links name the exact cut, so a historical projected amount does not open the latest
+  fixed schedule. The original retained schedule source remains available for drill-through.
+- Real engine increase/decrease cases reproduce the pre-change future schedule by period;
+  all trace nodes replay. Targeted report, reader and explain checks and two DB journeys pass.
+- Still open: periods absent from the retained source schedule, missing original segment terms,
+  adjusted/held cuts and broader compound lifecycle attribution. These paths retain explicit
+  refusal, not proportional reconstruction. Independent accounting acceptance remains open.
+  Migration 0214 records the calculation for RPO, its rollforward and the waterfall. No deployment.
+
+
 ## Dated fixed allocation for historical RPO — October 20, 2026
 
 - Stage 09 retains original fixed allocations by reporting period and version date, including
@@ -215,28 +230,6 @@
 - Migration 0203 describes the source method. Mixed TIME/EVENT source allocation, intercompany
   counterparts, foreign-owner asset settlement, remaining close-only histories and the other
   documented release gaps remain open. No deployment or production-readiness claim.
-
-## Mixed liability relief and own-member asset revenue — October 20, 2026
-
-- Functional/reporting cross-member revenue now accepts original sources that both consume
-  another member's liability and create the recognizing member's own contract asset. The full
-  posted revenue delta is verified; only liability-consumption sources must match retained
-  owner/layer relief. Asset creation remains separately evidenced and is not opening relief.
-- Presentation bridge v4 uses the verified total liability relief to correct local member
-  replay that initially presents cross-member consumption as asset revenue. The amount comes
-  from original source layers, never from OTHER. Opening/current-range relief, asset revenue
-  and member transfers reconcile independently; original v1-v3 bindings retain their path.
-- A real foreign-currency combined scenario consumes USD 45,000 of July advances and recognizes
-  USD 54,000 in August, creating an asset for the excess. After the actual FX close, functional
-  disclosure reports GBP 43,470 revenue and GBP 36,000 opening relief. Functional/reporting
-  reruns retain their original source amounts. Catalogue migration 0202 describes this method.
-- Necessary verification passed: the mixed-source scenario, existing multi-period delivery/return
-  disclosure and reruns, catalogue migration consistency, scoped lint and types.
-- Mixed TIME/EVENT source allocation remains open: S14 currently computes a proportional
-  functional TIME amount without retaining per-source allocation. Do not infer TIME ownership
-  from S12 source dates, which also represent EVENT revenue. Cross-owner asset settlement,
-  new-liability reversal presentation, remaining close-only histories and other release gaps
-  still need work. No deployment or production-readiness claim.
 
 
 ## Outstanding release verification

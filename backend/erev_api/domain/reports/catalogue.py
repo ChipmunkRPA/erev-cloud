@@ -407,6 +407,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _PERIODS,
             _CONTRACT,
             _as_locked("WATERFALL"),
+            "historical time-based schedules freeze the original allocation segment at the "
+            "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
+            "drill-through",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -749,6 +752,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "remaining amounts by expected period of recognition, banded by time_bands (POL-201)",
             "section 2: contracts exempt under POL-197 to POL-200 set to APPLY",
             _as_locked("RPO"),
+            "historical time-based schedules freeze the original allocation segment at the "
+            "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
+            "drill-through",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -815,6 +821,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "dated fixed-allocation evidence reconciles to version remainders and excludes future "
             "estimate changes from earlier RPO; same-version estimate movements require complete "
             "original shares matching the dated allocation difference",
+            "historical time-based schedules freeze the original allocation segment at the "
+            "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
+            "drill-through",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

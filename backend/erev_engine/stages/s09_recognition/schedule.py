@@ -1236,6 +1236,136 @@ def _emit_fixed_schedule(
         previous, previous_usage = ev, usage_node
 
 
+def _emit_dated_schedule(
+    ctx: BookContext,
+    st: AllocatedState,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+    targets: Sequence[Target],
+    causes: Sequence[Target],
+) -> None:
+    """Freeze the original time-based segment at each cut preceding a later allocation.
+
+    Keep the original schedule source for drill-through. Missing future source periods remain
+    unsupported and are rejected by the reader's scheduled-remainder reconciliation.
+    """
+    ob = evaluator.ob
+    if not components.is_deterministic(ob):
+        return
+    periods = {p.period_key: p for p in evaluator.periods}
+    for target in targets:
+        cut = periods[target.period_key].end_date
+        seg = components.active_segment(ob, "FIXED", cut)
+        if seg is None or not any(
+            item.component == "FIXED" and item.effective_date > cut for item in ob.segments
+        ):
+            continue
+        ev = evaluator.posted(cut)
+        if ev.guard is not None or ev.adjusted or ev.fixed is None:
+            continue
+        # Explicit original terms are required; do not fall back to a later obligation term.
+        if seg.totals.start_date is None or seg.totals.end_date is None:
+            continue
+        previous = ev.fixed.posted
+        previous_node: str | None = None
+        for future in targets:
+            end = periods[future.period_key].end_date
+            if end < cut:
+                continue
+            part = components.segment_target(
+                ctx,
+                st,
+                evaluator.contract,
+                ob,
+                seg,
+                end,
+                custodial_start=evaluator.custodial_start,
+            )
+            slot = f"{future.period_key}@{cut.isoformat()}"
+            progress = tb.node(
+                measure="scheduled_progress",
+                subject_key=ob.subject_key,
+                period_key=slot,
+                value=part.progress.value,
+                currency=None,
+                minor_unit=None,
+                formula_id=part.progress.formula_id,
+                inputs=[],
+                params=part.progress.params,
+                narrative_key=_narrative(part.progress.formula_id),
+            )
+            params = {
+                "as_of": end.isoformat(),
+                "progress": rational_param(part.progress.value),
+                "x_exact": rational_param(seg.x_exact),
+            }
+            formula = components.INCEPTION_EXACT_FORMULA
+            if seg.basis == "PROSPECTIVE":
+                formula = components.PROSPECTIVE_EXACT_FORMULA
+                params["base_revenue_exact"] = rational_param(seg.base_revenue_exact)
+            exact = tb.node(
+                measure="scheduled_target_exact",
+                subject_key=ob.subject_key,
+                period_key=slot,
+                value=part.exact,
+                currency=None,
+                minor_unit=None,
+                formula_id=formula,
+                inputs=[progress],
+                params=params,
+                narrative_key=_narrative(formula),
+            )
+            posted_params = {
+                "as_of": end.isoformat(),
+                "fixed": "true",
+                "x_exact": rational_param(seg.x_exact),
+                "a_posted": str(seg.a_posted),
+            }
+            if part.complete:
+                posted_params["complete"] = "true"
+            posted = tb.node(
+                measure="scheduled_target",
+                subject_key=ob.subject_key,
+                period_key=slot,
+                value=part.posted,
+                currency=ctx.txn_currency,
+                minor_unit=evaluator.mu,
+                formula_id=components.REVENUE_CUM_FORMULA,
+                inputs=[exact],
+                params=posted_params,
+                narrative_key=_narrative(components.REVENUE_CUM_FORMULA),
+            )
+            if end == cut:
+                previous_node = posted
+                continue
+            assert previous_node is not None
+            own = [item for item in causes if item.period_key == future.period_key and item.value]
+            for i, cause in enumerate(own):
+                # All of this period's frozen fixed movement belongs to one retained source.
+                # Other causes from subsequent changes carry zero in the frozen schedule.
+                amount = part.posted - previous if i == 0 else 0
+                tb.node(
+                    measure="scheduled_fixed_at_cut",
+                    subject_key=ob.subject_key,
+                    period_key=f"{slot}@{cause.cause}",
+                    value=amount,
+                    currency=ctx.txn_currency,
+                    minor_unit=evaluator.mu,
+                    formula_id=FIXED_SCHEDULE_FORMULA,
+                    inputs=[posted, previous_node if i == 0 else posted],
+                    params={
+                        "signs": "+,-",
+                        "cause": "FIXED_SCHEDULE",
+                        "as_of": end.isoformat(),
+                        "cut": cut.isoformat(),
+                        "source_node": cause.node_id,
+                    },
+                    narrative_key=_narrative(FIXED_SCHEDULE_FORMULA),
+                )
+            previous = part.posted
+            previous_node = posted
+
+
 def _emit_fixed_allocation(
     ctx: BookContext,
     st: AllocatedState,
@@ -1333,6 +1463,9 @@ def build(
         ob = evaluator.ob
         _emit_fixed_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
         _emit_realised_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
+        _emit_dated_schedule(
+            ctx, st, tb, evaluator, targets.get(subject_key, ()), causes.get(subject_key, ())
+        )
         _emit_fixed_schedule(
             ctx, tb, evaluator, targets.get(subject_key, ()), causes.get(subject_key, ())
         )

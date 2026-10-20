@@ -307,3 +307,42 @@ def test_the_obligation_subject_is_the_anchors_or_the_engines_key_never_a_raw_jo
     assert _subject(anchored, contract_row, row) == "Contract 1/POB %231"
     assert _subject({}, contract_row, row) == "Contract 1/POB %231"
     assert _subject({}, {"external_id": "A:B"}, {"obligation_key": "C/D"}) == "A%3AB/C%2FD"
+
+
+def test_schedule_projection_explanation_selects_the_requested_cut(monkeypatch) -> None:
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from erev_api.explain import service
+
+    source = SimpleNamespace(id="source", measure="amount", params={})
+    original = SimpleNamespace(
+        id="legacy", measure="scheduled_fixed_amount", params={"source_node": "source"}
+    )
+    dated = SimpleNamespace(
+        id="dated",
+        measure="scheduled_fixed_at_cut",
+        params={"source_node": "source", "cut": "2026-01-31"},
+    )
+    row = dict(
+        contract_version_id=uuid4(),
+        trace_node_id="source",
+        period_key="P02",
+        amount=Decimal("200"),
+        currency="USD",
+        entity_id=uuid4(),
+        contract_id=uuid4(),
+        subject_id=uuid4(),
+        subject_type="obligation",
+    )
+    monkeypatch.setattr(service, "_one", lambda *_: row)
+    monkeypatch.setattr(service, "_version", lambda *_: {"calc_trace_id": uuid4()})
+    monkeypatch.setattr(
+        service, "_trace", lambda *_: (None, SimpleNamespace(nodes=[source, original, dated]))
+    )
+    monkeypatch.setattr(service, "_node", lambda *_: source)
+    monkeypatch.setattr(service, "_figure", lambda *args, **kwargs: kwargs["node"])
+    assert service._schedule_line(None, uuid4(), "scheduled_fixed_amount@2026-01-31") is dated
+    assert service._schedule_line(None, uuid4(), "scheduled_fixed_amount") is original
+    with pytest.raises(Problem, match="no unique"):
+        service._schedule_line(None, uuid4(), "scheduled_fixed_amount@2026-02-28")

@@ -1100,3 +1100,71 @@ def test_fixed_allocation_requires_reconciled_state_and_dated_evidence(evidence:
         kept.extend(series("fixed_allocation", "C-1/O1", {"P01": "500.00"}))
     with pytest.raises(to_date.Unreadable, match="1 field needs attention"):
         read(JANUARY, trace(*kept))
+
+
+@pytest.mark.parametrize("later_amount", ["200", "50"])
+def test_historical_time_schedule_freezes_original_allocation(later_amount: str) -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports import cuts
+    from erev_engine.trace import reevaluate
+    from support import allocation_worlds as worlds
+
+    targeted = worlds.element("100", keys=["A"])
+    base = worlds.targeted_world(estimates=[targeted])
+    base = replace(
+        base,
+        pob_template_versions=tuple(
+            replace(
+                template,
+                recognition_method="TIME_ELAPSED",
+                satisfaction_pattern="OVER_TIME",
+                over_time_criterion="OT_A",
+                ratable_convention="DAILY",
+            )
+            for template in base.pob_template_versions
+        ),
+    )
+    bundle = worlds.with_changes(
+        base,
+        [worlds.later_version(targeted, 2, date(2026, 2, 1), later_amount)],
+        memo_on=date(2026, 2, 28),
+    )
+    original = erev_engine.compute(base).books[0]
+    book = erev_engine.compute(bundle).books[0]
+    assert reevaluate(book.trace) == {node.id: node.value for node in book.trace.nodes}
+    day = date(2026, 1, 31)
+    kept = to_date.nodes_at(book.trace.nodes, [day])
+    assert (
+        to_date.nodes_of(kept).dated_schedule == to_date.nodes_of(book.trace.nodes).dated_schedule
+    )
+    _, at, rows = product_read(bundle, book, day)
+    ends = {period.period_key: period.end_date for period in bundle.entities[0].periods}
+    for row in rows:
+        subject = "K-01/" + str(row["obligation_key"])
+        own = [line for line in book.schedules if line.subject_key == subject]
+        lines = [
+            (uuid5(NAMESPACE_URL, line.trace_node_id), ends[line.period_key], major(line.amount))
+            for line in own
+        ]
+        sources = {uuid5(NAMESPACE_URL, line.trace_node_id): line.trace_node_id for line in own}
+        found = at.obligations[row["id"]]
+        projected = cuts.scheduled_after(
+            lines,
+            found,
+            day,
+            contract="K-01",
+            obligation=str(row["obligation_key"]),
+            sources=sources,
+        )
+        expected = {}
+        actual = {}
+        for line in original.schedules:
+            if line.subject_key == subject and ends[line.period_key] > day:
+                end = ends[line.period_key]
+                expected[end] = expected.get(end, Decimal(0)) + major(line.amount)
+        for _, end, amount in projected:
+            actual[end] = actual.get(end, Decimal(0)) + amount
+        assert actual == expected
+        if subject == "K-01/A":
+            assert found.fixed_schedule_cut == day

@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — historical deterministic schedule evidence
+
+Historical RPO and waterfall schedules now freeze the original time-based allocation segment
+at a reporting cut before a later fixed change. Original terms, progress, exact targets and
+posted differences are retained and replayable. Report reads reconcile the dated projection
+to the scheduled remainder; drill-through names the cut. Positive and negative estimate cases
+match the original future schedule by period. This closes the latest-allocation backfill gap
+for this supported path, not every historical modification or lifecycle case.
+
+Remaining: source periods absent from the retained schedule, absent original segment terms,
+and held/manually adjusted cuts need further original evidence. No proportional schedule or
+unexplained plug is used. Broader compound attribution and independent accounting acceptance
+remain open. No deployment has been performed.
+
+
 ## Reporting GL source navigation and inventory — October 20, 2026
 
 - New GL tie-out details retain the source book and period key and link to that exact

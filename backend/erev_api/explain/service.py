@@ -409,17 +409,23 @@ def _schedule_line(session: Session, object_id: UUID, measure: str) -> _Figure:
         .where(schedule_line.c.id == object_id)
     )
     row = _one(session, statement)
-    if measure not in (LINE_MEASURE, FIXED_SCHEDULE):
+    dated_cut = (
+        measure.removeprefix(FIXED_SCHEDULE + "@")
+        if measure.startswith(FIXED_SCHEDULE + "@")
+        else None
+    )
+    if measure not in (LINE_MEASURE, FIXED_SCHEDULE) and dated_cut is None:
         raise Problem("not-found", f"A schedule line explains {LINE_MEASURE} or {FIXED_SCHEDULE}.")
     version = _version(session, row["contract_version_id"])
     trace_id = _uuid(version["calc_trace_id"])
     _, trace = _trace(session, trace_id)
     root = _node(trace, row["trace_node_id"])
-    if measure == FIXED_SCHEDULE:
+    if measure == FIXED_SCHEDULE or dated_cut is not None:
         matches = [
             node
             for node in trace.nodes
-            if node.measure == FIXED_SCHEDULE
+            if node.measure == (FIXED_SCHEDULE if dated_cut is None else "scheduled_fixed_at_cut")
+            and (dated_cut is None or node.params.get("cut") == dated_cut)
             and node.params.get("source_node") == row["trace_node_id"]
         ]
         if len(matches) != 1:

@@ -1657,6 +1657,9 @@ def cell(
                 and run.store.at(item.ob, item.as_of).fixed_schedule is not None
             ):
                 measure = to_date.FIXED_SCHEDULE
+                fixed_cut = run.store.at(item.ob, item.as_of).fixed_schedule_cut
+                if fixed_cut is not None:
+                    measure += "@" + fixed_cut.isoformat()
             contributors.append(
                 {
                     "object_type": kind,

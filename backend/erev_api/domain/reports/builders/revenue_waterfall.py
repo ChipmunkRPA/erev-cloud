@@ -114,6 +114,7 @@ class _Obligation:
     # period only where the line is the scheduled amount
     schedule_lines: dict[str, list[tuple[UUID, Decimal]]] = field(default_factory=dict)
     fixed_schedule_lines: set[UUID] = field(default_factory=set)
+    fixed_schedule_cut: date | None = None
     subledger_lines: dict[str, list[tuple[UUID, Decimal]]] = field(default_factory=dict)
 
 
@@ -502,6 +503,7 @@ def _at_as_of(
         version_id = version_of[ob.version_row_id]
         found = at[version_id, day][ob.version_row_id]
         ob.awaiting = found.awaiting
+        ob.fixed_schedule_cut = found.fixed_schedule_cut
         own = lines.get((version_id, ob.obligation_id), [])
         scheduled = {
             line_id: amount
@@ -858,7 +860,14 @@ def cell(
                                 line_id,
                                 amount,
                                 currency,
-                                measure="scheduled_fixed_amount"
+                                measure=(
+                                    "scheduled_fixed_amount"
+                                    + (
+                                        "@" + ob.fixed_schedule_cut.isoformat()
+                                        if ob.fixed_schedule_cut is not None
+                                        else ""
+                                    )
+                                )
                                 if line_id in ob.fixed_schedule_lines
                                 else "amount",
                             )
