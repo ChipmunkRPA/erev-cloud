@@ -1,5 +1,6 @@
 import { api, unwrap } from "../client";
 import { fetchListPage, type ListPage } from "../lists";
+import { queryKey } from "../query-keys";
 import type { components } from "../schema";
 
 export type DealPreview = components["schemas"]["DealPreviewOut"];
@@ -31,3 +32,15 @@ export async function fetchDealProducts(): Promise<readonly DealProduct[]> {
   } while (cursor !== null);
   return products;
 }
+
+export type DealPreviewSummary = components["schemas"]["DealPreviewSummaryOut"];
+export function fetchDealPreviews(cursor: string | null = null) {
+  return fetchListPage<DealPreviewSummary>(
+    "/api/v1/deal-previews",
+    { sort: "-created_at" },
+    cursor,
+    { limit: 25, count: false },
+  );
+}
+
+export const dealHistoryKey = queryKey("deal-previews", "tenant");

@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current preview history update (October 19): SF-18 now lists retained previews in the caller's
+entity scope, pages older results, and links to retained calculations and saved drafts without
+replacing current form input. Request/save completion refreshes this metadata list. This closes
+the history navigation gap; browser/business accounting acceptance and independent sign-off
+remain open. No deployment.
+
 Current forecast metadata update (October 19): the assumption manager now creates, edits and
 clears optional UTC effective windows, displays saved boundaries and requires saving before
 publication. These are version metadata; no claim is made that they filter captured replay

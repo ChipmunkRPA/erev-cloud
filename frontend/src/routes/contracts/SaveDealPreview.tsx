@@ -1,3 +1,4 @@
+import { dealHistoryKey } from "../../lib/api/queries/deal-previews";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { Banner } from "../../components/feedback/Banner";
@@ -24,6 +25,7 @@ export function SaveDealPreview({
     method: "POST",
     path: `/api/v1/deal-previews/${preview.id}/save`,
     invalidates: [
+      dealHistoryKey,
       queryKey("deal-preview", "tenant", { id: preview.id }),
       queryKey("contracts", "tenant"),
     ],

@@ -35,6 +35,8 @@ vi.mock("../../lib/api/queries/deal-previews", () => ({
     { id: "platform", code: "PLATFORM", name: "Enterprise platform" },
   ],
   fetchDealPreview: vi.fn(),
+  dealHistoryKey: ["deal-previews", "tenant"],
+  fetchDealPreviews: vi.fn(),
 }));
 afterEach(() => {
   cleanup();

@@ -17,10 +17,12 @@ import {
   type DealInput,
   fetchDealPreview,
   fetchDealProducts,
+  dealHistoryKey,
 } from "../../lib/api/queries/deal-previews";
 import { entitiesKey, fetchActiveEntities } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import { t } from "../../lib/i18n/t";
+import { DealPreviewHistory } from "./DealPreviewHistory";
 import { DealResults } from "./DealResults";
 import { SaveDealPreview } from "./SaveDealPreview";
 
@@ -81,7 +83,11 @@ function Preview() {
   const [confirm, setConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [networkError, setNetworkError] = useState(false);
-  const command = useCommand({ method: "POST", path: "/api/v1/deal-previews" });
+  const command = useCommand({
+    method: "POST",
+    path: "/api/v1/deal-previews",
+    invalidates: [dealHistoryKey],
+  });
   const inFlight = useRef(false);
   const running =
     command.pending || (jobParam !== null && (job.data === undefined || !isTerminal(job.data)));
@@ -115,6 +121,7 @@ function Preview() {
   return (
     <main className="flex flex-col gap-5 p-6">
       <h1 className="text-heading-lg">{text("title")}</h1>
+      <DealPreviewHistory />
       <Banner tone="info" title={text("notice")} />
       {invalidLink && <Banner tone="negative" title={text("invalidLink")} />}
       {(entities.isError || (existing && customers.isError)) && (
