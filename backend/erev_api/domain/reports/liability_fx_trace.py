@@ -31,6 +31,9 @@ class LayerSource:
     amount: Decimal
     created_on: date | None = None
     balance_role: str = "CONTRACT_LIABILITY"
+    source_key: str | None = None
+    record_seq: int | None = None
+    event_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +149,9 @@ def project(
                 amount,
                 leaves[key].get("created_on"),
                 str(leaves[key]["balance_role"]),
+                leaves[key].get("source_key"),
+                leaves[key].get("record_seq"),
+                leaves[key].get("event_type"),
             )
             for key, amount in sorted(values.items())
         ),
@@ -161,6 +167,9 @@ class LayerDelta:
     amount: Decimal
     created_on: date | None = None
     balance_role: str = "CONTRACT_LIABILITY"
+    source_key: str | None = None
+    record_seq: int | None = None
+    event_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,7 +232,9 @@ def posting_delta(
             "Attributed posted layers differ from the retained paid amount."
         )
     sources: set[UUID] = set()
-    values: dict[tuple[UUID, str, date, bool, date | None, str], Decimal] = {}
+    values: dict[
+        tuple[UUID, str, date, bool, date | None, str, str | None, int | None, str | None], Decimal
+    ] = {}
 
     def add(item: LayerSource | LayerDelta, sign: int) -> None:
         key = (
@@ -233,6 +244,9 @@ def posting_delta(
             item.closing,
             item.created_on,
             item.balance_role,
+            item.source_key,
+            item.record_seq,
+            item.event_type,
         )
         values[key] = values.get(key, Decimal(0)) + sign * item.amount
 
@@ -255,7 +269,7 @@ def posting_delta(
         node_id,
         currency,
         tuple(
-            LayerDelta(*key[:4], amount, key[4], key[5])
+            LayerDelta(*key[:4], amount, key[4], key[5], key[6], key[7], key[8])
             for key, amount in sorted(values.items(), key=lambda item: tuple(map(str, item[0])))
             if amount
         ),
@@ -307,6 +321,7 @@ def from_pass(
         if item["columns"]["entity"] == entity_code
         and item["columns"]["movement_kind"] in {"LIABILITY_LAYER_CREATED", "ASSET_LAYER_CREATED"}
     }
+    events = {event.event_key: event for event in bundle.events}
     movements = []
     for item in document["book_output"]["fx_layer_movements"]:
         values = item["columns"]
@@ -326,6 +341,7 @@ def from_pass(
         )
         if creation is None:
             raise InvalidLiabilityTrace("Liability remeasurement has no retained creation source.")
+        event = events.get(values.get("source_key"))
         node_id = item["trace_nodes"]["amount_functional"]
         movements.append(
             {
@@ -333,6 +349,8 @@ def from_pass(
                 "id": uuid5(evidence_id, node_id),
                 "contract_id": owner,
                 "trace_node_id": node_id,
+                "record_seq": None if event is None else event.record_seq,
+                "event_type": None if event is None else event.event_type,
                 "effective_date": date.fromisoformat(values["effective_date"]),
                 "created_on": date.fromisoformat(creation["effective_date"]),
                 "amount_functional": minor_to_decimal(

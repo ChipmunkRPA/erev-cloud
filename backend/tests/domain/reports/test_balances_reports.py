@@ -572,6 +572,20 @@ def test_functional_rollforward_invoice_uses_layer_carrying(
     assert figures["BILLINGS"]["unbilled_receivable"] == usd(f"{-spot:.2f}")
     assert figures["FX_REMEASUREMENT"]["unbilled_receivable"] == usd(f"{spot - D('11050'):.2f}")
     assert figures["CLOSING"]["unbilled_receivable"] == usd("0.00")
+    from erev_api.db.tables import report_run as report_run_table
+    from erev_api.domain.reports.builders import SourceBinding
+
+    binding = SourceBinding.from_stored(
+        world.place.scalar(
+            select(report_run_table.c.source_binding).where(
+                report_run_table.c.id == UUID(run["id"])
+            )
+        )
+    )
+    assert binding is not None
+    event_sources = binding.evidence["event_posted_fx_v1"]
+    assert event_sources
+    assert all(item["evidence"] for item in event_sources.values())
     assert tie(run, tie_outs.TO_ROLLFORWARD_BALANCES)["result"] == "PASS"
 
     from support import worlds

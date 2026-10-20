@@ -6,6 +6,25 @@
 
 
 
+## Source-timed EVENT FX reporting — October 20, 2026
+
+- Functional/reporting rollforwards now consume actual command EVENT posting deltas with
+  original event sequence, source key, owner and asset/liability layer. Original and correcting
+  postings net by dated source before walking the balance path. Billing settlement precedes
+  its invoice; relief FX precedes revenue. New reports remove both old synthetic settlement
+  movements, avoiding duplicate timing. Historical bindings retain the original path.
+- New event_posted_fx_v1 bindings retain every command line, recursive paid dependency and
+  evidence hash. Report execution rechecks its requester before authorized computation reads;
+  close snapshots retain the restricted read-only SYSTEM path. Migration 0194 documents these
+  source tables and semantics in the report IPE catalogue.
+- Necessary checks: ERP and ENGINE foreign invoice rollforwards with source bindings and
+  identical reruns; repeated liability close; command reversal and its net-zero report; scoped
+  projection/path/catalogue checks and lint/types. No deployment.
+- Still open: split-target formulas, regrouped/keyless historical subjects, combined-membership
+  and late-carried public acceptance, populated foreign two-lock acceptance, recorded privacy/
+  snapshot registry gaps and final accounting/release acceptance. These ordinary settlement
+  cases do not establish production readiness or all Reporting requirements.
+
 ## Contract-computation FX evidence — October 20, 2026
 
 - The shared FX attribution reader now adapts original command-computation input/output
@@ -203,36 +222,6 @@
 - Remaining implementation includes close-variance currency selection and attribution against
   these snapshots, combined/late-carried liability FX and documented reporting/release gaps.
   No deployment or independent accounting sign-off; no production-readiness claim.
-
-## Immutable currency views at lock — October 20, 2026
-
-- Public lock publication now retains transaction, functional and reporting variants for
-  waterfall, contract balances and RPO in one manifest-hashed machine CSV per dataset. Per-view
-  columns, controls and available rate evidence are authenticated inside that same file.
-- As-locked API, report viewer and exports select retained variants without live recomputation.
-  Old locks remain readable on their original basis and explicitly refuse missing alternatives.
-  Relock comparisons expose functional/reporting changes separately from transaction changes.
-- Necessary checks: actual public lock publication and populated K01 balances; retained API/CSV
-  selection with the live builder disabled; 62 focused Python checks and 94 frontend checks;
-  targeted lint, types and frontend compilation. No deployment.
-- Remaining: alternate-currency rollforward/disaggregation lock datasets and close-variance
-  integration, combined/late-carried liability FX, and other release limitations. This checkpoint
-  does not complete all four reporting workstreams or provide independent accounting sign-off.
-
-## Explicit currency bases for snapshot producers — October 20, 2026
-
-- SnapshotScope now carries an optional currency view. Producers normalize it through the
-  actual report parameter schema, reject unsupported/invalid views and use the report's existing
-  currency calculations. None preserves current defaults, including functional-only registers.
-  Explicit-view output controls name the view and exact historical currency cutoff.
-- Real database witnesses cover functional/reporting waterfall amounts (USD 11,000 / EUR 10,000),
-  reporting RPO bands/totals and re-generation at the original cutoff after a revised approved rate.
-  The latter follows the record clock before publishing the revision, so the temporal assertion
-  is meaningful. Existing snapshot unit checks pass after updating stale adapter stub signatures.
-- This is producer support, not completed lock integration: lock publication still stores each
-  kind's default view, and as-locked currency selection remains unsupported. Next work must bind
-  alternative datasets to immutable lock evidence and serve those retained variants, preserving
-  existing default datasets and reconciliation behavior. No deployment or accounting sign-off.
 
 ## Outstanding release verification
 

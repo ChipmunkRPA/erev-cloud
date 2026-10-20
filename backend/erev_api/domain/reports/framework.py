@@ -2432,7 +2432,12 @@ def _export_requester(
     jc: JobContext, uow: UnitOfWork, run: Mapping[str, Any]
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
-    if str(run["report_code"]) in {"rpo", "rpo_rollforward"}:
+    if str(run["report_code"]) in {
+        "rpo",
+        "rpo_rollforward",
+        "contract_balance_rollforward",
+        "revenue_from_opening_liability",
+    }:
         return report_requester.validation_requester(jc, uow, run)
     stored = run.get("ai_export_access")
     if str(run["report_code"]) in {"period_evidence_pack", "contract_sample_pack"}:

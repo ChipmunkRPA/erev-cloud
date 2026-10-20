@@ -36,9 +36,12 @@ Per member contract and contracting entity over the range:
 The functional view reads dated engine balance targets and posted functional control flows.
 Billing is valued from retained historical layer creation/settlement amounts and, in ENGINE
 posting mode, must equal posted functional billing. Settlement FX is moved before its billing
-flow with an equal offset to period-end FX. Layer identities and verified traces are retained
-for reruns. Liability FX uses verified creation and remeasurement identities: opening layers
-remain in the range-opening bucket, new billing layers keep their own keys, and relief FX
+flow with an equal offset to period-end FX on historical report bindings. New reports use
+actual retained EVENT deltas instead of both synthetic timing movements. Event sequences keep
+settlement before its invoice and relief before revenue. Layer identities and verified traces
+are retained for reruns. Liability FX uses verified creation and remeasurement identities:
+opening layers remain in the range-opening bucket, new billing layers keep their own keys,
+and relief FX
 precedes revenue while closing FX follows it. New close-pass TIME lines use their actual
 retained target/prior/paid decomposition, with recursive historical line dependencies and
 original layer creation dates bound into reruns. Asset sources bypass liability layers; mixed
@@ -501,10 +504,30 @@ def rollforwards(
                         "Dated billing layers differ from posted functional billing.",
                     )
     if functional and documents:
+        if uow is not None and params.requester is not None:
+            uow = UnitOfWork(
+                ctx=params.requester,
+                session=uow.session,
+                clock=uow.clock,
+                keyring=uow.keyring,
+                files=uow.files,
+            )
         handled = (
             _retained_time_fx(uow, posted, transaction_ends, periods, params) if uow else set()
         )
-        _liability_fx(session, posted, transaction_ends, periods, params, handled=handled)
+        event_sources = False
+        if uow and (params.binding is None or "event_posted_fx_v1" in params.binding.evidence):
+            _retained_event_fx(uow, posted, unposted, transaction_ends, periods, params)
+            event_sources = True
+        _liability_fx(
+            session,
+            posted,
+            transaction_ends,
+            periods,
+            params,
+            handled=handled,
+            event_sources=event_sources,
+        )
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
         described = closing if closing is not None else opening
@@ -785,6 +808,101 @@ def _retained_time_fx(
     return handled
 
 
+def _retained_event_fx(
+    uow: UnitOfWork,
+    posted: dict[tuple[UUID, UUID], list[Entry]],
+    documents: dict[tuple[UUID, UUID], list[Entry]],
+    rows: Mapping[tuple[UUID, UUID], BalanceRow],
+    periods: Mapping[UUID, tuple[PeriodRef, ...]],
+    params: ReportParams,
+) -> None:
+    """Replace synthetic settlement timing with signed, actually posted EVENT sources.
+
+    Net original and correcting postings by source before walking the path. An
+    invoice's retained event sequence places its FX immediately before billing;
+    relief FX precedes revenue. Late carries stay inside their posting period.
+    """
+    from erev_api.domain.journals.subledger import POSTING_CLASSES
+
+    owners = {row.external_id: row.contract_id for row in rows.values()}
+    facts: dict[str, Any] = {}
+    grouped: dict[tuple[Any, ...], dict[str | None, Decimal]] = {}
+    for key, entries in posted.items():
+        for entry in tuple(entries):
+            if (
+                entry.entry_kind != "FX_REMEASUREMENT"
+                or entry.line_id is None
+                or POSTING_CLASSES.get(entry.posting_kind or "") != "EVENT"
+            ):
+                continue
+            try:
+                result = pass_evidence.liability_attribution(uow, entry.line_id, owners=owners)
+            except ValueError as error:
+                raise tie_outs.invalid("currency_view", str(error)) from error
+            if result is None or result.amount != entry.flow.amount:
+                raise tie_outs.invalid(
+                    "currency_view", "Posted EVENT FX lacks matching source evidence."
+                )
+            period = next(item for item in periods[key[1]] if item.id == entry.period_id)
+            beginning = periods[key[1]][0].start
+            for movement in result.movements:
+                owner_key = (movement.contract_id, key[1])
+                if movement.closing or movement.created_on is None or owner_key not in rows:
+                    raise tie_outs.invalid(
+                        "currency_view", "EVENT FX lacks dated authorized sources."
+                    )
+                day = max(period.start, min(period.end, movement.effective_date))
+                order: tuple[Any, ...]
+                if movement.event_type in DOCUMENT_TYPES and movement.record_seq is not None:
+                    order = (day, DOCUMENT_RANK, movement.record_seq, "", 0)
+                else:
+                    order = (
+                        day,
+                        LINE_RANK,
+                        period.end,
+                        datetime.min.replace(tzinfo=params.known_at.tzinfo),
+                        0,
+                        movement.source_key or "event-fx",
+                    )
+                group = (*owner_key, period.id, order, movement.balance_role)
+                parts = grouped.setdefault(group, {})
+                layer = None if movement.created_on < beginning else movement.layer_key
+                parts[layer] = parts.get(layer, ZERO) + movement.amount
+            entries.remove(entry)
+            facts[str(entry.line_id)] = {
+                "delta": result.node_id,
+                "paid_line_ids": [str(identity) for identity in result.paid_line_ids],
+                "evidence": [[str(identity), digest] for identity, digest in result.evidence],
+            }
+    # These are presentation-only movements from the old path, not journal lines.
+    # Actual EVENT sources above replace both sides of that timing relocation.
+    for entries in posted.values():
+        entries[:] = [entry for entry in entries if entry.order[-1] != "settlement-timing"]
+    for entries in documents.values():
+        entries[:] = [entry for entry in entries if entry.flow.kind != FX]
+    for (owner, entity, period_id, order, role), parts in grouped.items():
+        parts = {layer: amount for layer, amount in parts.items() if amount}
+        if not parts:
+            continue
+        posted.setdefault((owner, entity), []).append(
+            Entry(
+                order=order,
+                flow=Flow(
+                    sum(parts.values(), ZERO),
+                    False,
+                    FX,
+                    liability_fx=tuple(parts.items()) if role == LIABILITY_ROLE else (),
+                    asset_fx=role == "CONTRACT_ASSET",
+                ),
+                period_id=period_id,
+                entry_kind="FX_REMEASUREMENT",
+            )
+        )
+    if params.binding is not None and params.binding.evidence["event_posted_fx_v1"] != facts:
+        raise tie_outs.invalid("currency_view", "EVENT FX sources differ from the report binding.")
+    tie_outs.record_evidence(params, "event_posted_fx_v1", facts)
+
+
 def _net_time_fx(entries: Sequence[Entry]) -> tuple[Entry, ...]:
     """Apply same-day close adjustments together, preserving source role/layer.
 
@@ -820,6 +938,7 @@ def _liability_fx(
     params: ReportParams,
     *,
     handled: set[tuple[UUID, UUID, UUID]] | None = None,
+    event_sources: bool = False,
 ) -> None:
     """Attach verified layer remeasurement to its posted control movement.
 
@@ -885,6 +1004,12 @@ def _liability_fx(
                     and nodes[str(item["trace_node_id"])].formula_id == "fx.remeasure.closing.v1"
                 )
             ]
+            if event_sources:
+                movements = [
+                    item
+                    for item in movements
+                    if nodes[str(item["trace_node_id"])].formula_id == "fx.remeasure.closing.v1"
+                ]
             if not movements:
                 continue
             fx_entries = [

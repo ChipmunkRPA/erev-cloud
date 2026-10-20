@@ -522,13 +522,17 @@ def test_a_reversal_of_a_posted_settlement_takes_the_rate_stamped_on_it(world: W
     from erev_api.domain.close import pass_evidence
 
     with world.place.uow() as uow:
-        lines = uow.session.execute(
-            select(subledger_line.c.id, subledger_line.c.amount_functional).where(
-                subledger_line.c.contract_id == contract_id,
-                subledger_line.c.entry_kind == FX,
-                subledger_line.c.account_role == "CONTRACT_LIABILITY",
+        lines = (
+            uow.session.execute(
+                select(subledger_line.c.id, subledger_line.c.amount_functional).where(
+                    subledger_line.c.contract_id == contract_id,
+                    subledger_line.c.entry_kind == FX,
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         original = next(item for item in lines if item["amount_functional"] > 0)
         reversed_line = next(item for item in lines if item["amount_functional"] < 0)
         saved = pass_evidence.read_for_line(uow, reversed_line["id"])
@@ -545,6 +549,49 @@ def test_a_reversal_of_a_posted_settlement_takes_the_rate_stamped_on_it(world: W
         assert {item.balance_role for item in attributed.movements} == {"CONTRACT_ASSET"}
         assert all(not item.closing for item in attributed.movements)
     assert _unstamped_foreign_lines(world, contract_id) == 0
+    from erev_api.db.tables import legal_entity
+    from erev_api.db.tables import report_run as report_run_table
+    from erev_api.domain.reports.builders import SourceBinding
+    from erev_api.jobs.context import JobRuntime
+    from support import worlds
+
+    reporting = worlds.ReportWorld(
+        place=world.place,
+        priya=world.priya,
+        marcus=world.marcus,
+        runtime=JobRuntime(
+            clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+        ),
+        entity_id=world.place.scalar(
+            select(legal_entity.c.id).where(legal_entity.c.code == ENTITY)
+        ),
+        contracts={},
+    )
+    run, report_rows = worlds.report_run(
+        reporting,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [ENTITY],
+            "book": BOOK,
+            "currency_view": "functional",
+            "from_period_key": "FY2026-P08",
+            "to_period_key": "FY2026-P08",
+        },
+    )
+    fx_row = next(row for row in report_rows if row["row_key"] == "FX_REMEASUREMENT")
+    for balance in ("contract_liability", "contract_asset", "unbilled_receivable"):
+        assert Decimal(fx_row[balance]["amount"]) == 0
+    binding = SourceBinding.from_stored(
+        world.place.scalar(
+            select(report_run_table.c.source_binding).where(
+                report_run_table.c.id == UUID(run["id"])
+            )
+        )
+    )
+    assert binding is not None
+    sources = binding.evidence["event_posted_fx_v1"]
+    assert set(sources) == {str(item["id"]) for item in lines}
+    assert sources[str(reversed_line["id"])]["paid_line_ids"] == [str(original["id"])]
     revenue = world.place.rows(
         select(subledger_line.c.amount_txn, subledger_line.c.amount_functional).where(
             subledger_line.c.contract_id == contract_id,
