@@ -612,7 +612,7 @@ export function bandBoundaries(bands: readonly RpoBand[]): readonly number[] {
   return bands.flatMap((band) => (band.to_month === null ? [] : [band.to_month]));
 }
 
-export type ReportColumnKind = "identifier" | "text" | "money" | "number";
+export type ReportColumnKind = "identifier" | "text" | "money" | "number" | "date" | "timestamp" | "boolean";
 
 export interface ReportColumn {
   /** The row field and the explain `column_key`. */
@@ -621,6 +621,8 @@ export interface ReportColumn {
   readonly kind: ReportColumnKind;
   readonly drillable: boolean;
   readonly percentChange?: boolean;
+  readonly decimal?: boolean;
+  readonly textFormat?: "actor" | "codes";
 }
 
 /** Fields that carry structure, not figures. */
@@ -747,8 +749,9 @@ function headerOf(key: string, context: ColumnContext): string {
   if (context.definition.kind !== "LEGACY_EXPORT" && HEADERS.has(key)) {
     return t(`reports.column.${key}`);
   }
-  // Legacy exports keep the 71 legacy names as headers and row keys (D-33, DS-LINT-19).
-  return key;
+  if (context.definition.kind === "LEGACY_EXPORT") return key;
+  // Use the saved builder title for fields without a dedicated translated heading.
+  return context.columns?.find(column => column.key === key)?.header ?? key;
 }
 
 /**
@@ -756,8 +759,8 @@ function headerOf(key: string, context: ColumnContext): string {
  * order of `GET /report-runs/{id}/data` is not the specification order (L7-3-Q-6): identity fields
  * first, then periods in key order, bands in API order and the figures of each specification; unknown
  * fields keep their row order after them. A legacy export instead follows the run's `columns`, the builder's
- * legacy output order (D-88 L7-1-Q-5 over L7-3-Q-6; SCREENS_B RPT-10, RPT-12); moving the other reports to
- * the column metadata is post-rc.
+ * legacy output order (D-88 L7-1-Q-5 over L7-3-Q-6; SCREENS_B RPT-10, RPT-12). Other reports use saved
+ * metadata when present, except the dedicated RPO, waterfall and close-comparison layouts.
  */
 const IDENTITY_RANKS: Readonly<Record<string, number>> = {
   contract_external_id: 0,
@@ -797,7 +800,7 @@ function orderedKeys(
     return ["measure_label", "scope", "currency", "earlier_value", "later_value", "change", "driver_label"]
       .filter(key => keys.includes(key));
   }
-  if (definition.kind === "LEGACY_EXPORT" || ["engine_trueup_register", "actual_vs_forecast"].includes(definition.code)) {
+  if (definition.kind === "LEGACY_EXPORT" || ((columns?.length ?? 0) > 0 && !["rpo", "revenue_waterfall"].includes(definition.code))) {
     // The keys in `columns[].key` order; `row_key` and `section` stay hidden (STRUCTURAL), and a row field
     // that names no column keeps its row order after them.
     const listed = (columns ?? [])
@@ -880,15 +883,22 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
   const ordered = definition.code === "parallel_run_comparison" ? keys : orderedKeys(definition, keys, context.bands, context.columns);
   return ordered.map((key) => {
     const percentChange = definition.code === "actual_vs_forecast" && key === "variance_percent";
+    const sourceKind = definition.kind === "LEGACY_EXPORT" ? undefined
+      : context.columns?.find(column => column.key === key)?.kind;
+    const typedKind: ReportColumnKind | undefined = sourceKind === "date" || sourceKind === "timestamp" || sourceKind === "boolean"
+      ? sourceKind : sourceKind === "integer" || sourceKind === "decimal" ? "number"
+      : sourceKind === "money" && rows.every(row => row[key] == null || isMoney(row[key])) ? "money" : undefined;
     const kind: ReportColumnKind = percentChange ? "number" :
       key === "contract_external_id" && definition.kind !== "LEGACY_EXPORT"
         ? "identifier"
-        : (kinds.get(key) ?? "text");
+        : (typedKind ?? kinds.get(key) ?? "text");
     const header = headerOf(key, context);
     return {
       key,
       header: kind === "money" && single !== undefined ? `${header} (${single})` : header,
       ...(percentChange ? { percentChange: true } : {}),
+      ...(sourceKind === "decimal" ? { decimal: true } : {}),
+      ...(sourceKind === "actor" || sourceKind === "codes" ? { textFormat: sourceKind } : {}),
       kind,
       drillable:
         (drillable ||

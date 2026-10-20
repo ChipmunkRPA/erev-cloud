@@ -6,6 +6,19 @@
 
 
 
+## Saved report column metadata — October 19, 2026
+
+- Ordinary report grids now use saved column order where no dedicated layout applies, and
+  use the saved title for fields without an existing translated title. RPO, waterfall and
+  close/parallel comparison layouts retain their specialized section rules.
+- Added saved date/timestamp/boolean types, decimal quantity versus integer formatting,
+  actor display names and readable code lists. Nullable money fields keep their declared
+  money type when their populated values are money objects. Legacy exports retain literal
+  field naming and values; frozen textual data is not reinterpreted as a money object.
+- Fifty-one focused report-page, grid and specialized-layout checks pass; TypeScript and
+  ESLint pass. Reporting content and populated accounting acceptance remain open.
+  No deployment or production-readiness claim.
+
 ## Forecast comparison entry points — October 19, 2026
 
 - The comparison form now defaults to the latest authorized succeeded forecast and its full
@@ -235,18 +248,6 @@
   real first-close command journey. Focused binding/assembly checks and 34 UI checks pass.
 - Still open: populated re-open/re-lock end-to-end acceptance, cross-contract driver evidence,
   catalogue PACK builders, change/access packs and independent accounting sign-off. No deployment.
-
-## Contract sample history register — October 19, 2026
-
-- Added sample history to the API and evidence page, with contract IDs, effective/known cutoffs,
-  status, file count, manifest hash and links back to retained details/downloads.
-- Counts and cursor pages include only packs whose full source/document scope is currently
-  authorized. SQL prefilters entity scope; streamed composite checks avoid locking documents.
-  Source-only internal bindings are excluded. CLOSE remains the default view.
-- 14 focused PostgreSQL checks (including real K01 lifecycle/list), 34 evidence register/generation UI checks,
-  TypeScript, Mypy and lint pass. No deployment.
-- Reporting remains unfinished: broader sample accounting acceptance, period-pack completion,
-  relock variance, change/access packs and forecast/report orchestration remain tracked.
 
 ## Outstanding release verification
 

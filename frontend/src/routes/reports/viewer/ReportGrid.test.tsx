@@ -124,3 +124,65 @@ it("shows signed actual-versus-forecast percentages in details and saved totals"
   expect(screen.getAllByText("plus")).toHaveLength(2);
   expect(screen.getByText("No value")).toBeTruthy();
 });
+
+it("uses saved column titles, order and types for report fields", async () => {
+  const { reportColumns } = await import("./specs");
+  const definition = {
+    code: "custom_register",
+    kind: "STANDARD",
+  } as import("../../../lib/api/queries/reports").ReportDefinition;
+  const section: ReportSection = {
+    number: 1,
+    heading: "Register",
+    totals: [],
+    rows: [
+      {
+        row_key: "one",
+        z_date: "2026-10-19",
+        a_quantity: "12.3750",
+        person: { display_name: "Maya Chen", id: "user", kind: "USER" },
+        approved: false,
+        roles: ["Reviewer", "Controller"],
+      },
+    ],
+  };
+  const columns = reportColumns({
+    definition,
+    section,
+    periods: [],
+    bands: [],
+    columns: [
+      { key: "person", header: "Requested by", kind: "actor" },
+      { key: "z_date", header: "Effective on", kind: "date" },
+      { key: "a_quantity", header: "Quantity", kind: "decimal" },
+      { key: "approved", header: "Approved", kind: "boolean" },
+      { key: "roles", header: "Roles", kind: "codes" },
+    ],
+  });
+  expect(columns.map((column) => column.key)).toEqual([
+    "person",
+    "z_date",
+    "a_quantity",
+    "approved",
+    "roles",
+  ]);
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <MemoryRouter>
+        <ReportGrid
+          runId={RUN_ID}
+          section={section}
+          columns={columns}
+          totals={[]}
+          onDrill={() => undefined}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("Maya Chen");
+  expect(screen.getByRole("columnheader", { name: /Effective on/ })).toBeTruthy();
+  expect(screen.getByText("12.375")).toBeTruthy();
+  expect(screen.getByText("No")).toBeTruthy();
+  expect(screen.getByText("Reviewer, Controller")).toBeTruthy();
+  expect(screen.queryByText("[object Object]")).toBeNull();
+});

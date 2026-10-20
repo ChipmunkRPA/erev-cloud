@@ -8017,3 +8017,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
   form follows the job and recovers the result link without permitting duplicate submission.
 - 22 focused generation/register UI checks, TypeScript and ESLint pass. The evidence register
   still lists CLOSE packs only; authorized sample-list pagination and discovery remain next.
+
+## Contract sample history register — October 19, 2026
+
+- Added sample history to the API and evidence page, with contract IDs, effective/known cutoffs,
+  status, file count, manifest hash and links back to retained details/downloads.
+- Counts and cursor pages include only packs whose full source/document scope is currently
+  authorized. SQL prefilters entity scope; streamed composite checks avoid locking documents.
+  Source-only internal bindings are excluded. CLOSE remains the default view.
+- 14 focused PostgreSQL checks (including real K01 lifecycle/list), 34 evidence register/generation UI checks,
+  TypeScript, Mypy and lint pass. No deployment.
+- Reporting remains unfinished: broader sample accounting acceptance, period-pack completion,
+  relock variance, change/access packs and forecast/report orchestration remain tracked.

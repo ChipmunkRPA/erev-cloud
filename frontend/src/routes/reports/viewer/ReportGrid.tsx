@@ -73,10 +73,18 @@ function cellOf(element: Element | null): HTMLElement | null {
   return cell ?? (element instanceof HTMLElement ? element : null);
 }
 
-function textOf(value: unknown): string | null {
+function textOf(value: unknown, format?: ReportColumn["textFormat"]): string | null {
   if (value === null || value === undefined) {
     return null;
   }
+  if (format === "actor") {
+    return typeof value === "object" &&
+      "display_name" in value &&
+      typeof value.display_name === "string"
+      ? value.display_name
+      : null;
+  }
+  if (format === "codes") return Array.isArray(value) && value.length > 0 ? value.join(", ") : null;
   return typeof value === "string" ? value : String(value);
 }
 
@@ -153,14 +161,18 @@ export function ReportGrid({
       return {
         ...base,
         kind: "number",
-        numberKind: column.percentChange ? "percentChangePoints" : "count",
-        value: (row) => textOf(row[column.key]),
+        numberKind: column.percentChange
+          ? "percentChangePoints"
+          : column.decimal
+            ? "quantity"
+            : "count",
+        value: (row) => textOf(row[column.key], column.textFormat),
       } satisfies GridColumn<ReportRow>;
     }
     return {
       ...base,
       kind: column.kind,
-      value: (row) => textOf(row[column.key]),
+      value: (row) => textOf(row[column.key], column.textFormat),
       // RPT-R-03: the Currency column of a mixed-currency result; its totals cells name the row currency.
       ...(column.key === CURRENCY_COLUMN_KEY ? { currencyColumn: true } : {}),
     } satisfies GridColumn<ReportRow>;
