@@ -292,6 +292,45 @@ def test_release_schedules_posts_the_loss_provision_of_the_period_end(
         assert line["trace_node_id"]
     _counted(run, "RELEASE_SCHEDULES", lines, "CLOSE_RELEASE")
     assert runs.step(run, "RELEASE_SCHEDULES")["counts"]["postings"] == 1
+    # The real close retains both currencies and every original paid revenue line,
+    # independently of its FX population, even when this pass only posts a provision.
+    from erev_api.db.tables import contract
+    from erev_api.domain.close import pass_evidence
+
+    with report.place.uow() as uow:
+        retained_line = (
+            uow.session.execute(
+                select(subledger_line.c.id).where(
+                    subledger_line.c.subledger_posting_id == released[0]["posting_id"]
+                )
+            )
+            .scalars()
+            .first()
+        )
+        assert retained_line is not None
+        evidence = pass_evidence.read_for_line(uow, retained_line)
+        assert evidence is not None
+        members = select(contract.c.id).where(contract.c.combination_group_id == world.group_id)
+        original = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id.in_(members),
+                    subledger_line.c.book_code == BOOK,
+                    subledger_line.c.account_role == "REVENUE",
+                    subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
+                )
+            )
+            .mappings()
+            .all()
+        )
+        saved = {item["id"]: item for item in evidence["revenue_posted_lines"]}
+        assert saved and set(saved) == {str(item["id"]) for item in original}
+        for item in original:
+            for amount in ("amount_txn", "amount_functional"):
+                assert Decimal(saved[str(item["id"])][amount]) == item[amount]
+        assert all(
+            item["account_role"] == "CONTRACT_LIABILITY" for item in evidence["posted_lines"]
+        )
     # nothing else under September's run: nothing to reclass at 30 Sep 2026, and the reversal of
     # August's reclass is August's run's
     assert {line["posting_kind"] for line in lines} == {"CLOSE_RELEASE"}

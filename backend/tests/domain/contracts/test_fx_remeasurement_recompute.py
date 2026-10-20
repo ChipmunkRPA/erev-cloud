@@ -768,6 +768,10 @@ def test_contract_period_override_close_pass_posts_liability_fx_once(
         retained = pass_evidence.read_for_line(uow, line["id"])
         assert retained is not None
         assert retained["pass_name"] == FX
+        # An empty retained revenue population is explicit, not missing history.
+        assert retained["revenue_posted_lines"] == []
+        with pytest.raises(ValueError, match="requires a revenue ledger line"):
+            pass_evidence.read_for_line(uow, line["id"], revenue=True)
         trace = trace_from_row({"id": retained["id"], **retained["trace_record"]})
         deltas = [
             node

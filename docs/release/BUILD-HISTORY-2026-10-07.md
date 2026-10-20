@@ -9449,3 +9449,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still open: public combined-contract credit-memo acceptance, late-carried public acceptance
   without reopening, recorded privacy/snapshot registry gaps and final accounting/release
   acceptance. This closes the ordinary JET-10c source gap, not every FX scenario. No deployment.
+
+## Locked-period foreign invoice carry — October 20, 2026
+
+- The populated foreign lock witness now also follows the no-reopen path: an EUR 4,000
+  invoice dated August is recorded after the actual August lock, then September is closed
+  through the public pipeline. Transaction, functional and reporting rollforwards all pass
+  their balance tie-outs. The August lock remains the only lock/reopen record for its period.
+- Frozen opening remains EUR 10,000 / USD 11,050; closing after the carried invoice is
+  EUR 6,000 / USD 6,720. September's actual FX pass supplies USD 70 of remeasurement. Before
+  that pass the functional report correctly reported the unposted difference; no residual
+  or synthetic balancing entry was added to hide it. This closes the ordinary invoice/TIME
+  carry acceptance gap using the existing implementation. Reconciliation review fixtures
+  remain fixtures, not independent approval; no external GL trial balance is claimed.
+- Still open: public combined-contract credit-memo and more complex carried EVENT correction
+  scenarios, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
+  Necessary verification is this actual lock/invoice/close/report flow plus scoped lint.
+  No deployment and no claim that all Reporting or production readiness is complete.

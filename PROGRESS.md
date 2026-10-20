@@ -2,9 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained revenue history for close passes — October 20, 2026
 
-
-
+- Real period-end passes now freeze revenue paid-line identities and both original currency
+  amounts alongside the existing FX population. The populations are distinct and covered by
+  the same immutable encrypted evidence file and hash; an empty revenue population is explicit.
+- Revenue attribution reads original close-pass evidence before falling back to ordinary
+  computation evidence. A close pass lacking the new revenue population is refused instead
+  of treating absent history as zero. Ledger role, selected line and retained hashes remain
+  checked; recursive original-owner attribution and both currency views use the shared reader.
+- Necessary checks passed: a real close release retains all original group revenue lines and
+  their transaction/functional amounts; the existing FX close remains immutable/idempotent;
+  combined-member deliveries, returns and report reruns remain correct. Three integration
+  scenarios and scoped lint/types passed. No deployment.
+- This completes capture/reader integration, not all close revenue scenarios. A nonzero
+  close-only revenue posting still needs an end-to-end attribution scenario; mixed TIME/EVENT,
+  intercompany reversal and asset/new-liability presentation remain open, as do the other
+  documented feature/release gaps and independent accounting sign-off.
 
 ## Transaction-currency revenue reversal disclosure — October 20, 2026
 
@@ -218,23 +232,6 @@
 - Still open: general member reallocations without an in-range cross-member memo, more complex
   carried EVENT corrections, recorded privacy/snapshot registry gaps and final accounting/
   release acceptance. These cases do not establish every membership transition or readiness.
-
-## Locked-period foreign invoice carry — October 20, 2026
-
-- The populated foreign lock witness now also follows the no-reopen path: an EUR 4,000
-  invoice dated August is recorded after the actual August lock, then September is closed
-  through the public pipeline. Transaction, functional and reporting rollforwards all pass
-  their balance tie-outs. The August lock remains the only lock/reopen record for its period.
-- Frozen opening remains EUR 10,000 / USD 11,050; closing after the carried invoice is
-  EUR 6,000 / USD 6,720. September's actual FX pass supplies USD 70 of remeasurement. Before
-  that pass the functional report correctly reported the unposted difference; no residual
-  or synthetic balancing entry was added to hide it. This closes the ordinary invoice/TIME
-  carry acceptance gap using the existing implementation. Reconciliation review fixtures
-  remain fixtures, not independent approval; no external GL trial balance is claimed.
-- Still open: public combined-contract credit-memo and more complex carried EVENT correction
-  scenarios, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
-  Necessary verification is this actual lock/invoice/close/report flow plus scoped lint.
-  No deployment and no claim that all Reporting or production readiness is complete.
 
 ## Outstanding release verification
 

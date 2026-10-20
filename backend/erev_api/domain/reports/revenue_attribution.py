@@ -15,8 +15,8 @@ from erev_engine.trace import SourceRef
 from sqlalchemy import select
 
 from erev_api.db.tables import contract, legal_entity, period, subledger_line
-from erev_api.domain.close.pass_evidence import LINE_FIELDS, _line_values
-from erev_api.domain.reports import command_fx_evidence, revenue_trace
+from erev_api.domain.close.pass_evidence import LINE_FIELDS, _line_values, read_for_line
+from erev_api.domain.reports import revenue_trace
 from erev_api.domain.reports.fx_paid_periods import paid_origins
 from erev_api.explain.store import trace_from_row
 from erev_api.uow import UnitOfWork
@@ -42,7 +42,8 @@ def read(
     """Authorize each original computation and recurse through its sealed cutoff.
 
     Ordinary unsplit revenue targets are supported. Mixed TIME/EVENT functional
-    allocation and close-pass-only histories require their own retained sources.
+    allocation requires its own retained sources. Close histories must retain their
+    original revenue paid population.
     Missing history never becomes a residual or a guessed owner.
     """
     if view not in {"transaction", "functional"}:
@@ -67,7 +68,7 @@ def read(
     if row is None:
         raise ValueError("Revenue line is not visible.")
     line = dict(row)
-    document = command_fx_evidence.read_revenue(uow, line)
+    document = read_for_line(uow, line_id, revenue=True)
     if document is None:
         raise ValueError("Revenue line lacks original computation evidence.")
     bundle = upgrade.decode_input(canonical_bytes(document["input"]))

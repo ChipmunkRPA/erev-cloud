@@ -66,6 +66,7 @@ def capture(
     lines: Sequence[Mapping[str, Any]],
     *,
     posted_lines: Sequence[Mapping[str, Any]],
+    revenue_posted_lines: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     trace = output.trace
     document = {
@@ -86,6 +87,8 @@ def capture(
         "selected_lines": [_line_values(line) for line in lines],
         "posted_lines": list(posted_lines),
     }
+    if revenue_posted_lines is not None:
+        document["revenue_posted_lines"] = list(revenue_posted_lines)
     content = canonical_bytes(document)
     if len(content) > MAX_TRACE_BYTES:
         raise Problem(
@@ -125,7 +128,9 @@ def persist(
     )
 
 
-def read_for_line(uow: UnitOfWork, line_id: UUID) -> dict[str, Any] | None:
+def read_for_line(
+    uow: UnitOfWork, line_id: UUID, *, revenue: bool = False
+) -> dict[str, Any] | None:
     """Read within the caller's line scope, validating hashes and posting identity.
 
     None denotes a historical posting without retained pass evidence. Callers
@@ -140,6 +145,11 @@ def read_for_line(uow: UnitOfWork, line_id: UUID) -> dict[str, Any] | None:
     )
     if line is None:
         return None
+    if revenue and (
+        line["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
+        or line["account_role"] != "REVENUE"
+    ):
+        raise ValueError("Revenue evidence requires a revenue ledger line.")
     records = session.execute(
         select(close_pass_evidence, subledger_posting.c.book_code, subledger_posting.c.posting_kind)
         .join(
@@ -193,9 +203,16 @@ def read_for_line(uow: UnitOfWork, line_id: UUID) -> dict[str, Any] | None:
     if len(matches) > 1:
         raise ValueError("Close-pass line has ambiguous retained evidence.")
     if matches:
-        return matches[0]
+        document = matches[0]
+        if revenue:
+            if "revenue_posted_lines" not in document:
+                raise ValueError("This historical close pass did not retain revenue paid lines.")
+            document = {**document, "posted_lines": document["revenue_posted_lines"]}
+        return document
     from erev_api.domain.reports import command_fx_evidence
 
+    if revenue:
+        return command_fx_evidence.read_revenue(uow, dict(line))
     return command_fx_evidence.read(uow, dict(line))
 
 

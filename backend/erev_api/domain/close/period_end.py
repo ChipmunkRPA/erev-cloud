@@ -542,6 +542,12 @@ def _group_lines(
                     [row["id"] for row in found.contracts.values()],
                     scope.book_code,
                 ),
+                revenue_posted_lines=pass_evidence.capture_posted_lines(
+                    uow,
+                    [row["id"] for row in found.contracts.values()],
+                    scope.book_code,
+                    revenue=True,
+                ),
             )
         )
         lines += book_lines
