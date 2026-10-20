@@ -7893,3 +7893,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
   empty-actuals message; columns use the saved report's labels and order.
 - Six focused calculation/rebuild checks, TypeScript and lint pass. Populated accounting
   acceptance remains open. Contract sample and period evidence packs remain development gaps.
+
+## Contract sample event evidence — October 19, 2026
+
+- Added the contract-sample event collector with exact contract/entity authorization, effective
+  date and knowledge cutoffs, deterministic ordering, original-payload integrity checks and
+  separate redacted-payload hashes. Superseded events remain in the evidence history.
+- Produces per-contract event files, selected identity/date stamps and referenced source-record
+  metadata. Shared raw import payloads are excluded; this is not document-byte collection.
+- Targeted database collection/archive verification and two integrity/redaction checks pass.
+  Computed versions/allocation/schedules, journals, decisions, audit slice, actual documents,
+  stamped PDF/XLSX and public job/read/download integration remain. No complete-pack claim.
+
+## Contract sample computation evidence — October 19, 2026
+
+- Added immutable version history, allocation detail/trace and full schedule collection at
+  the sample's effective date and knowledge cutoff. Combined-group companions are labelled
+  and every contracting/performing entity is authorized; source scope is returned for retention.
+- Validates trace digests/references and schedule counts/currencies/amounts. A real K01 command
+  journey collects two obligations, future planned periods and an archive with event evidence;
+  earlier-effective selection and revoked export permission checks pass. Ruff/Mypy pass.
+- Public jobs, PDF/XLSX, documents, journal/approval/audit sections and combined-group acceptance
+  remain. This collector is not a completed sample pack. No deployment.

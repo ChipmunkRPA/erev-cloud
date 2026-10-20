@@ -29,7 +29,6 @@ from typing import Annotated, Final, Literal
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from erev_api.api.deps import (
     API_PREFIX,
@@ -59,7 +58,7 @@ from erev_api.clock import get_clock
 from erev_api.db.tables import report_run
 from erev_api.domain.ai import export_visibility
 from erev_api.domain.contracts import queries
-from erev_api.domain.reports import framework
+from erev_api.domain.reports import evidence_catalogue_access, framework
 from erev_api.enums import RunStatus
 from erev_api.idempotency.store import Replay
 from erev_api.problems import Problem
@@ -74,7 +73,7 @@ from erev_api.schemas.reports import (
     ReportRunDataOut,
     ReportRunOut,
 )
-from erev_api.uow import UnitOfWork
+from erev_api.uow import UnitOfWork, unit_of_work
 
 TAG: Final = "API-R-41 Reports"
 EXPORT: Final = framework.EXPORT_PERMISSION
@@ -125,7 +124,23 @@ def _admitted(
     if source is not None:
         # Preserve the original context for ordinary reports; this checks source MFA only.
         require(source)(request, ctx)
+    if request.path_params.get("run_id") is not None:
+        try:
+            run_id = uuid.UUID(str(request.path_params["run_id"]))
+        except ValueError:
+            raise invalid("run_id", "Choose a valid report run ID.") from None
+        _evidence_run_access(request, run_id, ctx)
     return ctx
+
+
+def _evidence_run_access(request: Request, run_id: uuid.UUID, ctx: RequestContext) -> bool:
+    with unit_of_work(
+        ctx,
+        clock=get_clock(request),
+        keyring=request.app.state.keyring,
+        files=request.app.state.file_store,
+    ) as uow:
+        return evidence_catalogue_access.addressed(uow, run_id)
 
 
 def _call_export_replay_access(request: Request, ctx: RequestContext, replay: Replay) -> None:
@@ -228,16 +243,22 @@ def report_definitions_get(code: str, ctx: RunContext) -> ReportDefinitionOut:
     response_model=ListOut[ReportRunOut],
     responses=problem_responses(*_READ_PROBLEMS, "validation-failed"),
 )
-def report_runs_list(response: Response, ctx: RunContext, params: Params) -> ListOut[ReportRunOut]:
+def report_runs_list(
+    response: Response, ctx: RunContext, params: Params, deps: Deps
+) -> ListOut[ReportRunOut]:
     """Report runs visible to the caller — each within its scope of the report's run permission;
     filters ``report_code``, ``status``, ``created_from``, ``created_to``; sort ``id`` (default
     ``-id``) or ``created_at``."""
 
-    def page(session: Session) -> tuple[ListResult, list[ReportRunOut]]:
-        result = paginate(session, framework.runs_statement(ctx.principal), RUN_LIST, params)
-        return result, framework.run_outs(session, [dict(row) for row in result.items])
-
-    result, items = queries.read(ctx, page)
+    with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
+        result = paginate(
+            uow.session,
+            framework.runs_statement(ctx.principal),
+            RUN_LIST,
+            params,
+            visible=lambda row: evidence_catalogue_access.visible(uow, dict(row)),
+        )
+        items = framework.run_outs(uow.session, [dict(row) for row in result.items])
     _total(response, result)
     return ListOut[ReportRunOut](items=items, next_cursor=result.next_cursor)
 
@@ -254,6 +275,8 @@ def _call_export_run_access(
     ctx: RequestContext,
 ) -> bool:
     """Source MFA and retained ownership precede both direct reads and cached rerun replies."""
+    if _evidence_run_access(request, run_id, ctx):
+        return True
     protected = queries.read(
         ctx,
         lambda session: session.scalar(

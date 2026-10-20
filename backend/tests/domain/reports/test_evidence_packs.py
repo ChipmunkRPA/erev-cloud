@@ -12,6 +12,7 @@ import io
 import json
 from copy import copy
 from dataclasses import replace
+from uuid import UUID
 from zipfile import ZipFile
 
 import pytest
@@ -29,7 +30,7 @@ from fastapi import FastAPI
 from support.close_world import actor_with_role
 from support.db import TestDatabase
 from support.evidence_packs import retained_close_pack
-from support.reference import assign, get
+from support.reference import assign, get, post
 
 
 @pytest.fixture
@@ -87,8 +88,6 @@ def test_ctl_041_close_pack_manifest(
         from erev_api.domain.reports import evidence_catalogue_jobs, framework
         from sqlalchemy import select
 
-        definition = framework.definition_row(uow.session, "period_evidence_pack")
-        assert definition is not None
         params = {
             "entity_codes": [source.request.entity_code],
             "book": source.request.book.value,
@@ -96,20 +95,21 @@ def test_ctl_041_close_pack_manifest(
             "period_lock_id": str(source.request.period_lock_id),
             "known_at": source.cutoff_known_at.isoformat(),
         }
-        run_id, queued = framework._insert_run(
-            uow,
-            definition=definition,
-            resolved=framework._Resolved(
-                parameters=params,
-                entity_ids=(source.entity_id,),
-                known_at=source.cutoff_known_at,
-                book_code=source.request.book.value,
-                as_of_date=None,
-                period_lock_id=source.request.period_lock_id,
-            ),
-            output_format="ZIP",
-            rerun_of=None,
-        )
+        uow.commit()
+    created = post(
+        app,
+        "/api/v1/report-runs",
+        world.place.author,
+        {
+            "report_code": "period_evidence_pack",
+            "output_format": "ZIP",
+            "parameters": params,
+        },
+    )
+    assert created.status_code == 202, created.text
+    run_id = UUID(created.headers["X-Erev-Report-Run-Id"])
+    queued_id = UUID(created.json()["id"])
+    with world.place.uow(principal) as uow:
         report = dict(
             uow.session.execute(select(report_run).where(report_run.c.id == run_id))
             .mappings()
@@ -122,7 +122,7 @@ def test_ctl_041_close_pack_manifest(
             == report["source_binding"]
         )
         assert not framework.dependencies_ready(
-            uow.session, queued.id, {"report_run_id": str(run_id)}
+            uow.session, queued_id, {"report_run_id": str(run_id)}
         )
         bad = {**report, "known_at": clock.now()}
         with pytest.raises(Problem):
@@ -142,8 +142,8 @@ def test_ctl_041_close_pack_manifest(
         result = worlds.run_now(world, child_id)
         assert result["state"] == "SUCCEEDED", result
     with world.place.uow(principal) as uow:
-        assert framework.dependencies_ready(uow.session, queued.id, {"report_run_id": str(run_id)})
-    result = worlds.run_now(world, queued.id)
+        assert framework.dependencies_ready(uow.session, queued_id, {"report_run_id": str(run_id)})
+    result = worlds.run_now(world, queued_id)
     assert result["state"] == "SUCCEEDED", result
     with world.place.uow(principal) as uow:
         completed = (
@@ -160,6 +160,38 @@ def test_ctl_041_close_pack_manifest(
             assert stream.read() == artifact.content
         assert completed["output_sha256"] == artifact.sha256
         assert evidence_catalogue_jobs.source(dict(completed)) == attached
+    shown = get(app, f"/api/v1/report-runs/{run_id}", auditor)
+    assert shown.status_code == 200, shown.text
+    public_output = get(app, f"/api/v1/report-runs/{run_id}/output", auditor)
+    assert public_output.status_code == 200, public_output.text
+    assert public_output.content == artifact.content
+    listed = get(app, "/api/v1/report-runs", auditor, {"report_code": "period_evidence_pack"})
+    assert listed.status_code == 200, listed.text
+    assert [item["id"] for item in listed.json()["items"]] == [str(run_id)]
+    limited = actor_with_role(app, clock, world.tenant_id, "revenue_accountant", name="limited")
+    assert get(app, f"/api/v1/report-runs/{run_id}", limited).status_code in {403, 404}
+    assert get(app, f"/api/v1/report-runs/{run_id}/output", limited).status_code in {403, 404}
+    hidden = get(app, "/api/v1/report-runs", limited, {"report_code": "period_evidence_pack"})
+    assert hidden.status_code == 200, hidden.text
+    assert hidden.json()["items"] == []
+    from erev_api.db.tables import evidence_pack
+    from sqlalchemy import func
+
+    count_before = world.place.scalar(select(func.count()).select_from(evidence_pack))
+    rerun = post(app, f"/api/v1/report-runs/{run_id}/rerun", auditor, {})
+    assert rerun.status_code == 202, rerun.text
+    rerun_id = UUID(rerun.headers["X-Erev-Report-Run-Id"])
+    result = worlds.run_now(
+        replace(world, place=replace(world.place, author=auditor)), UUID(rerun.json()["id"])
+    )
+    assert result["state"] == "SUCCEEDED", result
+    repeated = get(app, f"/api/v1/report-runs/{rerun_id}/output", auditor)
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.content == artifact.content
+    assert world.place.scalar(select(func.count()).select_from(evidence_pack)) == count_before
+    provenance = get(app, f"/api/v1/report-runs/{rerun_id}/output", auditor, {"part": "manifest"})
+    assert provenance.status_code == 200, provenance.text
+    assert provenance.json()["source"]["pack_id"] == str(attached.pack_id)
     denied = replace(principal, permissions=principal.permissions - {"evidence.export"})
     with world.place.uow(denied) as uow, pytest.raises(Problem) as refusal:
         evidence_catalogue.read(uow, bound)

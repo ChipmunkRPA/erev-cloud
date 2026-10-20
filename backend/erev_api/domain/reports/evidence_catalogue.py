@@ -103,8 +103,8 @@ def bind(
         or parent.params.get("evidence_pack_id") != str(pack_id)
     ):
         raise Problem("validation-failed", "The source evidence job does not match its pack.")
-    if row["status"] not in {"QUEUED", "RUNNING", "SUCCEEDED"}:
-        raise Problem("invalid-transition", "The source evidence pack failed.")
+    if row["status"] not in {"QUEUED", "RUNNING", "SUCCEEDED", "FAILED"}:
+        raise Problem("invalid-transition", "The source evidence pack has an invalid status.")
     selected_request: ClosePackCreateIn | ContractSamplePackCreateIn
     source_entities: tuple[UUID, ...]
     if isinstance(request, ClosePackCreateIn):

@@ -1786,3 +1786,19 @@ No additional report builder is registered, and no deployment is performed.
   and addressed/list/download authorization must be integrated before exposing RPT-54/55.
   Fresh sample capture currently requires the creation-time known_at; historical fresh capture
   remains unsupported (retained reruns preserve the original cutoff). No deployment.
+
+## Public period evidence catalogue report — October 19, 2026
+
+- Registered period_evidence_pack through POST /report-runs. Lock selectors reconcile to the
+  frozen entity/book/period and cutoff; declared evidence permissions govern admission/scope.
+- Standard list/detail/output/rerun and idempotent replay paths check current source access.
+  Lists filter before counts/cursors. Direct framework output reads also reauthorize sources;
+  generic file routes remain restricted to their existing report-output route.
+- Same-source reruns preserve the bound evidence pack and original archive, with explicit
+  provenance. Failed-pack metadata can still be authorized; readiness/download reject failure.
+- Actual public API creation, dependencies, worker output, list/detail/download, limited-user
+  denial and original-source rerun pass. Existing report lifecycle/rerun regression passes;
+  Ruff/Mypy pass. User guide updated.
+- Next: contract_sample_pack public catalogue admission and full sample orchestration acceptance;
+  fresh historical sample capture and wider accounting/re-lock acceptance remain open.
+  No deployment or production-readiness claim.

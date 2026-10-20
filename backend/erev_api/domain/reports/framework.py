@@ -592,10 +592,14 @@ _OPEN_ONLY: Final = (
     "labelled open, never a reproduction)",
 )
 # Composed reports use the worker's chapter-aware execution path, not a single-table builder.
-REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {"disclosure_pack"}
+REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {"disclosure_pack", "period_evidence_pack"}
 
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        "period_evidence_pack": SourceContract(
+            ADAPTER,
+            ("Explicit retained evidence pack, source hash, cutoff and original archive",),
+        ),
         "disclosure_pack": SourceContract(
             RETAINED,
             ("Original child datasets, source stamps and exact-cutoff disclosure policies",),
@@ -1038,6 +1042,10 @@ ADMITTING_PERMISSIONS: Final = (RUN_PERMISSION, *sorted(set(RUN_PERMISSIONS.valu
 # ``report.export`` for a file); ``require_report`` and ``runs_statement`` are the only readers.
 REQUIRED_PERMISSIONS: Final[Mapping[str, tuple[RequiredPermission, ...]]] = MappingProxyType(
     {
+        "period_evidence_pack": tuple(
+            RequiredPermission(permission)
+            for permission in ("audit.read", "contract.read", "report.export", "evidence.export")
+        ),
         # RPT-43: every T-PLT-19 column of the audit events, which name no entity (R-28)
         audit_log_export_builder.CODE: (RequiredPermission(AUDIT_READ, all_entities=True),),
         # RPT-44: the chain verifications — counts and chain values, no entity data, so at
@@ -1050,7 +1058,7 @@ REQUIRED_PERMISSIONS: Final[Mapping[str, tuple[RequiredPermission, ...]]] = Mapp
         approvals_register_builder.CODE: (RequiredPermission(AUDIT_READ),),
     }
 )
-assert set(REQUIRED_PERMISSIONS) <= set(BUILDERS), "a declared report is a registered report"
+assert set(REQUIRED_PERMISSIONS) <= REGISTERED_REPORTS, "a declared report is a registered report"
 assert set(RUN_PERMISSIONS) <= set(BUILDERS), "a report with its own run permission is registered"
 type CellExplainer = Callable[
     [Session, ReportParams, str, str], tuple[Mapping[str, str], list[dict[str, Any]]]
@@ -1477,7 +1485,13 @@ def _resolve(
     if parameters.get("period_lock_id") is not None:
         lock_id = UUID(str(parameters["period_lock_id"]))
         scope = locked.lock_scope(session, lock_id)
-        kind = "DISCLOSURE" if code == "disclosure_pack" else locked.snapshot_kind_of(code)
+        kind = (
+            "PERIOD_EVIDENCE"
+            if code == "period_evidence_pack"
+            else "DISCLOSURE"
+            if code == "disclosure_pack"
+            else locked.snapshot_kind_of(code)
+        )
         if scope is None or scope.entity_id not in entities.values():
             errors.append(_finding("parameters.period_lock_id", LOCK_UNKNOWN, RULE_SCOPE))
         elif kind is None:
@@ -1504,7 +1518,7 @@ def _resolve(
                 # F-RPS-CUTOFF-R1 × CLO-8 (record §43 addendum): the stored basis survives the
                 # lock normalisation — an admitted key, not a selector; the scope stays the lock's.
                 normalized[KNOWN_AT_BASIS] = basis
-            if code == "disclosure_pack":
+            if code in {"disclosure_pack", "period_evidence_pack"}:
                 cutoff = session.scalar(
                     select(period_lock.c.cutoff_known_at).where(period_lock.c.id == lock_id)
                 )
@@ -1966,7 +1980,7 @@ def run_kind(run: Mapping[str, Any]) -> str:
     run with a binding, by its builder's strategy); ``pending`` (QUEUED / RUNNING — nothing
     captured yet); ``failed_without_capture`` (FAILED before capture — a rerun is a NEW evaluation,
     never a reproduction); ``legacy_unbound`` (SUCCEEDED before source binding)."""
-    if run.get("period_lock_id") is not None:
+    if run.get("period_lock_id") is not None and run.get("report_code") != "period_evidence_pack":
         return KIND_AS_LOCKED
     status = str(run.get("status"))
     if run.get("source_binding") is not None:
@@ -3175,8 +3189,14 @@ def open_output(
 ) -> Download:
     """``GET /report-runs/{id}/output``: the output or manifest stream of a SUCCEEDED run, after one
     ``report.export`` audit event naming the run (REQ-PLT-019)."""
-    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+    from erev_api.clock import FrozenClock
+    from erev_api.domain.reports import evidence_catalogue_access
+    from erev_api.uow import unit_of_work
+
+    with unit_of_work(ctx, clock=FrozenClock(ctx.now), keyring=keyring, files=files) as uow:
+        session = uow.session
         row = run_row(session, ctx.principal, run_id, EXPORT_PERMISSION)
+        evidence_catalogue_access.authorize(uow, row)
         require_report(ctx, str(row["report_code"]), run_id=run_id, keyring=keyring)  # R-13
         if row["status"] != SUCCEEDED or row["output_file_id"] is None:
             raise Problem("invalid-transition", NOT_FINISHED)

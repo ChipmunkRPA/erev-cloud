@@ -6,6 +6,22 @@
 
 
 
+## Public period evidence catalogue report — October 19, 2026
+
+- Registered period_evidence_pack through POST /report-runs. Lock selectors reconcile to the
+  frozen entity/book/period and cutoff; declared evidence permissions govern admission/scope.
+- Standard list/detail/output/rerun and idempotent replay paths check current source access.
+  Lists filter before counts/cursors. Direct framework output reads also reauthorize sources;
+  generic file routes remain restricted to their existing report-output route.
+- Same-source reruns preserve the bound evidence pack and original archive, with explicit
+  provenance. Failed-pack metadata can still be authorized; readiness/download reject failure.
+- Actual public API creation, dependencies, worker output, list/detail/download, limited-user
+  denial and original-source rerun pass. Existing report lifecycle/rerun regression passes;
+  Ruff/Mypy pass. User guide updated.
+- Next: contract_sample_pack public catalogue admission and full sample orchestration acceptance;
+  fresh historical sample capture and wider accounting/re-lock acceptance remain open.
+  No deployment or production-readiness claim.
+
 ## Catalogue evidence dependency/execution chain — October 19, 2026
 
 - Ordinary report insertion now prepares and persists an explicit source pack binding in the
@@ -228,28 +244,6 @@
   schedule evidence into a hash-verified archive. Ruff/Mypy pass.
 - This is a linked audit slice, not complete-chain verification. Journal/documents, source retention,
   public jobs/read/download, PDF/XLSX and broader historical/multi-entity acceptance remain open.
-
-## Contract sample computation evidence — October 19, 2026
-
-- Added immutable version history, allocation detail/trace and full schedule collection at
-  the sample's effective date and knowledge cutoff. Combined-group companions are labelled
-  and every contracting/performing entity is authorized; source scope is returned for retention.
-- Validates trace digests/references and schedule counts/currencies/amounts. A real K01 command
-  journey collects two obligations, future planned periods and an archive with event evidence;
-  earlier-effective selection and revoked export permission checks pass. Ruff/Mypy pass.
-- Public jobs, PDF/XLSX, documents, journal/approval/audit sections and combined-group acceptance
-  remain. This collector is not a completed sample pack. No deployment.
-
-## Contract sample event evidence — October 19, 2026
-
-- Added the contract-sample event collector with exact contract/entity authorization, effective
-  date and knowledge cutoffs, deterministic ordering, original-payload integrity checks and
-  separate redacted-payload hashes. Superseded events remain in the evidence history.
-- Produces per-contract event files, selected identity/date stamps and referenced source-record
-  metadata. Shared raw import payloads are excluded; this is not document-byte collection.
-- Targeted database collection/archive verification and two integrity/redaction checks pass.
-  Computed versions/allocation/schedules, journals, decisions, audit slice, actual documents,
-  stamped PDF/XLSX and public job/read/download integration remain. No complete-pack claim.
 
 ## Outstanding release verification
 
