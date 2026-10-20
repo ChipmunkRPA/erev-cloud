@@ -8752,3 +8752,24 @@ while today's ACCESS request uses the request instant. Future dates refuse. Supp
 with no historical reconstruction retain the underlying report's refusal semantics.
 These are report sections only: release evidence, the role matrix and access-review evidence,
 parent completion/storage, public creation/download/list endpoints and UI are still required.
+
+### Release provenance and role matrix snapshots — October 19, 2026
+
+Register source v2 adds CHANGE release_evidence: the requesting process's registered release
+identity and every registration in the inclusive UTC change interval, capped at the known-at
+instant. The snapshot keeps engine/build/schema identifiers, recorded deployment time,
+validation level, control-impact tags and gate declarations. Free-form release notes and
+host files are not inputs. release/registered_manifest.json explicitly identifies these as
+registered facts, not original build-manifest bytes or independent sign-off. Empty or failed
+gate declarations remain empty or failed. Retained collection does not read the live registry.
+
+Register source v3 adds ACCESS role_matrix: tenant ID, selected effective instant, known-at,
+and role IDs/codes/names/activity state, record dates and permission codes. Definitions that
+existed at the selected instant but changed afterwards refuse because no complete historical
+definition table exists. Inactive roles remain in the matrix. It contains no member identities
+or authentication material. access/role_permission_matrix.json serializes this fixed snapshot.
+Both capture and retained reads require all four evidence permissions for all entities and an
+unrestricted tenant entity scope, because definitions are tenant-wide. Enumerating the current
+entity IDs is not an all-entities grant. v1 register-only bindings remain readable; none of these
+bindings alone enables parent completion or public CHANGE/ACCESS endpoints. Access-review
+evidence and the public lifecycle/UI remain to be implemented.

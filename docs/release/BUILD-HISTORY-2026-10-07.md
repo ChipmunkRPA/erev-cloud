@@ -7812,3 +7812,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   source entity; no scope is silently omitted.
 - Still open: authorized retained-actuals reader, contract/category mapping, comparison report
   builder/registration and UI. No deployment or overall production-readiness claim.
+
+
+## Authorized retained-actuals reading — October 19, 2026
+
+- The scenario history result now identifies the exact current actuals snapshot. Added an
+  internal actuals reader that reauthorizes the current scenario and historical forecast,
+  verifies the snapshot target/status/cutoff and encrypted file digest, and checks retained
+  book/entity/cutoff metadata before returning only forecast-scope rows.
+- Other books, entities and periods never leave the reader. Duplicated, cancelled, late or
+  out-of-capture rows are refused. Missing legacy capture is explicit; no live-source fallback.
+  Production SQL context is restored on exit, including errors and revoked permissions.
+- Six focused scope/integrity checks pass. The real refreshed-scenario journey reads its
+  retained empty actuals and denies access after permission removal. Ruff/Mypy pass.
+- Remaining FCS-4 work: contract/category dimension mapping, comparison report builder and
+  registration, screen connection and populated accounting acceptance. No deployment.

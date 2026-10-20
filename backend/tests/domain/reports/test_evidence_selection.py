@@ -1449,7 +1449,19 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
     with sources.world.place.uow(principal) as uow:
         files = registers.collect(uow, pack["id"])
         assert registers.load(uow, pack["id"]) == bound
-        assert len(files) == 7
+        assert len(files) == 8
+        if kind == "CHANGE":
+            release = json.loads(
+                next(
+                    file.content
+                    for file in files
+                    if file.path == "release/registered_manifest.json"
+                )
+            )
+            assert release["source"]["requesting_release"]["id"] == str(
+                bound.release_evidence.requesting_release.id
+            )
+            assert release["source"]["known_at"] == bound.model_dump(mode="json")["known_at"]
         for report in bound.reports:
             output = next(
                 file
@@ -1458,6 +1470,15 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
             )
             assert output.content
         if kind == "ACCESS":
+            matrix = json.loads(
+                next(
+                    file.content
+                    for file in files
+                    if file.path == "access/role_permission_matrix.json"
+                )
+            )
+            assert matrix["roles"]
+            assert any("audit.read" in role["permissions"] for role in matrix["roles"])
             users = next(file for file in files if file.path == "access/user_access_listing.csv")
             assert (
                 len(users.content.splitlines()) > 1
@@ -1470,6 +1491,18 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
     monkeypatch.setattr(registers, "prepare", no_prepare)
     with sources.world.place.uow(principal) as uow:
         assert registers.collect(uow, pack["id"]) == files
+    if kind == "ACCESS":
+        # Enumerating all current entities is not the tenant-wide grant needed for definitions.
+        narrowed = replace(
+            principal,
+            permission_scopes={
+                **principal.permission_scopes,
+                "audit.read": frozenset(bound.entity_ids),
+            },
+        )
+        with sources.world.place.uow(narrowed) as uow, pytest.raises(Problem) as limited:
+            registers.collect(uow, pack["id"])
+        assert limited.value.slug == "forbidden"
     denied = replace(
         principal,
         permissions=principal.permissions - {"evidence.export"},

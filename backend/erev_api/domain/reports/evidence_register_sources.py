@@ -2,7 +2,8 @@
 
 This boundary queues and binds report sources, then collects their original CSV and IPE
 manifest bytes under current authorization. It does not claim a complete pack: CHANGE
-still needs release evidence; ACCESS still needs its role matrix and access-review evidence.
+retains registry manifest facts; ACCESS retains the role matrix and still needs
+access-review evidence.
 No parent job, pack completion or public endpoint is enabled here.
 """
 
@@ -14,12 +15,26 @@ from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 from sqlalchemy import select
 
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.tables import evidence_pack, legal_entity, report_run
-from erev_api.domain.reports import evidence_reports, evidence_selection, framework
+from erev_api.domain.reports import (
+    evidence_access_roles,
+    evidence_change_releases,
+    evidence_reports,
+    evidence_selection,
+    framework,
+)
 from erev_api.domain.reports.evidence_archive import PackFile
 from erev_api.domain.reports.evidence_sources import BoundReport
 from erev_api.problems import Problem
@@ -35,10 +50,9 @@ REPORTS = {
 Request = Annotated[ChangePackCreateIn | AccessPackCreateIn, Field(discriminator="kind")]
 
 
-class RegisterSources(BaseModel):
+class _RegisterSources(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    format: Literal["erev.register-evidence.sources.v1"] = "erev.register-evidence.sources.v1"
     tenant_id: UUID
     request: Request
     known_at: AwareDatetime
@@ -86,6 +100,48 @@ class RegisterSources(BaseModel):
             "report_run_ids": sorted(report.run_id for report in self.reports),
             "source_binding": self.model_dump(mode="json"),
         }
+
+
+class RegisterSources(_RegisterSources):
+    format: Literal["erev.register-evidence.sources.v1"] = "erev.register-evidence.sources.v1"
+
+
+class ChangeSources(_RegisterSources):
+    format: Literal["erev.register-evidence.sources.v2"] = "erev.register-evidence.sources.v2"
+    release_evidence: evidence_change_releases.ReleaseEvidence
+
+    @model_validator(mode="after")
+    def matching_release_scope(self) -> Self:
+        if (
+            not isinstance(self.request, ChangePackCreateIn)
+            or self.release_evidence.from_date != self.request.from_date
+            or self.release_evidence.to_date != self.request.to_date
+            or self.release_evidence.known_at != self.known_at
+        ):
+            raise ValueError("Release evidence differs from the CHANGE request.")
+        return self
+
+
+class AccessSources(_RegisterSources):
+    format: Literal["erev.register-evidence.sources.v3"] = "erev.register-evidence.sources.v3"
+    role_matrix: evidence_access_roles.RoleMatrix
+
+    @model_validator(mode="after")
+    def matching_role_scope(self) -> Self:
+        if (
+            not isinstance(self.request, AccessPackCreateIn)
+            or self.role_matrix.tenant_id != self.tenant_id
+            or self.role_matrix.known_at != self.known_at
+            or self.role_matrix.as_of != evidence_access_roles.instant(self.request, self.known_at)
+        ):
+            raise ValueError("Role matrix differs from the ACCESS request.")
+        return self
+
+
+type RegisterBinding = RegisterSources | ChangeSources | AccessSources
+_BINDING: TypeAdapter[RegisterBinding] = TypeAdapter(
+    Annotated[RegisterBinding, Field(discriminator="format")]
+)
 
 
 def requests(
@@ -144,7 +200,7 @@ def authorize(uow: UnitOfWork, entity_ids: tuple[UUID, ...]) -> None:
         raise Problem("not-found")
 
 
-def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -> RegisterSources:
+def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -> RegisterBinding:
     """Caller persists the returned binding and commits all report jobs with its pack."""
     selection = evidence_selection.resolve(uow, request)
     authorize(uow, selection.entity_ids)
@@ -158,6 +214,16 @@ def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -
         ).all()
     }
     entity_codes = tuple(codes[identity] for identity in selection.entity_ids)
+    release_evidence = (
+        evidence_change_releases.capture(uow, request)
+        if isinstance(request, ChangePackCreateIn)
+        else None
+    )
+    role_matrix = (
+        evidence_access_roles.capture(uow, request)
+        if isinstance(request, AccessPackCreateIn)
+        else None
+    )
     reports = []
     for body in requests(request, entity_codes=entity_codes, known_at=selection.known_at):
         run_id, job = framework.create_run(uow, body)
@@ -182,7 +248,7 @@ def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -
                 known_at=row["known_at"],
             )
         )
-    return RegisterSources(
+    values = dict(
         tenant_id=selection.tenant_id,
         request=request,
         known_at=selection.known_at,
@@ -190,11 +256,16 @@ def prepare(uow: UnitOfWork, request: ChangePackCreateIn | AccessPackCreateIn) -
         entity_codes=entity_codes,
         reports=tuple(reports),
     )
+    if release_evidence is not None:
+        return ChangeSources(**values, release_evidence=release_evidence)
+    if role_matrix is not None:
+        return AccessSources(**values, role_matrix=role_matrix)
+    return RegisterSources(**values)
 
 
-def checked_row(row: Mapping[str, Any]) -> RegisterSources:
+def checked_row(row: Mapping[str, Any]) -> RegisterBinding:
     try:
-        bound = RegisterSources.model_validate(row["source_binding"])
+        bound = _BINDING.validate_python(row["source_binding"])
     except (KeyError, ValidationError) as error:
         raise Problem("validation-failed", "Invalid retained register evidence sources.") from error
     if (
@@ -211,7 +282,7 @@ def checked_row(row: Mapping[str, Any]) -> RegisterSources:
     return bound
 
 
-def load(uow: UnitOfWork, pack_id: UUID) -> RegisterSources:
+def load(uow: UnitOfWork, pack_id: UUID) -> RegisterBinding:
     row = (
         uow.session.execute(
             select(evidence_pack).where(
@@ -227,6 +298,8 @@ def load(uow: UnitOfWork, pack_id: UUID) -> RegisterSources:
         raise Problem("not-found")
     bound = checked_row(dict(row))
     authorize(uow, bound.entity_ids)
+    if isinstance(bound, AccessSources):
+        evidence_access_roles.authorize(uow)
     jobs = {
         identity: job_id
         for identity, job_id in uow.session.execute(
@@ -249,5 +322,15 @@ def collect(uow: UnitOfWork, pack_id: UUID) -> tuple[PackFile, ...]:
     )
     return (
         *files,
+        *(
+            evidence_access_roles.files(bound.role_matrix)
+            if isinstance(bound, AccessSources)
+            else ()
+        ),
+        *(
+            evidence_change_releases.files(bound.release_evidence)
+            if isinstance(bound, ChangeSources)
+            else ()
+        ),
         PackFile("registers/source_binding.json", canonical_bytes(bound.model_dump(mode="json"))),
     )

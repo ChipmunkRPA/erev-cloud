@@ -6,6 +6,20 @@
 
 
 
+## Release provenance and access-role evidence — October 19, 2026
+
+- CHANGE source v2 now captures requesting-process release registry facts and all registrations
+  in the requested range, preserving recorded gates and explicitly distinguishing registered
+  facts from original build-manifest bytes and independent approval.
+- ACCESS source v3 now captures the complete role/permission matrix, including inactive roles,
+  at its selected instant. Missing historical definitions refuse. Capture/read require
+  tenant-wide evidence grants; a list of current entity IDs is not treated as that grant.
+- Both emit fixed JSON evidence alongside retained report CSV/IPE outputs. Retries do not
+  replace snapshots with current release/role values. v1 sources remain readable.
+- Actual CHANGE/ACCESS report-worker collection and 17 focused checks pass; Mypy/Ruff pass.
+- Still open: access-review evidence, parent job/storage, public CHANGE/ACCESS API/UI,
+  populated re-lock acceptance and the wider reporting backlog. No deployment.
+
 ## Change/access report-source implementation — October 19, 2026
 
 - Added immutable CHANGE/ACCESS report-source preparation and retained collection. CHANGE
@@ -231,20 +245,6 @@
 - Ten focused mapper/comparison checks and the real archived-forecast refresh journey pass;
   Ruff/Mypy pass. Actual-side dimension mapping, report builder/registration and UI still
   remain. FCS-4 is not yet runnable; no deployment.
-
-## Authorized retained-actuals reading — October 19, 2026
-
-- The scenario history result now identifies the exact current actuals snapshot. Added an
-  internal actuals reader that reauthorizes the current scenario and historical forecast,
-  verifies the snapshot target/status/cutoff and encrypted file digest, and checks retained
-  book/entity/cutoff metadata before returning only forecast-scope rows.
-- Other books, entities and periods never leave the reader. Duplicated, cancelled, late or
-  out-of-capture rows are refused. Missing legacy capture is explicit; no live-source fallback.
-  Production SQL context is restored on exit, including errors and revoked permissions.
-- Six focused scope/integrity checks pass. The real refreshed-scenario journey reads its
-  retained empty actuals and denies access after permission removal. Ruff/Mypy pass.
-- Remaining FCS-4 work: contract/category dimension mapping, comparison report builder and
-  registration, screen connection and populated accounting acceptance. No deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
