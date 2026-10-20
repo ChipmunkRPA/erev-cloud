@@ -7,7 +7,7 @@ import { fetchDisclosureSnapshot, fetchDisclosureSnapshots, type DisclosureSnaps
 import { queryKey } from "../../../lib/api/query-keys";
 import { t } from "../../../lib/i18n/t";
 
-function Snapshot({ snapshot }: { snapshot: DisclosureSnapshot }) {
+export function Snapshot({ snapshot }: { snapshot: DisclosureSnapshot }) {
   const [open, setOpen] = useState(false);
   const detail = useQuery({
     queryKey: queryKey("disclosure-snapshots", "tenant", { id: snapshot.id }),

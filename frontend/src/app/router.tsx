@@ -460,6 +460,12 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     }),
   },
   {
+    id: "SF-08:disclosures",
+    path: "/reports/disclosures",
+    handle: { sf: "SF-08", screen: "SF-08:disclosures", titleKey: "reports.disclosures.title" },
+    lazy: async () => ({ Component: (await import("../routes/reports/disclosures")).DisclosureRegister }),
+  },
+  {
     id: "SF-17",
     path: "/reports/forecasts",
     handle: { sf: "SF-17", screen: "SF-17", titleKey: "reports.forecasts.title" },

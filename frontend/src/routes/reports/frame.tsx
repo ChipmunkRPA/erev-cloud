@@ -50,6 +50,7 @@ export const REPORTS_TABS: readonly ReportsTab[] = [
     key: "auditLog",
     permission: "audit.read",
   },
+  { screen: "SF-08:disclosures", path: "/reports/disclosures", key: "disclosures", permission: "report.run" },
   { screen: "SF-17", path: "/reports/forecasts", key: "forecasts", permission: "scenario.use" },
 ];
 

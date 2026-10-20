@@ -1,4 +1,13 @@
 {
+  "reports.tabs.disclosures": "Disclosure snapshots",
+  "reports.disclosures.title": "Disclosure snapshots",
+  "reports.disclosures.description": "Browse retained disclosure evidence. Draft snapshots are not locked-period evidence. Expand a record to verify its saved source.",
+  "reports.disclosures.kind": "Disclosure type",
+  "reports.disclosures.all": "All disclosure types",
+  "reports.disclosures.more": "Load older snapshots",
+  "reports.disclosures.run": "Open source report",
+  "reports.disclosures.empty": "No disclosure snapshots match this selection.",
+  "reports.disclosures.emptyHelp": "Choose another entity, book, period or disclosure type, or run a disclosure pack to retain new evidence.",
   "reports.parameters.from_period_lock_id": "Earlier close",
   "reports.parameters.to_period_lock_id": "Later close",
   "reports.parameters.locks.context": "Select an entity, book and period to choose retained close snapshots.",

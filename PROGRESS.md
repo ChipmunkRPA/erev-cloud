@@ -6,6 +6,19 @@
 
 
 
+## Disclosure snapshot register — October 19, 2026
+
+- Added /reports/disclosures and a Reports tab for report.run readers. The register queries
+  retained snapshot metadata using entity/book/period context and disclosure-type selection,
+  pages older records, and links each record to its original report run.
+- Reuses the lazy verified snapshot detail panel. Draft versus locked source remains explicit;
+  metadata browsing does not fetch all payloads or imply lock-time capture is complete.
+  Source-status filtering is not offered because the current list API does not support it.
+- Four focused register/detail checks pass with TypeScript/ESLint. Actual-versus-forecast
+  populated-posting acceptance remains unproven; review found existing computation/cutoff UI,
+  so no speculative calculation rewrite was made. Disclosure lock-time orchestration,
+  populated report acceptance and independent accounting sign-off remain open. No deployment.
+
 ## Close variance snapshot selection — October 19, 2026
 
 - Variance-between-closes parameters now choose Earlier close and Later close from authorized
@@ -232,22 +245,6 @@
 - Next development: wire forecast_outputs admission, immutable source binding, worker and
   report-centre access; then complete remaining report workflows and populated acceptance.
   No deployment or production-readiness claim.
-
-## Public contract sample catalogue report — October 19, 2026
-
-- Registered contract_sample_pack with ZIP/PDF/XLSX and the complete evidence permission set.
-  Catalogue creation uses the existing source-pack dependency, worker and current-source read
-  authorization; source-document permissions still apply to metadata, lists and downloads.
-- Threaded optional known_at through sample creation into the existing historical collectors.
-  Generation timestamps stay current. Same-source reruns preserve the bound original artifact.
-- Real K01 API → source pack → report worker → download/rerun passes for all three formats.
-  A later attachment appears in current capture but not in historical PDF/XLSX sources;
-  missing SSP-document permission hides rows before count/cursor, and revoked grants refuse
-  downloads. Sixteen source-contract checks and Ruff/Mypy pass.
-- Catalogue audit: 58 registered report codes; forecast_outputs is the remaining unregistered
-  code. This is registration coverage, not full accounting or release acceptance. Next:
-  forecast_outputs entry-point integration; broader multi-contract/re-lock/report acceptance
-  and independent accounting sign-off remain open. No deployment or readiness claim.
 
 ## Outstanding release verification
 

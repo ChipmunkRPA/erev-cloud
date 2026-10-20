@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest disclosure register update (October 19): /reports/disclosures now lists authorized
+snapshot metadata by entity, book, period and disclosure type, pages older records, and opens
+verified retained detail and original report runs. Draft/locked source is displayed; source-status
+filtering is not implemented. Lock-time capture and as-locked disclosure orchestration remain
+open; the new register does not establish populated accounting acceptance.
+
+
 Latest snapshot read update (October 19): disclosure snapshot list/detail APIs now support
 scoped metadata pagination/filtering and verified retained evidence. Drafts are explicitly
 labelled and source-parent attachment/scope is checked. Real API and permission-scope checks
