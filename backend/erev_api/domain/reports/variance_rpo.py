@@ -30,6 +30,7 @@ from erev_api.domain.reports import rpo_duration, rpo_quotas, tie_outs
 from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
+from .variance_reporting import Basis
 
 
 def _refuse(detail: str) -> Problem:
@@ -43,6 +44,7 @@ def project(
     entity_code: str,
     period_key: str,
     functional: bool,
+    reporting_basis: Basis | None = None,
 ) -> dict[MeasureKey, Fraction]:
     """Disclosed RPO from dated output traces; no live registry or contract lookup."""
     entity = next(item for item in bundle.entities if item.code == entity_code)
@@ -197,8 +199,16 @@ def project(
             # Match the disclosure: round gross and excluded amounts independently per obligation.
             remaining = minor_to_decimal(round_half_up(Fraction(remaining) * rate, places), places)
             excluded = minor_to_decimal(round_half_up(Fraction(excluded) * rate, places), places)
-        remaining -= excluded
+        if reporting_basis is not None:
+            if not functional or currency != reporting_basis.functional_currency:
+                raise _refuse("reporting RPO requires a matching functional conversion first.")
+            remaining_value = reporting_basis.amount(Fraction(remaining)) - reporting_basis.amount(
+                Fraction(excluded)
+            )
+            currency = reporting_basis.currency
+        else:
+            remaining_value = Fraction(remaining - excluded)
         # Royalties are realized as reported; POL-199 has no unrecognized quota to remove.
         key = MeasureKey(contract, currency, "RPO")
-        result[key] = result.get(key, Fraction(0)) + Fraction(remaining)
+        result[key] = result.get(key, Fraction(0)) + remaining_value
     return result

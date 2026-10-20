@@ -8964,3 +8964,38 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This closes the populated partial-exemption report/snapshot-producer/export gap for this path;
   it does not assert a complete production lock workflow or all exemption combinations. Broader
   revenue/RPO currency views and the other documented reporting gaps remain. No deployment.
+
+## RPO rollforward currency attribution — October 20, 2026
+
+- Functional/reporting RPO rollforwards now translate month-by-month: business movements at
+  monthly average rates and opening/closing disclosures at their own closing rates. Endpoints
+  use the same per-obligation gross/exclusion projection as RPO, so partial-exemption rounding
+  does not create mismatched closing totals. Approved rate identities are retained for reruns.
+- FX is calculated independently from opening/closing exposures and rate differences; currency
+  rounding has its own line. Source UNEXPLAINED remains separate, and any nonzero source monthly
+  unexplained amount forces a failed balance tie even if display rounding could erase it.
+- Necessary API witness covers three months of GBP/USD revenue and FX, both endpoint disclosure
+  ties, a revised closing-rate set versus retained rerun, and injected unsupported movement that
+  still fails the tie without changing FX. Existing transaction CTL-030 passes; lint/types pass.
+- This completes the current RPO live-report currency path, not every reporting feature or
+  alternate currency lock datasets. Multi-layer liability FX, group membership/combined-contract
+  attribution and broader release acceptance remain outstanding. No deployment or accounting
+  sign-off claimed.
+
+## RPO disclosure currency views — October 20, 2026
+
+- RPO now translates foreign transaction consideration to functional currency and then to
+  reporting currency using retained approved as-of closing rates. The former foreign-currency
+  refusal and reporting-as-functional shortcut are removed for the RPO disclosure report.
+- Gross RPO and exclusion are translated first; net disclosure is their difference. Largest
+  remainder allocation distributes net rounding through bands and contributors, preserving
+  total = current + noncurrent = sum(bands) = sum(contributors), including partial exemptions.
+  The source store remains untouched and the independent rollforward tie explicitly stays in
+  transaction currency. Headers/control evidence/cell details state the as-of translation basis.
+- Necessary checks: GBP disclosures translated to USD, currency-band/current conservation,
+  converted cell contributors, published closing-rate revision versus retained rerun, POL-197
+  excluded totals, and a foreign-functional partial-exemption cent-rounding witness. Existing
+  approved targeted-VC journey and snapshot producer remain valid. Lint/types checked.
+- RPO rollforward multi-currency movement/FX attribution is still outstanding, as are the other
+  documented multi-layer FX and group-change attribution gaps. Existing locked datasets remain
+  transaction currency. No deployment or independent accounting sign-off claimed.

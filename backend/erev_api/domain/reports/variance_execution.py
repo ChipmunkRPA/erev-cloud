@@ -23,6 +23,7 @@ from erev_api.problems import Problem
 from .computation_sources import VerifiedComputation
 from .variance_projection import Projection
 from .variance_replay import Engine, Metrics, Replay, replay_period_money
+from .variance_reporting import Basis
 
 
 @dataclass(frozen=True)
@@ -95,8 +96,9 @@ def verify_source(
     entity_code: str,
     book_code: str,
     period_key: str,
-    currency_view: Literal["transaction", "functional"] = "transaction",
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
     engine: Engine = compute,
+    reporting_basis: Basis | None = None,
 ) -> tuple[SourceExecution, OutputBundle]:
     if source.bundle.engine_version != ENGINE_VERSION:
         raise _refuse("the retained engine runtime is unavailable.")
@@ -109,7 +111,9 @@ def verify_source(
         or output.sha256() != source.output_sha256
     ):
         raise _refuse("the original computation does not reproduce its retained output.")
-    actual = Projection(source.bundle, entity_code, book_code, period_key, currency_view)(output)
+    actual = Projection(
+        source.bundle, entity_code, book_code, period_key, currency_view, reporting_basis
+    )(output)
     if any(
         actual.get(key, Fraction(0)) != expected.get(key, Fraction(0))
         for key in actual.keys() | expected.keys()

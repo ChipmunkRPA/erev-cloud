@@ -1543,3 +1543,63 @@ def test_foreign_rpo_projection_uses_retained_closing_rate_and_attributes_fx() -
     )
     with pytest.raises(Problem, match="retained closing rate"):
         Projection(missing, "Mock Entity 2", "ASC606", "FY2023-P05", "functional")(output)
+
+
+def test_reporting_projection_rounds_each_contribution_and_obligation() -> None:
+    from erev_api.domain.reports.variance_reporting import Basis
+
+    _, bundle = _active_pair()
+    output = compute(bundle)
+    basis = Basis(
+        "USD", "EUR", "FY2023-P05", date(2023, 5, 31), Fraction("0.9"), Fraction("0.8"), "a" * 64
+    )
+    projected = Projection(bundle, "Mock Entity 2", "ASC606", "FY2023-P05", "reporting", basis)(
+        output
+    )
+    assert projected[MeasureKey("Contract 2", "EUR", "REVENUE")] == Fraction("47.07")
+    assert projected[MeasureKey("Contract 2", "EUR", "RPO")] == Fraction("662.55")
+    assert all(key.currency == "EUR" for key in projected)
+    from uuid import uuid4
+
+    from erev_api.domain.reports.computation_sources import VerifiedComputation
+    from erev_api.domain.reports.variance_execution import verify_source
+    from erev_engine import upgrade
+
+    retained = VerifiedComputation(
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        bundle,
+        upgrade.output_mapping(output),
+        output.sha256(),
+        {"ASC606": 0},
+        None,
+    )
+    verified, _ = verify_source(
+        retained,
+        projected,
+        entity_code="Mock Entity 2",
+        book_code="ASC606",
+        period_key="FY2023-P05",
+        currency_view="reporting",
+        reporting_basis=basis,
+    )
+    assert verified.output_sha256 == output.sha256()
+    with pytest.raises(Problem, match="retained average rate"):
+        Projection(
+            bundle,
+            "Mock Entity 2",
+            "ASC606",
+            "FY2023-P05",
+            "reporting",
+            replace(basis, average=None),
+        )(output)
+    with pytest.raises(Problem, match="selected entity/period"):
+        Projection(
+            bundle,
+            "Mock Entity 2",
+            "ASC606",
+            "FY2023-P05",
+            "reporting",
+            replace(basis, period_key="OTHER"),
+        )

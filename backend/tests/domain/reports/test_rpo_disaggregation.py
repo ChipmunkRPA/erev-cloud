@@ -22,6 +22,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from datetime import date, timedelta
 from decimal import Decimal
+from fractions import Fraction
 from typing import Any, Final
 from uuid import UUID
 
@@ -954,6 +955,43 @@ def test_waterfall_uses_posted_functional_revenue_and_retained_average_rates(
         assert frozen_reporting.control_totals["recognized_total"] == {"EUR": "10000.00"}
         assert frozen_functional.control_totals["recognized_total"] == {"USD": "11000.00"}
         assert frozen_reporting.control_totals["currency_view"] == "reporting"
+
+        from uuid import uuid4
+
+        from erev_api.domain.reports import locked, snapshot_views, variance_reporting
+        from erev_api.domain.reports.evidence_close import FrozenClose, FrozenReport
+
+        lock_scope = locked.LockScope(
+            uuid4(), world.entity_id, AVM_US, "ASC606", period_id, "FY2026-P08"
+        )
+        reports = []
+        with freeze.system_unit(uow) as reader:
+            for kind in ("WATERFALL", "CONTRACT_BALANCES", "RPO"):
+                packed = snapshot_views.pack(
+                    {
+                        view: snapshots.SNAPSHOT_DATASETS[kind](
+                            reader, replace(scope, currency_view=view)
+                        )
+                        for view in snapshot_views.VIEWS
+                    }
+                )
+                dataset = locked.LockedDataset(
+                    lock_scope.lock_id,
+                    kind,
+                    uuid4(),
+                    packed.file_sha256,
+                    packed.row_count,
+                    packed.control_totals,
+                    packed.content,
+                )
+                reports.append(FrozenReport(kind, uuid4(), None, dataset))
+        retained = variance_reporting.from_close(
+            FrozenClose(lock_scope, {}, tuple(reports)),
+            functional_currency="USD",
+            period_end=date(2026, 8, 31),
+        )
+        assert retained.currency == "EUR"
+        assert retained.amount(Fraction("11000"), revenue=True) == Fraction("10000")
 
     listed = get(app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
     (average,) = [item for item in listed.json()["items"] if item["code"] == "AVM-RATES-AVERAGE"]

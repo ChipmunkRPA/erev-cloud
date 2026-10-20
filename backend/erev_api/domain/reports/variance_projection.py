@@ -21,6 +21,7 @@ from erev_api.problems import Problem
 
 from . import variance_rpo
 from .variance_measures import MeasureKey
+from .variance_reporting import Basis
 
 MEASURES: Final = frozenset({"REVENUE", "CONTRACT_LIABILITY", "CONTRACT_ASSET_AND_UNBILLED", "RPO"})
 
@@ -37,11 +38,12 @@ class Projection:
     entity_code: str
     book_code: str
     period_key: str
-    currency_view: Literal["transaction", "functional"] = "transaction"
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction"
+    reporting_basis: Basis | None = None
 
     def __post_init__(self) -> None:
-        if self.currency_view not in {"transaction", "functional"}:
-            raise _refuse("choose transaction or functional currency.")
+        if self.currency_view not in {"transaction", "functional", "reporting"}:
+            raise _refuse("choose transaction, functional or reporting currency.")
         books = [book for book in self.basis.books if book.book_code == self.book_code]
         entities = [entity for entity in self.basis.entities if entity.code == self.entity_code]
         if len(books) != 1 or len(entities) != 1:
@@ -50,6 +52,18 @@ class Projection:
             raise _refuse("the entity does not participate in the selected book.")
         if len([p for p in entities[0].periods if p.period_key == self.period_key]) != 1:
             raise _refuse("the source calendar has no unique selected period.")
+        if self.currency_view == "reporting":
+            at = next(p.end_date for p in entities[0].periods if p.period_key == self.period_key)
+            if self.reporting_basis is None or (
+                self.reporting_basis.functional_currency,
+                self.reporting_basis.period_key,
+                self.reporting_basis.period_end,
+            ) != (entities[0].functional_currency, self.period_key, at):
+                raise _refuse(
+                    "reporting requires the selected entity/period's retained rate basis."
+                )
+        elif self.reporting_basis is not None:
+            raise _refuse("reporting rates cannot be applied to another currency view.")
 
     def __call__(self, output: OutputBundle) -> dict[MeasureKey, Fraction]:
         if output.engine_version != self.basis.engine_version:
@@ -71,12 +85,15 @@ class Projection:
                 raise _refuse("a monetary source names a contract outside the input bundle.")
             expected = (
                 entity.functional_currency
-                if self.currency_view == "functional"
+                if self.currency_view in {"functional", "reporting"}
                 else contracts[contract].transaction_currency
             )
             if currency != expected or currency not in self.basis.currencies:
                 raise _refuse("a monetary source has an inconsistent or unknown currency.")
             amount = Fraction(value, 10 ** self.basis.currencies[currency].minor_unit)
+            if self.reporting_basis is not None:
+                amount = self.reporting_basis.amount(amount, revenue=measure == "REVENUE")
+                currency = self.reporting_basis.currency
             key = MeasureKey(contract, currency, measure)
             result[key] = result.get(key, Fraction(0)) + amount
 
@@ -158,7 +175,8 @@ class Projection:
                 book,
                 entity_code=self.entity_code,
                 period_key=self.period_key,
-                functional=self.currency_view == "functional",
+                functional=self.currency_view != "transaction",
+                reporting_basis=self.reporting_basis,
             )
         )
         return result

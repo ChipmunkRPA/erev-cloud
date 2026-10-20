@@ -6,6 +6,24 @@
 
 
 
+## Retained reporting-rate projection — October 20, 2026
+
+- Added a reporting-rate basis read only from verified WATERFALL, CONTRACT_BALANCES and RPO
+  currency bundles. The basis binds source hashes and selected rate identities; balances must
+  supply their own closing rate, conflicting retained conversions refuse, and nonzero revenue
+  cannot borrow a closing rate when its average rate is absent.
+- The replay projection now supports reporting amounts using per-line average revenue rates,
+  separately rounded balance components, and sequential functional/reporting rounding of gross
+  RPO and its exemptions per obligation. Original-source verification accepts this explicit basis.
+- Necessary checks cover real-engine projected amounts and source reproduction, missing rates,
+  corrupted snapshot hashes and conflicting metadata. A database witness reads all three actual
+  snapshot producers and retains USD 11,000 -> EUR 10,000 revenue conversion. Targeted lint/types pass.
+- This is the projection prerequisite: the public variance report still offers transaction and
+  functional views only. Reporting rates must next be bound through each replay phase, with a
+  separate reporting FX change (including unchanged engine inputs) and population/membership
+  handling. Public reporting-currency variance, populated foreign lock-to-lock acceptance and
+  the other documented gaps remain. No deployment or independent accounting sign-off.
+
 ## Functional close-variance attribution — October 20, 2026
 
 - Variance between closes now exposes transaction/functional currency selection. The selected
@@ -194,41 +212,6 @@
   contract layer ownership and late-carried FX that cannot match dated movement evidence remain
   separate work, along with group-membership variance attribution and broader release acceptance.
   No deployment or independent accounting sign-off claimed.
-
-## RPO rollforward currency attribution — October 20, 2026
-
-- Functional/reporting RPO rollforwards now translate month-by-month: business movements at
-  monthly average rates and opening/closing disclosures at their own closing rates. Endpoints
-  use the same per-obligation gross/exclusion projection as RPO, so partial-exemption rounding
-  does not create mismatched closing totals. Approved rate identities are retained for reruns.
-- FX is calculated independently from opening/closing exposures and rate differences; currency
-  rounding has its own line. Source UNEXPLAINED remains separate, and any nonzero source monthly
-  unexplained amount forces a failed balance tie even if display rounding could erase it.
-- Necessary API witness covers three months of GBP/USD revenue and FX, both endpoint disclosure
-  ties, a revised closing-rate set versus retained rerun, and injected unsupported movement that
-  still fails the tie without changing FX. Existing transaction CTL-030 passes; lint/types pass.
-- This completes the current RPO live-report currency path, not every reporting feature or
-  alternate currency lock datasets. Multi-layer liability FX, group membership/combined-contract
-  attribution and broader release acceptance remain outstanding. No deployment or accounting
-  sign-off claimed.
-
-## RPO disclosure currency views — October 20, 2026
-
-- RPO now translates foreign transaction consideration to functional currency and then to
-  reporting currency using retained approved as-of closing rates. The former foreign-currency
-  refusal and reporting-as-functional shortcut are removed for the RPO disclosure report.
-- Gross RPO and exclusion are translated first; net disclosure is their difference. Largest
-  remainder allocation distributes net rounding through bands and contributors, preserving
-  total = current + noncurrent = sum(bands) = sum(contributors), including partial exemptions.
-  The source store remains untouched and the independent rollforward tie explicitly stays in
-  transaction currency. Headers/control evidence/cell details state the as-of translation basis.
-- Necessary checks: GBP disclosures translated to USD, currency-band/current conservation,
-  converted cell contributors, published closing-rate revision versus retained rerun, POL-197
-  excluded totals, and a foreign-functional partial-exemption cent-rounding witness. Existing
-  approved targeted-VC journey and snapshot producer remain valid. Lint/types checked.
-- RPO rollforward multi-currency movement/FX attribution is still outstanding, as are the other
-  documented multi-layer FX and group-change attribution gaps. Existing locked datasets remain
-  transaction currency. No deployment or independent accounting sign-off claimed.
 
 ## Outstanding release verification
 
