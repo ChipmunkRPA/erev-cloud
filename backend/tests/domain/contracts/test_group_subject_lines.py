@@ -1082,3 +1082,56 @@ def test_combined_revenue_can_exhaust_another_members_advance_and_create_an_asse
             fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
         )
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+
+    # A later return settles the created asset and creates a new liability at
+    # the return-date rate. It must not be reported as restored opening relief.
+    approved_manual_events(
+        fx.place,
+        fx.priya,
+        recognizer_id,
+        {
+            "event_type": "RETURN_RECORDED",
+            "effective_date": "2026-09-03",
+            "payload": {"obligation_key": "O1", "quantity": "120"},
+        },
+        evidence_file_ids=[],
+    )
+    for first, view in (
+        (AUGUST, "functional"),
+        (AUGUST, "reporting"),
+        (SEPTEMBER, "functional"),
+        (SEPTEMBER, "reporting"),
+    ):
+        returned_run, returned_rows = worlds.report_run(
+            reporting,
+            "revenue_from_opening_liability",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": first,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        returned_income = next(
+            row for row in returned_rows if row.get("contract_external_id") == FIRST_UK
+        )
+        if view == "functional":
+            # Return uses retained spot .84: 54,000 * .84 = 45,360;
+            # the earlier 43,470 recognition leaves net revenue -1,890.
+            assert returned_income["revenue_from_opening"]["amount"] == (
+                "36000.00" if first == AUGUST else "0.00"
+            )
+            assert returned_income["revenue_recognized"]["amount"] == (
+                "-1890.00" if first == AUGUST else "-45360.00"
+            )
+        restarted = post(fx.app, f"/api/v1/report-runs/{returned_run['id']}/rerun", fx.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == returned_rows, (
+            repeated.text
+        )

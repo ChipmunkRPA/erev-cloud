@@ -2,6 +2,31 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Cross-period returns: asset settlement and new liability sources — October 20, 2026
+
+- Original revenue attribution now presents the recognizing member's asset settlements and
+  newly created liability sources as well as liability consumption and asset creation.
+  Signed liability effects drive the member presentation bridge; newly created liabilities
+  do not become opening-liability relief. Foreign-owner asset/new-liability sources remain
+  refused until their separate transfer presentation is implemented.
+- Bridge v5 includes cross-member relationships whose original consumption predates the selected
+  range, so a return-month-only report retains the same original paid history as a full-range
+  report. Earlier v1-v4 report bindings retain their scope and presentation path.
+- Fixed S14 EVENT classification when a full return leaves zero cumulative transaction revenue
+  but a nonzero functional amount from historical rates. A non-time-released obligation now
+  keeps that amount in EVENT instead of incorrectly routing it into TIME because zero equals
+  zero. This does not invent per-layer mixed TIME/EVENT attribution or repair old sealed journals.
+- Real foreign combined scenario: USD 45,000 advance and USD 54,000 delivery produce GBP 43,470
+  revenue, including GBP 36,000 original opening relief. A full September return at retained
+  spot .84 reverses GBP 45,360, settling the asset and creating a new liability. Full-range net
+  revenue is GBP -1,890; September alone reports GBP -45,360 and zero opening relief.
+- Necessary checks passed: both currency views and identical reruns for full-range and
+  return-month-only disclosures, the prior combined delivery/return sequence, catalogue
+  migration consistency, 16 S14 checks, scoped lint and types.
+- Migration 0203 describes the source method. Mixed TIME/EVENT source allocation, intercompany
+  counterparts, foreign-owner asset settlement, remaining close-only histories and the other
+  documented release gaps remain open. No deployment or production-readiness claim.
+
 ## Mixed liability relief and own-member asset revenue — October 20, 2026
 
 - Functional/reporting cross-member revenue now accepts original sources that both consume
@@ -189,48 +214,6 @@
   underlying posting-delta replay gaps. This new disclosure path currently requires reconciled
   source balance movements; pre-close paths with unposted FX are not accepted. Recorded
   registry gaps and final accounting/release acceptance remain; Reporting is not complete.
-
-## Cross-member revenue relief and opening provenance — October 20, 2026
-
-- Added retained positive-revenue layer transfers for combined members. The original trace
-  identifies the recognizing contract while the movement keeps the consumed layer's owner.
-  All liability reliefs must reproduce the affected recipient's entire posted revenue in
-  every selected period before any transfer is admitted. Original lines, relief/creation
-  movements, amounts and opening portions are bound for rerun. No remainder is inferred.
-- The v3 member bridge includes those source transfers and classifies revenue by the actual
-  consumed layer's creation date, not the recognizing member's own billing history. v1/v2
-  bindings retain their original paths. Migration 0197 updates the rollforward IPE catalogue.
-- Necessary public checks passed: another member recognizes USD 54,000 revenue using GBP
-  43,200 of the first member's July advance; differing historical-rate member closings are
-  GBP 74,571.43 / 29,828.57 with +2,571.43 / -2,571.43 reclassification and zero OTHER. Functional,
-  monthly reporting and bound reruns pass. An August-start range classifies the GBP 43,200 as
-  opening relief; a July-start range classifies it as current-range relief without changing
-  total revenue or closing balances. Scoped lint/types pass. No deployment.
-- Still open: the separate revenue_from_opening_liability builder reads amount_txn and applies
-  its legacy same-contract cap; it must consume the multi-currency/source-backed relief path.
-  Cross-member asset-creating, reversing, carried and other-control histories need their own
-  posting-delta replay; this path requires full positive liability-relief reproduction and
-  refuses unmatched histories. Recorded registry gaps and final accounting/release acceptance
-  also remain. This is not full Reporting or production-readiness acceptance.
-
-## Endpoint-driven member liability presentation — October 20, 2026
-
-- New functional/reporting builds apply the retained member-presentation bridge to all
-  foreign contract/entity endpoints, including periods without a memo or FX journal. This
-  explains historical-rate reallocations when another member adds billing. The v2 binding
-  records entity-qualified endpoint identities; v1 reruns retain their memo-triggered scope.
-  Cache and member selection now distinguish entities so one contract cannot borrow another
-  entity's carrying or presentation evidence. Migration 0196 updates the IPE description.
-- Necessary checks passed: an actual two-member group with USD 90,000 advances at GBP rates
-  0.80 and 0.84, no credit memo and no FX journal. Both members close at GBP 73,800; the
-  independently sourced reclassifications are +1,800 / -1,800, and both OTHER amounts are zero.
-  Functional and reporting views across August–September and their bound reruns pass. The
-  existing monetary multi-layer repeated-close/report flow also passes under the broader
-  source scope. Scoped lint/types pass; no deployment.
-- Still open: cross-member revenue/other control-flow source transfers, more complex carried
-  EVENT corrections and membership transitions, recorded privacy/snapshot registry gaps and
-  final accounting/release acceptance. Generalizing the endpoint trigger does not establish
-  those separate source-flow cases or production readiness.
 
 ## Outstanding release verification
 

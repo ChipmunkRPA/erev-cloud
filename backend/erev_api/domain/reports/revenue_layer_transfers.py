@@ -3,7 +3,7 @@
 Retained liability reliefs must reproduce the full recipient/period posting.
 Source-proven reversals may reduce original consumed layers. Own-member asset creation
 can accompany cross-member liability relief. Mixed TIME allocation, close-pass-only
-and new-liability histories still require additional presentation;
+and foreign-owner asset histories still require additional presentation;
 no difference is apportioned or inferred from the report's OTHER amount.
 """
 
@@ -100,6 +100,7 @@ def read(
         sources: dict[tuple[UUID, UUID], set[UUID]] = defaultdict(set)
         retained_reliefs: dict[tuple[UUID, UUID, UUID, str], Decimal] = defaultdict(Decimal)
         cross = []
+        affected: set[UUID] = set()
         verified_revenue: dict[str, dict[UUID, revenue_trace.RevenueSource]] = {}
         for movement in movement_rows:
             node = nodes.get(str(movement["trace_node_id"]))
@@ -117,10 +118,23 @@ def read(
                 ),
                 None,
             )
-            if at is None:
-                continue
             subject = node.id.split("#REVENUE@", 1)[1].rsplit(":", 1)[0]
             recognizer = owners.get(contract_key_from_subject(subject))
+            # A return in the selected range can settle sources consumed before
+            # the range. Discover that relationship without moving prior relief
+            # into the current-period totals. Original posting replay verifies it.
+            if (
+                recognizer is not None
+                and recognizer != movement["contract_id"]
+                and movement["effective_date"] <= periods[entity][-1].end
+                and (
+                    params.binding is None
+                    or "combined_liability_bridge_v5" in params.binding.evidence
+                )
+            ):
+                affected.add(recognizer)
+            if at is None:
+                continue
             creation = creations.get((movement["contract_id"], movement["layer_key"]))
             creation_node = None if creation is None else nodes.get(str(creation["trace_node_id"]))
             if (
@@ -180,7 +194,7 @@ def read(
                 cross.append((owner, recognizer, at.id, amount))
         # Check all periods for affected recipients so the opening/new revenue
         # classification covers their entire range, including own-layer reliefs.
-        for recognizer in {recipient for _, recipient, _, _ in cross}:
+        for recognizer in {recipient for _, recipient, _, _ in cross} | affected:
             for at in periods[entity]:
                 source_key = (recognizer, at.id)
                 entries = [
@@ -191,6 +205,7 @@ def read(
                 verify_period = verify_postings and all(
                     entry.entry_kind == "REVENUE_RECOGNITION" for entry in entries
                 )
+                signed_liability = Fraction(0)
                 if verify_period:
                     from .revenue_attribution import for_control
 
@@ -215,13 +230,22 @@ def read(
                         for part in result.delta.movements:
                             if part.movement_kind == "LIABILITY_LAYER_CONSUMED":
                                 posted_reliefs[(part.contract_id, part.layer_key)] -= part.amount
-                            elif part.amount and not (
-                                part.movement_kind == "ASSET_LAYER_CREATED"
-                                and part.contract_id == recognizer
+                                signed_liability -= part.amount
+                            elif part.amount and (
+                                part.contract_id == recognizer
+                                and part.movement_kind
+                                in {
+                                    "ASSET_LAYER_CREATED",
+                                    "ASSET_LAYER_SETTLED",
+                                    "LIABILITY_LAYER_CREATED",
+                                }
                             ):
+                                if part.movement_kind == "LIABILITY_LAYER_CREATED":
+                                    signed_liability -= part.amount
+                            elif part.amount:
                                 raise tie_outs.invalid(
                                     "currency_view",
-                                    "Revenue requires foreign-owner asset or new-liability "
+                                    "Revenue requires foreign-owner asset or liability "
                                     "source presentation.",
                                 )
                         posted_ids.update((revenue_id, *result.paid_line_ids))
@@ -272,7 +296,11 @@ def read(
                         "Cross-member revenue requires retained posting-delta replay.",
                     )
                 opening[(recognizer, entity, at.id)] = original[source_key]
-                liability[(recognizer, entity, at.id)] = amounts[source_key]
+                liability[(recognizer, entity, at.id)] = (
+                    Decimal(signed_liability.numerator) / Decimal(signed_liability.denominator)
+                    if verify_period
+                    else amounts[source_key]
+                )
                 consumed.update(sources[source_key])
                 evidence[f"{version}:{entity}:{recognizer}:{at.id}"] = {
                     "amount": str(total),

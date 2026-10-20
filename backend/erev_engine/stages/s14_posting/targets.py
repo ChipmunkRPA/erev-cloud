@@ -671,7 +671,14 @@ def _relief(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarge
                 rates=rates,
                 node_ids=(target.node_id, *cited, *fx_nodes),
                 time_txn=time_txn,
-                time_functional=_time_share(time_txn, target.value, amount_functional),
+                # A fully returned EVENT obligation can have zero transaction
+                # revenue and nonzero functional revenue from historical rates.
+                # Equality of two zero transaction amounts does not make it TIME.
+                time_functional=(
+                    _time_share(time_txn, target.value, amount_functional)
+                    if target.subject_key in released
+                    else 0
+                ),
                 # D-88 L7-5-Q-4 (1): relief = revenue_cum + the concessions created, citing both.
                 value_inputs=((target.node_id, 1), *((node_id, 1) for node_id in cited)),
                 weights=(

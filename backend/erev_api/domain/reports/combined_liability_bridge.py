@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 
 ZERO = Decimal(0)
 ROLE = "contract_liability"
-KEY = "combined_liability_bridge_v4"
+KEY = "combined_liability_bridge_v5"
+MIXED_KEY = "combined_liability_bridge_v4"
 REVENUE_KEY = "combined_liability_bridge_v3"
 ENDPOINT_KEY = "combined_liability_bridge_v2"
 LEGACY_KEY = "combined_liability_bridge_v1"
@@ -52,7 +53,7 @@ def apply(
     if params.binding is not None:
         evidence_key = next(
             key
-            for key in (KEY, REVENUE_KEY, ENDPOINT_KEY, LEGACY_KEY)
+            for key in (KEY, MIXED_KEY, REVENUE_KEY, ENDPOINT_KEY, LEGACY_KEY)
             if key in params.binding.evidence
         )
     if evidence_key == LEGACY_KEY:
@@ -161,7 +162,7 @@ def apply(
             changed = {name: dict(values) for name, values in lines.items()}
             changed["RECLASSIFICATIONS"][ROLE] += amount
             changed["OTHER"][ROLE] -= amount
-            if evidence_key == KEY and consumed_liability is not None:
+            if evidence_key in {KEY, MIXED_KEY} and consumed_liability is not None:
                 raw_relief = -sum(
                     (
                         changed[label][ROLE]
@@ -173,12 +174,8 @@ def apply(
                 # into asset revenue. Reclassify only the independently proven
                 # layer consumption; unexplained OTHER never determines this amount.
                 shift = consumed_liability - raw_relief
-                asset_revenue = changed["REVENUE_FROM_PERIOD_BILLINGS"]["contract_asset"]
-                if asset_revenue - shift < 0:
-                    raise tie_outs.invalid(
-                        "currency_view",
-                        "Original liability relief exceeds available revenue sources.",
-                    )
+                # Returns can settle assets and create a new liability. The signed
+                # source amount, not a nonnegative cap, governs this presentation.
                 changed["REVENUE_FROM_PERIOD_BILLINGS"]["contract_asset"] -= shift
                 changed["REVENUE_FROM_PERIOD_BILLINGS"][ROLE] -= shift
                 changed["OTHER"]["contract_asset"] += shift
@@ -235,11 +232,13 @@ def apply(
         )
     evidence = {
         "endpoints": facts,
-        ("source_transfers" if evidence_key in {KEY, REVENUE_KEY} else "memo_transfers"): {
-            ":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())
-        },
+        (
+            "source_transfers"
+            if evidence_key in {KEY, MIXED_KEY, REVENUE_KEY}
+            else "memo_transfers"
+        ): {":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())},
     }
-    if evidence_key == KEY:
+    if evidence_key in {KEY, MIXED_KEY}:
         evidence["liability_relief"] = {
             ":".join(map(str, key)): str(value) for key, value in sorted(liability_relief.items())
         }

@@ -557,7 +557,11 @@ def rollforwards(
             params.binding is None
             or any(
                 key in params.binding.evidence
-                for key in ("combined_liability_bridge_v3", "combined_liability_bridge_v4")
+                for key in (
+                    "combined_liability_bridge_v3",
+                    "combined_liability_bridge_v4",
+                    "combined_liability_bridge_v5",
+                )
             )
         )
     ):
@@ -616,6 +620,7 @@ def rollforwards(
                     "combined_liability_bridge_v2",
                     "combined_liability_bridge_v3",
                     "combined_liability_bridge_v4",
+                    "combined_liability_bridge_v5",
                 )
             )
         )
