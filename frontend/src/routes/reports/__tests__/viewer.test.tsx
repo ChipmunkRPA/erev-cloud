@@ -998,6 +998,10 @@ describe("SF-08 catalogue", () => {
             items: [
               definition("revenue_waterfall", "Revenue waterfall", "STANDARD"),
               definition("rpo", "Remaining performance obligations", "DISCLOSURE"),
+              definition("disclosure_pack", "Disclosure pack", "DISCLOSURE"),
+              definition("engine_trueup_register", "Engine true-up register", "REGISTER"),
+              definition("upgrade_validation", "Upgrade validation", "REGISTER"),
+              definition("ai_call_log_export", "AI call log export", "EXTRACT"),
               definition("forecast_outputs", "Forecast outputs", "STANDARD"),
               definition("migration_reconciliation", "Migration reconciliation", "STANDARD"),
               definition(
@@ -1023,7 +1027,7 @@ describe("SF-08 catalogue", () => {
       const member = signedInMe({
         permissions: [
           ...MARCUS.permissions,
-          ...(permitted ? ["scenario.use", "migration.run"] : []),
+          ...(permitted ? ["scenario.use", "migration.run", "ai.use"] : []),
         ],
         memberships: MARCUS.memberships.map((membership) => ({
           ...membership,
@@ -1034,7 +1038,7 @@ describe("SF-08 catalogue", () => {
 
       expect(await screen.findByRole("heading", { level: 1, name: "Reports" })).toBeTruthy();
       const balances = await screen.findByTestId("SF-08-grid-balances-and-disclosures");
-      expect(within(balances).getByText("Balances and disclosures (1)")).toBeTruthy();
+      expect(within(balances).getByText("Balances and disclosures (2)")).toBeTruthy();
       const link = within(balances).getByRole("link", {
         name: "Remaining performance obligations",
       });
@@ -1049,6 +1053,18 @@ describe("SF-08 catalogue", () => {
           permitted && hasMigration,
         );
       });
+      for (const [name, code] of [
+        ["Disclosure pack", "disclosure_pack"],
+        ["Engine true-up register", "engine_trueup_register"],
+        ["Upgrade validation", "upgrade_validation"],
+      ] as const) {
+        expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(
+          `/reports/${code}?${CONTEXT}`,
+        );
+      }
+      const ai = screen.queryByRole("link", { name: "AI call log export" });
+      if (permitted) expect(ai?.getAttribute("href")).toBe("/settings/ai/call-log");
+      else expect(ai).toBeNull();
       const recent = await screen.findByTestId("SF-08-grid-recent-runs");
       expect(within(recent).getByRole("link", { name: "RPT-000412" })).toBeTruthy();
     },

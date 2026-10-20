@@ -102,6 +102,7 @@ export function ReportCatalogue() {
   const tenant = me.data?.memberships.find(
     (membership) => membership.membership_id === me.data?.active_membership_id,
   )?.tenant;
+  const showAI = access.holdsForAll("settings.manage") || access.holdsAnywhere("ai.use");
   const showForecasts = tenant?.kind === "sandbox" && access.holdsForAll("scenario.use");
   const mayReadMigrations = access.holdsForAll(MIGRATION_RUN_PERMISSION);
   const migrations = useQuery({
@@ -153,6 +154,7 @@ export function ReportCatalogue() {
     items: group.codes.flatMap((code) => {
       const found = byCode.get(code);
       return found === undefined ||
+        (code === "ai_call_log_export" && !showAI) ||
         (["forecast_outputs", "actual_vs_forecast"].includes(code) && !showForecasts) ||
         (["migration_reconciliation", "parallel_run_comparison"].includes(code) &&
           !showMigrations) ||
@@ -322,9 +324,11 @@ function GroupTable({
                 ) : (
                   <Link
                     to={
-                      pack
-                        ? `${EVIDENCE_PACKS_ROUTE}${contextSearch(search, CONTEXT)}`
-                        : `/reports/${item.code}${search}`
+                      item.code === "ai_call_log_export"
+                        ? "/settings/ai/call-log"
+                        : pack
+                          ? `${EVIDENCE_PACKS_ROUTE}${contextSearch(search, CONTEXT)}`
+                          : `/reports/${item.code}${search}`
                     }
                     className="text-accent-fg hover:underline"
                   >

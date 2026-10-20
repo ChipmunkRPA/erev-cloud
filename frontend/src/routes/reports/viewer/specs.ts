@@ -56,6 +56,7 @@ export const REPORT_GROUPS: readonly ReportGroup[] = [
       "contract_cost_rollforward",
       "loss_provision_register",
       "balance_aging",
+      "disclosure_pack",
     ],
   },
   {
@@ -76,6 +77,7 @@ export const REPORT_GROUPS: readonly ReportGroup[] = [
       "out_of_period_register",
       "late_entry_report",
       "manual_adjustment_register",
+      "engine_trueup_register",
       "legacy_je_summary",
     ],
   },
@@ -98,6 +100,8 @@ export const REPORT_GROUPS: readonly ReportGroup[] = [
       "api_client_inventory",
       "audit_log_export",
       "chain_verification_report",
+      "upgrade_validation",
+      "ai_call_log_export",
     ],
   },
   {

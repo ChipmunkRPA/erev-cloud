@@ -6,6 +6,18 @@
 
 
 
+## Complete report catalogue coverage — October 19, 2026
+
+- Compared frontend catalogue groups with current backend DEFINITIONS and found four missing
+  entries: disclosure_pack, engine_trueup_register, upgrade_validation and ai_call_log_export.
+  Added the first three to their business groups and normal report viewers. AI call log export
+  opens its existing dedicated settings page and is visible only to settings admins/AI users.
+- All 59 backend definitions now occur exactly once in catalogue groups. Conditional forecast,
+  migration and AI permissions still apply; registration/visibility is not accounting acceptance.
+- Forty-eight report-page checks pass, covering the added links and AI access, with frontend
+  type/lint checks. Other functional gaps, populated accounting acceptance and independent
+  sign-off remain open. No deployment.
+
 ## Single-table PDF clipping fix — October 19, 2026
 
 - Ordinary report PDFs now retain the compact layout only when every cell/header and source
