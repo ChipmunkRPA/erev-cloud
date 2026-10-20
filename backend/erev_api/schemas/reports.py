@@ -91,6 +91,7 @@ class TieOutResultOut(BaseModel):
     expected: Any = None
     actual: Any = None
     difference: list[MoneyOut] | None
+    details: list[dict[str, str]] = Field(default_factory=list, exclude_if=lambda value: not value)
 
 
 class ReportOutputOut(BaseModel):

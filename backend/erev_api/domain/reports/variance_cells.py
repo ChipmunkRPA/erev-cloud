@@ -130,6 +130,10 @@ def cell(
                 "Drivers: " + ", ".join(dict.fromkeys(DRIVER_LABELS[driver] for driver in drivers))
             )
             details.extend(f"Event: {key}" for key in source["event_keys"])
+            for step in group["executions"]:
+                if step["driver"] in drivers and step.get("changed_fields"):
+                    details.append("Changed inputs: " + ", ".join(step["changed_fields"]))
+
             for side in ("earlier", "later"):
                 details.extend(
                     f"{side.title()} source row: {key}"

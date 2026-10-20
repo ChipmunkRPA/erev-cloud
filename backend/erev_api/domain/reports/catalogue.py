@@ -483,6 +483,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "customer",
             "period",
             "lock_snapshot",
+            "reconciliation",
         ),
         joins=(
             "subledger_line.subledger_posting_id = subledger_posting.id",

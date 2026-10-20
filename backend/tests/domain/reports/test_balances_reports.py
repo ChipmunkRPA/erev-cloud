@@ -300,3 +300,43 @@ def test_rollforward_path_ex_15_b() -> None:
     # An unexplained difference is shown as OTHER (S15-R-07).
     shifted = path(opening, flows, {**closing, "contract_liability": D("150.00")})
     assert shifted["OTHER"]["contract_liability"] == D("-50.00")
+
+
+@pytest.mark.slow
+def test_rollforward_compares_uploaded_gl_role_balances(world: ReportWorld) -> None:
+    from support import reconciliations as recon
+
+    draft = recon.generated(
+        world.app,
+        world.maya,
+        world.runtime,
+        entity_code=AVM_US,
+        period_key=SEPTEMBER_2026,
+        kind=recon.SUBLEDGER_TO_GL,
+        book="ASC606",
+    )
+    file_id = recon.uploaded(
+        world.app,
+        world.maya,
+        "rollforward-tb.csv",
+        recon.trial_balance_csv(
+            [
+                ("2100", "USD", "-29944.11"),
+                ("1200", "USD", "0"),
+                ("1105", "USD", "0"),
+            ]
+        ),
+    )
+    recon.attached(world.app, world.maya, world.runtime, draft["id"], {"file_id": file_id})
+    for code, parameters in (
+        ("contract_balance_rollforward", SEPTEMBER),
+        (
+            "contract_balances",
+            {"entity_codes": [AVM_US], "book": "ASC606", "period_key": SEPTEMBER_2026},
+        ),
+    ):
+        run, _ = report_run(world, code, parameters)
+        result = tie(run, tie_outs.TO_ROLLFORWARD_EQ_GL)
+        assert result["result"] == "PASS", result["details"]
+        assert len(result["details"]) == 3
+        assert result["details"][0]["reconciliation_id"] == draft["id"]

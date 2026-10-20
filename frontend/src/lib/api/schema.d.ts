@@ -24470,6 +24470,10 @@ export interface components {
       actual?: unknown;
       /** Code */
       code: string;
+      /** Details */
+      details?: {
+        [key: string]: string;
+      }[];
       /** Difference */
       difference: components["schemas"]["MoneyOut"][] | null;
       /** Expected */

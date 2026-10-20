@@ -628,6 +628,46 @@ describe("SF-08:report viewer", () => {
     ).toBeTruthy();
   });
 
+  it("shows GL role differences even when the aggregate difference is zero", async () => {
+    const results: TieOutResult[] = [
+      {
+        code: "TO_ROLLFORWARD_EQ_GL",
+        result: "FAIL",
+        expected: [money("120.00")],
+        actual: [money("120.00")],
+        difference: [money("0.00")],
+        details: [
+          {
+            entity: "AVM-US",
+            role: "CONTRACT_LIABILITY",
+            currency: "USD",
+            gl: "110.00",
+            rollforward: "100.00",
+            difference: "-10.00",
+          },
+          {
+            entity: "AVM-US",
+            role: "CONTRACT_ASSET",
+            currency: "USD",
+            gl: "10.00",
+            rollforward: "20.00",
+            difference: "10.00",
+          },
+        ],
+      },
+    ];
+    serve(WATERFALL, { [RUN_ID]: reportRun({ tie_out_results: results }) }, WATERFALL_ROWS);
+    renderApp(`/reports/revenue_waterfall?${CONTEXT}&run=${RUN_ID}`, {
+      me: MARCUS,
+      screenRoutes: SCREEN_ROUTES,
+    });
+    const summary = await screen.findByText("Comparison details");
+    fireEvent.click(summary);
+    expect(screen.getByText("AVM-US · CONTRACT_LIABILITY")).toBeTruthy();
+    expect(screen.getByText("AVM-US · CONTRACT_ASSET")).toBeTruthy();
+    expect(screen.getByText(/GL USD 110.00; Rollforward USD 100.00;/)).toBeTruthy();
+  });
+
   it("tie-out difference is the API figure", async () => {
     // D-88 L7-3-Q-3: the strip renders `difference` as the API serialised it and derives nothing from
     // expected and actual (DG-FE-08); a failing result without a difference for a currency shows none.

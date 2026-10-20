@@ -63,7 +63,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract_event, subledger_line
-from erev_api.domain.reports import locked_ends, tie_outs
+from erev_api.domain.reports import locked_ends, rollforward_gl, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import (
@@ -914,7 +914,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         tie_out_results=(
             balances_tie(totals),
             balances_equal_tie(closing_balances, items),
-            tie_outs.not_applicable(tie_outs.TO_ROLLFORWARD_EQ_GL),
+            rollforward_gl.build(
+                session,
+                params,
+                entities=found,
+                periods=periods,
+                items=items,
+                book_code=book_code,
+                contract_id=contract_id,
+            ),
         ),
     )
 

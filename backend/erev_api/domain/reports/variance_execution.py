@@ -103,7 +103,8 @@ def execute(
     """Pure calculation phase; accepts no session and never persists engine output.
 
     The caller supplies authorized sources and frozen endpoints for this group.
-    Reference/calendar/FX/membership changes still require their own replay phases.
+    References and FX use explicit replay phases; calendar/membership changes
+    still require population replay.
     Normalization is explicit evidence, not an alteration of the retained source.
     """
     if earlier.group_id != later.group_id:

@@ -83,6 +83,30 @@ export function TieOutStrip({ results, testIdPrefix = "SF-08" }: TieOutStripProp
                   </span>
                 );
               })}
+              {(item.details?.length ?? 0) > 0 ? (
+                <details className="w-full text-body-sm text-fg-2">
+                  <summary className="cursor-pointer">Comparison details</summary>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {item.details?.map((detail, index) => (
+                      <li key={index}>
+                        {[detail.entity, detail.role].filter(Boolean).join(" · ")}
+                        {detail.source_status
+                          ? ` (GL source: ${detail.source_status.toLowerCase()})`
+                          : null}
+                        {detail.reason ? (
+                          `: ${detail.reason}`
+                        ) : (
+                          <span className="num">
+                            {` — GL ${inline({ amount: detail.gl ?? "", currency: detail.currency ?? "" })}; `}
+                            {`Rollforward ${inline({ amount: detail.rollforward ?? "", currency: detail.currency ?? "" })}; `}
+                            {`Difference ${inline({ amount: detail.difference ?? "", currency: detail.currency ?? "" })}`}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </li>
           );
         })}

@@ -188,6 +188,11 @@ def _header_block(
             sheet.write_string(row, 2, guard(parameter_text(item.get("expected"))))
             sheet.write_string(row, 3, guard(parameter_text(item.get("actual"))))
             row += 1
+            for detail in item.get("details", ()):
+                sheet.write_string(
+                    row, 0, guard("; ".join(f"{key}: {value}" for key, value in detail.items()))
+                )
+                row += 1
     return row
 
 

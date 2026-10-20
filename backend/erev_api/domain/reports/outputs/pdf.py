@@ -95,6 +95,9 @@ def _stamp_lines(data: ReportData, stamp: RunStamp, *, wrapped: bool = False) ->
             )
             for item in data.tie_out_results
         )
+    for item in data.tie_out_results:
+        for detail in item.get("details", ()):
+            texts.append(("; ".join(f"{key}: {value}" for key, value in detail.items()), False))
     usable = PAGE_WIDTH - 2 * MARGIN
     return [
         _Line(((MARGIN, part),), bold=bold)

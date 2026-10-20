@@ -27,7 +27,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Final
 
-from erev_api.domain.reports import locked_ends, tie_outs
+from erev_api.domain.reports import locked_ends, rollforward_gl, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -165,6 +165,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         control_totals=control,
         tie_out_results=(
             rollforward.balances_equal_tie(balances, items),
-            tie_outs.not_applicable(tie_outs.TO_ROLLFORWARD_EQ_GL),
+            rollforward_gl.build(
+                session,
+                params,
+                entities=found,
+                periods=periods,
+                items=items,
+                book_code=book_code,
+                contract_id=contract_id,
+            ),
         ),
     )

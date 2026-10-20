@@ -43234,6 +43234,16 @@
             "title": "Code",
             "type": "string"
           },
+          "details": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Details",
+            "type": "array"
+          },
           "difference": {
             "anyOf": [
               {

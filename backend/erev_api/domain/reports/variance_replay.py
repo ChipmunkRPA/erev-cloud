@@ -1,10 +1,10 @@
-"""S15-R-21/23 event-only DRY_RUN execution for close variance.
+"""S15-R-21/23 phased DRY_RUN execution for close variance.
 
 This is the worker-side calculation, not a registered report/job. A caller must
 load and authorize retained bundles and supply a metric projection for the fixed
 period. Both projected endpoints must agree exactly with the frozen figures.
-Reference, rate, membership and posting-basis changes need separate replay phases
-and are refused here; they must never be mislabeled as event effects or residuals.
+Reference changes run before events, and FX changes run afterward. Membership and
+posting-basis changes still require explicit normalization by the caller.
 """
 
 from __future__ import annotations
@@ -28,6 +28,14 @@ from .variance_projection import MEASURES, Projection
 type Metrics = Mapping[MeasureKey, Fraction]
 type Project = Callable[[InputBundle, OutputBundle], Metrics]
 type Engine = Callable[[InputBundle], OutputBundle]
+
+REFERENCE_FIELDS: Final = (
+    "books",
+    "ssp_versions",
+    "pob_template_versions",
+    "rule_set_versions",
+    "estimate_versions",
+)
 
 _DRIVERS: Final = {
     "DELIVERY_RECORDED": "PROGRESS",
@@ -54,6 +62,7 @@ class Execution:
     event_keys: tuple[str, ...]
     input_sha256: str
     output_sha256: str
+    changed_fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -89,7 +98,7 @@ def _validate(before: InputBundle, after: InputBundle) -> tuple[EventInput, ...]
     changed = [
         field.name
         for field in fields(before)
-        if field.name not in {"events", "known_at", "trigger"}
+        if field.name not in {"events", "known_at", "trigger", "fx_rates", *REFERENCE_FIELDS}
         and getattr(before, field.name) != getattr(after, field.name)
     ]
     if changed:
@@ -152,14 +161,14 @@ def replay_events(
     executions: list[Execution] = []
 
     def evaluate(
-        bundle: InputBundle, name: str, keys: tuple[str, ...]
+        bundle: InputBundle, name: str, keys: tuple[str, ...], changed: tuple[str, ...] = ()
     ) -> dict[MeasureKey, Fraction]:
         dry = replace(bundle, trigger="DRY_RUN", events=tuple(sorted(bundle.events, key=_order)))
         output = engine(dry)
         if output.engine_version != ENGINE_VERSION or output.input_sha256 != dry.sha256():
             raise _refuse("the engine output does not identify the executed input/runtime.")
         values = _metric_values(project(dry, output))
-        executions.append(Execution(name, keys, dry.sha256(), output.sha256()))
+        executions.append(Execution(name, keys, dry.sha256(), output.sha256(), changed))
         return values
 
     values = evaluate(before, "BASELINE", ())
@@ -167,12 +176,27 @@ def replay_events(
         raise _refuse("the earlier replay does not reproduce its frozen monetary endpoint.")
     values = evaluate(replace(before, known_at=after.known_at), "PROGRESS", ())
     states: list[tuple[str, tuple[str, ...], Metrics]] = [("PROGRESS", (), values)]
+    # Apply references together: policies can point at SSP/template/estimate versions
+    # introduced in the same source. Splitting these dependencies creates invalid inputs.
+    current = replace(before, known_at=after.known_at)
+    changed = tuple(
+        name for name in REFERENCE_FIELDS if getattr(before, name) != getattr(after, name)
+    )
+    if changed:
+        current = replace(current, **{name: getattr(after, name) for name in changed})
+        values = evaluate(current, "OTHER", (), changed)
+        states.append(("OTHER", (), values))
     accumulated = list(before.events)
     for name, events in runs:
         accumulated.extend(events)
         keys = tuple(event.event_key for event in events)
-        values = evaluate(replace(after, events=tuple(accumulated)), name, keys)
+        current = replace(current, events=tuple(accumulated))
+        values = evaluate(current, name, keys)
         states.append((name, keys, values))
+    if before.fx_rates != after.fx_rates:
+        current = replace(current, fx_rates=after.fx_rates)
+        values = evaluate(current, "FX", (), ("fx_rates",))
+        states.append(("FX", (), values))
     if not _equal(values, expected_after):
         raise _refuse("the final replay does not reproduce its frozen monetary endpoint.")
     metric_keys = set(expected_before) | set(expected_after)

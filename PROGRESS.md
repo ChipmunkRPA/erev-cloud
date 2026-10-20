@@ -6,6 +6,25 @@
 
 
 
+## Reporting reference/FX attribution and GL tie-out — October 20, 2026
+
+- Close variance now replays retained reference inputs before business events and FX rates
+  afterward. Each phase retains its input/output hashes and changed fields; cell details expose
+  the changed inputs. Original/final frozen endpoints must still match exactly. Group additions,
+  removals/regrouping and calendar changes remain outstanding.
+- Contract balances and balance rollforward now consume cutoff-qualified uploaded/pulled GL reconciliation
+  role totals, compares each entity/role independently and retains those source facts for reruns.
+  Missing sources, unsupported currencies and shared/unavailable role bases remain explicit;
+  offsetting differences cannot pass. Viewer and XLSX/PDF expose comparison details.
+- Necessary validation: 27 variance checks (including real-engine policy and FX changes), two
+  GL comparison/rebuild checks, real upload/reconciliation/report and existing rollforward API
+  journeys, and targeted viewer checks pass. Python/TypeScript checks are recorded with the commit.
+- User priority remains completing attribution, multi-currency, RPO exemptions and GL matching.
+  This is an implementation checkpoint, not completion of those four workstreams. Foreign-currency
+  rollforward valuation, broader GL coverage, population replay and dated POL-200 exclusions remain.
+  POL-199's zero royalty exclusion can be correct under the engine's realization model; the older
+  blanket description of both exemptions as missing was too broad. No deployment.
+
 ## Tamsin deal acceptance and missing schedule fix — October 19, 2026
 
 - Ran the FCS-6 Tamsin proposal against real published product templates and approved US-LIST
@@ -216,21 +235,6 @@
   resolution and bundle construction, retained audited jobs/API, result presentation, scenario
   save and SF-18 UI remain to implement. Tamsin acceptance and accounting sign-off remain open.
   No deployment or production-readiness claim.
-
-## Direct forecast event capture from contract forms — October 19, 2026
-
-- Existing delivery/progress/milestone/cost/return drawers now offer a paginated draft selector
-  in sandbox workspaces with tenant-wide scenario.use. Normal approval remains the default;
-  selecting a draft explicitly changes the action and explains scenario recording/replay.
-- Submission carries forecast_event_set_id to the existing atomic capture endpoint, retains
-  contract stream concurrency and evidence validation, then invalidates assumption reads.
-  An unavailable selected draft blocks submission; the target is locked while submitting.
-  Draft management links to contracts with instructions to select that draft in the event form.
-- Ten existing/extended event-drawer checks pass, including the selected target in the request,
-  retained-input refresh and forecast-specific success message; frontend types/lint pass.
-- Usage/invoice input continues through forecast imports. Effective-date controls on input-set
-  metadata, populated comparison/report accounting acceptance, deal preview and independent
-  sign-off remain open. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

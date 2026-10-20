@@ -8553,3 +8553,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Direct event-entry capture UI, effective-date controls, populated report accounting acceptance
   and independent sign-off remain open. Import sources use the existing authorized row viewer.
   No deployment or production-readiness claim.
+
+## Direct forecast event capture from contract forms — October 19, 2026
+
+- Existing delivery/progress/milestone/cost/return drawers now offer a paginated draft selector
+  in sandbox workspaces with tenant-wide scenario.use. Normal approval remains the default;
+  selecting a draft explicitly changes the action and explains scenario recording/replay.
+- Submission carries forecast_event_set_id to the existing atomic capture endpoint, retains
+  contract stream concurrency and evidence validation, then invalidates assumption reads.
+  An unavailable selected draft blocks submission; the target is locked while submitting.
+  Draft management links to contracts with instructions to select that draft in the event form.
+- Ten existing/extended event-drawer checks pass, including the selected target in the request,
+  retained-input refresh and forecast-specific success message; frontend types/lint pass.
+- Usage/invoice input continues through forecast imports. Effective-date controls on input-set
+  metadata, populated comparison/report accounting acceptance, deal preview and independent
+  sign-off remain open. No deployment or production-readiness claim.

@@ -747,3 +747,87 @@ def test_ssp_readback_normalization_preserves_actual_reference_changes(fault: st
     books, normalized = _readback_books(before, after, output)
     assert books == after.books
     assert normalized == ()
+
+
+def test_reference_election_change_is_replayed_separately_from_delivery() -> None:
+    before, after = _active_pair()
+    after = replace(
+        after,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(policy, value="APPLY")
+                    if policy.code == "rpo.exemption_original_duration_one_year"
+                    else policy
+                    for policy in book.policies
+                ),
+            )
+            for book in after.books
+        ),
+    )
+
+    def project(bundle: InputBundle, output: OutputBundle) -> dict[MeasureKey, Fraction]:
+        return Projection(bundle, "Mock Entity 2", "ASC606", "FY2023-P05")(output)
+
+    result = replay_events(
+        before,
+        after,
+        earlier_period_end=date(2023, 5, 31),
+        earlier_metrics=project(before, compute(before)),
+        later_metrics=project(after, compute(after)),
+        project=project,
+    )
+    effects = result.measures[RPO].effects
+    assert [(effect.driver, effect.amount) for effect in effects] == [
+        ("PROGRESS", Fraction(0)),
+        ("OTHER", Fraction(-795)),
+        ("LATE_EVENT", Fraction(0)),
+    ]
+    assert result.executions[2].changed_fields == ("books",)
+    assert result.executions[-1].event_keys
+
+
+def test_fx_change_replays_real_engine_functional_revenue() -> None:
+    from support import step1_worlds
+
+    before = step1_worlds.eur_mixed_rates()
+    after = replace(
+        before,
+        known_at=before.known_at + timedelta(days=1),
+        fx_rates=tuple(
+            replace(rate, rate=rate.rate + Decimal("0.10"), version_key="CORRECTED")
+            for rate in before.fx_rates
+        ),
+    )
+    key = MeasureKey(before.contracts[0].external_id, "USD", "REVENUE")
+
+    def project(bundle: InputBundle, output: OutputBundle) -> dict[MeasureKey, Fraction]:
+        revenue = sum(
+            (
+                line.amount_functional * (1 if line.side == "C" else -1)
+                for book in output.books
+                for intent in book.posting_intents
+                for line in intent.lines
+                if line.account_role == "REVENUE"
+            ),
+            0,
+        )
+        return {key: Fraction(revenue, 100)}
+
+    result = replay_events(
+        before,
+        after,
+        earlier_period_end=date(2026, 2, 28),
+        earlier_metrics=project(before, compute(before)),
+        later_metrics=project(after, compute(after)),
+        project=project,
+    )
+    # The ordinary compute releases the second EUR 600 payment; the first
+    # payment is released by the distinct CLOSE_RELEASE pass. 600 * 0.10 = 60.
+    assert result.measures[key].metric_before == 720
+    assert result.measures[key].metric_after == 780
+    assert result.measures[key].total == 60
+    assert result.measures[key].effects[-1].driver == "FX"
+    assert result.measures[key].effects[-1].amount == 60
+    assert result.executions[-1].changed_fields == ("fx_rates",)

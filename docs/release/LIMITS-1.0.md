@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current reporting implementation update (October 20): close variance now evaluates changed
+reference inputs separately from business events, then changed FX rates, retaining phase hashes
+and changed fields. Group/calendar/population changes still need additional work. Contract balances and
+balance rollforward now compare GL reconciliation role totals per entity and retains its source
+facts for reproducible reruns. Missing/uncomparable sources remain NOT_APPLICABLE; any comparable
+role mismatch fails even when aggregate differences cancel. Viewer and XLSX/PDF show details.
+This does not complete foreign-currency rollforward valuation, all GL source coverage, population
+replay or dated POL-200 exclusions. POL-199 can legitimately exclude zero because royalty amounts
+are realized when reported; zero alone is not proof of an unimplemented exemption. No deployment.
+
 Current Tamsin acceptance/fix (October 19): the real-template, approved-H2 SSP case now matches
 95,200/22,000 selected SSP, below/above flags, 94,225.26/21,774.74 allocation and November 2026
 revenue start. The test exposed missing schedules from the booking-only DRAFT bundle. New deal
