@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current original-duration exemption update (October 20): POL-197 in the report, rollforward,
+dashboard and close-variance projection now uses original inception segments from verified
+retained computation inputs. Extensions/shortening do not redefine the original term, and the
+first-anniversary boundary matches the engine's inclusive dates. Live exemption detail shows
+original start/end dates; new report bindings retain terms for reruns/cell explanations. Missing
+source evidence or older bindings without terms are refused rather than inferred from current
+end dates. This corrects the earlier current-term exemption behavior. Partial-VC populated
+lock/export acceptance and broader RPO currency coverage still need completion. No deployment.
+
 Current reporting rollforward update (October 20): contract balance rollforward now translates
 monthly functional paths using preceding closing, monthly average and closing rates, with
 separate TRANSLATION and ROUNDING lines. Original range-opening liability attribution persists

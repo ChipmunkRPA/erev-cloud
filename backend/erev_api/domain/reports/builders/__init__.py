@@ -236,6 +236,8 @@ class ReportParams:
     sources: SourceCollector | None = field(default=None, compare=False)
     # Server-only execution context and retained authorization; never request parameters.
     requester: RequestContext | None = field(default=None, compare=False)
+    # Internal close snapshot producer only; never resolved from report API parameters.
+    snapshot_read: bool = False
     access_binding: Mapping[str, Any] | None = field(default=None, compare=False)
     # Server-only result of a phased worker calculation performed outside SQL transactions.
     execution_result: object | None = field(default=None, compare=False)

@@ -15,7 +15,7 @@ from uuid import UUID
 
 from erev_engine import upgrade
 from erev_engine.bundle import InputBundle
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from erev_api.db.session import system_entity_scope
 from erev_api.db.tables import (
@@ -27,7 +27,7 @@ from erev_api.db.tables import (
     legal_entity,
     obligation_version,
 )
-from erev_api.enums import FilePurpose
+from erev_api.enums import FilePurpose, PrincipalKind
 from erev_api.files.store import open_file
 from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
@@ -83,16 +83,34 @@ def _read_file(uow: UnitOfWork, row: Mapping[Any, Any], name: str) -> bytes:
     return content
 
 
-def read_for_report(uow: UnitOfWork, computation_id: UUID) -> VerifiedComputation:
+def read_for_report(
+    uow: UnitOfWork,
+    computation_id: UUID,
+    *,
+    permission: str = "report.run",
+    system_snapshot: bool = False,
+) -> VerifiedComputation:
     """Read a complete, currently authorized group, verifying both stored source copies.
 
-    Report workers must supply their authorized human principal. SYSTEM has no implicit
-    reader grant. Source identities are checked before file access; the decoded bundle's
+    Report workers must supply their authorized requester. Home uses contract.read;
+    report replay uses report.run. SYSTEM has no implicit
+    reader grant. The internal close-snapshot path additionally requires a read-only
+    SYSTEM transaction. Source identities are checked before file access; the decoded bundle's
     entity and contract population is checked again before returning it to internal replay.
     """
     principal = uow.principal
     scopes = []
-    for permission in ("report.run",):
+    if permission not in {"report.run", "contract.read"}:
+        raise Problem("forbidden")
+    if system_snapshot:
+        # Close snapshots intentionally include the complete entity population. Restrict this
+        # internal path to their read-only SYSTEM transaction; normal report workers cannot use it.
+        if (
+            principal.kind != PrincipalKind.SYSTEM
+            or uow.session.execute(text("SHOW transaction_read_only")).scalar_one() != "on"
+        ):
+            raise Problem("forbidden")
+    else:
         scope = principal.permission_scopes.get(permission)
         if permission not in principal.permissions or scope is None or scope == frozenset():
             raise Problem("forbidden")

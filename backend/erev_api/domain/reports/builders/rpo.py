@@ -48,7 +48,9 @@ rest.
 
 **Exemptions** (S15-R-09), resolved for the contracting entity at ``known_at``, so a DRAFT registry
 version is not in force (CTL-027): POL-197 ``APPLY`` exempts every obligation of a contract whose
-original expected duration, from inception to its latest obligation end date, is 12 months or less;
+original inception segments end before the first anniversary (inclusive service dates).
+Original terms come from verified retained computation input, including templates and voids;
+subsequent extensions or shortening do not replace them. Terms are retained for reruns/cells;
 POL-198 ``APPLY`` exempts ``RIGHT_TO_INVOICE`` obligations. An exempt obligation leaves section 1
 and is listed in section 2 with the expedient, the nature (product name), the remaining months
 (month ends after d through the end date), the excluded amount and its description (50-15).
@@ -121,7 +123,7 @@ from erev_api.db.tables import (
     schedule_line,
 )
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import cuts, elections, rpo_quotas, tie_outs
+from erev_api.domain.reports import cuts, elections, rpo_duration, rpo_quotas, tie_outs
 from erev_api.domain.reports.builders import ReportParams, filter_problem
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, EntityRef, add
@@ -331,6 +333,7 @@ class Store:
     cuts: dict[tuple[UUID, date], Mapping[UUID, to_date.ObligationAt]] = field(default_factory=dict)
 
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
+    original_ends: dict[UUID, Mapping[str, date]] = field(default_factory=dict)
 
     def version_at(self, contract_id: UUID, day: date) -> _Version | None:
         """The version a contract is read from at ``day``: the last one of its chain effective
@@ -346,12 +349,13 @@ class Store:
         return self.cuts[ob.version_id, day][ob.row_id]
 
     def durations(self, version: _Version) -> dict[UUID, date]:
-        """Each contract's latest obligation end date (inception without end dates)."""
-        ends: dict[UUID, date] = {}
-        for ob in self.obligations.get(version.id, ()):
-            end = ob.end_date or ob.inception
-            ends[ob.contract_id] = max(ends.get(ob.contract_id, ob.inception), end)
-        return ends
+        """Original inception-segment endpoints from verified retained computations."""
+        original = self.original_ends.get(version.id, {})
+        return {
+            ob.contract_id: original[ob.external_id]
+            for ob in self.obligations.get(version.id, ())
+            if ob.external_id in original
+        }
 
 
 def load(
@@ -738,10 +742,11 @@ def applied_expedients(
 
 
 def _exemption(ob: _Ob, applied: frozenset[str], ends: Mapping[UUID, date]) -> str | None:
-    if "POL-197" in applied and ends.get(ob.contract_id, ob.inception) <= add_months(
-        ob.inception, 12
-    ):
-        return "POL-197"
+    if "POL-197" in applied:
+        if ob.contract_id not in ends:
+            raise Problem("validation-failed", "The original RPO contract term is unavailable.")
+        if ends[ob.contract_id] < add_months(ob.inception, 12):
+            return "POL-197"
     if "POL-198" in applied and ob.recognition_method == RIGHT_TO_INVOICE:
         return "POL-198"
     return None
@@ -753,6 +758,10 @@ def measure(
     days: Mapping[UUID, Collection[date]],
     *,
     applied: Mapping[UUID, frozenset[str]] | None = None,
+    uow: UnitOfWork | None = None,
+    book_code: str | None = None,
+    permission: str = "report.run",
+    params: ReportParams | None = None,
 ) -> None:
     """Read the obligations a run states at the dates it states them (module docstring "RPO of
     an obligation at d"): for every contract the version it is read from at each date of the run,
@@ -774,6 +783,14 @@ def measure(
             if version is not None:
                 wanted.setdefault(version.id, set()).update(measured_days)
     store.cuts.update(cuts.obligations_at(session, wanted))
+    if applied is not None and any("POL-197" in values for values in applied.values()):
+        if book_code is None:
+            raise Problem("validation-failed", "Original RPO terms require retained source access.")
+        store.original_ends.update(
+            rpo_duration.read(
+                uow, tuple(wanted), book_code=book_code, permission=permission, params=params
+            )
+        )
     if applied is not None and any("POL-200" in values for values in applied.values()):
         targets = rpo_quotas.targeted_versions(session, tuple(store.chains))
         for version_id in wanted:
@@ -1145,7 +1162,7 @@ class _Run:
     found: tuple[ObligationRpo, ...]
 
 
-def _run(session: Session, params: ReportParams) -> _Run:
+def _run(session: Session, params: ReportParams, uow: UnitOfWork | None = None) -> _Run:
     book_code = tie_outs.book_of(session, params)
     found_entities = tie_outs.entities(session, params.entity_ids, params=params)
     found_calendars = tie_outs.calendars(session, found_entities, params=params)
@@ -1187,6 +1204,9 @@ def _run(session: Session, params: ReportParams) -> _Run:
             for entity_id, day in as_of.items()
         },
         applied=applied,
+        uow=uow,
+        book_code=book_code,
+        params=params,
     )
     found = rows_at(store, as_of=as_of, bands=bands, applied=applied)
     functional = {entity.id: entity.functional_currency for entity in found_entities}
@@ -1245,7 +1265,7 @@ def _figures(
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
-    run = _run(session, params)
+    run = _run(session, params, uow)
     bands = bands_of(run.bands)
     dimension = str(params.parameters.get("row_dimension") or "CONTRACT")
     elected = {
@@ -1304,6 +1324,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "expedient_label": label,
                 "nature": item.ob.product_name,
                 "remaining_duration_months": item.remaining_months,
+                **(
+                    {
+                        "original_inception_date": item.ob.inception,
+                        "original_contract_end_date": run.store.original_ends[item.ob.version_id][
+                            item.ob.external_id
+                        ],
+                    }
+                    if policy == "POL-197"
+                    else {}
+                ),
                 "excluded_amount": tie_outs.money(excluded_amount, item.ob.currency),
                 "excluded_descriptor": description,
                 "currency": item.ob.currency,
@@ -1358,6 +1388,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         Column("expedient_label", "Expedient name", "text"),
         Column("nature", "Nature of goods or services", "text"),
         Column("remaining_duration_months", "Remaining duration (months)", "integer"),
+        Column("original_inception_date", "Original inception date", "date"),
+        Column("original_contract_end_date", "Original contract end date", "date"),
         Column("excluded_amount", "Excluded amount", "money"),
         Column("excluded_descriptor", "Excluded consideration", "text"),
     )

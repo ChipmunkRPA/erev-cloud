@@ -581,6 +581,7 @@ def _params(uow: UnitOfWork, kind: str, code: str, scope: SnapshotScope) -> Repo
         as_of_date=None,
         period_lock_id=None,
         historical=historical,
+        snapshot_read=True,
     )
 
 
@@ -707,7 +708,7 @@ def freeze_rpo(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
     as the report's: as_of, bands, Σ total and Σ excluded per currency, plus the row count."""
     params = _params(uow, "RPO", rpo_builder.CODE, scope)
     session = uow.session
-    run = rpo_builder._run(session, params)  # the report's own population and calculation
+    run = rpo_builder._run(session, params, uow)  # the report's own population and calculation
     bands = rpo_builder.bands_of(run.bands)
     labels = {pol: (label, description) for pol, _, label, description in rpo_builder.EXPEDIENTS}
     elected = sorted(

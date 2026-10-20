@@ -147,3 +147,92 @@ def test_partial_exemption_apportions_bands_and_releases_after_performance() -> 
     assert movement.lines["REVENUE"] == -1
     assert movement.lines["CLOSING"] == 149
     assert movement.lines["UNEXPLAINED"] == 0
+
+
+@pytest.mark.parametrize(
+    "original_end, revised_end, exempt",
+    [
+        (date(2026, 12, 31), date(2027, 12, 31), True),
+        (date(2027, 12, 31), date(2026, 12, 31), False),
+        (date(2027, 1, 1), date(2027, 6, 30), False),
+    ],
+)
+def test_original_duration_survives_contract_term_changes(
+    original_end: date, revised_end: date, exempt: bool
+) -> None:
+    from erev_api.domain.reports import rpo_duration
+    from erev_engine.bundle import ModificationInput
+    from support import bundles
+
+    bundle = worlds.native(
+        {**worlds.line("A", "PROD-A", "100"), "end_date": original_end},
+        entries=[worlds.entry("PROD-A", point="100")],
+        activated=True,
+        overrides={
+            worlds.TOLERANCE: "NOT_ENFORCED",
+            "rpo.exemption_original_duration_one_year": "APPLY",
+        },
+    )
+    amendment = {
+        "obligation_key": "A",
+        "action": "CHANGE",
+        "product_code": "PROD-A",
+        "quantity_delta": Decimal(0),
+        "consideration_delta": Decimal(0),
+        "end_date": revised_end,
+    }
+    effective = date(2026, 6, 1)
+    modification = ModificationInput(
+        modification_key="TERM",
+        effective_date=effective,
+        kind="CHANGE_SCOPE",
+        template_mode=None,
+        status="APPLIED",
+        reference=None,
+        questionnaire={},
+        lines=(amendment,),
+        price_change_amount=None,
+        noncash_consideration=None,
+        consideration_payable=None,
+        scope_605_35=None,
+        currency="USD",
+        proposed_treatments={},
+        chosen_treatments={},
+        treatment_summary=None,
+        ssp_basis={},
+        judgement_key=None,
+        content_sha256=None,
+    )
+    changed = bundles.event(
+        worlds.CONTRACT,
+        3,
+        "CONTRACT_AMENDED",
+        effective,
+        {
+            "modification_id": "TERM",
+            "treatments": {"A": "PROSPECTIVE"},
+            "lines": [amendment],
+            "ssp_basis": {},
+        },
+        obligation_keys=["A"],
+    )
+    bundle = replace(
+        bundle,
+        contracts=(replace(bundle.contracts[0], modifications=(modification,)),),
+        events=(*bundle.events, changed),
+    )
+    bundle = worlds.with_changes(
+        bundle, (), policies={"rpo.exemption_original_duration_one_year": "APPLY"}
+    )
+    output = compute(bundle)
+    book = output.books[0]
+    assert book.obligation_versions[0].columns["end_date"] == revised_end
+    assert rpo_duration.original_ends(bundle, "ASC606")[worlds.CONTRACT] == original_end
+    result = variance_rpo.project(
+        bundle,
+        book,
+        entity_code=bundle.entities[0].code,
+        period_key="FY2026-P06",
+        functional=False,
+    )
+    assert sum(result.values()) == (0 if exempt else 100)

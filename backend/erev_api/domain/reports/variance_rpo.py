@@ -26,7 +26,7 @@ from erev_engine.stages.s01_canonicalize.convert import (
 from erev_engine.stages.state import PolicyResolver
 
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import rpo_quotas, tie_outs
+from erev_api.domain.reports import rpo_duration, rpo_quotas, tie_outs
 from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
@@ -54,7 +54,7 @@ def project(
     statuses = dict(book.status_in_book)
     if len(statuses) != len(book.status_in_book):
         raise _refuse("contract status identities are duplicated.")
-    ends = {key: header.inception_date for key, header in contracts.items()}
+    original_ends: dict[str, date] | None = None
     rows: list[dict[str, Any]] = []
     external_ids = {}
     ids = {}
@@ -69,7 +69,6 @@ def project(
         end = columns.get("end_date") or header.inception_date
         if not isinstance(end, date):
             raise _refuse("an obligation has an invalid end date.")
-        ends[contract] = max(ends[contract], end)
         if columns.get("contracting_entity_code") != entity_code:
             continue
         if contract not in statuses:
@@ -153,10 +152,11 @@ def project(
                 raise _refuse(f"{code} has an invalid resolved value.")
             return value == "APPLY"
 
-        if applied("rpo.exemption_original_duration_one_year") and ends[contract] <= add_months(
-            contracts[contract].inception_date, 12
-        ):
-            continue
+        if applied("rpo.exemption_original_duration_one_year"):
+            if original_ends is None:
+                original_ends = rpo_duration.original_ends(bundle, book.book_code)
+            if original_ends[contract] < add_months(contracts[contract].inception_date, 12):
+                continue
         if (
             applied("rpo.exemption_right_to_invoice")
             and row["recognition_method"] == "RIGHT_TO_INVOICE"

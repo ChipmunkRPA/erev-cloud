@@ -627,6 +627,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "obligation_version",
             "schedule_line",
             "contract_version",
+            "contract_computation",
+            "computation_evidence",
             "contract",
             "customer",
             "product",
@@ -676,6 +678,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         sources=(
             "obligation_version",
             "contract_version",
+            "contract_computation",
+            "computation_evidence",
             "contract_event",
             "contract",
             "period",

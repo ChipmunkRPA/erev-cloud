@@ -283,11 +283,61 @@ def test_ctl_027_rpo_derived_and_exemption_needs_approved_flag(
             ONE_YEAR_DESCRIPTION,
         )
     ]
+    assert exempt[0]["original_inception_date"] == "2026-01-01"
+    assert exempt[0]["original_contract_end_date"] == "2026-12-31"
     assert (run["control_totals"]["total"], run["control_totals"]["excluded_total"]) == (
         {"USD": "150246.58"},
         {"USD": "29944.11"},
     )
     assert tie(run, tie_outs.TO_RPO_ROLLFORWARD_EQ_RPO)["result"] == "PASS"
+
+    home = get(
+        app,
+        "/api/v1/dashboard/home",
+        world.maya,
+        {"entity": AVM_US, "book": "ASC606", "period": "FY2026-P09"},
+    )
+    assert home.status_code == 200, home.text
+    assert home.json()["rpo"]["total"] == usd("150246.58")
+
+    from erev_api.db.tables import legal_entity, period
+    from erev_api.domain.close import freeze
+    from erev_api.domain.reports import snapshots
+
+    with world.place.uow() as uow:
+        period_id = uow.session.execute(
+            select(period.c.id)
+            .join(legal_entity, legal_entity.c.calendar_id == period.c.calendar_id)
+            .where(legal_entity.c.id == world.entity_id, period.c.period_key == "FY2026-P09")
+        ).scalar_one()
+        cutoff = tie_outs.version_cutoff(uow.session, uow.now)
+        scope = snapshots.SnapshotScope(
+            entity_id=world.entity_id, book_code="ASC606", period_id=period_id, known_at=cutoff
+        )
+        with freeze.system_unit(uow) as reader:
+            frozen = snapshots.freeze_rpo(reader, scope)
+        assert frozen.control_totals["excluded_total"] == {"USD": "29944.11"}
+
+    from support import worlds
+
+    cell = get(
+        app,
+        CELL.format(run_id=run["id"]),
+        world.maya,
+        {"row_key": f"contract:{K02}", "column_key": "total"},
+    )
+    assert cell.status_code == 200, cell.text
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app,
+        f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data",
+        world.maya,
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
 
 
 @pytest.mark.slow

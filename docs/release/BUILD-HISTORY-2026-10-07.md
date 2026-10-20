@@ -8664,3 +8664,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Scenario save, product-picker polish, revenue chart/period totals and real browser/accounting
   acceptance remain open. K11, multi-contract K03 and close variance remain Reporting priorities.
   No deployment; main-only publication.
+
+## Deal revenue period matrix and chart — October 19, 2026
+
+- Added per-product/per-period revenue matrix, period totals and all-period product/grand
+  totals to SF-18. Entity/currency scopes are selected separately within each book; obligations
+  for the same product aggregate while unassigned subjects retain their own identity.
+- Added signed revenue bars with exact labels and an accessible table. Twenty-four periods
+  display per page; page changes retain all-period totals and a fixed chart scale, and changing
+  entity/currency resets the page. Awaiting-trigger balances are explicitly outside the schedule.
+- Decimal-string totals use scaled BigInt arithmetic; only bounded chart ratios become Number.
+  Grouping indexes rows once instead of repeatedly scanning the schedule for every matrix cell.
+- Four focused calculation/render/pagination checks pass, including large signed amounts,
+  mixed decimal precision, separate entity/currency scopes and cross-page totals. TypeScript
+  and ESLint pass. Scenario save, product picker and Tamsin/browser acceptance remain open;
+  populated K11, multi-contract K03 and close variance remain Reporting priorities. No deployment.

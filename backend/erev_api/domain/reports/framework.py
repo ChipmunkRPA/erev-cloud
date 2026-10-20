@@ -2430,6 +2430,8 @@ def _export_requester(
     jc: JobContext, uow: UnitOfWork, run: Mapping[str, Any]
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
+    if str(run["report_code"]) in {"rpo", "rpo_rollforward"}:
+        return report_requester.validation_requester(jc, uow, run)
     stored = run.get("ai_export_access")
     if str(run["report_code"]) in {"period_evidence_pack", "contract_sample_pack"}:
         from erev_api.domain.reports import evidence_catalogue, evidence_catalogue_jobs

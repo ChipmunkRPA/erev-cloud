@@ -396,7 +396,8 @@ def _liability(session: Session, context: HomeContext) -> DashboardContractLiabi
     )
 
 
-def _rpo(session: Session, context: HomeContext) -> DashboardRpoOut:
+def _rpo(uow: UnitOfWork, context: HomeContext) -> DashboardRpoOut:
+    session = uow.session
     cutoff = tie_outs.version_cutoff(session, context.known_at)
     store = rpo.load(
         session,
@@ -409,7 +410,13 @@ def _rpo(session: Session, context: HomeContext) -> DashboardRpoOut:
     )
     as_of = {item.id: context.at(item.id).end for item in context.entities}
     rpo.measure(
-        session, store, {entity_id: (day,) for entity_id, day in as_of.items()}, applied=applied
+        session,
+        store,
+        {entity_id: (day,) for entity_id, day in as_of.items()},
+        applied=applied,
+        uow=uow,
+        book_code=context.book_code,
+        permission="contract.read",
     )
     found = rpo.rows_at(store, as_of=as_of, bands=rpo.DEFAULT_BANDS, applied=applied)
     total = within = ZERO
@@ -525,7 +532,7 @@ def home(
     with every_entity_scope(session, uow.principal.db_context):
         revenue, chart = revenue_panel(session, context)
         liability = _liability(session, context)
-        remaining = _rpo(session, context)
+        remaining = _rpo(uow, context)
         waiting = _pending_approvals(session, uow.principal, context)
     at = context.at(context.entities[0].id)
     return DashboardHomeOut(

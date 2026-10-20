@@ -6,6 +6,26 @@
 
 
 
+## RPO original-duration exemption — October 20, 2026
+
+- POL-197 now uses original inception segments from verified retained computation inputs,
+  matching the engine's inclusive service-date boundary (end before the first anniversary).
+  Contract extensions and shortening no longer change the original-duration qualification.
+- RPO, RPO rollforward, dashboard and close-variance projection share this basis. Reports show
+  the original inception/end dates in the exemption detail and retain terms per source version
+  for same-source reruns and cell explanations. Current templates/events never replace the input.
+- Report jobs resolve the actual requester's source permissions; dashboard uses contract.read.
+  Close snapshots use their explicit internal read-only SYSTEM path. Source integrity checks
+  remain the same. No engine output or posting behavior is changed.
+- Real-engine witnesses cover short-contract extension, long-contract shortening and the exact
+  anniversary boundary; the existing partial-VC cases still pass. The API journey checks original
+  dates, Home totals, cell explanation, retained rerun and read-only SYSTEM snapshot totals.
+  Existing RPO rollforward and Python lint/types pass. Remaining RPO work includes
+  broader positive partial-exemption lock/export acceptance and multi-currency reporting.
+- Retained reports predating original-term evidence cannot silently reconstruct it from current
+  data. Missing retained input/terms is refused; create a fresh report after source availability.
+  No deployment; the four priority workstreams are not yet all complete.
+
 ## Reporting-currency contract balance rollforward — October 20, 2026
 
 - Reporting view now uses the engine's S12-R-18 translation: preceding closing rate for opening,
@@ -218,21 +238,6 @@
   retained-source capture/rebuild, comparison calculation and UI entry. Populated K11 remains an
   acceptance gap, not an absent report implementation. K03/close-variance gaps still need specific
   code/evidence review before classification. No deployment; direct main publication.
-
-## Deal revenue period matrix and chart — October 19, 2026
-
-- Added per-product/per-period revenue matrix, period totals and all-period product/grand
-  totals to SF-18. Entity/currency scopes are selected separately within each book; obligations
-  for the same product aggregate while unassigned subjects retain their own identity.
-- Added signed revenue bars with exact labels and an accessible table. Twenty-four periods
-  display per page; page changes retain all-period totals and a fixed chart scale, and changing
-  entity/currency resets the page. Awaiting-trigger balances are explicitly outside the schedule.
-- Decimal-string totals use scaled BigInt arithmetic; only bounded chart ratios become Number.
-  Grouping indexes rows once instead of repeatedly scanning the schedule for every matrix cell.
-- Four focused calculation/render/pagination checks pass, including large signed amounts,
-  mixed decimal precision, separate entity/currency scopes and cross-page totals. TypeScript
-  and ESLint pass. Scenario save, product picker and Tamsin/browser acceptance remain open;
-  populated K11, multi-contract K03 and close variance remain Reporting priorities. No deployment.
 
 ## Outstanding release verification
 
