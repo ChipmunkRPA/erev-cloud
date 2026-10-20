@@ -1079,3 +1079,54 @@ def test_as_locked_currency_variants_read_retained_rows_and_export(
         assert downloaded.status_code == 200, downloaded.text
         assert downloaded.content == variants[view].content
         assert exported["output"]["sha256"] == variants[view].file_sha256
+
+
+@pytest.mark.parametrize(
+    "code,kind",
+    [
+        ("contract_balance_rollforward", "CONTRACT_BALANCE_ROLLFORWARD"),
+        ("rpo_rollforward", "RPO_ROLLFORWARD"),
+        ("disaggregation", "DISAGGREGATION"),
+    ],
+)
+def test_additional_locked_currency_reports(
+    world: ReportWorld, monkeypatch: pytest.MonkeyPatch, code: str, kind: str
+) -> None:
+    from erev_api.domain.reports import snapshot_views
+
+    lock_id = _lock_by_writer(world)
+    with world.place.uow() as uow:
+        scope = _scope(uow.session, _state_id(world))
+        variants = {
+            view: registry.SNAPSHOT_DATASETS[kind](
+                uow,
+                registry.SnapshotScope(
+                    entity_id=scope.entity_id,
+                    book_code=scope.book_code,
+                    period_id=scope.period_id,
+                    known_at=uow.now,
+                    currency_view=view,
+                ),
+            )
+            for view in snapshot_views.VIEWS
+        }
+        uow.commit()
+    _freeze(world, lock_id, snapshot_views.pack(variants))
+
+    def never(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("Frozen reports must not call the live builder")
+
+    monkeypatch.setattr(
+        framework, "BUILDERS", MappingProxyType({**framework.BUILDERS, code: never})
+    )
+    for view in snapshot_views.VIEWS:
+        parameters = {"period_lock_id": str(lock_id), "currency_view": view}
+        run, rows = report_run(world, code, parameters)
+        assert run["control_totals"]["currency_view"] == view
+        assert rows and len(rows) == variants[view].row_count
+        assert snapshot_views.VIEW not in rows[0]
+        exported, _ = report_run(world, code, parameters, output_format="CSV")
+        downloaded = get(world.app, f"{REPORT_RUNS}/{exported['id']}/output", world.maya)
+        assert downloaded.status_code == 200, downloaded.text
+        assert downloaded.content == variants[view].content
+        assert exported["output"]["sha256"] == variants[view].file_sha256

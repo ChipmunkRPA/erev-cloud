@@ -800,6 +800,40 @@ def test_disaggregation_uses_posted_functional_revenue_and_retained_average_rate
     assert check["result"] == "PASS"
     assert check["expected"] == [usd("11000.00")]
     assert run["control_totals"]["tie_out_currency_basis"] == "functional"
+    from erev_api.db.tables import legal_entity, period
+    from erev_api.domain.close import freeze
+    from erev_api.domain.reports import snapshot_views, snapshots
+
+    with world.place.uow() as uow:
+        period_id = uow.session.execute(
+            select(period.c.id)
+            .join(legal_entity, legal_entity.c.calendar_id == period.c.calendar_id)
+            .where(legal_entity.c.id == world.entity_id, period.c.period_key == "FY2026-P08")
+        ).scalar_one()
+        with freeze.system_unit(uow) as reader:
+            variants = {
+                view: snapshots.SNAPSHOT_DATASETS["DISAGGREGATION"](
+                    reader,
+                    snapshots.SnapshotScope(
+                        entity_id=world.entity_id,
+                        book_code="ASC606",
+                        period_id=period_id,
+                        known_at=tie_outs.version_cutoff(uow.session, uow.now),
+                        currency_view=view,
+                    ),
+                )
+                for view in snapshot_views.VIEWS
+            }
+        packed = snapshot_views.pack(variants)
+    for view, total in (
+        ("transaction", {"EUR": "10000.00"}),
+        ("functional", {"USD": "11000.00"}),
+        ("reporting", {"EUR": "10000.00"}),
+    ):
+        headers, frozen_rows, controls = snapshot_views.select(packed.content, view)
+        assert frozen_rows and "total" in headers
+        assert controls is not None and controls["revenue_total"] == total
+    assert snapshot_views.select(packed.content, "reporting")[2]["translation_rates"]
     listed = get(app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
     (average,) = [item for item in listed.json()["items"] if item["code"] == "AVM-RATES-AVERAGE"]
     draft = post(

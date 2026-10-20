@@ -15,7 +15,16 @@ from typing import Any
 from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s15_disclosures import snapshots as engine
 
-KINDS = frozenset({"WATERFALL", "CONTRACT_BALANCES", "RPO"})
+KINDS = frozenset(
+    {
+        "WATERFALL",
+        "CONTRACT_BALANCES",
+        "RPO",
+        "CONTRACT_BALANCE_ROLLFORWARD",
+        "RPO_ROLLFORWARD",
+        "DISAGGREGATION",
+    }
+)
 VIEWS = ("transaction", "functional", "reporting")
 VIEW = "__erev_currency_view_v1"
 META = "__erev_currency_metadata_v1"

@@ -471,7 +471,14 @@ async function expectAsLockedByDefault(code: string, periods: readonly Period[])
   const bar = screen.getByTestId("SF-08-filter-bar");
   const fields = fieldsOf(bar);
   expect(fields.length > 0).toBe(toolbarKeys(definition).length > 0);
-  const currency = ["revenue_waterfall", "contract_balances", "rpo"].includes(definition.code);
+  const currency = [
+    "revenue_waterfall",
+    "contract_balances",
+    "rpo",
+    "contract_balance_rollforward",
+    "rpo_rollforward",
+    "disaggregation",
+  ].includes(definition.code);
   expect(fields.filter((field) => !unavailable(field)).map((field) => field.id)).toEqual(
     currency ? ["field-p-currency_view"] : [],
   );

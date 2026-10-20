@@ -168,7 +168,14 @@ export function asLockedFindings(
   const refuse = (key: string, message: string) => {
     findings.push({ field: `${PARAMETERS}${key}`, rule_id: rule, message });
   };
-  const currencyViews = ["revenue_waterfall", "contract_balances", "rpo"].includes(code);
+  const currencyViews = [
+    "revenue_waterfall",
+    "contract_balances",
+    "rpo",
+    "contract_balance_rollforward",
+    "rpo_rollforward",
+    "disaggregation",
+  ].includes(code);
   for (const key of Object.keys(given).sort()) {
     if (!AS_LOCKED.admitted_keys.includes(key) && !(currencyViews && key === "currency_view")) {
       refuse(key, said(messages.not_a_lock_selector, { key, kind, lock: lock.id }));

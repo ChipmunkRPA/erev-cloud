@@ -335,7 +335,14 @@ export function datasetLock(context: ReportContext): NonNullable<Period["current
 }
 
 export function supportsLockedCurrency(definition: ReportDefinition): boolean {
-  return ["revenue_waterfall", "contract_balances", "rpo"].includes(definition.code);
+  return [
+    "revenue_waterfall",
+    "contract_balances",
+    "rpo",
+    "contract_balance_rollforward",
+    "rpo_rollforward",
+    "disaggregation",
+  ].includes(definition.code);
 }
 
 /**
