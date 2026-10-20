@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## RPO cancellation and re-entry segments — October 20, 2026
+
+- Revenue and late restatement are now measured within each retained disclosure segment.
+  Re-entry adds the remaining balance, excluding cumulative revenue already recognized;
+  changes while excluded do not become in-scope revenue. A range starting after cancellation
+  does not recreate that earlier cancellation. Repeated cancellation/re-entry is covered.
+- Cancellation attribution now also runs when the fixed allocation delta is zero, retaining
+  recognition for obligations funded entirely by dated realized consideration.
+- 29 targeted exemption, source-history and catalogue cases pass, plus three database cases
+  for activation and late revenue after restoring the missing EXEMPTIONS zero-row expectation.
+  Ruff and targeted mypy pass.
+  Migration 0209 records the segmented calculation. These history-level cases do not establish
+  that every public contract lifecycle can create every tested history; public lifecycle
+  acceptance and competing cause decomposition remain open. No deployment.
+
+
 ## Terminal cancellation RPO attribution — October 20, 2026
 
 - Terminal cancellation now uses retained cancelled-version cumulative revenue to remove only
@@ -210,29 +226,6 @@
   close-pass-only revenue histories, asset/new-liability reversal presentation, per-obligation
   opening consumption and complex membership/carry histories. Final release verification
   and independent accounting acceptance remain open; Reporting is not yet complete.
-
-## Cross-member revenue reversals through original posting history — October 20, 2026
-
-- Ordinary revenue attribution now reads original transaction targets and their separately
-  retained functional amounts, projects original owner/layer sources, and recursively
-  subtracts the exact sealed paid-line population. Original role, period, TIME basis,
-  ledger fields, computation hashes and all target/paid/delta amounts must agree. A shared
-  per-report cache avoids repeatedly replaying the same immutable paid history.
-- Live functional/reporting rollforwards and opening-liability disclosures use this proof
-  for ordinary cross-member revenue. Source-proven reversals are now accepted when the
-  complete posted owner/layer relief population equals the retained consumed-layer history.
-  Dependencies and signed movements are retained for rerun. Earlier bindings keep their
-  original path; intercompany entries retain their prior calculation and reversal limits.
-- Necessary public scenario passes: three deliveries across two periods retain the prior
-  same-period posting; a subsequent return reverses the original opening-layer owner's
-  revenue. GBP 50,400 falls to GBP 46,800 for both recognized revenue and opening relief.
-  Functional and reporting views rerun identically. Catalogue migration 0200, lint and types
-  pass. No deployment.
-- Still open: transaction disclosure reversal attribution, mixed TIME/EVENT functional
-  source allocation, close-pass-only revenue history, asset/new-liability source presentation,
-  per-obligation opening consumption and complex membership transitions. This completes the
-  tested ordinary liability-backed return path, not every negative-revenue scenario.
-  Final release verification and independent accounting acceptance remain open.
 
 ## Outstanding release verification
 

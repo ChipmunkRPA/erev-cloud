@@ -800,6 +800,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "opening and closing exclusions are separate, with eligibility changes in EXEMPTIONS",
             "terminal cancellations remove only unrecognized allocation; "
             "retained cancelled-version revenue separates period recognition and late restatement",
+            "cancellation and re-entry histories use separate disclosure segments; "
+            "re-entry admits remaining RPO and revenue excludes changes while outside disclosure",
             _as_locked("RPO_ROLLFORWARD"),
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),

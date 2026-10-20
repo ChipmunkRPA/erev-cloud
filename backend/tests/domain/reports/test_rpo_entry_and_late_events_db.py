@@ -67,6 +67,7 @@ LINES: Final = (
     "LATE_EVENTS",
     "REVENUE",
     "CANCELLATIONS",
+    "EXEMPTIONS",
     "FX",
     "UNEXPLAINED",
     "CLOSING",

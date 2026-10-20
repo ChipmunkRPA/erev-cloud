@@ -1077,10 +1077,36 @@ def _obligation_lines(
     )
     realised_opening = ZERO if opening is None else store.at(opening, before).realised
     terminal_cancellation: _Ob | None = None
+    segment_start = before
+    segment_opening = ZERO if opening is None else store.at(opening, before).revenue
+    segment_has_opening = opening is not None
+    was_cancelled = opening_version is not None and any(
+        ob.obligation_id == obligation_id and ob.cancelled
+        for ob in store.obligations.get(opening_version.id, ())
+    )
+
+    def recognition(ob: _Ob, until: date) -> Decimal:
+        cumulative = store.at(ob, until).revenue
+        restated = store.at(ob, segment_start).revenue
+        lines["REVENUE"] -= cumulative - restated
+        if segment_has_opening:
+            lines["LATE_EVENTS"] -= restated - segment_opening
+        return cumulative
+
     for version in moved:
         current = _in_version(store, version, obligation_id)
         if current is not None:
-            terminal_cancellation = None
+            if terminal_cancellation is not None:
+                lines["CANCELLATIONS"] += recognition(terminal_cancellation, version.effective)
+                terminal_cancellation = None
+            if previous_obligation is None and was_cancelled:
+                # Re-entry admits the remaining balance, not revenue recognized
+                # before this new disclosure segment (including while excluded).
+                segment_start = version.effective
+                segment_opening = store.at(current, segment_start).revenue
+                segment_has_opening = True
+                lines["NEW_CONTRACTS"] -= segment_opening
+                was_cancelled = False
         elif terminal_cancellation is not None:
             terminal_cancellation = next(
                 (
@@ -1112,36 +1138,33 @@ def _obligation_lines(
             lines["CANCELLATIONS"] -= removed
             lines["VC_ESTIMATE_CHANGES"] += removed
         delta = allocated - previous
-        if delta:
-            if previous_obligation is None:
-                line: str | None = "NEW_CONTRACTS"
-            else:
-                realised_is_separate = (
-                    current is not None and store.at(current, end).realised_traced
+        if previous_obligation is None:
+            line: str | None = "NEW_CONTRACTS"
+        else:
+            realised_is_separate = current is not None and store.at(current, end).realised_traced
+            causes = {
+                CAUSE_LINES[kind]
+                for kind in version.causes
+                if kind in CAUSE_LINES and not (realised_is_separate and kind == "USAGE_REPORTED")
+            }
+            # Dated usage (including royalty statements) is already attributed below.
+            # It cannot also make a fixed amendment ambiguous or explain an otherwise
+            # unsupported fixed change. Competing remaining cause lines stay unexplained.
+            line = next(iter(causes)) if len(causes) == 1 else None
+        if line is not None:
+            lines[line] += delta
+            if current is None and line == "CANCELLATIONS":
+                was_cancelled = True
+                # The terminating computation retains recognized revenue even
+                # though this obligation no longer contributes remaining RPO.
+                terminal_cancellation = next(
+                    (
+                        ob
+                        for ob in store.obligations.get(version.id, ())
+                        if ob.obligation_id == obligation_id
+                    ),
+                    None,
                 )
-                causes = {
-                    CAUSE_LINES[kind]
-                    for kind in version.causes
-                    if kind in CAUSE_LINES
-                    and not (realised_is_separate and kind == "USAGE_REPORTED")
-                }
-                # Dated usage (including royalty statements) is already attributed below.
-                # It cannot also make a fixed amendment ambiguous or explain an otherwise
-                # unsupported fixed change. Competing remaining cause lines stay unexplained.
-                line = next(iter(causes)) if len(causes) == 1 else None
-            if line is not None:
-                lines[line] += delta
-                if current is None and line == "CANCELLATIONS":
-                    # The terminating computation retains recognized revenue even
-                    # though this obligation no longer contributes remaining RPO.
-                    terminal_cancellation = next(
-                        (
-                            ob
-                            for ob in store.obligations.get(version.id, ())
-                            if ob.obligation_id == obligation_id
-                        ),
-                        None,
-                    )
         previous = allocated
         previous_obligation = current
     closing = _in_version(store, closing_version, obligation_id)
@@ -1149,23 +1172,10 @@ def _obligation_lines(
     lines["VC_ESTIMATE_CHANGES"] += realised_closing - realised_opening
     if closing is not None:
         at_end = store.at(closing, end)
-        restated = store.at(closing, before).revenue  # to the day before, as the closing knows it
-        lines["REVENUE"] = -(at_end.revenue - restated)
-        if opening is not None:
-            # S15-R-12 late events: what the closing version recognises for the time before the
-            # range and the opening did not state (module docstring)
-            lines["LATE_EVENTS"] = -(restated - store.at(opening, before).revenue)
+        recognition(closing, end)
         lines["CLOSING"] = rpo_of(closing, end, DEFAULT_BANDS, at_end)[0]
     elif terminal_cancellation is not None:
-        cancelled = store.at(terminal_cancellation, end)
-        restated = store.at(terminal_cancellation, before).revenue
-        # Allocation removal includes revenue already recognized. Exclude that
-        # portion from cancellation and separately retain current/late revenue.
-        lines["CANCELLATIONS"] += cancelled.revenue
-        lines["REVENUE"] = -(cancelled.revenue - restated)
-        lines["LATE_EVENTS"] = -(
-            restated - (ZERO if opening is None else store.at(opening, before).revenue)
-        )
+        lines["CANCELLATIONS"] += recognition(terminal_cancellation, end)
 
     def excluded(ob: _Ob | None, version: _Version | None, day: date, total: Decimal) -> Decimal:
         if ob is None or version is None:

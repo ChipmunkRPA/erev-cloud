@@ -301,9 +301,10 @@ def test_rollforward_exemption_changes_preserve_both_endpoints(
         assert sum(row.total for row in rows if row.exemption is None) == movement.lines[key]
 
 
+@pytest.mark.parametrize("realised", [False, True])
 @pytest.mark.parametrize("restated,revenue", [(40, 40), (40, 50), (45, 50), (40, 0)])
 def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
-    restated: int, revenue: int
+    restated: int, revenue: int, realised: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
 
@@ -340,6 +341,14 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
         None,
         None,
     )
+    if realised:
+        at = replace(
+            at,
+            realised=Decimal(100),
+            realised_stored=Decimal(100),
+            realised_traced=True,
+            realised_through=Decimal(100),
+        )
     store = rpo.Store(
         {gid: (first, second)},
         {vid: (old,), next_vid: (cancelled,)},
@@ -357,3 +366,92 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
     assert movement.lines["REVENUE"] == -(revenue - restated)
     assert movement.lines["LATE_EVENTS"] == -(restated - 40)
     assert movement.lines["CLOSING"] == movement.lines["UNEXPLAINED"] == 0
+
+
+@pytest.mark.parametrize("repeated", [False, True])
+@pytest.mark.parametrize("start_after_cancellation", [False, True])
+def test_reentry_uses_remaining_balance_and_segment_revenue(
+    repeated: bool, start_after_cancellation: bool
+) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+
+    oid, cid, eid, gid = (uuid4() for _ in range(4))
+    end = date(2026, 2, 28)
+    before = date(2026, 2, 15) if start_after_cancellation else date(2026, 1, 31)
+    # Revenue changes while excluded (45 -> 50, and 60 -> 70) enter only
+    # through the remaining balance; they are not new in-scope revenue.
+    states = [
+        (date(2026, 1, 1), False, 40),
+        (date(2026, 2, 10), True, 45),
+        (date(2026, 2, 20), False, 50),
+    ]
+    if repeated:
+        states += [(date(2026, 2, 23), True, 60), (date(2026, 2, 25), False, 70)]
+    versions = []
+    obligations = {}
+    cuts = {}
+    final_revenue = 80 if repeated else 60
+    days = {before, end, *(day for day, _, _ in states)}
+    for index, (effective, cancelled, _entry_revenue) in enumerate(states):
+        vid = uuid4()
+        version = rpo._Version(
+            vid,
+            gid,
+            index + 1,
+            True,
+            effective,
+            frozenset({"CONTRACT_TERMINATED" if cancelled else "CONTRACT_ACTIVATED"}),
+        )
+        versions.append(version)
+        ob = rpo._Ob(
+            oid,
+            vid,
+            oid,
+            cid,
+            "C",
+            "O",
+            "Service",
+            None,
+            None,
+            None,
+            eid,
+            "E",
+            "USD",
+            "POINT_IN_TIME",
+            date(2028, 12, 31),
+            date(2026, 1, 1),
+            Decimal(100),
+            cancelled,
+        )
+        obligations[vid] = (ob,)
+        for day in days:
+            revenue = 40
+            for event_day, _, amount in states[: index + 1]:
+                if day >= event_day:
+                    revenue = amount
+            if index == len(states) - 1 and day == end:
+                revenue = final_revenue
+            cuts[vid, day] = {
+                oid: ObligationAt(
+                    Decimal(revenue),
+                    *(Decimal(0) for _ in range(6)),
+                    Decimal(0 if cancelled else 100 - revenue),
+                    "PARTIALLY_SATISFIED",
+                    None,
+                    None,
+                )
+            }
+    chain = tuple(versions)
+    store = rpo.Store({gid: chain}, obligations, {cid: chain}, cuts)
+    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert result.lines["OPENING"] == (0 if start_after_cancellation else 60)
+    assert result.lines["CANCELLATIONS"] == (
+        (0 if start_after_cancellation else -55) + (-40 if repeated else 0)
+    )
+    assert result.lines["NEW_CONTRACTS"] == (80 if repeated else 50)
+    assert result.lines["REVENUE"] == (
+        (0 if start_after_cancellation else -5) + (-20 if repeated else -10)
+    )
+    assert result.lines["LATE_EVENTS"] == 0
+    assert result.lines["CLOSING"] == 100 - final_revenue
+    assert result.lines["UNEXPLAINED"] == 0
