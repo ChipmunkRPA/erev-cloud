@@ -15,10 +15,12 @@ import type { RegistryParameter } from "../../lib/api/queries/policies";
 import type { Entity } from "../../lib/api/queries/tenant";
 import { accessDescription } from "../../test/access";
 import { installMemoryStorage, preloadScreens, renderApp, signedInMe } from "../../test/app";
+import { installGridViewport } from "../../test/layout";
 import { apiUrl, installMswServer, problemResponse, server } from "../../test/msw";
 
 installMswServer();
 installMemoryStorage();
+installGridViewport();
 
 beforeAll(() => preloadScreens(SCREEN_ROUTES, ["SF-19:detail"]));
 
@@ -145,6 +147,9 @@ function serve(initial: Migration, importAnswer: "accepted" | "refused" = "accep
     fieldMappingHold: null,
   };
   server.use(
+    http.get(apiUrl(`/api/v1/migrations/${MIGRATION_ID}/reconciliation-lines`), () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
     http.get(apiUrl("/api/v1/me/notifications"), () =>
       HttpResponse.json({ items: [], next_cursor: null }),
     ),
@@ -574,6 +579,48 @@ describe("SF-19:detail (SCREENS_B §10.3 rev 1.20)", () => {
       screen.getByRole("link", { name: "Open parallel-run comparison" }).getAttribute("href"),
     ).toContain(`p.migration_id=${MIGRATION_ID}`);
     expect(screen.queryByRole("button", { name: "Run reconciliation" })).toBeNull();
+  });
+
+  it("shows retained decimal values and filters by tolerance rather than nonzero difference", async () => {
+    serve(migration({ status: "RECONCILED" }));
+    const line = {
+      obligation_key: "POB-1",
+      measure: "ALLOCATION",
+      source_value: "100.00001",
+      erev_value: "100.00002",
+      difference: "0.00001",
+      tolerance: "0.0001",
+      is_within_tolerance: true,
+    };
+    server.use(
+      http.get(apiUrl(`/api/v1/migrations/${MIGRATION_ID}/reconciliation-lines`), () =>
+        HttpResponse.json({
+          items: [
+            { ...line, id: "line-1", contract_external_id: "CON-WITHIN" },
+            {
+              ...line,
+              id: "line-2",
+              contract_external_id: "CON-OUTSIDE",
+              difference: "1.00001",
+              erev_value: "101.00002",
+              is_within_tolerance: false,
+              deviation_ref: "DEV-12",
+            },
+          ],
+          next_cursor: null,
+        }),
+      ),
+    );
+    renderApp(`/data/migrations/${MIGRATION_ID}?step=reconciliation`, {
+      me: MAYA,
+      screenRoutes: SCREEN_ROUTES,
+    });
+    expect(await screen.findByText("CON-WITHIN")).toBeTruthy();
+    expect(screen.getByText("100.00002")).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Only outside tolerance" }));
+    await waitFor(() => expect(screen.queryByText("CON-WITHIN")).toBeNull());
+    expect(await screen.findByText("CON-OUTSIDE")).toBeTruthy();
+    expect(screen.getByText("DEV-12")).toBeTruthy();
   });
 
   it("starts reconciliation and prevents another submission while its job runs", async () => {

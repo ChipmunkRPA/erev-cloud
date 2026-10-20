@@ -395,3 +395,12 @@ export function findingRowIndex(field: string | null): number | null {
   const match = field === null ? null : /^entity_mapping\[(\d+)\]/.exec(field);
   return match?.[1] === undefined ? null : Number(match[1]);
 }
+
+export type MigrationReconciliationLine = components["schemas"]["MigrationReconciliationLineOut"];
+
+export async function fetchMigrationReconciliationLines(migrationId: string): Promise<readonly MigrationReconciliationLine[]> {
+  const result = await unwrap(api.GET("/api/v1/migrations/{migration_id}/reconciliation-lines", {
+    params: { path: { migration_id: migrationId } },
+  }));
+  return result.items;
+}

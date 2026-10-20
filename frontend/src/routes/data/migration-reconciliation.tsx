@@ -11,6 +11,7 @@ import { isTerminal, useJob } from "../../lib/api/jobs";
 import { EVERY_MIGRATION, MIGRATIONS_PATH, type Migration } from "../../lib/api/queries/migrations";
 import { reportRunRoute } from "../../lib/api/queries/reports";
 import { t } from "../../lib/i18n/t";
+import { MigrationReconciliationLines } from "./migration-reconciliation-lines";
 
 /** The reconciliation command uses retained migration evidence; reports open with this batch pinned. */
 export function MigrationReconciliation({ migration }: { readonly migration: Migration }) {
@@ -81,6 +82,7 @@ export function MigrationReconciliation({ migration }: { readonly migration: Mig
           {t("data.migrations.reconcile.run")}
         </Button>
       ) : null}
+      {reconciled ? <MigrationReconciliationLines migration={migration} /> : null}
       {access.holdsForAll("report.run") && (ready || reconciled) ? (
         <div className="flex flex-wrap gap-4">
           {reconciled ? (

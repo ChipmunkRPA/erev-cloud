@@ -6,6 +6,19 @@
 
 
 
+## Retained migration comparison lines — October 19, 2026
+
+- Reconciled migration details now display retained contract/obligation comparison lines,
+  legacy and eRev values, difference, tolerance, within-tolerance result, deviation reference
+  and exception identifier. Decimal strings are preserved without guessing a currency or
+  rounding small differences. The grid is available under migration read permission.
+- Added an outside-tolerance filter using the authoritative flag, not nonzero difference.
+  The query is scoped by batch, record version and filter; empty results and read errors
+  remain distinct. Report exports continue through the report-authorized viewer links.
+- Fifteen focused migration screen checks pass, including exact decimal rendering and a
+  nonzero-but-within-tolerance case; TypeScript and ESLint pass. Populated accounting
+  acceptance, other report workflows and independent sign-off remain open. No deployment.
+
 ## Migration reconciliation workflow — October 19, 2026
 
 - Replaced the empty migration Reconciliation step with a runnable workflow for opening-balance
