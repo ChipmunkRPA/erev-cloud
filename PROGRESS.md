@@ -6,6 +6,17 @@
 
 
 
+## Saved report identity and entity scope — October 19, 2026
+
+- Forecast CSV/XLSX Open report view links now retain run=<id>, using the saved-format reader
+  instead of implicitly creating a JSON report (which may not exist for that forecast).
+- Multi-entity links retain p.entity_codes alongside the all-entities context marker. Previously
+  reopening a file report could expand the selected subset to every entity in the reader's scope.
+  The toolbar displays the saved subset and provides an explicit Use all permitted entities action.
+  Selecting a single context entity takes precedence over the saved subset.
+- Thirty-three focused run-record/parameter checks pass. Other reporting business workflows,
+  populated accounting acceptance and independent sign-off remain open. No deployment.
+
 ## Report filters and saved-link preservation — October 19, 2026
 
 - Added field/value filter rows to report toolbars whose schema declares filters. Users can
@@ -235,18 +246,6 @@
   acceptance specific to these kinds, and wider RPS-16 accounting acceptance. Next reporting
   development: catalogue PACK builders and disclosure orchestration; remaining forecast work.
   No deployment or production-readiness claim.
-
-## Encrypted ACCESS review retention — October 19, 2026
-
-- ACCESS v4 now includes encrypted retained review evidence, with only IDs, cutoffs, hashes
-  and file metadata in source_binding. Reports, role matrix and review files collect together.
-- Reuses the existing immutable pack/file registry for tenant-wide archive/original-file holds;
-  retain() belongs to pack creation's transaction. Reads verify complete dependencies,
-  campaign associations, current permissions and archive/scope integrity without recollection.
-- Actual populated API review capture verifies encryption, source deletion holds, hidden generic
-  file routes, hash refusal and repeat reads with the live collector disabled. CHANGE/ACCESS
-  report-worker collection also passes; Mypy and Ruff pass.
-- Next: parent job/storage and public CHANGE/ACCESS API/UI. No deployment or readiness claim.
 
 ## Outstanding release verification
 

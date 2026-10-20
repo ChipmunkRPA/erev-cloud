@@ -963,7 +963,7 @@ describe("API-S-ReportRun as the screens read it", () => {
     ]);
   });
 
-  it("a pack run has no report view; a run of several entities names none", () => {
+  it("a pack run has no report view; a multi-entity run retains its exact scope", () => {
     expect(
       reportViewHref(
         reportRun({ report: { code: "period_evidence_pack", version: 1, name: "Period pack" } }),
@@ -981,7 +981,7 @@ describe("API-S-ReportRun as the screens read it", () => {
         }),
       ),
       // SCR-URL-01 rev 1.61: it says all entities, since an address that names none is the pill's entity.
-    ).toBe(`/reports/rpo?book=ASC606&run=${RUN_ID}&entities=all`);
+    ).toBe(`/reports/rpo?book=ASC606&run=${RUN_ID}&p.entity_codes=AVM-US%2CAVM-DE&entities=all`);
   });
 });
 
@@ -1025,3 +1025,16 @@ it("re-exports an original forecast through the catalogue without claiming a com
   expect(served.reruns).toHaveLength(0);
   expect(screen.queryByTestId("SF-08-banner-rerun-result")).toBeNull();
 });
+
+it.each(["CSV", "XLSX"])(
+  "opens the stored %s forecast instead of creating a JSON forecast report",
+  (format) => {
+    const run = reportRun({
+      report: { code: "forecast_outputs", name: "Forecast outputs", version: 1 },
+    });
+    if (run.output === null) throw new Error("fixture requires output");
+    const href = reportViewHref({ ...run, output: { ...run.output, format } });
+    const params = new URL(href ?? "", "https://example.test").searchParams;
+    expect(params.get("run")).toBe(run.id);
+  },
+);

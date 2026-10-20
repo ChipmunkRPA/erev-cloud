@@ -139,3 +139,31 @@ it("edits filters as field/value rows and preserves them through saved-report li
     "true",
   );
 });
+
+it("retains a saved entity subset until the user explicitly changes scope", () => {
+  const values = { entity_codes: "US,DE" };
+  expect(runParameters(definition, { ...context, entity: null }, values).entity_codes).toEqual([
+    "US",
+    "DE",
+  ]);
+  expect(runParameters(definition, { ...context, entity: "UK" }, values).entity_codes).toEqual([
+    "UK",
+  ]);
+  const change = vi.fn();
+  render(
+    <ParametersToolbar
+      definition={definition}
+      context={{ ...context, entity: null }}
+      values={values}
+      errors={{}}
+      timeBands={null}
+      onChange={change}
+      onRun={() => undefined}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Use all permitted entities" }));
+  expect(change).toHaveBeenCalledWith("entity_codes", "");
+  expect(
+    runParameters(definition, { ...context, entity: null }, { entity_codes: "" }).entity_codes,
+  ).toBeUndefined();
+});

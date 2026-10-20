@@ -477,6 +477,7 @@ export function runParameters(
   }
   const merged = { ...parameterDefaults(definition, context), ...values };
   for (const [key, raw] of Object.entries(merged)) {
+    if (key === "entity_codes" && context.entity !== null) continue;
     if (has(key) && raw !== "") {
       parameters[key] = typed(schema[key], raw);
     }

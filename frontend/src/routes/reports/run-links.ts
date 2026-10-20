@@ -4,7 +4,8 @@
 // entity is `entity` and of several is `entities=all` (SCREENS SCR-URL-01 rev 1.61), `book` is `book`,
 // `period_key` is `period`, `period_lock_id` is `snapshot`, a supplied `known_at` and `currency_view`
 // keep their names and every other key is `p.<key>`. A JSON run adds `run=<id>`, so the view renders the
-// stored run and creates none; a file run opens the view on the same parameters, which creates a run to
+// stored run and creates none; saved forecast files also retain their run ID. Other file runs open the
+// view on the same parameters, which creates a run to
 // show. The two pack reports have no report view.
 import type { ReportRun } from "../../lib/api/queries/reports";
 import { withParams } from "../../lib/url/params";
@@ -46,13 +47,19 @@ function carried(value: unknown): string | null {
   return null;
 }
 
-/** True for a run whose rows the view renders from the stored run: a JSON run, or one without output. */
-export function isViewRun(run: Pick<ReportRun, "output">): boolean {
-  return run.output === null || run.output.format === "JSON";
+/** Runs whose saved data the viewer can read: JSON, forecasts in every format, and unfinished runs. */
+export function isViewRun(
+  run: Pick<ReportRun, "output"> & Partial<Pick<ReportRun, "report">>,
+): boolean {
+  return (
+    run.output === null || run.output.format === "JSON" || run.report?.code === "forecast_outputs"
+  );
 }
 
-/** The search of SF-08:report for the run's parameters, with `run` for a JSON run. */
-export function reportViewSearch(run: Pick<ReportRun, "id" | "parameters" | "output">): string {
+/** Preserve the saved scope and attach `run` when the viewer can read its retained dataset. */
+export function reportViewSearch(
+  run: Pick<ReportRun, "id" | "parameters" | "output"> & Partial<Pick<ReportRun, "report">>,
+): string {
   const changes: Record<string, string | null> = {};
   for (const [key, value] of Object.entries(run.parameters)) {
     if (key === "entity_codes") {
@@ -63,6 +70,8 @@ export function reportViewSearch(run: Pick<ReportRun, "id" | "parameters" | "out
         changes.entity = encodeURIComponent(value[0]);
       } else if (Array.isArray(value) && value.length > 1) {
         changes[ENTITIES_PARAM] = ALL_ENTITIES;
+        // The context can only show all/one; the request must still retain the saved subset.
+        changes[`${PARAMETER_PREFIX}entity_codes`] = encodeURIComponent(value.join(","));
       }
     } else if (key === "known_at") {
       // Only a cutoff the caller supplied is a parameter of the view (`known_at_basis` historical).

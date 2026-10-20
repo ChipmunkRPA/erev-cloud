@@ -237,6 +237,18 @@ export function ParametersToolbar({
       data-testid={`${testIdPrefix}-filter-bar`}
       className="flex flex-wrap items-end gap-3"
     >
+      {context.entity === null && values.entity_codes && (
+        <div className="flex items-center gap-2">
+          <p>{t("reports.parameters.savedEntities", { entities: values.entity_codes })}</p>
+          <Button
+            variant="secondary"
+            disabledReason={unavailable}
+            onClick={() => onChange("entity_codes", "")}
+          >
+            {t("reports.parameters.useAllEntities")}
+          </Button>
+        </div>
+      )}
       {keys.map((key) => {
         const value = values[key] ?? "";
         const error = errors[key];

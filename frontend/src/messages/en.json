@@ -5901,6 +5901,8 @@
   "reports.filters.clear": "Clear filters",
   "reports.filters.invalid": "Enter a field and value for each filter, using each field only once.",
   "reports.filters.locked": "Filters cannot change for this saved lock.",
+  "reports.parameters.savedEntities": "Selected entities: {entities}",
+  "reports.parameters.useAllEntities": "Use all permitted entities",
   "reports.parameters.listHelp": "Separate values with commas.",
   "reports.parameters.label": "Report parameters",
   "reports.parameters.measure": "Measure",

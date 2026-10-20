@@ -8082,3 +8082,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Collector returns personal payloads for encrypted storage; no personal source data is placed
   in source-binding JSON. Encrypted retention/dependency links and public CHANGE/ACCESS
   lifecycle/UI remain next. No deployment or production-readiness claim.
+
+## Encrypted ACCESS review retention — October 19, 2026
+
+- ACCESS v4 now includes encrypted retained review evidence, with only IDs, cutoffs, hashes
+  and file metadata in source_binding. Reports, role matrix and review files collect together.
+- Reuses the existing immutable pack/file registry for tenant-wide archive/original-file holds;
+  retain() belongs to pack creation's transaction. Reads verify complete dependencies,
+  campaign associations, current permissions and archive/scope integrity without recollection.
+- Actual populated API review capture verifies encryption, source deletion holds, hidden generic
+  file routes, hash refusal and repeat reads with the live collector disabled. CHANGE/ACCESS
+  report-worker collection also passes; Mypy and Ruff pass.
+- Next: parent job/storage and public CHANGE/ACCESS API/UI. No deployment or readiness claim.
