@@ -10352,3 +10352,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This closes the S04-R-02 diagnostic recorded in the functional-aging checkpoint. Broader
   combined-member aging, locked aging datasets, accounting acceptance and final release
   verification remain outstanding.
+
+## Locked balance aging — October 20, 2026
+
+- New closes freeze BALANCE_AGING alongside the existing twelve datasets. Original age buckets,
+  transaction/functional/reporting amounts and reporting FX controls are authenticated in the
+  manifest. The viewer supports retained currency selection; CSV exports and close evidence
+  archives read only those bytes. Additional aging filters cannot alter a locked population.
+- Re-lock comparison measures each aging bucket and total by entity, contract, role and currency,
+  including a move between buckets with an unchanged total. Existing twelve-kind manifests remain
+  verifiable/exportable; old locks without aging explicitly refuse that report, with no live backfill.
+- Migration 0234 adds the snapshot enum and IPE metadata. Targeted API read/export, real foreign
+  close-run freeze, public lock, new/legacy evidence archive, re-lock and viewer checks pass.
+  Scoped lint/types and migrated catalogue parity pass. No deployment; direct main publication.
+- This does not fill missing original layer evidence: combined-member functional aging whose
+  owner layers do not reconcile still refuses. A new close now also requires its aging dataset
+  to be reproducible; historical computations missing the required traces can require recompute.
+  Independent accounting sign-off and final-candidate release checks remain open.

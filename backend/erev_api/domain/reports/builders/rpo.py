@@ -350,6 +350,7 @@ class Store:
     classify_cancelled_chains: bool = field(default=True, kw_only=True)
     classify_cancelled_usage: bool = field(default=True, kw_only=True)
     classify_batch_cancelled_usage: bool = field(default=True, kw_only=True)
+    classify_cancelled_usage_chains: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1300,6 +1301,32 @@ def _obligation_lines(
             lines["LATE_EVENTS"] -= restated - segment_opening
         return cumulative
 
+    def cancelled_tail(start: int) -> _Ob | None:
+        """Final realized source only when every subsequent version stays cancelled."""
+        if not store.classify_cancelled_usage_chains:
+            return None
+        latest = None
+        for retained in moved[start:]:
+            if not retained.included:
+                return None
+            candidate = next(
+                (
+                    ob
+                    for ob in store.obligations.get(retained.id, ())
+                    if ob.obligation_id == obligation_id
+                ),
+                None,
+            )
+            if (
+                candidate is None
+                or not candidate.cancelled
+                or store.visible(candidate, retained.effective) is not None
+                or not store.at(candidate, end).realised_traced
+            ):
+                return None
+            latest = candidate
+        return latest
+
     if opening is not None:
         terminal = store.cancellation(opening)
         if (
@@ -1314,7 +1341,7 @@ def _obligation_lines(
                 (store.at(opening, end).realised == 0 and realised_opening == 0)
                 or (
                     store.classify_batch_cancelled_usage
-                    and not moved
+                    and (not moved or cancelled_tail(0) is not None)
                     and store.at(opening, end).realised_traced
                     and store.at(opening, before).realised_traced
                 )
@@ -1370,8 +1397,11 @@ def _obligation_lines(
                     lines["VC_ESTIMATE_CHANGES"] += separated[1]
                     lines["CANCELLATIONS"] -= terminal.before
                     terminal_cancellation = opening
-                    if store.classify_batch_cancelled_usage and not moved:
-                        batch_cancelled_usage = opening
+                    if store.classify_batch_cancelled_usage:
+                        if not moved:
+                            batch_cancelled_usage = opening
+                        elif cancelled_tail(0) is not None:
+                            batch_cancelled_usage = cancelled_tail(0)
                     previous = ZERO
                     previous_obligation = None
                     was_cancelled = True
@@ -1384,6 +1414,8 @@ def _obligation_lines(
             # version can supersede its retained revenue or admit a new segment.
             lines["CANCELLATIONS"] -= terminal.before
             terminal_cancellation = pending_cancellation
+            if store.classify_batch_cancelled_usage and cancelled_tail(index) is not None:
+                batch_cancelled_usage = cancelled_tail(index)
             pending_cancellation = None
             previous = ZERO
             previous_obligation = None
@@ -1442,7 +1474,7 @@ def _obligation_lines(
                     )
                     or (
                         store.classify_batch_cancelled_usage
-                        and len(moved) == 1
+                        and (len(moved) == 1 or cancelled_tail(index + 1) is not None)
                         and store.at(current, end).realised_traced
                     )
                 )
@@ -1530,13 +1562,18 @@ def _obligation_lines(
             store.classify_cancelled_usage
             and current is None
             and previous_obligation is not None
-            and len(moved) == 1
-            and closing_version is not None
-            and closing_version.id == version.id
+            and (
+                (
+                    len(moved) == 1
+                    and closing_version is not None
+                    and closing_version.id == version.id
+                )
+                or cancelled_tail(index) is not None
+            )
             and "CONTRACT_TERMINATED" in version.causes
             and store.at(previous_obligation, end).realised_traced
         ):
-            cancelled_usage = next(
+            cancelled_usage = cancelled_tail(index) or next(
                 (
                     ob
                     for ob in store.obligations.get(version.id, ())

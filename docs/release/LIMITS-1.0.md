@@ -1,5 +1,28 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — realized-fee attribution reaches a continuously cancelled version tail
+
+First-batch, opening-version and later-version cancellation bridges can now use the final
+retained realized-fee amount when every subsequent version remains included and cancelled,
+contains the obligation and retains dated realization evidence. Final recognized revenue uses
+the retained final version as before; this keeps later realized-fee corrections out of fixed
+cancellation attribution. Original fixed modifications and estimates still require their
+termination bridge. New bindings retain rpo_cancelled_usage_v3; v1/v2 runs preserve their earlier
+scope and markers. Re-entry or missing evidence prevents the new tail reader from proceeding.
+
+The 66 scoped cases now include positive/negative fee corrections through retained cancelled
+versions for first entry, monthly opening and later termination, with legacy and missing-evidence
+checks. These are adapted report-data witnesses, not a new public API cancellation journey.
+Existing public modification reports/reruns in three views, scoped lint/types and migration 0246
+down/up IPE parity pass. This supersedes the blanket multi-version usage limitation only for a
+continuously cancelled and fully evidenced tail.
+
+Usage chains containing re-entry, multiple cancellations within one computation, versions
+intervening before termination, same-day entry/cancellation and combined-member aging ownership
+remain open, along with independent accounting sign-off and final-candidate verification.
+No deployment and no claim of production readiness.
+
+
 ### October 20 — single-computation cancellation can separate realized fees
 
 A first-entry computation containing one later cancellation, or an opening-to-closing

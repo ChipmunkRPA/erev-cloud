@@ -6,6 +6,24 @@
 
 
 
+## Realized-fee cancellation follows continuously cancelled version chains — October 20, 2026
+
+- A retained cancelled tail now supplies the final realized-fee amount only when every
+  subsequent version remains included/cancelled and retains dated realization evidence.
+  First-batch, same-version opening and later-version cancellation bridges can use that final
+  source; recognized revenue also follows the retained final version. Original fixed changes
+  remain tied to their termination boundary, with no new source amounts invented.
+- New bindings use rpo_cancelled_usage_v3. Existing v1/v2 runs retain their prior feature scope
+  and marker on rerun. Chains with re-entry, missing obligations, excluded versions or missing
+  realization evidence are not admitted by the new tail reader.
+- All 66 scoped cases pass, now including signed later fee corrections against first-entry,
+  monthly opening and later-version cancellations, legacy classification and absent evidence.
+  Existing public modification reports/reruns in three views, lint/types and migration 0246
+  down/up IPE parity pass. New chain witnesses adapt retained report data, not public API events.
+- Usage chains with re-entry, multiple cancellations within one computation, intervening
+  pre-termination versions, same-day entry/cancellation and combined-member aging ownership
+  remain open. Independent sign-off and final-candidate verification remain open. No deployment.
+
 ## First-batch and same-version realized-fee cancellation — October 20, 2026
 
 - A single first-entry cancellation computation and an opening-to-closing cancellation within
@@ -213,23 +231,6 @@
   a separate member-allocation adjustment, or apportion original dated layers on the existing
   member liability basis. Current engine member totals alone do not specify that date ownership.
   The question has been raised with the owner; no new allocation rule is silently assumed.
-
-## Locked balance aging — October 20, 2026
-
-- New closes freeze BALANCE_AGING alongside the existing twelve datasets. Original age buckets,
-  transaction/functional/reporting amounts and reporting FX controls are authenticated in the
-  manifest. The viewer supports retained currency selection; CSV exports and close evidence
-  archives read only those bytes. Additional aging filters cannot alter a locked population.
-- Re-lock comparison measures each aging bucket and total by entity, contract, role and currency,
-  including a move between buckets with an unchanged total. Existing twelve-kind manifests remain
-  verifiable/exportable; old locks without aging explicitly refuse that report, with no live backfill.
-- Migration 0234 adds the snapshot enum and IPE metadata. Targeted API read/export, real foreign
-  close-run freeze, public lock, new/legacy evidence archive, re-lock and viewer checks pass.
-  Scoped lint/types and migrated catalogue parity pass. No deployment; direct main publication.
-- This does not fill missing original layer evidence: combined-member functional aging whose
-  owner layers do not reconcile still refuses. A new close now also requires its aging dataset
-  to be reproducible; historical computations missing the required traces can require recompute.
-  Independent accounting sign-off and final-candidate release checks remain open.
 
 ## Outstanding release verification
 

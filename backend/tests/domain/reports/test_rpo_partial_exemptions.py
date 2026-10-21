@@ -484,6 +484,40 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
     assert movement.lines["REVENUE"] == -(revenue - restated)
     assert movement.lines["LATE_EVENTS"] == -(restated - 40)
     assert movement.lines["CLOSING"] == movement.lines["UNEXPLAINED"] == 0
+    if realised and mixed:
+        retained_id = uuid4()
+        retained = replace(
+            second, id=retained_id, version_no=3, causes=frozenset({"USAGE_REPORTED"})
+        )
+        correction = Decimal(10)
+        retained_points = {
+            (retained_id, day): points
+            for (source, day), points in store.cuts.items()
+            if source == next_vid
+        }
+        retained_points[retained_id, end] = {
+            oid: replace(
+                store.cuts[next_vid, end][oid],
+                realised=Decimal(110 + usage_delta),
+                revenue=Decimal(revenue) + correction,
+            )
+        }
+        chain = (first, second, retained)
+        continued = replace(
+            store,
+            versions={gid: chain},
+            chains={cid: chain},
+            obligations={
+                **store.obligations,
+                retained_id: (replace(cancelled, version_id=retained_id),),
+            },
+            cuts={**store.cuts, **retained_points},
+        )
+        (updated,) = rpo.rollforward_lines(continued, ranges={eid: (before, end)}, applied={})
+        expected = dict(movement.lines)
+        expected["VC_ESTIMATE_CHANGES"] += correction
+        expected["REVENUE"] -= correction
+        assert updated.lines == expected
 
 
 @pytest.mark.parametrize("repeated", [False, True])
@@ -1346,3 +1380,50 @@ def test_one_computation_separates_realized_fees_from_cancellation(
         applied={},
     )
     assert legacy.lines != result.lines
+
+    for fee_correction in (Decimal(-10), Decimal(10)):
+        retained_id = uuid4()
+        retained = replace(
+            version,
+            id=retained_id,
+            version_no=2,
+            effective=end,
+            causes=frozenset({"USAGE_REPORTED"}),
+            entries=(),
+            modification_events=frozenset(),
+            estimate_events=frozenset(),
+            cancellation_events=frozenset(),
+        )
+        retained_ob = replace(ob, version_id=retained_id)
+        retained_cuts = {(retained_id, day): points for (source, day), points in store.cuts.items()}
+        retained_cuts[retained_id, end] = {
+            oid: replace(
+                closing,
+                realised=closing.realised + fee_correction,
+                revenue=closing.revenue + fee_correction,
+            )
+        }
+        continued = replace(
+            store,
+            versions={gid: (version, retained)},
+            chains={cid: (version, retained)},
+            obligations={vid: (ob,), retained_id: (retained_ob,)},
+            cuts={**store.cuts, **retained_cuts},
+            boundaries={**store.boundaries, retained_id: store.boundaries[vid]},
+        )
+        (updated,) = rpo.rollforward_lines(continued, ranges={eid: (before, end)}, applied={})
+        expected = dict(result.lines)
+        expected["VC_ESTIMATE_CHANGES"] += fee_correction
+        expected["REVENUE"] -= fee_correction
+        assert updated.lines == expected
+        (legacy_chain,) = rpo.rollforward_lines(
+            replace(continued, classify_cancelled_usage_chains=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert legacy_chain.lines != expected
+        continued.cuts[retained_id, end] = {
+            oid: replace(retained_cuts[retained_id, end][oid], realised_traced=False)
+        }
+        (missing,) = rpo.rollforward_lines(continued, ranges={eid: (before, end)}, applied={})
+        assert missing.lines != expected

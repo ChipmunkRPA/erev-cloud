@@ -1004,6 +1004,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "version; realized changes are VC movements and cancellation removes fixed plus "
             "realized remainder net of recognized revenue; retained v1 keeps its "
             "later-version-only behavior",
+            "rpo_cancelled_usage_v3 carries realized-fee attribution through subsequent "
+            "versions only when every retained obligation stays cancelled and has dated "
+            "realization evidence; final realized fees and recognized revenue use the final "
+            "retained source, while original fixed changes retain their termination bridge; "
+            "earlier v1 and v2 bindings preserve their classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),
