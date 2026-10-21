@@ -10091,3 +10091,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   removing the equality check alone would be incorrect. No public agent acceptance is claimed.
 - Multiple-origin split inputs, other mixed-source gaps and independent sign-off remain open.
   Direct main publication only; no deployment.
+
+## Agent gross/net reporting attribution — October 20, 2026
+
+- Retained revenue histories now include only the AP_SUPPLIER purpose of revenue-recognition
+  clearing lines. Close-pass envelopes declare that capability; older envelopes without it
+  remain unavailable. Original intent, purpose and paid-history amounts are checked.
+- Agent control relief is reconciled against separate net revenue and supplier components in
+  both currencies. Original split formulas/rounding and unique source ownership are replayed;
+  report evidence retains both component IDs and amounts without relabelling gross relief as net revenue.
+- The actual merchant engine example reproduces 120,000 gross / 19,200 net / 100,800 supplier.
+  The DB workflow exercises two deliveries, supplier paid history and public balance-rollforward
+  and opening-liability reports in transaction, functional and reporting views with identical
+  retained reruns. Intercompany reversal, 36 scoped cases, lint/types and migration checks pass.
+- This supersedes the preceding entry's missing supplier-history/control matcher limitation.
+  Multiple-origin split inputs, zero-net agent paths, within-period mixed-source attribution,
+  and broad close-pass agent acceptance remain open; no overall production readiness is claimed.
+  Migration 0222 documents the two consumers. Direct main publication; no deployment.

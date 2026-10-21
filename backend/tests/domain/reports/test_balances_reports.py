@@ -838,3 +838,38 @@ def test_reporting_months_preserve_range_opening_liability() -> None:
     assert months[september.id]["REVENUE_FROM_OPENING"][LIABILITY] == D("-100")
     assert months[september.id]["REVENUE_FROM_PERIOD_BILLINGS"][LIABILITY] == D("-50")
     assert months[september.id]["CLOSING"][LIABILITY] == D("50")
+
+
+@pytest.mark.slow
+def test_foreign_aging_uses_remeasured_functional_shares_and_retains_dates(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, app_settings: Settings
+) -> None:
+    from support import close_run_worlds
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root)
+    )
+    for period_key, expected, bucket in (
+        ("FY2026-P08", "11050.00", "bucket_0_30"),
+        ("FY2026-P09", "11200.00", "bucket_0_30"),
+    ):
+        params = {"entity_codes": [AVM_US], "book": "ASC606", "period_key": period_key}
+        _, original = report_run(world, "balance_aging", params)
+        (source,) = [row for row in original if row["row_key"].startswith("contract:")]
+        assert source["total"] == {"currency": "EUR", "amount": "10000.00"}
+        for view in ("functional", "reporting"):
+            run, rows = report_run(world, "balance_aging", {**params, "currency_view": view})
+            (row,) = [row for row in rows if row["row_key"].startswith("contract:")]
+            assert row[bucket] == row["total"] == {"currency": "USD", "amount": expected}
+            assert run["tie_out_results"][0]["result"] == "PASS"
+            restarted = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+            assert restarted.status_code == 202, restarted.text
+            complete = run_now(world, UUID(restarted.json()["id"]))
+            assert complete["state"] == "SUCCEEDED", complete
+            rebuilt = get(
+                world.app,
+                f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}",
+                world.maya,
+            )
+            assert rebuilt.status_code == 200, rebuilt.text
+            assert rebuilt.json()["control_totals"] == run["control_totals"]

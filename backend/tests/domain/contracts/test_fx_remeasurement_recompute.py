@@ -1258,3 +1258,91 @@ def test_credit_memo_fx_reaches_functional_rollforward(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == rows
+
+
+@pytest.mark.parametrize("monetary", [False, True])
+def test_functional_liability_aging_preserves_original_dates(world: World, monetary: bool) -> None:
+    from erev_api.db.tables import contract, legal_entity
+    from erev_api.jobs.context import JobRuntime
+    from support import worlds
+    from support.factories import drafted_override
+
+    contract_id, group_id = _advance_received(world)
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+    )
+    _recorded(world, contract_id, int(head), _invoice("AGING-AUG", "2026-08-20", "10000.00"))
+    if monetary:
+        identifier = drafted_override(
+            world.place, contract_id, "fx.cl_historical_layering", "DISABLED_REMEASURE_AS_MONETARY"
+        )
+        sent = post(world.app, f"/api/v1/policy-overrides/{identifier}/submit", world.maya, {})
+        assert sent.status_code == 200, sent.text
+        decided = approve(world.app, sent.json()["approval_request_id"], world.marcus)
+        assert decided.status_code == 200, decided.text
+    computed(world.place, group_id)
+    reporting = worlds.ReportWorld(
+        place=world.place,
+        priya=world.priya,
+        marcus=world.marcus,
+        runtime=JobRuntime(
+            clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+        ),
+        entity_id=world.place.scalar(
+            select(legal_entity.c.id).where(legal_entity.c.code == ENTITY)
+        ),
+        contracts={},
+    )
+    run, rows = worlds.report_run(
+        reporting,
+        "balance_aging",
+        {
+            "entity_codes": [ENTITY],
+            "book": BOOK,
+            "period_key": "FY2026-P09",
+            "currency_view": "functional",
+        },
+    )
+    (row,) = [item for item in rows if item["row_key"].startswith("contract:")]
+    assert row["balance_role"] == "Contract liability"
+    assert row["bucket_91_180"] == {
+        "currency": "GBP",
+        "amount": "77400.00" if monetary else "72000.00",
+    }
+    assert row["bucket_31_90"] == {
+        "currency": "GBP",
+        "amount": "8600.00" if monetary else "8400.00",
+    }
+    assert row["total"] == {"currency": "GBP", "amount": "86000.00" if monetary else "80400.00"}
+    assert run["tie_out_results"][0]["result"] == "PASS"
+    approved_manual_events(
+        world.place,
+        world.priya,
+        contract_id,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-09-10",
+            "payload": {"obligation_key": "O1", "quantity": "120", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    after, remaining = worlds.report_run(
+        reporting,
+        "balance_aging",
+        {
+            "entity_codes": [ENTITY],
+            "book": BOOK,
+            "period_key": "FY2026-P09",
+            "currency_view": "functional",
+        },
+    )
+    (row,) = [item for item in remaining if item["row_key"].startswith("contract:")]
+    assert row["bucket_91_180"] == {
+        "currency": "GBP",
+        "amount": "30960.00" if monetary else "28800.00",
+    }
+    assert row["bucket_31_90"] == {
+        "currency": "GBP",
+        "amount": "8600.00" if monetary else "8400.00",
+    }
+    assert after["tie_out_results"][0]["result"] == "PASS"

@@ -6,10 +6,10 @@ including the revenue date and the separate presentation-role amounts. No close 
 required, including with ERP billing. Each contract/entity/role/currency reconciles separately.
 
 Older versions without aging attributions refuse rather than reconstructing presentation or
-ages from today's configuration. This report currently supports transaction currency; functional
-balances require transaction and functional currencies to coincide. Reporting view translates
-those functional buckets at retained approved closing rates. Cumulative bucket rounding
-preserves the translated balance; the original tie-out remains in functional currency.
+ages from today's configuration. Functional views read original reclass shares and signed
+liability-layer movements, preserving original dates and reconciling each member/role to its
+retained functional balance. Reporting view applies retained closing rates with cumulative
+bucket rounding; its balance tie-out remains in functional currency.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import fx_layer_movement
-from erev_api.domain.reports import reporting_currency, tie_outs
+from erev_api.domain.reports import functional_balances, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, aging_attributions
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -246,12 +246,13 @@ def _liability_layers(
     book_code: str,
     period_ends: Mapping[UUID, date],
     balances: Sequence[BalanceRow],
+    functional: Mapping[UUID, str] | None = None,
 ) -> list[Layer]:
     """Age the exact remaining layers of the versions selected by the report binding.
 
     A layer's creation date survives partial consumption; movement IDs determine its identity,
     so the reader must not replay FIFO across contracts or independently select a newer version.
-    Remeasurements do not change the transaction-currency amount aged by this report.
+    Remeasurements affect functional carrying only and never reset the original age.
     """
     if not balances or not period_ends:
         return []
@@ -269,15 +270,26 @@ def _liability_layers(
         owner = (row["contract_id"], row["entity_id"], row["contract_version_id"])
         if owner not in names or row["effective_date"] > period_ends[row["entity_id"]]:
             continue
-        key = (*owner, str(row["layer_key"]), str(row["txn_currency"]).strip())
+        currency = str(row["txn_currency"]).strip()
+        foreign = functional is not None and currency != functional[row["entity_id"]]
+        if foreign and functional is not None:
+            currency = str(row["functional_currency"]).strip()
+            if currency != functional[row["entity_id"]]:
+                raise tie_outs.invalid(
+                    "currency_view", "Functional layer currency is inconsistent."
+                )
+        field = "amount_functional" if foreign else "amount_txn"
+        key = (*owner, str(row["layer_key"]), currency)
         created_on, amount = grouped.get(key, (None, ZERO))
         kind = row["movement_kind"]
         if kind == "LIABILITY_LAYER_CREATED":
             day = row["effective_date"]
             created_on = day if created_on is None else min(created_on, day)
-            amount += Decimal(row["amount_txn"])
+            amount += Decimal(row[field])
         elif kind == "LIABILITY_LAYER_CONSUMED":
-            amount -= Decimal(row["amount_txn"])
+            amount -= Decimal(row[field])
+        elif foreign and kind == "LIABILITY_LAYER_REMEASURED":
+            amount += Decimal(row[field])
         grouped[key] = (created_on, amount)
     result: list[Layer] = []
     for (contract_id, entity_id, version_id, _, currency), (created_on, amount) in grouped.items():
@@ -308,10 +320,15 @@ def _layers(
     book_code: str,
     period_ends: Mapping[UUID, date],
     balances: Sequence[BalanceRow],
+    functional: Mapping[UUID, str] | None = None,
 ) -> list[Layer]:
     """Version-bound liability movements and engine asset/unbilled presentation shares."""
     layers = _liability_layers(
-        session, book_code=book_code, period_ends=period_ends, balances=balances
+        session,
+        book_code=book_code,
+        period_ends=period_ends,
+        balances=balances,
+        functional=functional,
     )
     traces = {
         version_id: store.load_trace(session, version_id)
@@ -327,6 +344,7 @@ def _layers(
             entity=row.entity_code,
             currency=row.currency,
             end=end,
+            functional_currency=None if functional is None else functional[row.entity_id],
         ):
             layers.append(
                 Layer(
@@ -336,7 +354,7 @@ def _layers(
                     entity_id=row.entity_id,
                     entity_code=row.entity_code,
                     balance_role=role,
-                    currency=row.currency,
+                    currency=row.currency if functional is None else functional[row.entity_id],
                     amount=amount,
                     effective_date=day,
                 )
@@ -386,16 +404,39 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         cutoff=cutoff,
         params=params,
     )
+    functional_key = "aging_functional_layers_v1"
+    functional = (
+        {entity.id: entity.functional_currency for entity in found}
+        if params.parameters.get("currency_view") in {"functional", "reporting"}
+        and (params.binding is None or functional_key in params.binding.evidence)
+        else None
+    )
     layers = _layers(
         session,
         book_code=book_code,
         period_ends=period_ends,
         balances=balances,
+        functional=functional,
     )
+    if functional is not None:
+        balances = functional_balances.read(
+            session,
+            params,
+            balances,
+            entities=found,
+            periods=at,
+            book_code=book_code,
+        )
+        if params.sources is not None:
+            params.sources.record_evidence(functional_key, {"basis": "retained_engine_sources"})
     role_filter = str(params.parameters.get("balance_role") or "ALL")
     rows = aged_rows(layers, period_ends)
     _check_view(params, found, rows)
     check = aging_tie(rows, balances)
+    if functional is not None and check["result"] != tie_outs.PASS:
+        raise tie_outs.invalid(
+            "currency_view", "Functional aging layers do not reconcile to retained member balances."
+        )
     translation = None
     key = "aging_reporting_translation_v1"
     if params.parameters.get("currency_view") == "reporting" and (

@@ -6,6 +6,24 @@
 
 
 
+## Original functional aging layers — October 20, 2026
+
+- Foreign asset/unbilled aging now reads original S12 reclass shares in functional currency,
+  retaining the original S10 revenue date. Missing, wrong-currency or unlinked share evidence
+  is refused; no report-side FX ratio is applied to those balances.
+- Liability aging uses signed functional creation/consumption/remeasurement amounts from the
+  selected version's immutable layers. Historical carrying and the approved monetary override
+  preserve original creation dates, including partial consumption.
+- New functional bindings retain this source path. Each member/role must match its dated
+  functional balance before display; unmatched combined-member ownership remains unavailable.
+  Reporting translation follows the existing retained closing-rate/cumulative-rounding path.
+- Four API journeys pass: EUR unbilled dated remeasurement and reruns, historical and monetary
+  USD/GBP liability layers with partial consumption, and reporting translation compatibility.
+  Targeted core checks, lint/types and migration 0233 roundtrip/IPE agreement pass.
+- A separate diagnostic exposed S04-R-02 failure after over-billing a right-to-invoice contract;
+  it is recorded in LIMITS for follow-up. Locked aging datasets, combined-member allocation
+  expansion, independent accounting acceptance and final candidate checks remain open.
+
 ## Reporting-currency balance aging — October 20, 2026
 
 - Fixed reporting view returning untranslated aging amounts when transaction and functional
@@ -218,24 +236,6 @@
 - Migration 0223 describes this path. Multi-origin split and within-period mixed attribution,
   broader agent close/reversal acceptance and independent accounting sign-off remain open.
   The disclosure's existing gross-control-relief column policy is unchanged. No deployment.
-
-
-## Agent gross/net reporting attribution — October 20, 2026
-
-- Retained revenue histories now include only the AP_SUPPLIER purpose of revenue-recognition
-  clearing lines. Close-pass envelopes declare that capability; older envelopes without it
-  remain unavailable. Original intent, purpose and paid-history amounts are checked.
-- Agent control relief is reconciled against separate net revenue and supplier components in
-  both currencies. Original split formulas/rounding and unique source ownership are replayed;
-  report evidence retains both component IDs and amounts without relabelling gross relief as net revenue.
-- The actual merchant engine example reproduces 120,000 gross / 19,200 net / 100,800 supplier.
-  The DB workflow exercises two deliveries, supplier paid history and public balance-rollforward
-  and opening-liability reports in transaction, functional and reporting views with identical
-  retained reruns. Intercompany reversal, 36 scoped cases, lint/types and migration checks pass.
-- This supersedes the preceding entry's missing supplier-history/control matcher limitation.
-  Multiple-origin split inputs, zero-net agent paths, within-period mixed-source attribution,
-  and broad close-pass agent acceptance remain open; no overall production readiness is claimed.
-  Migration 0222 documents the two consumers. Direct main publication; no deployment.
 
 
 ## Outstanding release verification

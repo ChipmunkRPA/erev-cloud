@@ -1,5 +1,31 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — original functional aging attribution
+
+Foreign asset/unbilled aging now reads original functional S12 reclass shares with S10 revenue
+dates. Liability aging reads original functional layer creations, consumptions and signed
+remeasurements, without resetting creation dates. Both historical layering and the approved
+monetary override are supported. Every member/role must reconcile to its retained dated
+functional balance; the report refuses missing/corrupt attribution and unmatched member
+ownership. It does not infer a combined member's age distribution from a grand-total ratio.
+New bindings retain this path; earlier bindings preserve their original behavior. Reporting
+translation continues from functional balances with retained closing rates and conserved totals.
+
+Four API journeys cover EUR unbilled remeasurement at two dates and bound reruns, USD/GBP
+historical and monetary liability layers before/after partial consumption, and existing
+reporting translation. Pure checks validate original dates, split roles and invalid sources.
+Migration 0233 roundtrips and matches the IPE catalogue. Combined-member functional age
+allocation beyond reconciling original owner layers, locked aging datasets, broader lifecycle
+acceptance, independent accounting acceptance and final candidate checks remain open.
+
+Separate unresolved engine finding: starting with `close_run_worlds.eur_receivable` (EUR 100/hour,
+100 hours delivered August 31, no invoices), append EUR 15,000 billing dated August 1 and EUR
+5,000 dated September 1, then recompute. The engine raises S04-R-02 (`sum a_posted =
+allocation_basis`). This over-billed right-to-invoice scenario needs investigation of billing
+admission and allocation identity; the successful fixed-price liability journeys do not cover
+or resolve it. No production-readiness claim and no deployment.
+
+
 ### October 20 — reporting-currency aging view
 
 For supported functional aging balances (transaction and functional currency coincide),

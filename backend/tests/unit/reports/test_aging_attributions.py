@@ -79,3 +79,42 @@ def test_older_trace_refuses_instead_of_guessing_dates_or_presentation() -> None
         read(replace(old, params={"as_of": "2026-03-31", "key": "encoded-subject"}))
     with pytest.raises(Problem):
         attributions(None, contract=CONTRACT, entity=ENTITY, currency="USD", end=date(2026, 3, 31))
+
+
+def test_functional_roles_use_original_shares_with_original_revenue_date() -> None:
+    source = node("FY2026-P03", "2026-03-31", "2026-01-05", "2000", "3000")
+    shares = tuple(
+        replace(
+            source,
+            id=f"fx_reclass_share:encoded-subject#{role}:FY2026-P03",
+            measure="fx_reclass_share",
+            value=amount,
+            currency="GBP",
+            formula_id="alloc.largest_remainder.v1",
+            inputs=(source.id,),
+        )
+        for role, amount in (("CONTRACT_ASSET", "1601.23"), ("UNBILLED_RECEIVABLE", "2402.34"))
+    )
+
+    def functional(nodes: tuple[TraceNode, ...]) -> list[tuple[date, str, Decimal]]:
+        return attributions(
+            Trace(1, "test", nodes, {}),
+            contract=CONTRACT,
+            entity=ENTITY,
+            currency="USD",
+            functional_currency="GBP",
+            end=date(2026, 3, 31),
+        )
+
+    assert functional((source, *shares)) == [
+        (date(2026, 1, 5), "UNBILLED_RECEIVABLE", Decimal("2402.34")),
+        (date(2026, 1, 5), "CONTRACT_ASSET", Decimal("1601.23")),
+    ]
+    for invalid in (
+        shares[1:],
+        (replace(shares[0], currency="EUR"), shares[1]),
+        (replace(shares[0], inputs=()), shares[1]),
+        (replace(shares[0], value="NaN"), shares[1]),
+    ):
+        with pytest.raises(Problem):
+            functional((source, *invalid))

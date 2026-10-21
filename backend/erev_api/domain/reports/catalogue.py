@@ -1919,6 +1919,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fx_rate",
             "fx_rate_set",
             "fx_rate_set_version",
+            "contract_version",
+            "contract_computation",
+            "combination_group_member",
         ),
         joins=(
             "fx_layer_movement.contract_version_id = contract_version_balance.contract_version_id",
@@ -1933,12 +1936,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "liability age: layer creation date to period end",
             "asset/unbilled age: engine attribution revenue date to period end",
             "balance_role when not ALL",
-            "Reporting-currency aging translates supported functional age buckets at "
-            "retained approved closing rates, rounds cumulative buckets to conserve the "
-            "translated balance; "
-            "balance tie-outs remain in functional currency; foreign transaction-currency "
-            "aging without functional layer attribution remains unavailable; legacy "
-            "bindings retain their original view",
+            "Functional aging uses retained original reclass shares for assets and unbilled "
+            "receivables and signed functional liability-layer movements with original "
+            "dates; each member and role must reconcile to dated functional balances; "
+            "reporting view uses retained closing rates and cumulative bucket rounding; "
+            "legacy bindings retain original behavior",
         ),
         tie_outs=("TO_AGING_EQ_BALANCES",),
     ),
