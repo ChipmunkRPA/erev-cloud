@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Book Bridge foreign-contract functional amounts — October 21, 2026
+
+- The registered Book Bridge still rejected foreign contracts in Functional view. It now reads
+  posted amount_functional revenue and the shared dated functional member-balance projection
+  for each book. Transaction view retains original-currency values; no single current rate is
+  applied to historical-layer liabilities or monetary balance targets.
+- A foreign functional difference left in OTHER no longer presents advance-consideration FX
+  as a proven zero: that driver is unquantified while the residual stays in OTHER and the driver
+  tie-out still sums to the book difference. Existing collectibility, loss-provision and cost
+  impairment precedence remains. Reporting currency is explicitly refused instead of being
+  silently treated as functional. Migration 0292 describes the expanded currency basis.
+- Necessary checks passed: both-book foreign revenue through public report runs (GBP 4,790.61
+  transaction versus posted USD 6,131.98 functional), existing collectibility bridge and output
+  checks, driver/tie-out behavior with an unclassified FX residual, catalogue parity and types/lint.
+- Remaining financial Reporting work is explicit: Book Bridge reporting-currency translation,
+  granular causal attribution of framework/licence/FX effects and same-source retention; inspect
+  Adoption Bridge and Intercompany Pairs currency/source gaps next. These are real builder
+  limitations, not closed by the preceding audit-report retention work. No deployment.
+
 ## Audit chain verification report retained inputs — October 21, 2026
 
 - Historical chain-verification reports now require the original verification transaction to

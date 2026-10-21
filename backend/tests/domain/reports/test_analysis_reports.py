@@ -736,3 +736,45 @@ def test_balance_aging_rerun_keeps_versions_after_later_billing(
     data = get(app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
     assert data.status_code == 200, data.text
     assert data.json()["items"] == rows
+
+
+def test_book_bridge_foreign_revenue_uses_posted_functional_amounts(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    from support.factories import computed
+    from support.worlds import _book_kept
+
+    k04 = k04_saltmarsh(app, keyring, clock, files)
+    world = k04.report
+    for code, identity in ((AVM_US, k04.us_entity_id), (AVM_UK, k04.uk_entity_id)):
+        _book_kept(
+            app,
+            world.maya,
+            world.marcus,
+            entity_code=code,
+            entity_id=identity,
+            book="IFRS15",
+            keys=[f"FY2026-P{m:02d}" for m in range(1, 10)],
+        )
+    computed(world.place, k04.group_id)
+    parameters = {
+        "entity_codes": [AVM_US],
+        "from_period_key": SEPTEMBER_2026,
+        "to_period_key": SEPTEMBER_2026,
+    }
+    functional, functional_rows = report_run(world, "book_bridge", parameters)
+    transaction, transaction_rows = report_run(
+        world,
+        "book_bridge",
+        {**parameters, "currency_view": "transaction"},
+    )
+    revenue = keyed(functional_rows)["measure:REVENUE"]
+    txn_revenue = keyed(transaction_rows)["measure:REVENUE"]
+    assert revenue["asc606_amount"] == usd("6131.98")
+    assert revenue["ifrs15_amount"] == usd("6131.98")
+    assert txn_revenue["asc606_amount"] == gbp("4790.61")
+    assert txn_revenue["ifrs15_amount"] == gbp("4790.61")
+    assert {row["currency"] for row in functional_rows} == {"USD"}
+    assert {row["currency"] for row in transaction_rows} == {"GBP"}
+    assert tie_of(functional, "TO_BRIDGE_DRIVERS_EQ_DIFFERENCE")["result"] == "PASS"
+    assert tie_of(transaction, "TO_BRIDGE_DRIVERS_EQ_DIFFERENCE")["result"] == "PASS"

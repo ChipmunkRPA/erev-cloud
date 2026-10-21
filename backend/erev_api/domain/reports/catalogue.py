@@ -2194,6 +2194,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "one entity of entity_codes keeping both ASC606 and IFRS15",
             _PERIODS,
             "the same contracts compared in both books, differences attributed to drivers",
+            "functional view uses posted functional revenue and dated engine member balances; "
+            "transaction view preserves original currencies; reporting view is unavailable",
+            "foreign functional residuals remain in OTHER; advance-consideration FX is "
+            "unquantified when causal evidence cannot isolate it, never an unsupported zero",
         ),
         tie_outs=("TO_BRIDGE_DRIVERS_EQ_DIFFERENCE",),
     ),

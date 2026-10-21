@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Book Bridge foreign-contract functional amounts — October 21, 2026
+
+- The registered Book Bridge still rejected foreign contracts in Functional view. It now reads
+  posted amount_functional revenue and the shared dated functional member-balance projection
+  for each book. Transaction view retains original-currency values; no single current rate is
+  applied to historical-layer liabilities or monetary balance targets.
+- A foreign functional difference left in OTHER no longer presents advance-consideration FX
+  as a proven zero: that driver is unquantified while the residual stays in OTHER and the driver
+  tie-out still sums to the book difference. Existing collectibility, loss-provision and cost
+  impairment precedence remains. Reporting currency is explicitly refused instead of being
+  silently treated as functional. Migration 0292 describes the expanded currency basis.
+- Necessary checks passed: both-book foreign revenue through public report runs (GBP 4,790.61
+  transaction versus posted USD 6,131.98 functional), existing collectibility bridge and output
+  checks, driver/tie-out behavior with an unclassified FX residual, catalogue parity and types/lint.
+- Remaining financial Reporting work is explicit: Book Bridge reporting-currency translation,
+  granular causal attribution of framework/licence/FX effects and same-source retention; inspect
+  Adoption Bridge and Intercompany Pairs currency/source gaps next. These are real builder
+  limitations, not closed by the preceding audit-report retention work. No deployment.
+
 ## Audit chain verification report retained inputs — October 21, 2026
 
 - Historical chain-verification reports now require the original verification transaction to
@@ -206,25 +225,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: first-generation actor/display-name history and broader sample approval-request,
   audit, event, computation and document histories. This change covers JE Population's
   decision/ack readers; it does not silently apply a partial cutoff to entire approval packs.
-
-## Contract sample journal commit evidence — October 21, 2026
-
-- New sample/journals.json v2 excludes journal lines committed after the request cutoff and
-  resolves run/batch lifecycle through committed revisions. Cancelled lines remain in evidence
-  with their state at cutoff; a late-committed cancellation cannot rewrite the old state.
-- Posting-entity discovery respects complete original posting commits. Every drilled source
-  line must have committed by cutoff before contributing to whole-line reconciliation and the
-  separately calculated sampled-contract amount. Evidence includes original journal/posting
-  commit times and run/batch revision identities; existing archived packs remain unchanged.
-- Migration 0281 synchronizes the contract sample catalogue's source tables and cutoff basis.
-  Necessary checks passed: exclusion before journal commit, actual overlapping cancellation,
-  historical/latest state labels, contribution conservation, full computation/sample archive
-  and PDF/XLSX flow, catalogue parity, scoped lint/types.
-- Remaining: first-generation ancillary approval/ack/name histories and broader sample event,
-  computation, decision and document histories need their own cutoff review. Period dates
-  changed after cutoff continue to refuse explicitly. This completes the journal slice, not
-  an assertion that every source in the entire evidence pack has historical commit coverage.
-  No deployment.
 
 ## Outstanding release verification
 

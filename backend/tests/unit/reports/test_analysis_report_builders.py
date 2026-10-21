@@ -704,3 +704,22 @@ def test_book_bridge_currencies_offsets_and_view() -> None:
     with pytest.raises(Problem) as refused:
         bridge.check_view("functional", [up, pound], functional_currency="USD")
     assert refusal(refused) == ("parameters.currency_view", FUNCTIONAL_ONLY)
+
+
+def test_book_bridge_functional_fx_residual_is_not_a_false_zero() -> None:
+    item = bridge.Compared(
+        contract_external_id="FOREIGN-1",
+        currency="USD",
+        asc606={"REVENUE": Decimal("130")},
+        ifrs15={"REVENUE": Decimal("125")},
+        fx_attribution_unavailable=True,
+    )
+    rows, _, tie = bridge.dataset_rows([item])
+    drivers = {row["driver_code"]: row for row in rows if row["section"] == 2}
+    assert drivers["ADVANCE_CONSIDERATION_FX"]["effect"] is None
+    assert drivers["OTHER"]["effect"] == {"amount": "5.00", "currency": "USD"}
+    assert tie["result"] == "PASS"
+    with pytest.raises(Problem) as refused:
+        bridge.check_view("reporting", [item], functional_currency="USD")
+    assert refused.value.errors[0].field == "parameters.currency_view"
+    assert refused.value.errors[0].message == "Choose Transaction or Functional currency."

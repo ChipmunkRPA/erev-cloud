@@ -11412,3 +11412,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining historical-source gaps include first-generation approval/ack/name inputs and sample
   journal evidence. Retention guarantees repeatability of consumed inputs; it does not assert
   arbitrary historical reconstruction of these ancillary sources. No deployment.
+
+## Contract sample journal commit evidence — October 21, 2026
+
+- New sample/journals.json v2 excludes journal lines committed after the request cutoff and
+  resolves run/batch lifecycle through committed revisions. Cancelled lines remain in evidence
+  with their state at cutoff; a late-committed cancellation cannot rewrite the old state.
+- Posting-entity discovery respects complete original posting commits. Every drilled source
+  line must have committed by cutoff before contributing to whole-line reconciliation and the
+  separately calculated sampled-contract amount. Evidence includes original journal/posting
+  commit times and run/batch revision identities; existing archived packs remain unchanged.
+- Migration 0281 synchronizes the contract sample catalogue's source tables and cutoff basis.
+  Necessary checks passed: exclusion before journal commit, actual overlapping cancellation,
+  historical/latest state labels, contribution conservation, full computation/sample archive
+  and PDF/XLSX flow, catalogue parity, scoped lint/types.
+- Remaining: first-generation ancillary approval/ack/name histories and broader sample event,
+  computation, decision and document histories need their own cutoff review. Period dates
+  changed after cutoff continue to refuse explicitly. This completes the journal slice, not
+  an assertion that every source in the entire evidence pack has historical commit coverage.
+  No deployment.

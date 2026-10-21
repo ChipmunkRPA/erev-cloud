@@ -29,14 +29,14 @@ identified from stored facts, in this order:
    the contract on or before the range end (POL-144).
 4. ``OTHER`` — every other difference.
 
-``ADVANCE_CONSIDERATION_FX`` is 0.00 by construction: the IFRIC 22 layer date (POL-160, POL-163)
-moves functional amounts only, and the report serves transaction-currency amounts — the
-``functional`` view (the default) only when every contract is in the entity's functional
-currency, else it is refused by name. ``FRAMEWORK_ELECTIONS`` and ``LICENCE_RENEWALS`` cannot be
-identified from stored facts in 1.0 (the switches of POLICIES §6.2 differ between the books of
-every contract; which of them moved an amount is not stored): their effect is part of ``OTHER``.
-Their cells show 0.00 when no contract's difference in the measure is left to ``OTHER`` — then
-nothing can belong to them — and are empty otherwise, never an unsupported 0.00.
+The transaction view compares original currency amounts. The functional view reads posted
+functional revenue and the engine's dated functional member-balance targets, preserving monetary
+remeasurement and historical layers rather than translating all captions at one current rate.
+``FRAMEWORK_ELECTIONS`` and ``LICENCE_RENEWALS`` cannot yet be isolated from stored driver facts;
+their effects remain in ``OTHER`` and their cells are empty when OTHER holds a difference.
+``ADVANCE_CONSIDERATION_FX`` is zero in transaction currency. In a functional view with foreign
+contracts and an unclassified difference, its cell is also empty: the full residual remains in
+OTHER until causal evidence can separate the FX component. Reporting-currency view is not served.
 
 Section 1 "Summary by measure": ``row_key`` ``measure:<MEASURE>``; section 2 "Difference by
 driver": ``row_key`` ``driver:<DRIVER>:<MEASURE>``, every driver for each measure in which a
@@ -58,7 +58,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract, contract_version, entity_book, subledger_line
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import functional_balances, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY, ranges
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
@@ -156,6 +156,7 @@ class Compared:
     ifrs15: Mapping[str, Decimal] = field(default_factory=dict)
     step1_differs: bool = False  # ``step1_differs`` over the contract's versions in both books
     impairment_reversed: bool = False  # the IFRS 15 book posted a JET-09d reversal
+    fx_attribution_unavailable: bool = False
 
     def amounts(self, measure: str) -> tuple[Decimal, Decimal]:
         return self.asc606.get(measure, ZERO), self.ifrs15.get(measure, ZERO)
@@ -201,8 +202,9 @@ def driver_of(item: Compared, measure: str) -> str:
 
 
 def check_view(view: str, found: Iterable[Compared], *, functional_currency: str) -> None:
-    """``transaction`` always; another view only when every contract is in the entity's
-    functional currency, else refused by name (as RPT-03)."""
+    """Accept transaction or already-projected functional inputs; reject other views."""
+    if view not in {"transaction", "functional"}:
+        raise tie_outs.invalid("currency_view", "Choose Transaction or Functional currency.")
     if view != "transaction" and any(item.currency != functional_currency for item in found):
         raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
 
@@ -224,6 +226,7 @@ def dataset_rows(
     sums: dict[str, dict[str, list[Decimal]]] = {}
     # (currency, measure) → driver → [effect, contracts affected]
     effects: dict[tuple[str, str], dict[str, list[Any]]] = {}
+    unknown_fx: set[tuple[str, str]] = set()
     contract_rows: list[dict[str, Any]] = []
     for item in listed:
         into = sums.setdefault(item.currency, {measure: [ZERO, ZERO] for measure in MEASURES})
@@ -235,6 +238,8 @@ def dataset_rows(
             if difference == 0:
                 continue
             driver = driver_of(item, measure)
+            if item.fx_attribution_unavailable and driver == OTHER:
+                unknown_fx.add((item.currency, measure))
             by_driver = effects.setdefault(
                 (item.currency, measure), {code: [ZERO, 0] for code in DRIVERS}
             )
@@ -292,7 +297,10 @@ def dataset_rows(
             unattributed = differing[OTHER][1] > 0
             for driver in DRIVERS:
                 effect, affected = differing[driver]
-                hidden = driver in UNIDENTIFIED and unattributed
+                hidden = unattributed and (
+                    driver in UNIDENTIFIED
+                    or (driver == "ADVANCE_CONSIDERATION_FX" and (currency, measure) in unknown_fx)
+                )
                 rows.append(
                     {
                         "row_key": f"{DRIVER_PREFIX}{driver}:{measure}{suffix}",
@@ -344,6 +352,8 @@ class _Contract:
     asc606: dict[str, Decimal] = field(default_factory=dict)
     ifrs15: dict[str, Decimal] = field(default_factory=dict)
 
+    has_foreign_currency: bool = False
+
     def book(self, code: str) -> dict[str, Decimal]:
         return self.asc606 if code == ASC606 else self.ifrs15
 
@@ -368,13 +378,19 @@ def _revenue(
 ) -> None:
     """The entity's revenue per contract and book over ``items``: credit less debit of the
     ``REVENUE`` lines recorded by ``known_at``."""
+    functional = (
+        str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) == "functional"
+    )
+    currency = subledger_line.c.functional_currency if functional else subledger_line.c.txn_currency
+    amount = subledger_line.c.amount_functional if functional else subledger_line.c.amount_txn
     statement = (
         select(
             subledger_line.c.contract_id,
             contract.c.external_id,
             subledger_line.c.book_code,
+            currency.label("currency"),
             subledger_line.c.txn_currency,
-            func.sum(subledger_line.c.amount_txn).label("amount"),
+            func.sum(amount).label("amount"),
         )
         .select_from(
             subledger_line.join(
@@ -397,14 +413,16 @@ def _revenue(
             contract.c.external_id,
             subledger_line.c.book_code,
             subledger_line.c.txn_currency,
+            currency,
         )
         .order_by(contract.c.external_id, subledger_line.c.book_code)
     )
     for row in session.execute(statement).mappings():
         found = into.setdefault(
             UUID(str(row["contract_id"])),
-            _Contract(str(row["external_id"]), str(row["txn_currency"]).strip()),
+            _Contract(str(row["external_id"]), str(row["currency"]).strip()),
         )
+        found.has_foreign_currency |= str(row["txn_currency"]).strip() != entity.functional_currency
         amounts = found.book(str(row["book_code"]))
         # a revenue line is a credit: signed debit positive (T-SL-04)
         amounts[REVENUE] = amounts.get(REVENUE, ZERO) - Decimal(row["amount"])
@@ -420,15 +438,27 @@ def _balances(
     """The presented balances of each book at the end of ``last``."""
     cutoff = tie_outs.cutoff_for(session, params)
     for book_code in BOOKS:
-        for row in tie_outs.balances_at(
+        rows = tie_outs.balances_at(
             session,
             entity_ids=(entity.id,),
             book_code=book_code,
             period_keys={entity.id: last},
             cutoff=cutoff,
             params=params,
-        ):
+        )
+        foreign = {row.contract_id for row in rows if row.currency != entity.functional_currency}
+        if str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) == "functional":
+            rows = functional_balances.read(
+                session,
+                params,
+                rows,
+                entities=(entity,),
+                periods={entity.id: last},
+                book_code=book_code,
+            )
+        for row in rows:
             found = into.setdefault(row.contract_id, _Contract(row.external_id, row.currency))
+            found.has_foreign_currency |= row.contract_id in foreign
             amounts = found.book(book_code)
             for measure, balance in BALANCE_OF.items():
                 amounts[measure] = row.value(balance)
@@ -514,6 +544,11 @@ def sources(
             ifrs15=dict(found.ifrs15),
             step1_differs=contract_id in differing,
             impairment_reversed=contract_id in reversed_ids,
+            fx_attribution_unavailable=(
+                found.has_foreign_currency
+                and str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+                == "functional"
+            ),
         )
         for contract_id, found in sorted(contracts.items(), key=lambda pair: pair[1].external_id)
     ]
