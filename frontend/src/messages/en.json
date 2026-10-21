@@ -7926,5 +7926,11 @@
   "deal.history.open": "Open preview (new tab)",
   "deal.history.openDraft": "Open draft (new tab)",
   "deal.history.more": "Load older previews",
-  "deal.revenue_to_date": "Simulated revenue to calculation date"
+  "deal.revenue_to_date": "Simulated revenue to calculation date",
+  "modifications.wizard.change.terminationKind": "Termination scope",
+  "modifications.wizard.change.terminationHelp": "Use Remove lines with non-positive quantity and consideration changes. The refund cannot exceed consideration forgone.",
+  "modifications.wizard.change.terminationFull": "All remaining obligations",
+  "modifications.wizard.change.terminationPartial": "Only obligations in the remove lines",
+  "modifications.wizard.change.terminationRefund": "Refund amount",
+  "modifications.wizard.error.terminationRefund": "Enter a non-negative refund amount."
 }

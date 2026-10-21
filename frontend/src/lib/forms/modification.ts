@@ -130,6 +130,8 @@ export interface ChangeForm {
   /** Kind `PRICE_CHANGE`: the obligation whose price changes and the amount (SCREENS §7.4). */
   readonly priceObligationKey: string | null;
   readonly priceChangeAmount: string;
+  readonly terminationKind?: "FULL" | "PARTIAL";
+  readonly terminationRefund?: string;
 }
 
 export const CHANGE_LINES_FIELD = "lines";
@@ -172,6 +174,8 @@ export function emptyChange(
     lines: [emptyChangeLine(firstLineId)],
     priceObligationKey: obligationKey,
     priceChangeAmount: "",
+    terminationKind: "FULL",
+    terminationRefund: "0",
   };
 }
 
@@ -257,6 +261,14 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
   const header = checkHeader(form, errors);
   if (form.rationale.length > 4000) {
     errors.rationale = tooLong(4000);
+  }
+  const terminationRefund =
+    form.kind === "TERMINATION" ? moneyOf(form.terminationRefund ?? "0", currency) : null;
+  if (
+    form.kind === "TERMINATION" &&
+    (terminationRefund === null || terminationRefund.startsWith("-"))
+  ) {
+    errors.terminationRefund = t("modifications.wizard.error.terminationRefund");
   }
   const lines: ModificationLineBody[] = [];
   let priceChangeAmount: string | null = null;
@@ -374,6 +386,14 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
       rationale: form.rationale.trim() === "" ? null : form.rationale.trim(),
       lines,
       ...(priceChangeAmount === null ? {} : { price_change_amount: priceChangeAmount }),
+      ...(form.kind === "TERMINATION" && terminationRefund !== null
+        ? {
+            termination: {
+              kind: form.terminationKind ?? "FULL",
+              refund_amount: money(terminationRefund, currency),
+            },
+          }
+        : {}),
     } satisfies ModificationCreateBody,
     errors,
   };
@@ -423,6 +443,7 @@ export function changeFromModification(
     | "rationale"
     | "lines"
     | "price_change_amount"
+    | "termination"
     | "currency"
   >,
   lineId: (index: number) => string,
@@ -432,6 +453,8 @@ export function changeFromModification(
   const priced = modification.kind === PRICE_CHANGE ? rows[0] : undefined;
   return {
     kind: modification.kind,
+    terminationKind: modification.termination?.kind ?? "FULL",
+    terminationRefund: modification.termination?.refund_amount?.amount ?? "0",
     reference: modification.reference ?? "",
     effectiveDate: dateText(modification.effective_date),
     rationale: modification.rationale ?? "",

@@ -1360,3 +1360,31 @@ def test_main_defect_3_the_engine_literal_and_both_boundaries_are_pinned() -> No
     for function in (modifications.classify, modifications.run_preview):
         source = inspect.getsource(function)
         assert source.index("NativeCurrencyMismatch") < source.index("s06_r19_refusal(error, row)")
+
+
+@pytest.mark.parametrize("kind", ["FULL", "PARTIAL"])
+def test_explicit_termination_event_carries_approved_scope_and_refund(kind: str) -> None:
+    row = {
+        **_row(),
+        "kind": "TERMINATION",
+        "termination": {"kind": kind, "refund_amount": {"amount": "40.00", "currency": "USD"}},
+        "lines": [
+            {
+                "obligation_key": "O1",
+                "action": "REMOVE",
+                "quantity_delta": "0",
+                "consideration_delta": {"amount": "-40.00", "currency": "USD"},
+            }
+        ],
+    }
+    event = modifications._amended_event(row, approval_request_id=None)
+    assert event.event_type.value == "CONTRACT_TERMINATED"
+    assert event.payload.termination_kind == kind
+    assert event.payload.obligation_keys == ("O1",)
+    assert event.payload.refund_amount.amount == "40.00"
+    assert modifications._termination_errors(row, "USD") == []
+    assert modifications._termination_errors(row, "EUR")
+    assert modifications._termination_errors({**row, "termination": None}, "USD")
+    assert modifications._termination_errors({**row, "kind": "PRICE_CHANGE"}, "USD")
+    row["termination"]["refund_amount"]["amount"] = "41.00"
+    assert modifications._termination_errors(row, "USD")

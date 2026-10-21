@@ -248,6 +248,7 @@ modification: Final = Table(
     Column("reference", Text(), nullable=True),
     Column("questionnaire", JSONB(), nullable=False, server_default=text("'{}'::jsonb")),
     Column("lines", JSONB(), nullable=False),
+    Column("termination", JSONB(none_as_null=True), nullable=True),
     Column("price_change_amount", MoneyType(), nullable=True),
     Column("noncash_consideration", JSONB(none_as_null=True), nullable=True),
     Column("consideration_payable", JSONB(none_as_null=True), nullable=True),

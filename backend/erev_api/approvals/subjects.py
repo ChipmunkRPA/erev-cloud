@@ -4036,6 +4036,7 @@ MODIFICATION_CONTENT_MEMBERS: Final = (
     "lines",
     "questionnaire",
     "price_change_amount",
+    "termination",
     "price_change_settlement",
     "noncash_consideration",
     "consideration_payable",
@@ -4110,7 +4111,11 @@ def modification_content(session: Session, subject_id: UUID) -> dict[str, Any]:
         regroup_id = None if row["regroup_id"] is None else str(row["regroup_id"])
         members = _member_states(session, _group_member_ids(session, contract_id))
         (state,) = _member_states(session, [contract_id])
-        authored = {name: canonical_value(row.get(name)) for name in MODIFICATION_CONTENT_MEMBERS}
+        authored = {
+            name: canonical_value(row.get(name))
+            for name in MODIFICATION_CONTENT_MEMBERS
+            if name != "termination" or row.get(name) is not None
+        }
         authored["judgement_content_sha256"] = _judgement_sha(session, row["judgement_record_id"])
         # 04 §16.10 rev 1.210 (item MOD-LINKED-ESTIMATES-1): the ids of the estimate versions
         # created inside the row, ascending — ids, not statuses: the hook reads the statuses when

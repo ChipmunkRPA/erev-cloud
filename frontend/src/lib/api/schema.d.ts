@@ -18127,6 +18127,7 @@ export interface components {
       ssp_basis?: {
         [key: string]: components["schemas"]["SspBasisV1"];
       };
+      termination?: components["schemas"]["TerminationTerms"] | null;
     };
     /**
      * ModificationImpactOut
@@ -18391,6 +18392,7 @@ export interface components {
       status: components["schemas"]["ModificationStatus"];
       /** Template Mode */
       template_mode: string | null;
+      termination?: components["schemas"]["TerminationTerms"] | null;
       treatment_summary: components["schemas"]["ModificationTreatment"] | null;
       /**
        * Updated At
@@ -18462,6 +18464,7 @@ export interface components {
       ssp_basis?: {
         [key: string]: components["schemas"]["SspBasisV1"];
       } | null;
+      termination?: components["schemas"]["TerminationTerms"] | null;
     };
     /** ModificationWithdrawIn */
     ModificationWithdrawIn: {
@@ -24447,6 +24450,18 @@ export interface components {
       notice_days: number | null;
       /** Party */
       party: string;
+    };
+    /**
+     * TerminationTerms
+     * @description Explicit approved termination scope and refund, in contract currency.
+     */
+    TerminationTerms: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "FULL" | "PARTIAL";
+      refund_amount?: components["schemas"]["MoneyIn"] | null;
     };
     /** TerminationV1 */
     TerminationV1: {

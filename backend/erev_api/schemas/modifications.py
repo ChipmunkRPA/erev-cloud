@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,6 +25,7 @@ from erev_api.events.payloads import (
     ConsiderationPayableV1,
     ModificationLineV1,
     NoncashConsiderationV1,
+    NonNegativeMoney,
     SspBasisV1,
 )
 from erev_api.money import DecimalStr, MoneyOut
@@ -51,6 +52,14 @@ QUESTION_KEYS = (
 )
 
 
+class TerminationTerms(BaseModel):
+    """Explicit approved termination scope and refund, in contract currency."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["FULL", "PARTIAL"]
+    refund_amount: NonNegativeMoney | None = None
+
+
 class ModificationCreateIn(BaseModel):
     """``POST /contracts/{id}/modifications``: the authored T-CON-06 members of a DRAFT."""
 
@@ -64,6 +73,7 @@ class ModificationCreateIn(BaseModel):
     # remaining_goods_distinct_from_transferred} (booleans, or absent) plus the contract-level
     # member ``price_change_settlement``.
     questionnaire: dict[str, Any] = Field(default_factory=dict)
+    termination: TerminationTerms | None = None
     price_change_amount: DecimalStr | None = None
     noncash_consideration: tuple[NoncashConsiderationV1, ...] | None = Field(
         default=None, max_length=50
@@ -92,6 +102,7 @@ class ModificationUpdateIn(BaseModel):
     reference: str | None = Field(default=None, min_length=1, max_length=200)
     lines: tuple[ModificationLineV1, ...] | None = Field(default=None, min_length=1, max_length=500)
     questionnaire: dict[str, Any] | None = None
+    termination: TerminationTerms | None = None
     price_change_amount: DecimalStr | None = None
     noncash_consideration: tuple[NoncashConsiderationV1, ...] | None = Field(
         default=None, max_length=50
@@ -172,6 +183,7 @@ class ModificationOut(ModificationListItemOut):
 
     lines: list[dict[str, Any]]
     questionnaire: dict[str, Any]
+    termination: TerminationTerms | None = None
     price_change_amount: str | None
     noncash_consideration: list[dict[str, Any]] | None
     consideration_payable: list[dict[str, Any]] | None

@@ -526,3 +526,139 @@ def test_royalty_rpo_nets_guarantee_and_waits_for_licence_satisfaction(
     assert corrected["REVENUE"] == Decimal("1000.00")
     assert corrected["OPENING"] == corrected["CLOSING"] == corrected["UNEXPLAINED"] == ZERO
     assert ties(corrected_run) == BALANCED
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("termination_kind", ["FULL", "PARTIAL"])
+@pytest.mark.parametrize("refund", [0, 40])
+def test_same_day_usage_termination_public_report(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+    termination_kind: str,
+    refund: int,
+) -> None:
+    """An approved termination must reach the termination engine and Reporting."""
+    from support.factories import AVM_US_CHART, published_mapping
+    from support.modifications import confirm_answers
+    from support.reference import approve, post
+
+    original_body = worlds.k08_body
+
+    def two_obligations(customer: UUID) -> dict[str, Any]:
+        body = original_body(customer)
+        body["lines"].append({**body["lines"][0], "obligation_key": "O2"})
+        return body
+
+    with monkeypatch.context() as patch:
+        patch.setattr(worlds, "k08_body", two_obligations)
+        patch.setattr(
+            worlds,
+            "published_mapping",
+            lambda app, author, approver: published_mapping(
+                app,
+                author,
+                approver,
+                chart=(
+                    *AVM_US_CHART,
+                    ("2110", "Refund liability", "LIABILITY", "C", "REFUND_LIABILITY"),
+                ),
+            ),
+        )
+        world = worlds.k08_ulvane(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    cid = UUID(str(world.contracts[worlds.K08].contract["id"]))
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        cid,
+        {
+            "event_type": "USAGE_REPORTED",
+            "effective_date": "2026-01-01",
+            "payload": {
+                "obligation_key": "O1",
+                "usage_period_start": "2026-01-01",
+                "usage_period_end": "2026-01-01",
+                "metric": "API_CALLS",
+                "quantity": "1500",
+                "rated_amount": {"amount": "150.00", "currency": "USD"},
+            },
+        },
+    )
+    created = post(
+        app,
+        f"/api/v1/contracts/{cid}/modifications",
+        world.maya,
+        {
+            "effective_date": "2026-01-01",
+            "kind": "TERMINATION",
+            "reference": "TERM-SAME-DAY",
+            "termination": {
+                "kind": termination_kind,
+                "refund_amount": {"amount": str(refund), "currency": "USD"},
+            },
+            "lines": [
+                {
+                    "obligation_key": "O1",
+                    "action": "REMOVE",
+                    "product_code": worlds.API_CALL,
+                    "quantity_delta": "0",
+                    "consideration_delta": {"amount": str(-refund), "currency": "USD"},
+                }
+            ],
+            "rationale": "End all remaining service on inception day; no refund.",
+        },
+    )
+    assert created.status_code == 201, created.text
+    mid = created.json()["id"]
+    classified = post(app, f"/api/v1/modifications/{mid}/classify", world.maya, {})
+    assert classified.status_code == 200, classified.text
+    confirm_answers(app, mid, world.maya)
+    queued = post(app, f"/api/v1/modifications/{mid}/preview", world.maya, {})
+    assert queued.status_code == 202, queued.text
+    finished = worlds.run_now(world, UUID(queued.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    sent = post(app, f"/api/v1/modifications/{mid}/submit", world.maya, {"comment": "Terminate."})
+    assert sent.status_code == 200, sent.text
+    approved = approve(app, sent.json()["approval_request_id"], world.priya)
+    assert approved.status_code == 200, approved.text
+    shown = get(app, f"/api/v1/modifications/{mid}", world.maya).json()
+    if shown["status"] == "SUBMITTED":
+        approved = approve(app, sent.json()["approval_request_id"], world.marcus)
+        assert approved.status_code == 200, approved.text
+        shown = get(app, f"/api/v1/modifications/{mid}", world.maya).json()
+    assert shown["status"] == "APPLIED", shown
+    event = get(app, f"/api/v1/events/{shown['applied_event_id']}", world.maya).json()
+    assert event["event_type"] == "CONTRACT_TERMINATED", event
+    contract = get(app, f"/api/v1/contracts/{cid}", world.maya).json()
+    assert contract["status"] == ("TERMINATED" if termination_kind == "FULL" else "ACTIVE"), (
+        contract
+    )
+    lines, run = rollforward(world, AVM_US, "FY2026-P01")
+    assert lines["NEW_CONTRACTS"] == Decimal("160000")
+    assert lines["VC_ESTIMATE_CHANGES"] == Decimal("150")
+    # Partial termination reallocates the nonrefundable remaining pool to O2;
+    # full termination has no remaining recipient and recognizes it on termination.
+    continuing = ((Decimal("160000") - refund) * 31 / 365).quantize(Decimal("0.01"))
+    expected_revenue = (
+        Decimal("160150") - refund if termination_kind == "FULL" else Decimal("150") + continuing
+    )
+    assert lines["REVENUE"] == -expected_revenue
+    assert lines["CANCELLATIONS"] == -refund
+    assert lines["CLOSING"] == (
+        0 if termination_kind == "FULL" else Decimal("160000") - refund - continuing
+    )
+    assert lines["UNEXPLAINED"] == 0
+    assert ties(run) == BALANCED
+
+    original = get(app, f"/api/v1/report-runs/{run['id']}/data", world.maya).json()["items"]
+    rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert worlds.run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    repeated = get(
+        app, f"/api/v1/report-runs/{rerun.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == original

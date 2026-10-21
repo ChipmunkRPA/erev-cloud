@@ -143,6 +143,9 @@ const HEADER_MEMBER: Readonly<Record<string, string>> = {
   effective_date: "effectiveDate",
   rationale: "rationale",
   price_change_amount: "priceChangeAmount",
+  "termination.kind": "terminationKind",
+  "termination.refund_amount.amount": "terminationRefund",
+  "termination.refund_amount.currency": "terminationRefund",
   lines: CHANGE_LINES_FIELD,
 };
 
@@ -282,6 +285,8 @@ const GENERAL_FIELDS = [
   "rationale",
   "priceObligationKey",
   "priceChangeAmount",
+  "terminationKind",
+  "terminationRefund",
   CHANGE_LINES_FIELD,
 ] as const;
 
@@ -541,6 +546,51 @@ function GeneralForm({
           onChange={(value) => set("rationale", value)}
           error={shown("rationale")}
         />
+        {form.kind === "TERMINATION" ? (
+          <>
+            <Field
+              name="terminationKind"
+              label={t("modifications.wizard.change.terminationKind")}
+              help={t("modifications.wizard.change.terminationHelp")}
+              required
+              width="text"
+              error={shown("terminationKind")}
+            >
+              {(control) => (
+                <Select<"FULL" | "PARTIAL">
+                  control={control}
+                  options={[
+                    { value: "FULL", label: t("modifications.wizard.change.terminationFull") },
+                    {
+                      value: "PARTIAL",
+                      label: t("modifications.wizard.change.terminationPartial"),
+                    },
+                  ]}
+                  value={form.terminationKind ?? "FULL"}
+                  onChange={(value) => set("terminationKind", value ?? "FULL")}
+                />
+              )}
+            </Field>
+            <Field
+              name="terminationRefund"
+              label={t("modifications.wizard.change.terminationRefund")}
+              required
+              width="money"
+              error={shown("terminationRefund")}
+            >
+              {(control) => (
+                <MoneyInput
+                  control={control}
+                  currency={context.currency}
+                  value={form.terminationRefund ?? "0"}
+                  onChange={(value) => set("terminationRefund", value)}
+                  onFormatError={(message) => setFormatError("terminationRefund", message)}
+                  invalid={shown("terminationRefund") !== null}
+                />
+              )}
+            </Field>
+          </>
+        ) : null}
         {priceChange ? (
           <div className="flex flex-wrap gap-4">
             <Field

@@ -147,6 +147,33 @@ function ChangeSection({ row }: { readonly row: Modification }) {
       <dl className="grid max-w-[var(--content-max-form)] grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
         <dt className="text-body-sm text-fg-3">{t("modifications.wizard.change.kind")}</dt>
         <dd className="text-body text-fg-1">{t(`modification.kind.${row.kind}`)}</dd>
+        {row.termination ? (
+          <>
+            <dt className="text-body-sm text-fg-3">
+              {t("modifications.wizard.change.terminationKind")}
+            </dt>
+            <dd className="text-body text-fg-1">
+              {t(
+                row.termination.kind === "FULL"
+                  ? "modifications.wizard.change.terminationFull"
+                  : "modifications.wizard.change.terminationPartial",
+              )}
+            </dd>
+            <dt className="text-body-sm text-fg-3">
+              {t("modifications.wizard.change.terminationRefund")}
+            </dt>
+            <dd className="text-body text-fg-1">
+              {row.termination.refund_amount ? (
+                <Money
+                  value={row.termination.refund_amount.amount}
+                  currency={row.termination.refund_amount.currency}
+                />
+              ) : (
+                <NoValue />
+              )}
+            </dd>
+          </>
+        ) : null}
         <dt className="text-body-sm text-fg-3">{t("modifications.wizard.change.effectiveDate")}</dt>
         <dd className="text-body text-fg-1">{formatDate(row.effective_date)}</dd>
         <dt className="text-body-sm text-fg-3">{t("modifications.wizard.change.rationale")}</dt>

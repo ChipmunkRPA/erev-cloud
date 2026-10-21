@@ -26537,6 +26537,16 @@
             },
             "title": "Ssp Basis",
             "type": "object"
+          },
+          "termination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TerminationTerms"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -27295,6 +27305,16 @@
             ],
             "title": "Template Mode"
           },
+          "termination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TerminationTerms"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "treatment_summary": {
             "anyOf": [
               {
@@ -27568,6 +27588,16 @@
               }
             ],
             "title": "Ssp Basis"
+          },
+          "termination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TerminationTerms"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "ModificationUpdateIn",
@@ -43180,6 +43210,35 @@
           "notice_days"
         ],
         "title": "TerminationOut",
+        "type": "object"
+      },
+      "TerminationTerms": {
+        "additionalProperties": false,
+        "description": "Explicit approved termination scope and refund, in contract currency.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "FULL",
+              "PARTIAL"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "refund_amount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoneyIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "TerminationTerms",
         "type": "object"
       },
       "TerminationV1": {

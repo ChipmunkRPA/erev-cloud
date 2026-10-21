@@ -20,6 +20,32 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Public termination controls and same-day usage calculations — October 21, 2026
+
+- The modification form/API now accepts explicit FULL/PARTIAL termination scope and a refund
+  in contract currency. Preview and approval use the same CONTRACT_TERMINATED event; the terms
+  are stored, displayed in the detail, included in the approval fingerprint and cleared when
+  switching to another modification kind. REMOVE lines must have non-positive deltas and cover
+  the refund. New/edited termination drafts require terms; already approved historical rows
+  without terms retain their original amendment semantics and hash. Migration 0264 retains
+  the terms and refuses downgrade while any remain.
+- The real command journey exposed two engine faults: inception-day realized fees were included
+  in FIXED allocation and then counted again as period fees; an inception-day termination tried
+  to extend recognition through a truncated segment ending before the first calendar period.
+  Inception allocation now excludes separately recognized period fees, preserving zero trace
+  nodes and contract-wide royalty-estimate allocation. Only later term ends extend the horizon.
+- Four public journeys exercise two usage obligations, FULL/PARTIAL scope and refunds 0/40,
+  including original engine calculations, required approval steps, contract status, reporting and
+  retained reruns. Entry 160,000 and VC 150 remain separate; FULL recognizes the nonrefundable
+  pool at termination, PARTIAL allocates it to continuing O2 and recognizes it over its term.
+  Revenue, refunds and closing RPO reconcile. This closes the supplied-evidence-only limitation
+  for this same-day usage/termination case, not every mixed amendment or re-entry sequence.
+- Necessary checks pass: four public journeys, three ordinary modification regressions, 236
+  pricing/allocation/recognition cases, 48 modification units, 88 RPO cases, 68 frontend cases,
+  scoped lint/types, generated API parity, and migration round-trip/data-retention guard.
+  Broader repeated cancellation/re-entry, combined same-day amendment/estimate/usage journeys
+  and concurrent commit visibility remain open. No deployment.
+
 ## Same-day RPO entry with realized usage — October 21, 2026
 
 - Same-day activation/termination can now retain gross new-contract amounts when usage is
@@ -198,26 +224,6 @@ review and publish changes without PR accumulation, and do not deploy.
   does not prove that guarantee. RPO complex lifecycle gaps, combined-member aging ownership,
   independent accounting sign-off and final-candidate checks remain open. No deployment;
   direct-main publication and no production-readiness claim.
-
-## Transaction-currency reports show intermediate monthly exemption movements — October 20, 2026
-
-- Transaction-view RPO now retains nonzero contract/entity/period exemption movements even
-  when the contract enters and leaves exemption within the range and endpoint details are
-  empty. The shared exemption_translation schema stores unchanged original/report amounts;
-  new bindings retain rpo_transaction_monthly_exemptions_v1 and old bindings keep prior detail
-  populations. Existing range-level report rows are unchanged.
-- Viewer and XLSX/PDF distinguish Monthly exemption movements from converted Monthly exemption
-  translation, label unchanged amounts as Report movement and explain that intermediate
-  monthly movements can differ from the range endpoint-based Exemptions line. Manifest controls
-  retain the details with the original periods and currencies.
-- The builder/read-layer right-to-invoice round trip retains EUR -110/+110 with no endpoint
-  exclusions, passes reconciliation and reruns identically. Legacy omission is preserved.
-  Five scoped builder/converted/export cases, both viewer currency modes, public three-view
-  report/rerun journey, lint/types and migration 0256 down/up exact catalogue parity pass.
-  New monthly witness uses supplied retained rows, not a new public contract lifecycle journey.
-- Complex cancellation/reentry, intervening pre-termination versions and same-day entry mixtures,
-  combined-member aging ownership, independent accounting sign-off and final-candidate checks
-  remain open. No deployment; direct-main publication; no production-readiness claim.
 
 ## Outstanding release verification
 

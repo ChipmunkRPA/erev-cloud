@@ -591,3 +591,40 @@ describe("treatments and steps", () => {
     expect(stepReachable("treatment", { ...done, previewed: false })).toBe(true);
   });
 });
+
+it("keeps termination scope and refund when editing and submitting", () => {
+  const form = {
+    ...emptyChange("l1", "TERMINATION"),
+    reference: "TERM-1",
+    effectiveDate: "2026-01-01",
+    terminationKind: "PARTIAL" as const,
+    terminationRefund: "40.00",
+    lines: [
+      {
+        ...emptyChangeLine("l1"),
+        action: "REMOVE" as const,
+        obligationKey: "O1",
+        quantityChange: "-1",
+        considerationChange: "-40.00",
+      },
+    ],
+  };
+  const built = buildChange(form, CONTEXT);
+  expect(built.errors).toEqual({});
+  expect(built.body?.termination).toEqual({ kind: "PARTIAL", refund_amount: USD("40.00") });
+  if (built.body === null) throw new Error("The valid termination did not build.");
+  const restored = changeFromModification(
+    {
+      ...built.body,
+      currency: "USD",
+      lines: built.body.lines,
+      price_change_amount: null,
+      rationale: null,
+      reference: "TERM-1",
+    },
+    () => "l1",
+  );
+  expect(restored.terminationKind).toBe("PARTIAL");
+  expect(restored.terminationRefund).toBe("40.00");
+  expect(buildChange({ ...form, terminationRefund: "-1" }, CONTEXT).body).toBeNull();
+});

@@ -293,6 +293,7 @@ def price(
     *,
     rates: Mapping[str, Fraction] | None = None,
     added: Sequence[tuple[SourceRef, Fraction]] = (),
+    include_realised: bool = True,
 ) -> TpBuildUp:
     """The build-up at ``at`` before ``before`` (§4.2); nodes take ``suffix`` on their measure.
 
@@ -319,7 +320,11 @@ def price(
     ]
     out_of_scope = sum((amount for _, amount in routed), ZERO)
     measured = vc.elements(ctx, st, at, before)
+    # Period fees have their own recognition components; allocating them into
+    # inception FIXED would count inception-day usage twice.
     usage = realised(ctx, st, at, before)
+    if not include_realised:
+        usage = tuple(Realised(item.obligation, ZERO, (), item.guarantee) for item in usage)
     accrued = royalty_accruals(ctx, st, at, before)
     implicit = concessions.measure(ctx, st, at, before, fixed_lines)
     returned = returns.measure(ctx, st, returns.returnable(ctx, st), at, before, rates or {})

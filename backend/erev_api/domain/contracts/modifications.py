@@ -126,6 +126,7 @@ from erev_api.enums import (
 from erev_api.events.payloads import (
     ContractAmendedV1,
     ContractBookedV1,
+    ContractTerminatedV1,
     RegroupedV1,
     payload_json,
 )
@@ -697,6 +698,7 @@ CLEARABLE: Final = frozenset(
     {
         "reference",
         "price_change_amount",
+        "termination",
         "noncash_consideration",
         "consideration_payable",
         "scope_605_35",
@@ -719,6 +721,7 @@ def _authored_values(body: ModificationCreateIn | ModificationUpdateIn) -> dict[
         "lines",
         "questionnaire",
         "price_change_amount",
+        "termination",
         "noncash_consideration",
         "consideration_payable",
         "scope_605_35",
@@ -740,13 +743,58 @@ def _authored_values(body: ModificationCreateIn | ModificationUpdateIn) -> dict[
             values[name] = {str(key): _text(item) for key, item in sorted(value.items())}
         elif name in ("ssp_basis",):
             values[name] = {str(key): _json(item) for key, item in sorted(value.items())}
-        elif name in ("questionnaire",):
+        elif name in ("questionnaire", "termination"):
             values[name] = _json(value)
         elif name in ("price_change_amount",):
             values[name] = Decimal(str(value))
         else:
             values[name] = value
     return values
+
+
+def _termination_errors(values: Mapping[str, Any], currency: str) -> list[ProblemError]:
+    terms = values.get("termination")
+    if terms is None:
+        return (
+            [_error("termination", "REQ-MOD-011", "Choose the termination scope and refund.")]
+            if _text(values["kind"]) == ModificationKind.TERMINATION.value
+            else []
+        )
+    errors = []
+    if _text(values["kind"]) != ModificationKind.TERMINATION.value:
+        errors.append(
+            _error("termination", "REQ-MOD-011", "Termination terms require kind TERMINATION.")
+        )
+    lines = values.get("lines") or ()
+    if not lines or any(line["action"] != "REMOVE" for line in lines):
+        errors.append(_error("lines", "REQ-MOD-011", "Termination requires REMOVE lines."))
+    forgone = Decimal(0)
+    for index, line in enumerate(lines):
+        consideration = line.get("consideration_delta")
+        amount = Decimal(0) if consideration is None else Decimal(str(consideration["amount"]))
+        if Decimal(str(line.get("quantity_delta") or 0)) > 0 or amount > 0:
+            errors.append(
+                _error(f"lines[{index}]", "REQ-MOD-011", "Termination deltas must be non-positive.")
+            )
+        forgone -= amount
+    refund = terms.get("refund_amount")
+    if refund is not None and refund["currency"] != currency:
+        errors.append(
+            _error(
+                "termination.refund_amount.currency",
+                RULE_LINE_CURRENCY,
+                "The refund must use the contract currency.",
+            )
+        )
+    if refund is not None and Decimal(str(refund["amount"])) > forgone:
+        errors.append(
+            _error(
+                "termination.refund_amount.amount",
+                "REQ-MOD-011",
+                "The refund cannot exceed the consideration forgone.",
+            )
+        )
+    return errors
 
 
 # --- commands ------------------------------------------------------------------------------------
@@ -779,6 +827,9 @@ def create_modification(
     principal = uow.principal
     modification_id = new_id()
     values = _authored_values(body)
+    errors = _termination_errors(values, str(current["transaction_currency"]).strip())
+    if errors:
+        raise _failed(*errors)
     number = numbering.next_number(uow, SERIES)
     session.execute(
         insert(modification).values(
@@ -837,7 +888,9 @@ def update_modification(
     if status not in (DRAFT, SUBMITTED, REJECTED):
         raise _invalid(NOT_EDITABLE)
     values = _authored_values(body)
-    errors: list[ProblemError] = []
+    errors: list[ProblemError] = _termination_errors(
+        {**row, **values}, str(current["transaction_currency"]).strip()
+    )
     if body.lines is not None:
         errors += _line_errors(
             session,
@@ -1228,6 +1281,9 @@ def classify(
     row, _, current = _locked(uow, modification_id)
     if _text(row["status"]) != DRAFT:
         raise _invalid(NOT_CLASSIFIABLE)
+    errors = _termination_errors(row, str(current["transaction_currency"]).strip())
+    if errors:
+        raise _failed(*errors)
     try:
         _, output, _ = dry_run_summary(
             session,
@@ -1336,8 +1392,30 @@ def classify(
 
 
 def _amended_event(row: Mapping[str, Any], *, approval_request_id: UUID | None) -> EventIn:
-    """The candidate (preview) or approved ``CONTRACT_AMENDED`` of the row (04 §16.3 payload): the
-    row's members copied; the treatments are the chosen ones (S06-R-01)."""
+    """The candidate or approved event, using the same authored terms in both paths.
+
+    Explicit termination terms produce CONTRACT_TERMINATED. Historical rows without
+    those terms retain their original amendment semantics and approval fingerprint.
+    """
+    terms = row.get("termination")
+    if terms is not None and _text(row["kind"]) == ModificationKind.TERMINATION.value:
+        keys = tuple(
+            str(line["obligation_key"]) for line in row["lines"] if line["action"] == "REMOVE"
+        )
+        return EventIn(
+            event_type=ContractEventType.CONTRACT_TERMINATED,
+            effective_date=row["effective_date"],
+            payload=ContractTerminatedV1.model_validate(
+                {
+                    "modification_id": str(row["id"]),
+                    "termination_kind": terms["kind"],
+                    "obligation_keys": keys,
+                    "refund_amount": terms.get("refund_amount"),
+                }
+            ),
+            modification_id=_uuid(row["id"]),
+            approval_request_id=approval_request_id,
+        )
     treatments = {
         str(key): ModificationTreatment(_text(value))
         for key, value in sorted((row["chosen_treatments"] or {}).items())
@@ -1390,6 +1468,9 @@ def request_preview(uow: UnitOfWork, *, modification_id: UUID) -> JobOut:
     )
     if _text(row["status"]) != DRAFT:
         raise _invalid(NOT_PREVIEWABLE)
+    errors = _termination_errors(row, str(current["transaction_currency"]).strip())
+    if errors:
+        raise _failed(*errors)
     deferred = uow.defer(
         JobKind.CONTRACT_COMPUTE,
         {
@@ -3491,6 +3572,7 @@ def get_modification(
         "noncash_consideration": row["noncash_consideration"],
         "consideration_payable": row["consideration_payable"],
         "scope_605_35": row["scope_605_35"],
+        "termination": row.get("termination"),
         "ssp_basis": dict(row["ssp_basis"] or {}),
         "impact_preview_file_id": None if preview_withheld else row["impact_preview_file_id"],
         "impact_preview": None

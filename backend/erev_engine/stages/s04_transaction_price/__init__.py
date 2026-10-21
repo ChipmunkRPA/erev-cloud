@@ -208,7 +208,9 @@ def run(ctx: BookContext, st: PobState, tb: TraceBuilder) -> PricedState:
     items = returns.returnable(ctx, st)
     paths = {item.obligation.subject_key: returns.path(ctx, st, item) for item in items}
     pending = bool(items)
-    tp = buildup.price(ctx, st, st.inception_date, boundary, None if pending else tb, "")
+    tp = buildup.price(
+        ctx, st, st.inception_date, boundary, None if pending else tb, "", include_realised=False
+    )
     views = {} if pending else unconstrained.views(ctx, st, boundary, {})
     stream = financing.measure(
         ctx, st, specialist.stream_end(ctx, st), None, specialist.fixed_lines(st)
@@ -267,7 +269,9 @@ def complete_returns(
         raise ValueError(f"complete_returns needs the unit rate of {', '.join(missing)}")
     pob = st.pob
     boundary = first_boundary(pob)
-    tp = buildup.price(ctx, pob, pob.inception_date, boundary, tb, "", rates=rates)
+    tp = buildup.price(
+        ctx, pob, pob.inception_date, boundary, tb, "", rates=rates, include_realised=False
+    )
     paths = {
         key: dataclasses.replace(path, r=((pob.inception_date, rates[key]),))
         for key, path in st.return_paths.items()

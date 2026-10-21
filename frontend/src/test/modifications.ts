@@ -279,6 +279,7 @@ function answered(row: Modification): Modification {
 const CLEARABLE: ReadonlySet<string> = new Set([
   "reference",
   "price_change_amount",
+  "termination",
   "noncash_consideration",
   "consideration_payable",
   "scope_605_35",

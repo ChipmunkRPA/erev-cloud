@@ -911,8 +911,10 @@ def evaluation_periods(
     if is_deterministic(ob):
         for seg in ob.segments:
             end = seg.totals.end_date or ob.end_date
-            if seg.component == "FIXED" and end is not None:
-                last_end = max(last_end, dates.period_of(entity, end).end_date)
+            if seg.component == "FIXED" and end is not None and end > last_end:
+                # A same-day termination can truncate the old segment to the
+                # day before inception. It cannot extend this evaluation horizon.
+                last_end = dates.period_of(entity, end).end_date
     return tuple(
         period
         for period in ordered

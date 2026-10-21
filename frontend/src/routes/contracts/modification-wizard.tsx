@@ -1623,6 +1623,7 @@ function DraftChange({
           rationale: body.rationale ?? null,
           lines: body.lines,
           price_change_amount: body.price_change_amount ?? null,
+          termination: body.termination ?? null,
         } satisfies ModificationUpdateBody)
       }
     />
