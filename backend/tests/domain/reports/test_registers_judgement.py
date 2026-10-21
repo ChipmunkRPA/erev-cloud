@@ -269,6 +269,60 @@ def test_estimate_change_listing_k06(
     assert converted["pnl_effect_reporting"] == {"amount": "-6900.00", "currency": "USD"}
     assert reporting["control_totals"]["pnl_effect_reporting_total"] == {"USD": "-6900.00"}
 
+    # A new approved FX version changes a fresh run, but not the original saved inputs.
+    from support import worlds
+
+    revised = post(
+        app,
+        f"/api/v1/fx-rate-sets/{rate_set.json()['id']}/versions",
+        maya,
+        {
+            "coverage_from": "2026-07-01",
+            "coverage_to": "2026-09-30",
+            "rates": [
+                {
+                    "base_currency": "EUR",
+                    "quote_currency": "USD",
+                    "period_key": f"FY2026-P{month:02d}",
+                    "rate": "1.30",
+                }
+                for month in range(7, 10)
+            ],
+        },
+    )
+    assert revised.status_code == 201, revised.text
+    submitted = post(
+        app,
+        f"/api/v1/fx-rate-set-versions/{revised.json()['id']}/submit",
+        maya,
+        {"comment": "Revised reporting average"},
+        if_match=f'"r{revised.json()["row_version"]}"',
+    )
+    assert submitted.status_code == 200, submitted.text
+    clock.advance(STEP)
+    assert (
+        approve(app, submitted.json()["pending_approval_request_id"], world.marcus).status_code
+        == 200
+    )
+    fresh, _ = report_run(
+        report, "estimate_change_listing", {**parameters, "currency_view": "reporting"}
+    )
+    assert fresh["control_totals"]["pnl_effect_reporting_total"] == {"USD": "-7475.00"}
+    for original, original_rows in ((run, rows), (reporting, equivalents)):
+        started = post(app, f"/api/v1/report-runs/{original['id']}/rerun", maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(report, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        restored = get(
+            app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == original_rows
+
 
 @pytest.mark.slow
 def test_estimate_change_listing_k03(k03: K03World, clock: FrozenClock) -> None:

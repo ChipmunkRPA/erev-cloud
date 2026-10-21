@@ -536,12 +536,6 @@ _SOD_CONFLICT_REPORT_OPEN: Final = (
 _JUDGEMENT_REGISTER_OPEN: Final = (
     "judgement records with their contracts, subjects and display names read live (RPS-11 RPT-28)"
 )
-_ESTIMATE_CHANGE_LISTING_OPEN: Final = (
-    "approved estimate versions with their elements, contracts, predecessors, approval requests / "
-    "decisions, attachments, reporting average rates and the catch-up of the contract versions "
-    "their events caused read "
-    "live (RPS-11 RPT-29)"
-)
 _SCOPE_EXCLUSION_REGISTER_OPEN: Final = (
     "routed-out obligation versions of each group's latest contract version at the period end "
     "with their contract versions and judgement records read live (RPS-11 RPT-30)"
@@ -898,7 +892,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             OPEN, _OPEN_ONLY, (_JUDGEMENT_REGISTER_OPEN,)
         ),
         estimate_change_listing_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_ESTIMATE_CHANGE_LISTING_OPEN,)
+            RETAINED, (_CUTOFF, "estimate version, actor, effect and reporting-rate inputs")
         ),
         scope_exclusion_register_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_SCOPE_EXCLUSION_REGISTER_OPEN,)
@@ -2083,6 +2077,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "out_of_period_register",
             "manual_adjustment_register",
             "modification_register",
+            "estimate_change_listing",
         }
     ):
         try:

@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Estimate change retained reconstruction — October 21, 2026
+
+- New estimate-change runs retain selected version inputs, predecessor measures, attributed P&L
+  effects, approval actors/timestamps, attachment counts, resolved dates and reporting rates.
+  Same-source reruns validate tenant/entity scope and filters, restore typed source values and
+  rebuild rows and totals without live estimate, approval, attachment, actor or FX reads.
+- Captures estimate-version membership. Older OPEN runs keep their original new-evaluation
+  behavior. This supersedes the preceding live-rerun limitation; ad-hoc historical queries still
+  cannot reconstruct mutable state without evidence. Foreign-contract functional effects remain
+  outside this change; analytical reporting equivalents remain explicitly labelled.
+- Necessary verification passed: 37 focused register/source-binding cases (all three currency
+  views reconstruct without a database); real K06 approval/report API and worker flows. Replacing
+  approved EUR/USD average 1.20 with 1.30 changes fresh P&L equivalents from USD -6,900 to -7,475;
+  saved transaction and reporting runs reproduce their original rows and identical output hashes.
+  Scoped lint/types and migration 0309 frozen IPE parity passed. No deployment.
+
 ## Estimate change reporting equivalents — October 21, 2026
 
 - Fixed estimate-change Reporting view returning unconverted native amounts. Original monetary

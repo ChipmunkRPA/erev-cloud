@@ -55,8 +55,11 @@ def test_columns_are_the_specification_grid(number: int, module: Any) -> None:
 def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    assert contract.strategy == "open" and len(contract.open) == 1
-    assert f"RPT-{number}" in contract.open[0]
+    if module is estimates:
+        assert contract.strategy == "retained_inputs" and not contract.open
+    else:
+        assert contract.strategy == "open" and len(contract.open) == 1
+        assert f"RPT-{number}" in contract.open[0]
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -432,3 +435,77 @@ def test_estimate_reporting_converts_money_preserves_ratios_and_unknown_effects(
         estimates.check_view(
             "reporting", [_estimate(measure=estimates.Measure("Expected total", "EUR", "1", "2"))]
         )
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_estimate_retained_inputs_rebuild_without_database(view):
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "currency_view": view,
+                "selection": {
+                    key: None for key in ("book", "from_date", "to_date", "estimate_kind")
+                },
+                "from_date": "2026-01-01",
+                "to_date": "2026-12-31",
+                "sources": [asdict(_estimate())],
+                "names": {str(k): v for k, v in NAMES.items()},
+                "reporting_currency": "GBP",
+                "translations": [
+                    {
+                        "row_key": estimates.row_key(_estimate()),
+                        "entity_id": PRIYA,
+                        "currency": "GBP",
+                        "rates": {str(PRIYA): {"base_currency": "USD", "rate": "0.8"}},
+                    }
+                ],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=estimates.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={"currency_view": view},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={estimates.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = estimates.build(uow, params)
+    assert data.rows[0]["approved_at"] == AT
+    assert data.rows[0]["effective_date"] == date(2026, 9, 30)
+    assert data.rows[0]["preparer"] == "Maya Chen"
+    retained["sources"][0]["pnl_effect"] = "-100"
+    changed = estimates.build(uow, params)
+    assert changed.control_totals["pnl_effect_total"] == {"USD": "-100.00"}
+    if view == "reporting":
+        assert changed.control_totals["pnl_effect_reporting_total"] == {"GBP": "-80.00"}
+        retained["translations"][0]["rates"][str(PRIYA)]["rate"] = "0.9"
+        assert estimates.build(uow, params).control_totals["pnl_effect_reporting_total"] == {
+            "GBP": "-90.00"
+        }
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"currency_view": view, "book": "IFRS15"}),
+        replace(params, parameters={"currency_view": view, "estimate_kind": ["EAC"]}),
+    ):
+        with pytest.raises(Problem):
+            estimates.build(uow, invalid)
+    with pytest.raises(Problem):
+        estimates.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)

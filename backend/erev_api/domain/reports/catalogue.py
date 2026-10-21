@@ -2120,6 +2120,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision.approval_request_id = approval_request.id",
         ),
         filters=(
+            "same-source runs retain estimate inputs, actor names, resolved dates and rates; "
+            "rows and totals rebuild without live source reads",
             "reporting preserves original measures and adds analytical monetary equivalents at "
             "the estimate effective-period average; before/after use the same rate, ratios stay "
             "dimensionless, missing effects stay empty; these are not posted FX amounts",
