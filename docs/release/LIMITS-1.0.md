@@ -1,5 +1,29 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Historical ledger commit visibility — October 21, 2026
+
+- Historical ledger readers now require the original PostgreSQL commit timestamp, closing
+  the insertion-before-cutoff/commit-after-cutoff race. Commit evidence is queued with the
+  seal and retained after commit. Database guards prevent caller-supplied timestamps and
+  later changes; read-only historical queries can resolve pending evidence directly.
+- Ten report definitions version this ledger interpretation. Older bound runs preserve
+  their seal-time basis. Disaggregation catalogue metadata is also brought into agreement
+  with its existing ledger and multi-currency implementation.
+- PostgreSQL requires track_commit_timestamp=on before posting; Compose and the optional
+  GCP configuration include it, and check_env --db checks it. Migration 0274 requires an
+  empty posting-seal table and refuses populated ledgers rather than inventing old commits.
+  This is a repository-development prerequisite, not a migration-to-live deliverable.
+- Sandbox refresh regenerates commit evidence with its own derived postings. No production
+  transaction IDs are copied into sandbox evidence. No sandbox lock requirement is added.
+- Necessary verification covers concurrent late commits, immutable timestamps, pending
+  evidence fallback/recovery, read-only access, historical/record basis and catalogue parity.
+  Scoped lint/types and the affected configuration/catalogue/snapshot checks pass.
+- Remaining B4-11 work: other historical sources and direct report-specific seal queries
+  still need commit visibility. Post-commit hook failures leave recoverable pending rows;
+  automatic retry/monitoring before PostgreSQL discards old transaction evidence remains
+  to implement. Expired evidence is refused, never replaced with an estimated timestamp.
+  This increment does not close all historical-source gaps. No deployment.
+
 ## Royalty lifecycle and supported public workflow — October 21, 2026
 
 - Four original-engine Reporting journeys verify minimum-guarantee netting, downward

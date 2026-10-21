@@ -323,6 +323,7 @@ NO_LABEL: Final = frozenset(
         "subledger_line",
         "subledger_posting",
         "subledger_posting_seal",
+        "subledger_posting_commit",
         "support_grant",
         "sync_run",
         "tenant",

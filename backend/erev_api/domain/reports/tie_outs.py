@@ -163,7 +163,13 @@ BILLED_UNCONDITIONAL: Final = "billed_unconditional_cum"
 
 def line_recorded_by(params: ReportParams, known_at: datetime | None = None) -> ColumnElement[bool]:
     """Historical reports use the database stamp; record/locked compatibility keeps its basis."""
-    return subledger.recorded_by(known_at or params.known_at, historical=params.historical)
+    key = "subledger_commit_visibility_v1"
+    exact = params.binding is None or key in params.binding.evidence
+    if params.historical and exact and params.sources is not None:
+        params.sources.record_evidence(key, True)
+    return subledger.recorded_by(
+        known_at or params.known_at, historical=params.historical, commit_visibility=exact
+    )
 
 
 def minor_unit(currency: str) -> int:

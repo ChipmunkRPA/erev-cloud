@@ -20,6 +20,30 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Historical ledger commit visibility — October 21, 2026
+
+- Historical ledger readers now require the original PostgreSQL commit timestamp, closing
+  the insertion-before-cutoff/commit-after-cutoff race. Commit evidence is queued with the
+  seal and retained after commit. Database guards prevent caller-supplied timestamps and
+  later changes; read-only historical queries can resolve pending evidence directly.
+- Ten report definitions version this ledger interpretation. Older bound runs preserve
+  their seal-time basis. Disaggregation catalogue metadata is also brought into agreement
+  with its existing ledger and multi-currency implementation.
+- PostgreSQL requires track_commit_timestamp=on before posting; Compose and the optional
+  GCP configuration include it, and check_env --db checks it. Migration 0274 requires an
+  empty posting-seal table and refuses populated ledgers rather than inventing old commits.
+  This is a repository-development prerequisite, not a migration-to-live deliverable.
+- Sandbox refresh regenerates commit evidence with its own derived postings. No production
+  transaction IDs are copied into sandbox evidence. No sandbox lock requirement is added.
+- Necessary verification covers concurrent late commits, immutable timestamps, pending
+  evidence fallback/recovery, read-only access, historical/record basis and catalogue parity.
+  Scoped lint/types and the affected configuration/catalogue/snapshot checks pass.
+- Remaining B4-11 work: other historical sources and direct report-specific seal queries
+  still need commit visibility. Post-commit hook failures leave recoverable pending rows;
+  automatic retry/monitoring before PostgreSQL discards old transaction evidence remains
+  to implement. Expired evidence is refused, never replaced with an estimated timestamp.
+  This increment does not close all historical-source gaps. No deployment.
+
 ## Royalty lifecycle and supported public workflow — October 21, 2026
 
 - Four original-engine Reporting journeys verify minimum-guarantee netting, downward
@@ -198,25 +222,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Initial batches mixing these status transitions with monetary events remain unfinished.
   A public batch-to-report witness remains to verify; the public regression above is sequential.
   Arbitrary historical commit visibility (B4-11) also remains open. No deployment.
-
-## Mixed allocation changes at RPO eligibility exit — October 21, 2026
-
-- Retained collectibility exits can now separate concurrent CONTRACT_AMENDED and
-  ESTIMATE_CHANGED allocations from the eligibility movement. Original amendment boundaries
-  and complete estimate-event shares must reconcile the fixed allocation change; events after
-  the exit, missing evidence and competing unsupported causes retain their unresolved result.
-  Dated realization stays in VC; the resulting remaining balance leaves through eligibility.
-- Trace loading includes excluded eligibility versions with estimates even when there is no
-  amendment or entry. New report runs retain rpo_mixed_eligibility_v1; older bound runs retain
-  the previous classification. Migration 0268 documents the rule without changing report columns.
-- Four original-engine journeys cover plain exit/re-entry, price modification, estimate change,
-  and both together. Their separate movements reconcile to original revenue schedules and
-  remaining allocation. Missing evidence and legacy behavior are checked. The public reviewed
-  exit/re-entry report and bound rerun, scoped types/lint, and reversible migration/catalogue
-  parity pass. Mixed-event public command batching is not yet independently verified.
-- Multiple eligibility transitions within one initial computation and B4-11 arbitrary historical
-  commit visibility remain open. This closes the supported retained mixed-exit decomposition,
-  not every lifecycle combination. No deployment or additional accounting sign-off gate.
 
 ## Outstanding release verification
 

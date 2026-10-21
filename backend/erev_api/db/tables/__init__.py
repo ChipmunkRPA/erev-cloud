@@ -202,6 +202,7 @@ from erev_api.db.tables.subledger import (  # noqa: E402
     subledger_line,
     subledger_line_event,
     subledger_posting,
+    subledger_posting_commit,
     subledger_posting_seal,
 )
 
@@ -364,6 +365,7 @@ __all__ = [
     "subledger_line_event",
     "subledger_posting",
     "subledger_posting_seal",
+    "subledger_posting_commit",
     "support_grant",
     "sync_run",
     "tenant",

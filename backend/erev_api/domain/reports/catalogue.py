@@ -255,6 +255,25 @@ def unknown_parameter_keys(
     return tuple(sorted(key for key in parameters if key not in properties))
 
 
+COMMIT_VISIBILITY_REPORTS: Final = (
+    "adoption_bridge",
+    "book_bridge",
+    "contract_balance_rollforward",
+    "contract_cost_rollforward",
+    "disaggregation",
+    "intercompany_pairs",
+    "out_of_period_register",
+    "revenue_from_opening_liability",
+    "revenue_from_prior_period_obligations",
+    "revenue_waterfall",
+)
+COMMIT_VISIBILITY_NOTE: Final = (
+    "subledger_commit_visibility_v1 requires original PostgreSQL posting commit time "
+    "at or before the historical cutoff; retained commit evidence is immutable; older"
+    " bindings preserve their original seal-time interpretation"
+)
+
+
 def _definition(
     code: str,
     name: str,
@@ -280,9 +299,11 @@ def _definition(
         output_formats=formats,
         ipe_logic={
             "version": 1,
-            "source_tables": list(sources),
+            "source_tables": list(sources)
+            + (["subledger_posting_commit"] if code in COMMIT_VISIBILITY_REPORTS else []),
             "joins": list(joins),
-            "filters": list(filters),
+            "filters": list(filters)
+            + ([COMMIT_VISIBILITY_NOTE] if code in COMMIT_VISIBILITY_REPORTS else []),
             "parameters": list(schema["properties"]),
         },
         tie_outs=tuple(tie_outs),

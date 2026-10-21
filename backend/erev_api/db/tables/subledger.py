@@ -111,6 +111,16 @@ subledger_posting_seal: Final = Table(
     ),
 )
 
+# Original transaction commit evidence, retained once after the posting commits.
+subledger_posting_commit: Final = Table(
+    "subledger_posting_commit",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("subledger_posting_id", Uuid(), primary_key=True),
+    Column("source_transaction", Text(), nullable=False),
+    Column("committed_server_at", DateTime(timezone=True), nullable=True),
+)
+
 # T-SL-03: the ledger chain pointer of a book; its row lock serialises seals (IM-X, RLS-T).
 ledger_chain_head: Final = Table(
     "ledger_chain_head",

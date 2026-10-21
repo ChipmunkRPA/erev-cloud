@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
 from erev_engine.currencies import ISO_4217
-from sqlalchemy import ColumnElement, Select, and_, exists, insert, or_, select
+from sqlalchemy import ColumnElement, Select, and_, exists, func, insert, or_, select, true
 from sqlalchemy.orm import Session
 
 from erev_api.audit.writer import record_facts
@@ -62,7 +62,7 @@ from erev_api.db.tables import (
     subledger_posting,
     subledger_posting_seal,
 )
-from erev_api.domain.journals import completeness
+from erev_api.domain.journals import commit_evidence, completeness
 from erev_api.enums import BookCode, ControlResult, SubledgerPostingKind
 from erev_api.money import money_out
 from erev_api.problems import Problem
@@ -519,6 +519,7 @@ def post(
         ids=[posting_id],
         contract_ids=contracts,
     )
+    commit_evidence.retain_after_commit(uow, posting_id)
     return Posted(
         posting_id=posting_id,
         book_code=book_code,
@@ -707,12 +708,14 @@ def _primary_book(session: Session) -> str:
     return BookCode.ASC606.value if found is None else str(found)
 
 
-def recorded_by(known_at: datetime, *, historical: bool) -> ColumnElement[bool]:
+def recorded_by(
+    known_at: datetime, *, historical: bool, commit_visibility: bool = True
+) -> ColumnElement[bool]:
     """Historical reads admit only complete postings, within the caller's existing line scope.
 
-    Seal rows are tenant-scoped, so an entity-scoped reader cannot admit a partial posting
-    merely because a later sibling line is outside that reader's scope. This is sealing time,
-    not commit time: overlapping transactions still need commit-visibility evidence.
+    Seal rows are tenant-scoped, so an entity-scoped reader cannot admit a partial posting.
+    New historical reads require the actual commit timestamp, retained after commit; old
+    bound reports can explicitly preserve their original sealing-time interpretation.
     """
     if not historical:
         return subledger_line.c.recorded_at <= known_at
@@ -723,6 +726,10 @@ def recorded_by(known_at: datetime, *, historical: bool) -> ColumnElement[bool]:
             subledger_posting_seal.c.tenant_id == subledger_line.c.tenant_id,
             subledger_posting_seal.c.subledger_posting_id == subledger_line.c.subledger_posting_id,
             subledger_posting_seal.c.sealed_server_at <= known_at,
+            func.erev.subledger_commit_time(subledger_posting_seal.c.subledger_posting_id)
+            <= known_at
+            if commit_visibility
+            else true(),
         )
         .correlate(subledger_line)
     )

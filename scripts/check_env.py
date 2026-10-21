@@ -311,6 +311,10 @@ def check_databases(env: Mapping[str, str]) -> int:
         database = database_name(env[app_name])
         try:
             with psycopg.connect(_connect_url(env[app_name]), connect_timeout=5) as conn:
+                tracking = conn.execute("SHOW track_commit_timestamp").fetchone()
+                if tracking is None or tracking[0] != "on":
+                    print(f"historical ledger requires track_commit_timestamp=on on {database}")
+                    failures += 1
                 row = conn.execute(
                     "SELECT current_user, r.rolsuper, r.rolbypassrls "
                     "FROM pg_roles r WHERE r.rolname = current_user"

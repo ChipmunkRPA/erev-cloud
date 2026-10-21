@@ -8,10 +8,12 @@ from decimal import Decimal
 
 import pytest
 from erev_api.db import new_id
-from erev_api.domain.journals import subledger
+from erev_api.domain.journals import commit_evidence, subledger
 from erev_api.domain.reports.builders import ReportParams, disaggregation
+from erev_api.domain.reports.catalogue import COMMIT_VISIBILITY_REPORTS, DEFINITIONS_BY_CODE
 from erev_api.enums import SubledgerPostingKind
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import DBAPIError
 from support.factories import K11World
 from tests.domain.reports.test_historical_line_cutoff_db import _lines_of, _posted
 from tests.domain.reports.test_historical_line_cutoff_db import app as app
@@ -59,9 +61,7 @@ def test_historical_disaggregation_retains_original_revenue(world: K11World) -> 
     assert empty_scope.control_totals["revenue_total"] == {}
 
 
-def test_historical_read_excludes_an_insert_committed_after_cutoff(
-    world: K11World, request: pytest.FixtureRequest
-) -> None:
+def test_historical_read_excludes_an_insert_committed_after_cutoff(world: K11World) -> None:
     first, stored = _posted(world)
     copied = [{**line, "id": new_id()} for line in _lines_of(world, first)]
     with world.place.uow() as uow:
@@ -90,11 +90,91 @@ def test_historical_read_excludes_an_insert_committed_after_cutoff(
             .all()
         )
     assert first in {line["subledger_posting_id"] for line in visible}
-    # Only the missing commit-visibility assertion is expected to fail, never setup/preconditions.
-    request.applymarker(
-        pytest.mark.xfail(
-            strict=True,
-            reason="Insertion timestamp does not retain historical PostgreSQL commit visibility",
-        )
-    )
     assert later.posting_id not in {line["subledger_posting_id"] for line in visible}
+    with world.place.uow() as uow:
+        committed = uow.session.execute(
+            text(
+                "SELECT committed_server_at FROM erev.subledger_posting_commit "
+                "WHERE subledger_posting_id = :posting"
+            ),
+            {"posting": later.posting_id},
+        ).scalar_one()
+        assert committed > stamp
+        assert (
+            uow.session.scalar(
+                text("SELECT erev.subledger_commit_time(:posting)"),
+                {"posting": later.posting_id},
+            )
+            == committed
+        )
+    with pytest.raises(DBAPIError, match="EREV-IMM-001"):
+        with world.place.uow() as uow:
+            uow.session.execute(
+                text(
+                    "UPDATE erev.subledger_posting_commit "
+                    "SET committed_server_at = :stamp WHERE subledger_posting_id = :posting"
+                ),
+                {"stamp": stamp, "posting": later.posting_id},
+            )
+
+
+def test_unarchived_commit_is_readable_and_only_database_time_can_be_retained(
+    world: K11World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(commit_evidence, "retain_after_commit", lambda *args: None)
+    posting, _ = _posted(world)
+    with world.place.uow() as uow:
+        stamp = uow.session.scalar(
+            text("SELECT erev.subledger_commit_time(:posting)"), {"posting": posting}
+        )
+        assert isinstance(stamp, datetime)
+        assert (
+            uow.session.scalar(
+                text(
+                    "SELECT committed_server_at FROM erev.subledger_posting_commit "
+                    "WHERE subledger_posting_id = :posting"
+                ),
+                {"posting": posting},
+            )
+            is None
+        )
+    assert world.place.scalar(select(func.erev.subledger_commit_time(posting))) == stamp
+    with pytest.raises(DBAPIError, match="EREV-HIS-001"):
+        with world.place.uow() as uow:
+            uow.session.execute(
+                text(
+                    "UPDATE erev.subledger_posting_commit "
+                    "SET committed_server_at = clock_timestamp() "
+                    "WHERE subledger_posting_id = :posting"
+                ),
+                {"posting": posting},
+            )
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                text("SELECT erev.capture_subledger_commit(:posting)"), {"posting": posting}
+            )
+            == stamp
+        )
+        uow.commit()
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                text(
+                    "SELECT committed_server_at FROM erev.subledger_posting_commit "
+                    "WHERE subledger_posting_id = :posting"
+                ),
+                {"posting": posting},
+            )
+            == stamp
+        )
+
+
+def test_commit_visibility_catalogue_matches_migration(world: K11World) -> None:
+    with world.place.uow() as uow:
+        rows = uow.session.execute(
+            text("SELECT code, ipe_logic FROM erev.report_definition WHERE version = 1")
+        ).all()
+    stored = dict(rows)
+    for code in COMMIT_VISIBILITY_REPORTS:
+        assert stored[code] == DEFINITIONS_BY_CODE[code].ipe_logic

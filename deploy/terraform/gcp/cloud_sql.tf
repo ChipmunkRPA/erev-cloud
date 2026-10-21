@@ -21,6 +21,7 @@ locals {
   # answered SQLSTATE 53200 (measured on PostgreSQL 17). `erev doctor` evaluates the rule on the
   # live catalogue as the production check lock-budget (05 SAR-40).
   db_flags = {
+    "track_commit_timestamp"        = "on"
     "cloudsql.enable_pgaudit"        = "on"
     "pgaudit.log"                    = "ddl,role"
     "cloudsql.pgaudit_mask_literals" = "on"

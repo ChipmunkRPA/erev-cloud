@@ -81,7 +81,7 @@ services:
     # + 5,044 relations, which needs 2,526 at the default 100 connections; 4096 leaves room for
     # nine more years of monthly partitions. PostgreSQL reads the setting at server start only;
     # `erev doctor` evaluates the rule on the live catalogue (check lock-budget, SAR-40).
-    command: ["postgres", "-c", "max_locks_per_transaction=4096"]
+    command: ["postgres", "-c", "max_locks_per_transaction=4096", "-c", "track_commit_timestamp=on"]
     ports:
       - "127.0.0.1:5436:5432"
     environment:

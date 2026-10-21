@@ -55,6 +55,12 @@ class ProblemSpec:
 # 04 §15.2 rows in catalogue order: slug, status, PRD §5.5 ERR title, §14.1 codes.
 _ROWS: Final[tuple[tuple[str, int, str, tuple[str, ...]], ...]] = (
     ("validation-failed", 422, "Check the highlighted fields", ()),
+    (
+        "historical-evidence-unavailable",
+        409,
+        "Historical commit evidence unavailable",
+        ("EREV-HIS-001",),
+    ),
     ("unauthenticated", 401, "Sign-in required", ()),
     # 04 §15.2 rev 1.96 / §14.1 DB-19 (revision 0073): a change of app_user.email / external_id
     # outside the PRV-07 a erased form is the same refusal as the 42501 the column grant gave
