@@ -156,6 +156,36 @@ PARAMETER_SCHEMAS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
         "contract_external_ids": {**_codes(max_items=50)},
         "contract_id": _UUID,
         "currency_view": _one_of("transaction", "functional", "reporting"),
+        "legacy_functional_positions": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "contract_external_id",
+                    "as_of",
+                    "currency",
+                    "contract_liability",
+                    "unbilled_receivable",
+                    "source_reference",
+                ],
+                "properties": {
+                    "contract_external_id": _TEXT,
+                    "as_of": _DATE,
+                    "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+                    "contract_liability": {
+                        "type": "string",
+                        "pattern": r"^[0-9]{1,18}(?:\.[0-9]{1,8})?$",
+                    },
+                    "unbilled_receivable": {
+                        "type": "string",
+                        "pattern": r"^[0-9]{1,18}(?:\.[0-9]{1,8})?$",
+                    },
+                    "source_reference": {"type": "string", "minLength": 1, "maxLength": 500},
+                },
+            },
+        },
         "date_of_initial_application": _DATE,
         "dimension_code": _TEXT,
         "entity_codes": _codes(),
@@ -2222,7 +2252,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         _ALL,
         "Cumulative effect of adopting Topic 606 per contract and the line-item comparison at the "
         "date of initial application (REQ-BK-007; ASC 606-10-65-1(h), (i)).",
-        ("entity_codes", "date_of_initial_application", "contract_external_id", "currency_view"),
+        (
+            "entity_codes",
+            "date_of_initial_application",
+            "contract_external_id",
+            "currency_view",
+            "legacy_functional_positions",
+        ),
         overrides={
             **_ONE_ENTITY,
             "currency_view": _one_of("transaction", "functional", "reporting"),
@@ -2252,6 +2288,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "per-contract adoption inputs, date and currency basis without live source or "
             "rate reads",
             _CONTRACT,
+            "optional supplied legacy functional carrying balances require an in-scope contract, "
+            "prior period end, entity functional currency and source reference; they are retained "
+            "report inputs, not ledger postings; reporting translates them at the closing rate",
             "functional view uses posted legacy revenue and reconciled dated primary revenue "
             "and balances; foreign legacy positions without historical carrying evidence are "
             "unavailable, including affected aggregate comparisons",

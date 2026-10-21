@@ -30,7 +30,7 @@ line and currency, ``row_key`` ``line:<LINE>`` (``:<ISO>`` when several currenci
 records no contract cost asset, so that line's legacy amount and effect are empty, never 0.00.
 Transaction view preserves each contract's currency. Functional view uses recorded LEGACY
 functional revenue, reconciled dated primary revenue and engine functional balances. Foreign
-legacy liabilities/unbilled balances stay unavailable until historical carrying evidence exists;
+legacy liabilities/unbilled balances stay unavailable until supplied carrying evidence exists;
 line totals for those captions are also unavailable, never partial totals or artificial zeroes.
 Reporting view translates each historical functional revenue movement at its period average
 and ending balances at the closing rate. Legacy balance captions are translated separately
@@ -41,7 +41,9 @@ not a contract under Topic 606) has no billed amount to read and is not listed; 
 ``legacy_only_contract_count`` and ``legacy_only_revenue`` state what stays outside the bridge.
 
 Same-source runs retain per-contract comparison inputs, final legacy-only membership, currency
-basis, date and source/rate evidence. Bound runs rebuild sections and totals without live reads.
+basis, date and source/rate evidence. Optional sourced functional carrying inputs supplement
+endpoint positions without changing the ledger. Bound runs rebuild sections and totals without
+live reads.
 
 The report posts nothing: the cumulative-effect adjustment is exported for a manually approved
 journal and no 1.0 posting uses the ``RETAINED_EARNINGS`` role (D-14a; REQ-BK-007).
@@ -50,6 +52,7 @@ journal and no 1.0 posting uses the ``RETAINED_EARNINGS`` role (D-14a; REQ-BK-00
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import date, timedelta
@@ -89,6 +92,7 @@ PRE_STANDARD_ROLE: Final = "PRE_STANDARD_REVENUE"  # E-01; JET-15 debit (S13-R-0
 REVENUE_NODE: Final = "revenue_cum"  # T-ENG-03 measure per obligation and period
 BILLED_NODE: Final = "billed_cum"
 DATE_KEY: Final = "date_of_initial_application"
+POSITIONS_KEY: Final = "legacy_functional_positions"
 POSITION_UNAVAILABLE: Final = "Historical functional legacy position unavailable"
 CONTRACT_PREFIX: Final = "contract:"
 LINE_PREFIX: Final = "line:"
@@ -146,6 +150,7 @@ class Source:
     cost_assets: Decimal = ZERO
     legacy_position_available: bool = True
     legacy_position_values: tuple[Decimal, Decimal] | None = None
+    legacy_position_reference: str | None = None
 
     @property
     def cumulative_effect(self) -> Decimal:
@@ -242,6 +247,12 @@ def dataset_rows(
                 **(
                     {"legacy_position_basis": POSITION_UNAVAILABLE}
                     if not item.legacy_position_available
+                    else {
+                        "legacy_position_basis": (
+                            f"Supplied carrying balance: {item.legacy_position_reference}"
+                        )
+                    }
+                    if item.legacy_position_reference
                     else {}
                 ),
             }
@@ -727,10 +738,76 @@ def reporting_sources(
                     before[1] + average.amount(entity.id, primary),
                 )
         previous = current
+    found = supplied_positions(found, params, entity.functional_currency, at.end)
     return (
         translate_sources(found, closing, entity.id, revenue),
         translate_sources(outside, closing, entity.id, revenue),
     )
+
+
+def supplied_positions(
+    found: Sequence[Source], params: ReportParams, currency: str, as_of: date | None
+) -> list[Source]:
+    """Admit explicitly sourced endpoint carrying positions, never infer foreign balances.
+
+    Membership comes from the authorized report population. Inputs are report evidence,
+    not ledger postings; their source references remain visible in retained rows and exports.
+    """
+    records = params.parameters.get(POSITIONS_KEY) or []
+    if not records:
+        return list(found)
+
+    def refuse(message: str) -> Problem:
+        return tie_outs.invalid(POSITIONS_KEY, message)
+
+    if params.parameters.get("currency_view", "transaction") == "transaction":
+        raise refuse("Supplied functional balances require Functional or Reporting currency.")
+    if as_of is None:
+        raise refuse("There is no prior period for these carrying balances.")
+    if not isinstance(records, list) or len(records) > 500:
+        raise refuse("Supply at most 500 contract carrying positions.")
+    members = {item.contract_external_id for item in found}
+    positions: dict[str, tuple[Decimal, Decimal, str]] = {}
+    for record in records:
+        if not isinstance(record, dict):
+            raise refuse("Each carrying position must identify a contract and source.")
+        key = record.get("contract_external_id")
+        if not isinstance(key, str) or key not in members or key in positions:
+            raise refuse("Each contract must occur once within the selected report population.")
+        if record.get("currency") != currency or record.get("as_of") != as_of.isoformat():
+            raise refuse(
+                "Carrying balances must use the entity functional currency and prior period end."
+            )
+        reference = record.get("source_reference")
+        if not isinstance(reference, str) or not reference.strip() or len(reference) > 500:
+            raise refuse(
+                "Supply a source reference for each carrying balance (up to 500 characters)."
+            )
+        amounts = []
+        for field in ("contract_liability", "unbilled_receivable"):
+            raw = record.get(field)
+            if not isinstance(raw, str) or not re.fullmatch(r"[0-9]{1,18}(?:\.[0-9]{1,8})?", raw):
+                raise refuse("Carrying amounts must be nonnegative decimal strings.")
+            amount = Decimal(raw)
+            if amount != tie_outs.quantized(amount, currency):
+                raise refuse("Carrying amounts must match the currency's minor unit precision.")
+            amounts.append(amount)
+        if all(amount > 0 for amount in amounts):
+            raise refuse(
+                "A net legacy position cannot be both a liability and an unbilled receivable."
+            )
+        positions[key] = (amounts[0], amounts[1], reference.strip())
+    return [
+        replace(
+            item,
+            legacy_position_available=True,
+            legacy_position_values=positions[item.contract_external_id][:2],
+            legacy_position_reference=positions[item.contract_external_id][2],
+        )
+        if item.contract_external_id in positions
+        else item
+        for item in found
+    ]
 
 
 def restore_sources(records: Sequence[Mapping[str, Any]]) -> list[Source]:
@@ -764,6 +841,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             "currency_view", "Choose Transaction, Functional or Reporting currency."
         )
     selection = {key: params.parameters.get(key) for key in (DATE_KEY, "contract_external_id")}
+    if params.parameters.get(POSITIONS_KEY):
+        selection[POSITIONS_KEY] = params.parameters[POSITIONS_KEY]
     if params.binding is not None:
         retained = tie_outs.bound_evidence(params, EVIDENCE)
         if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
@@ -809,6 +888,10 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 found, legacy_only = sources(
                     session, params, entity, at=at, contract_id=contract_id
                 )
+        if view != "reporting" or at is None:
+            found = supplied_positions(
+                found, params, entity.functional_currency, None if at is None else at.end
+            )
         retained = json.loads(
             canonical_bytes(
                 {

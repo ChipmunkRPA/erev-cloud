@@ -23,6 +23,7 @@ import { TextField } from "../../contracts/drawers/common";
 import { parameterKeys, supportsLockedCurrency, type ReportContext } from "./specs";
 import { CloseLockParameter } from "./CloseLockParameter";
 import { MigrationParameter } from "./MigrationParameter";
+import { LegacyPositions } from "./LegacyPositions";
 import { ReportFilters } from "./ReportFilters";
 import { filterRows, validFilterRows } from "./filterValues";
 
@@ -280,6 +281,17 @@ export function ParametersToolbar({
                 disabled={disabled}
                 onChange={(next) => onChange(key, next)}
               />
+            );
+          case "legacy_functional_positions":
+            return (
+              <div key={key}>
+                <LegacyPositions
+                  value={value}
+                  disabled={disabled}
+                  onChange={(next) => onChange(key, next)}
+                />
+                {error && <p role="alert">{error}</p>}
+              </div>
             );
           case "filters":
             return (

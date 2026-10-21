@@ -280,6 +280,13 @@ function typed(schema: Schema | undefined, raw: string): unknown {
     case "object":
       return filterValue(raw);
     case "array": {
+      if ((schema.items as Schema | undefined)?.type === "object") {
+        try {
+          return JSON.parse(raw) as unknown;
+        } catch {
+          return raw;
+        }
+      }
       const items = raw.split(",").map(item => item.trim()).filter((item) => item !== "");
       const itemType = (schema.items as Schema | undefined)?.type;
       return itemType === "integer" ? items.map(integerInput) : items;

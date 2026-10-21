@@ -375,6 +375,45 @@ def test_adoption_bridge_foreign_functional(
 
     parameters = {"entity_codes": [US01], "date_of_initial_application": "2026-01-01"}
     transaction, transaction_rows = report_run(world, "adoption_bridge", parameters)
+    position = {
+        "contract_external_id": C_ADOPT,
+        "currency": "EUR",
+        "as_of": "2025-12-31",
+        "contract_liability": "123456.78",
+        "unbilled_receivable": "0.00",
+        "source_reference": "Legacy closing trial balance 2025 / C-ADOPT",
+    }
+    supplied_runs = []
+    for view, expected in (("functional", money("123456.78")), ("reporting", usd("370370.34"))):
+        supplied, supplied_rows = report_run(
+            world,
+            "adoption_bridge",
+            {
+                **parameters,
+                "currency_view": view,
+                "legacy_functional_positions": [position],
+            },
+        )
+        balances = keyed(supplied_rows)
+        assert balances[f"contract:{C_ADOPT}"]["contract_liability_legacy"] == expected
+        assert (
+            position["source_reference"] in balances[f"contract:{C_ADOPT}"]["legacy_position_basis"]
+        )
+        assert balances["line:CONTRACT_LIABILITY"]["legacy_amount"] == expected
+        assert "legacy_position_unavailable_contract_count" not in supplied["control_totals"]
+        supplied_runs.append((view, supplied, supplied_rows))
+    assert (
+        refused(
+            world,
+            "adoption_bridge",
+            {
+                **parameters,
+                "currency_view": "functional",
+                "legacy_functional_positions": [{**position, "as_of": "2025-11-30"}],
+            },
+        )[0]
+        == "parameters.legacy_functional_positions"
+    )
     clock.advance(timedelta(minutes=1))
     changed = _appended_through_api(
         world.place,
@@ -393,6 +432,7 @@ def test_adoption_bridge_foreign_functional(
         ("transaction", transaction, transaction_rows),
         ("functional", run, rows),
         ("reporting", reporting, reporting_rows),
+        *supplied_runs,
     ):
         _, current = report_run(world, "adoption_bridge", {**parameters, "currency_view": view})
         assert current != original_rows

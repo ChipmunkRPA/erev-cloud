@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Adoption Bridge supplied legacy carrying balances — October 21, 2026
+
+- Added optional per-contract legacy functional liability/unbilled carrying inputs to the public
+  report API and an editable row-based UI. Each row requires a source reference, prior period-end
+  date and entity functional currency. These are explicitly labelled supplied report evidence,
+  retained with the run; they do not post or change the LEGACY ledger.
+- Inputs must identify distinct contracts within the authorized endpoint population. Invalid dates,
+  currencies, negative/nonfinite/overprecision amounts, missing references, unknown nested fields
+  and simultaneous positive net liability/unbilled positions are rejected. Transaction currency
+  refuses functional inputs. Uncovered foreign contracts and their affected totals remain unknown.
+- Reporting translates supplied positions independently at the closing rate, preserving historical
+  income translation. The UI can reopen saved structured parameters; retained reruns preserve
+  values, source references and output hashes after later revenue events.
+- Necessary verification passed: 61 focused builder/source-binding cases, 6 toolbar cases, public
+  foreign functional/reporting/replay flow, original transaction disclosures, migration metadata
+  parity, scoped lint and types. EUR 123,456.78 at closing 3 yields USD 370,370.34; supplied balances
+  remain distinct from billed-less-revenue estimates. Migration 0301 adds the public schema.
+- Remaining: other documented report adapters and final repository verification. This completes
+  the carrying-position input path; the system does not obtain or independently certify the
+  referenced external historical balance evidence. No deployment.
+
 ## Adoption Bridge retained same-source replay — October 21, 2026
 
 - New transaction, functional and reporting runs retain per-contract comparison inputs,

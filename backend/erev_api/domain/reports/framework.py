@@ -1225,7 +1225,7 @@ def schema_message(key: str, schema: Mapping[str, Any], value: Any) -> str | Non
     """The first violation of ``value`` against the JSON Schema subset of the catalogue, or None
     (``type``, ``enum``, ``pattern``, ``format`` uuid, date and date-time, ``minLength``,
     ``items``, ``minItems``, ``maxItems``, ``uniqueItems``, ``minimum``, ``maximum`` and
-    ``additionalProperties``)."""
+    ``properties``, ``required``, ``maxLength`` and ``additionalProperties``)."""
     kind = schema.get("type")
     if kind == "boolean":
         return None if isinstance(value, bool) else f"{key} must be true or false."
@@ -1259,8 +1259,17 @@ def schema_message(key: str, schema: Mapping[str, Any], value: Any) -> str | Non
     if kind == "object":
         if not isinstance(value, dict) or not all(isinstance(name, str) for name in value):
             return f"{key} must be an object."
+        properties = schema.get("properties", {})
+        for name in schema.get("required", ()):
+            if name not in value:
+                return f"{key}.{name} is required."
         extra = schema.get("additionalProperties", True)
         for name, item in value.items():
+            if name in properties:
+                message = schema_message(f"{key}.{name}", properties[name], item)
+                if message is not None:
+                    return message
+                continue
             if extra is False:
                 return f"{key}.{name} is not accepted."
             if isinstance(extra, Mapping):
@@ -1280,6 +1289,8 @@ def _string_message(key: str, schema: Mapping[str, Any], value: Any) -> str | No
         return f"{key} must be one of {', '.join(str(item) for item in schema['enum'])}."
     if len(value) < schema.get("minLength", 0):
         return f"{key} must not be empty."
+    if "maxLength" in schema and len(value) > schema["maxLength"]:
+        return f"{key} takes at most {schema['maxLength']} characters."
     pattern = schema.get("pattern")
     if pattern is not None and not re.search(str(pattern), value):
         if key.endswith("period_key"):

@@ -1083,3 +1083,111 @@ def test_adoption_retained_inputs_rebuild_without_live_reads(view: str) -> None:
             adoption.build(uow, changed)
     with pytest.raises(Problem):
         adoption.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=UUID(int=4))), params)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"currency": "USD"},
+        {"as_of": "2025-11-30"},
+        {"contract_external_id": "OUTSIDE"},
+        {"source_reference": "   "},
+        {"contract_liability": "NaN"},
+        {"contract_liability": "-1"},
+        {"contract_liability": "1.001"},
+        {"unbilled_receivable": "1"},
+    ],
+)
+def test_legacy_carrying_input_rejects_invalid_evidence(change: dict[str, str]) -> None:
+    from datetime import UTC, datetime
+
+    from erev_api.domain.reports.builders import ReportParams
+
+    record = {
+        "contract_external_id": "C",
+        "currency": "EUR",
+        "as_of": "2025-12-31",
+        "contract_liability": "123.45",
+        "unbilled_receivable": "0",
+        "source_reference": "Closing balance / C",
+    }
+    params = ReportParams(
+        report_code=adoption.CODE,
+        report_version=1,
+        entity_ids=(),
+        known_at=datetime(2026, 1, 1, tzinfo=UTC),
+        parameters={"currency_view": "functional", adoption.POSITIONS_KEY: [{**record, **change}]},
+    )
+    with pytest.raises(Problem):
+        adoption.supplied_positions(
+            [adoption.Source("C", None, "EUR")], params, "EUR", date(2025, 12, 31)
+        )
+
+
+def test_legacy_carrying_input_preserves_missing_members_and_unbilled() -> None:
+    from dataclasses import replace
+    from datetime import UTC, datetime
+
+    from erev_api.domain.reports.builders import ReportParams
+
+    record = {
+        "contract_external_id": "C",
+        "currency": "EUR",
+        "as_of": "2025-12-31",
+        "contract_liability": "0",
+        "unbilled_receivable": "123.45",
+        "source_reference": "Closing balance / C",
+    }
+    params = ReportParams(
+        report_code=adoption.CODE,
+        report_version=1,
+        entity_ids=(),
+        known_at=datetime(2026, 1, 1, tzinfo=UTC),
+        parameters={"currency_view": "functional", adoption.POSITIONS_KEY: [record]},
+    )
+    sources = [
+        adoption.Source(k, None, "EUR", revenue_legacy=D("1"), legacy_position_available=False)
+        for k in ("C", "D")
+    ]
+    result = adoption.supplied_positions(sources, params, "EUR", date(2025, 12, 31))
+    assert result[0].legacy_position_values == (D("0"), D("123.45"))
+    assert result[0].legacy_position_reference == record["source_reference"]
+    rows, totals = adoption.dataset_rows(result)
+    assert keyed(rows)["line:UNBILLED_RECEIVABLE"]["legacy_amount"] is None
+    assert totals["legacy_position_unavailable_contract_count"] == 1
+    rows, _ = adoption.dataset_rows(result[:1])
+    assert keyed(rows)["line:UNBILLED_RECEIVABLE"]["legacy_amount"] == {
+        "amount": "123.45",
+        "currency": "EUR",
+    }
+    for changed in (
+        {"currency_view": "transaction", adoption.POSITIONS_KEY: [record]},
+        {"currency_view": "functional", adoption.POSITIONS_KEY: [record, record]},
+    ):
+        with pytest.raises(Problem):
+            adoption.supplied_positions(
+                sources, replace(params, parameters=changed), "EUR", date(2025, 12, 31)
+            )
+
+
+def test_legacy_carrying_schema_checks_nested_fields() -> None:
+    schema = DEFINITIONS_BY_CODE[adoption.CODE].parameters_schema["properties"][
+        adoption.POSITIONS_KEY
+    ]
+    valid = {
+        "contract_external_id": "C",
+        "as_of": "2025-12-31",
+        "currency": "EUR",
+        "contract_liability": "1.00",
+        "unbilled_receivable": "0.00",
+        "source_reference": "TB",
+    }
+    assert framework.schema_message(adoption.POSITIONS_KEY, schema, [valid]) is None
+    for invalid in (
+        {k: v for k, v in valid.items() if k != "source_reference"},
+        {**valid, "other": "not allowed"},
+        {**valid, "as_of": "2025-02-30"},
+        {**valid, "source_reference": "x" * 501},
+        {**valid, "contract_liability": 1.00},
+    ):
+        assert framework.schema_message(adoption.POSITIONS_KEY, schema, [invalid]) is not None

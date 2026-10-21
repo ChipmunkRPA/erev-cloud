@@ -4,6 +4,7 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ReportDefinition } from "../../../lib/api/queries/reports";
 import { ParametersToolbar, toolbarKeys } from "./ParametersToolbar";
+import { reportViewSearch } from "../run-links";
 import { runParameters, type ReportContext } from "./specs";
 
 const context: ReportContext = {
@@ -166,4 +167,59 @@ it("retains a saved entity subset until the user explicitly changes scope", () =
   expect(
     runParameters(definition, { ...context, entity: null }, { entity_codes: "" }).entity_codes,
   ).toBeUndefined();
+});
+
+it("edits sourced legacy balances and preserves structured values when reopening a run", () => {
+  const adoption = {
+    ...definition,
+    code: "adoption_bridge",
+    parameters_schema: {
+      ...definition.parameters_schema,
+      required: [],
+      properties: { legacy_functional_positions: { type: "array", items: { type: "object" } } },
+    },
+  } as ReportDefinition;
+  let values: Record<string, string> = {};
+  function Editor() {
+    const [current, setCurrent] = useState<Record<string, string>>({});
+    values = current;
+    return (
+      <ParametersToolbar
+        definition={adoption}
+        context={context}
+        values={current}
+        errors={{}}
+        timeBands={null}
+        onChange={(key, value) => setCurrent({ ...current, [key]: value })}
+        onRun={() => {}}
+      />
+    );
+  }
+  render(<Editor />);
+  fireEvent.click(screen.getByRole("button", { name: "Add legacy carrying balance" }));
+  for (const [label, value] of [
+    ["Contract external ID", "C-ADOPT"],
+    ["Balance date (YYYY-MM-DD)", "2025-12-31"],
+    ["Functional currency (ISO code)", "EUR"],
+    ["Legacy contract liability", "123.45"],
+    ["Source reference", "Trial balance / C-ADOPT"],
+  ] as const)
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  const parameters = runParameters(adoption, context, values);
+  expect(parameters.legacy_functional_positions).toEqual([
+    {
+      contract_external_id: "C-ADOPT",
+      as_of: "2025-12-31",
+      currency: "EUR",
+      contract_liability: "123.45",
+      unbilled_receivable: "0.00",
+      source_reference: "Trial balance / C-ADOPT",
+    },
+  ]);
+  const search = new URLSearchParams(reportViewSearch({ id: "run", parameters, output: null }));
+  expect(JSON.parse(search.get("p.legacy_functional_positions") ?? "null")).toEqual(
+    parameters.legacy_functional_positions,
+  );
+  fireEvent.click(screen.getByRole("button", { name: /Remove.*1/i }));
+  expect(runParameters(adoption, context, values).legacy_functional_positions).toBeUndefined();
 });

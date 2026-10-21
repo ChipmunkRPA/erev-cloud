@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Adoption Bridge supplied legacy carrying balances — October 21, 2026
+
+- Added optional per-contract legacy functional liability/unbilled carrying inputs to the public
+  report API and an editable row-based UI. Each row requires a source reference, prior period-end
+  date and entity functional currency. These are explicitly labelled supplied report evidence,
+  retained with the run; they do not post or change the LEGACY ledger.
+- Inputs must identify distinct contracts within the authorized endpoint population. Invalid dates,
+  currencies, negative/nonfinite/overprecision amounts, missing references, unknown nested fields
+  and simultaneous positive net liability/unbilled positions are rejected. Transaction currency
+  refuses functional inputs. Uncovered foreign contracts and their affected totals remain unknown.
+- Reporting translates supplied positions independently at the closing rate, preserving historical
+  income translation. The UI can reopen saved structured parameters; retained reruns preserve
+  values, source references and output hashes after later revenue events.
+- Necessary verification passed: 61 focused builder/source-binding cases, 6 toolbar cases, public
+  foreign functional/reporting/replay flow, original transaction disclosures, migration metadata
+  parity, scoped lint and types. EUR 123,456.78 at closing 3 yields USD 370,370.34; supplied balances
+  remain distinct from billed-less-revenue estimates. Migration 0301 adds the public schema.
+- Remaining: other documented report adapters and final repository verification. This completes
+  the carrying-position input path; the system does not obtain or independently certify the
+  referenced external historical balance evidence. No deployment.
+
 ## Adoption Bridge retained same-source replay — October 21, 2026
 
 - New transaction, functional and reporting runs retain per-contract comparison inputs,
@@ -195,27 +216,6 @@ review and publish changes without PR accumulation, and do not deploy.
   gaps, non-policy/book-context residuals, Adoption Bridge multi-currency, Intercompany Pairs
   retained replay, other documented adapters and final repository verification. No deployment;
   this is a concrete attribution increment, not a claim that every book difference is explained.
-
-## Book Bridge same-source rebuild — October 21, 2026
-
-- New runs retain the pre-aggregation per-contract amounts for both books, the selected currency
-  basis and consumed driver facts. A same-source rerun rebuilds all three sections, counts,
-  totals and the driver tie-out from those inputs without reading current contract labels,
-  book configuration, balances or FX rates. Workspace/entity and currency-view checks remain.
-- The registered source strategy is retained_inputs; older OPEN runs preserve their original
-  new-evaluation semantics. Migration 0295 describes retained inputs and the reporting FX tables.
-- Necessary verification passed: a later GBP bill/recomputation changes the live reporting-view
-  balances while the original public rerun keeps its rows and output hash; input-only rebuild
-  recomputes driver totals without a session and rejects scope/view mismatch; catalogue parity,
-  40 focused builder/source-binding tests and scoped lint/types pass. No deployment.
-- Causal attribution remains unfinished: the existing collectibility/reversal flags do not
-  isolate simultaneous effects, and framework/licence/advance-FX residuals require counterfactual
-  computation. The engine exposes resolved BookInput policies and original computation evidence;
-  the close-variance worker already separates authorized input reads from SQL-free engine runs.
-  Extend that pattern for book-policy phases, verify original book endpoints, and preserve any
-  unreproduced residual rather than labelling an entire difference from a historical event flag.
-- Also remaining: Adoption Bridge currency support, Intercompany Pairs retained input replay
-  and residual attribution, other documented adapters and final repository validation.
 
 ## Outstanding release verification
 

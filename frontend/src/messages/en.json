@@ -7932,5 +7932,16 @@
   "modifications.wizard.change.terminationFull": "All remaining obligations",
   "modifications.wizard.change.terminationPartial": "Only obligations in the remove lines",
   "modifications.wizard.change.terminationRefund": "Refund amount",
-  "modifications.wizard.error.terminationRefund": "Enter a non-negative refund amount."
+  "modifications.wizard.error.terminationRefund": "Enter a non-negative refund amount.",
+  "reports.legacyPositions.title": "Legacy functional carrying balances (optional)",
+  "reports.legacyPositions.help": "Enter balances at the period end immediately before adoption, in the entity functional currency. Choose Functional or Reporting currency. Each contract needs a source reference; these inputs supplement this report and do not post to the ledger.",
+  "reports.legacyPositions.invalid": "Saved carrying balances are invalid. Clear them and enter the balances again.",
+  "reports.legacyPositions.limit": "At most 500 contract positions per report.",
+  "reports.legacyPositions.add": "Add legacy carrying balance",
+  "reports.legacyPositions.contract_external_id": "Contract external ID",
+  "reports.legacyPositions.as_of": "Balance date (YYYY-MM-DD)",
+  "reports.legacyPositions.currency": "Functional currency (ISO code)",
+  "reports.legacyPositions.contract_liability": "Legacy contract liability",
+  "reports.legacyPositions.unbilled_receivable": "Legacy unbilled receivable",
+  "reports.legacyPositions.source_reference": "Source reference"
 }

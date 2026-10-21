@@ -44,6 +44,8 @@ function carried(value: unknown): string | null {
     Object.values(value).every((item) => typeof item === "string")
   )
     return JSON.stringify(value);
+  if (Array.isArray(value) && value.every((item) => typeof item === "object" && item !== null))
+    return JSON.stringify(value);
   return null;
 }
 
