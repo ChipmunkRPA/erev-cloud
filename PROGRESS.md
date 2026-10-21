@@ -20,6 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Scope exclusion reporting and retained inputs — October 21, 2026
+
+- Reporting now preserves original out-of-scope amounts and adds explicitly labelled equivalents
+  at each entity's selected report-period closing rate, with a separate reporting control total.
+  These are analytical equivalents, not carrying balances. Missing per-line amounts remain empty;
+  shared exclusions are not apportioned. Foreign-contract functional conversion remains refused.
+- New runs retain scope amounts, judgement numbers/rationales, source version membership, resolved
+  as-of date and reporting rates. Bound reruns validate tenant/entity scope and filters, then rebuild
+  typed rows and totals without current source reads. Older OPEN runs keep new-evaluation behavior.
+- Necessary checks passed: 40 focused register/source-binding cases, including USD-to-GBP and
+  retained reconstruction in all three views; actual BR06 report API/worker flow before and after
+  judgement approval. Fresh rows show the new rationale while all three saved views reproduce
+  original rows and identical hashes. Scoped lint/types and migration 0310 frozen IPE parity pass.
+  Lock-source and ad-hoc historical limitations remain unchanged. No deployment.
+
 ## Estimate change retained reconstruction — October 21, 2026
 
 - New estimate-change runs retain selected version inputs, predecessor measures, attributed P&L
@@ -202,31 +217,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: historical foreign legacy carrying-position inputs, other documented report
   adapters and final repository verification. Adoption same-source replay is now implemented;
   foreign legacy positions are still unavailable when their historical carrying evidence is absent.
-
-## Adoption Bridge reporting-currency view — October 21, 2026
-
-- Added Reporting currency to the public report and frozen migration 0299. The builder reads
-  each historical functional cumulative-income endpoint, translates each period's movement at
-  its approved average rate and accumulates those translated movements. Ending primary and
-  available legacy positions use the ending closing rate independently of income. Explicit
-  legacy position values prevent billed-at-closing minus historical revenue from inventing a
-  different balance. Included/legacy-only population is determined at the final endpoint.
-- Period-average and closing rate inputs are recorded separately. Missing/ambiguous rates are
-  refused through the shared approved-rate admission; unknown foreign legacy positions remain
-  unavailable at contract and aggregate level. A nonzero imported opening-revenue node actually
-  consumed by the revenue trace is refused for foreign reporting translation when its historical
-  period allocation is absent; it is never treated as first-period income. Identity conversion
-  does not require that historical FX allocation.
-- Public flow verified with recorded EUR income: January-November EUR/USD average 1, December
-  average 2 and closing 3 produce USD 160,000 legacy revenue, 178,666.66 primary revenue,
-  18,666.66 cumulative effect and 192,000 primary liability. This distinguishes period income
-  conversion from both ending-average and closing-rate shortcuts. The FX service generates
-  inverse rows, so the test approves a new version of the existing pair's set instead of
-  introducing duplicate simultaneously approved rates.
-- Necessary validation: public foreign reporting and original transaction flows, schema/IPE
-  migration parity, 48 focused report/source-binding cases and scoped lint/types passed.
-  Remaining: foreign legacy carrying-position sources, Adoption retained same-source replay,
-  other documented adapters and final repository verification. No deployment.
 
 ## Outstanding release verification
 

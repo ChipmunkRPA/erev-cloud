@@ -2145,6 +2145,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "product",
             "judgement_record",
             "combination_group_member",
+            "legal_entity",
+            "tenant",
+            "period",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "obligation_version.contract_version_id = contract_version.id",
@@ -2154,6 +2160,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "combination_group_member.contract_id = contract.id",
         ),
         filters=(
+            "same-source runs retain scope amounts, judgement values and reporting rates; rebuild "
+            "without live reads; reporting retains original amounts and adds analytical "
+            "equivalents "
+            "at the report-period closing rate, not carrying balances; missing amounts stay empty",
             _SCOPE,
             _BOOK,
             _CHAIN,

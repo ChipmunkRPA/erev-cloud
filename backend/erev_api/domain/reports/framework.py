@@ -536,10 +536,7 @@ _SOD_CONFLICT_REPORT_OPEN: Final = (
 _JUDGEMENT_REGISTER_OPEN: Final = (
     "judgement records with their contracts, subjects and display names read live (RPS-11 RPT-28)"
 )
-_SCOPE_EXCLUSION_REGISTER_OPEN: Final = (
-    "routed-out obligation versions of each group's latest contract version at the period end "
-    "with their contract versions and judgement records read live (RPS-11 RPT-30)"
-)
+
 _BOOK_BRIDGE_OPEN: Final = (
     "the entity's kept books, the REVENUE subledger lines of both books over the range, the "
     "presented balances of each book's latest contract versions at the range end, the contract "
@@ -895,7 +892,8 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             RETAINED, (_CUTOFF, "estimate version, actor, effect and reporting-rate inputs")
         ),
         scope_exclusion_register_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_SCOPE_EXCLUSION_REGISTER_OPEN,)
+            RETAINED,
+            (_CUTOFF, "scope-exclusion amounts, judgement values and reporting-rate inputs"),
         ),
         # RPS-12 (RPT-33 to RPT-35): the analysis reports read live; no source adapter yet.
         bbr_builder.CODE: SourceContract(
@@ -2078,6 +2076,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "manual_adjustment_register",
             "modification_register",
             "estimate_change_listing",
+            "scope_exclusion_register",
         }
     ):
         try:

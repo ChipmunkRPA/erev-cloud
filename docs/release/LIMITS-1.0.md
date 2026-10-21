@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Scope exclusion reporting and retained inputs — October 21, 2026
+
+- Reporting now preserves original out-of-scope amounts and adds explicitly labelled equivalents
+  at each entity's selected report-period closing rate, with a separate reporting control total.
+  These are analytical equivalents, not carrying balances. Missing per-line amounts remain empty;
+  shared exclusions are not apportioned. Foreign-contract functional conversion remains refused.
+- New runs retain scope amounts, judgement numbers/rationales, source version membership, resolved
+  as-of date and reporting rates. Bound reruns validate tenant/entity scope and filters, then rebuild
+  typed rows and totals without current source reads. Older OPEN runs keep new-evaluation behavior.
+- Necessary checks passed: 40 focused register/source-binding cases, including USD-to-GBP and
+  retained reconstruction in all three views; actual BR06 report API/worker flow before and after
+  judgement approval. Fresh rows show the new rationale while all three saved views reproduce
+  original rows and identical hashes. Scoped lint/types and migration 0310 frozen IPE parity pass.
+  Lock-source and ad-hoc historical limitations remain unchanged. No deployment.
+
 ## Estimate change retained reconstruction — October 21, 2026
 
 - New estimate-change runs retain selected version inputs, predecessor measures, attributed P&L

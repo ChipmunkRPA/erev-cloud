@@ -20,33 +20,45 @@ are ordered by contract and obligation; ``row_key`` ``obligation:<external id>:<
 Control totals ``row_count``, ``out_of_scope_amount_total`` per currency and the ``as_of`` date
 (per entity calendar the end of the period; the first entity's in the totals). ``currency_view``
 ``transaction`` is served; another view only when every row's currency is its entity's functional
-currency, else refused by name. A ``period_lock_id`` source is refused by name, as every register
+currency, else refused by name. Reporting adds separately labelled equivalents at the report-period
+closing rate; these amounts are not carrying balances. Saved runs retain amount, judgement and rate
+inputs for reconstruction. A ``period_lock_id`` source is refused by name, as every register
 does; an explicit historical run whose cutoff precedes the last change of a judgement record it
 would show is refused by name (REGISTER-CUTOFF-1).
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract_version, judgement_record, obligation_version
-from erev_api.domain.reports import tie_outs
+from erev_api.db.tables import (
+    contract,
+    contract_version,
+    judgement_record,
+    obligation_version,
+    tenant,
+)
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, contract_history
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import JudgementStatus, ScopeFlag
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "scope_exclusion_register"
+EVIDENCE: Final = "scope_exclusion_inputs_v1"
 ROW_KEY_PREFIX: Final = "obligation:"  # RPT-30: row_key `obligation:<external id>:<key>`
 DEFAULT_CURRENCY_VIEW: Final = "transaction"
 IN_SCOPE: Final = ScopeFlag.IN_SCOPE_606.value
@@ -117,6 +129,8 @@ def latest_judgement(records: Iterable[Mapping[str, Any]]) -> Mapping[str, Any] 
 def check_view(view: str, found: Iterable[Source]) -> None:
     """``transaction`` always; another view only when every row is in its entity's functional
     currency, else refused by name."""
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid("currency_view", "Unsupported scope-exclusion currency view.")
     if view != DEFAULT_CURRENCY_VIEW and any(
         item.currency != item.functional_currency for item in found
     ):
@@ -217,6 +231,7 @@ def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[l
         ):
             rows.append((row, by_id[UUID(str(row["contracting_entity_id"]))]))
     version_ids = sorted({UUID(str(row["contract_version_id"])) for row, _ in rows}, key=str)
+    tie_outs.record_members(params, "scope_contract_versions", version_ids)
     amounts: dict[UUID, Decimal] = {}
     if version_ids:
         amounts = {
@@ -263,12 +278,144 @@ def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[l
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    check_view(view, ())
+    selection = {key: params.parameters.get(key) for key in ("book", "period_key")}
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained scope inputs exceed report scope.")
+        if retained["currency_view"] != view or retained["selection"] != selection:
+            raise tie_outs.invalid(
+                "currency_view", "Retained inputs use another currency or filter selection."
+            )
+        return data_from_inputs(retained)
     session = uow.session
     found, as_of = sources(uow, params, book_code=tie_outs.book_of(session, params))
-    check_view(str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW), found)
+    check_view(view, found)
+    target: str | None = None
+    translations: dict[str, tuple[UUID, reporting_currency.Translation]] = {}
+    if view == "reporting":
+        target = str(
+            session.execute(
+                select(tenant.c.reporting_currency).where(tenant.c.id == uow.principal.tenant_id)
+            ).scalar_one()
+        ).strip()
+        entities = tie_outs.entities(session, params.entity_ids)
+        by_id = {entity.id: entity for entity in entities}
+        calendars = tie_outs.calendars(session, entities)
+        owners = {
+            str(external): UUID(str(entity_id))
+            for external, entity_id in session.execute(
+                select(contract.c.external_id, contract.c.contracting_entity_id).where(
+                    contract.c.tenant_id == uow.principal.tenant_id,
+                    contract.c.contracting_entity_id.in_(params.entity_ids),
+                    contract.c.external_id.in_({item.contract_external_id for item in found}),
+                )
+            ).all()
+        }
+        rates: dict[UUID, reporting_currency.Translation] = {}
+        for item in found:
+            if item.out_of_scope_amount is None:
+                continue
+            entity_id = owners[item.contract_external_id]
+            entity = by_id[entity_id]
+            if entity_id not in rates:
+                period = tie_outs.period_of(params, calendars[entity_id], entity)
+                rates[entity_id] = reporting_currency.rates_for_period(
+                    session,
+                    params,
+                    tenant_id=uow.principal.tenant_id,
+                    entities=(entity,),
+                    periods={entity_id: period},
+                    rate_type="closing",
+                    target_currency=target,
+                    evidence_key=f"scope_closing_v1:{entity_id}:{period.key}",
+                )
+            translations[item.contract_external_id] = (entity_id, rates[entity_id])
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "currency_view": view,
+                "selection": selection,
+                "as_of": as_of,
+                "sources": [asdict(item) for item in found],
+                "reporting_currency": target,
+                "translations": [
+                    {
+                        "contract_external_id": key,
+                        "entity_id": entity_id,
+                        "currency": rate.currency,
+                        "rates": {str(k): v for k, v in rate.rates.items()},
+                    }
+                    for key, (entity_id, rate) in translations.items()
+                ],
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    found = []
+    for record in retained["sources"]:
+        values = dict(record)
+        values["effective_date"] = date.fromisoformat(values["effective_date"])
+        values["out_of_scope_amount"] = (
+            None
+            if values["out_of_scope_amount"] is None
+            else Decimal(values["out_of_scope_amount"])
+        )
+        found.append(Source(**values))
+    view = retained["currency_view"]
+    check_view(view, found)
     rows, totals = dataset_rows(found)
-    totals["as_of"] = as_of.isoformat()
-    return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
+    columns: tuple[Column, ...] = COLUMNS
+    if view == "reporting":
+        target = retained["reporting_currency"]
+        translations = {
+            item["contract_external_id"]: (
+                UUID(item["entity_id"]),
+                reporting_currency.Translation(
+                    item["currency"], {UUID(key): value for key, value in item["rates"].items()}
+                ),
+            )
+            for item in retained["translations"]
+        }
+        equivalents: dict[str, Decimal] = {}
+        for row in rows:
+            row["reporting_currency"] = target
+            row["reporting_basis"] = (
+                "Equivalent at report-period closing rate; not a carrying balance"
+            )
+            row["out_of_scope_reporting"] = None
+            if row["out_of_scope_amount"] is not None:
+                entity_id, rate = translations[row["contract_external_id"]]
+                if (
+                    rate.currency != target
+                    or rate.rates[entity_id]["base_currency"] != row["currency"]
+                ):
+                    raise tie_outs.invalid(
+                        "currency_view", "Reporting translation requires functional amounts."
+                    )
+                amount = rate.amount(entity_id, Decimal(row["out_of_scope_amount"]["amount"]))
+                row["out_of_scope_reporting"] = tie_outs.money(amount, target)
+                tie_outs.add(equivalents, target, amount)
+        totals["out_of_scope_reporting_total"] = tie_outs.by_currency(equivalents)
+        totals["reporting_currency"] = target
+        totals["translation_basis"] = "report_period_closing_equivalent"
+        columns = COLUMNS + (
+            Column("reporting_currency", "Reporting currency", "code"),
+            Column("out_of_scope_reporting", "Out-of-scope reporting equivalent", "money"),
+            Column("reporting_basis", "Reporting conversion basis", "text"),
+        )
+    totals["as_of"] = retained["as_of"]
+    return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)
 
 
 __all__ = [

@@ -623,6 +623,15 @@ def test_scope_exclusion_register(
         "as_of": "2026-09-30",
     }
 
+    originals = [(run, rows)]
+    for view in ("functional", "reporting"):
+        original, original_rows = report_run(
+            world, "scope_exclusion_register", {**parameters, "currency_view": view}
+        )
+        if view == "reporting":
+            assert original_rows[0]["out_of_scope_reporting"] == usd("81000.00")
+        originals.append((original, original_rows))
+
     judgement = judgement_submitted(
         app,
         world.maya,
@@ -658,6 +667,23 @@ def test_scope_exclusion_register(
         f"{BR06_EXTERNAL_ID} L1-LEASE",
     )
     assert (record["status"], record["reviewer"]) == ("REVIEWED", "Priya")
+
+    from support import worlds
+
+    for original, original_rows in originals:
+        started = post(app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        restored = get(
+            app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == original_rows
 
 
 def test_loss_tests_persist_periods_and_eac_lineage(k03: K03World, clock: FrozenClock) -> None:

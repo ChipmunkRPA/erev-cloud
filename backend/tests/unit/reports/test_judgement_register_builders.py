@@ -55,7 +55,7 @@ def test_columns_are_the_specification_grid(number: int, module: Any) -> None:
 def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module is estimates:
+    if module in (estimates, exclusions):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -509,3 +509,81 @@ def test_estimate_retained_inputs_rebuild_without_database(view):
             estimates.build(uow, invalid)
     with pytest.raises(Problem):
         estimates.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_scope_retained_rebuild_and_reporting(view):
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "currency_view": view,
+                "selection": {"book": None, "period_key": None},
+                "as_of": "2026-09-30",
+                "sources": [
+                    asdict(_excluded()),
+                    asdict(_excluded(contract_external_id="NULL", out_of_scope_amount=None)),
+                ],
+                "reporting_currency": "GBP",
+                "translations": [
+                    {
+                        "contract_external_id": "BR-06",
+                        "entity_id": PRIYA,
+                        "currency": "GBP",
+                        "rates": {str(PRIYA): {"base_currency": "USD", "rate": "0.8"}},
+                    }
+                ],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=exclusions.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={"currency_view": view},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={exclusions.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = exclusions.build(uow, params)
+    assert data.rows[0]["effective_date"] == date(2026, 1, 1)
+    assert data.rows[0]["out_of_scope_amount"] == {"amount": "81000.00", "currency": "USD"}
+    assert data.rows[1]["out_of_scope_amount"] is None
+    if view == "reporting":
+        assert data.control_totals["out_of_scope_reporting_total"] == {"GBP": "64800.00"}
+        assert data.rows[1]["out_of_scope_reporting"] is None
+        retained["translations"][0]["rates"][str(PRIYA)]["rate"] = "0.9"
+        assert exclusions.build(uow, params).control_totals["out_of_scope_reporting_total"] == {
+            "GBP": "72900.00"
+        }
+    retained["sources"][0]["out_of_scope_amount"] = "100"
+    retained["sources"][0]["rationale"] = "Retained rationale"
+    changed = exclusions.build(uow, params)
+    assert changed.control_totals["out_of_scope_amount_total"] == {"USD": "100.00"}
+    assert changed.rows[0]["rationale"] == "Retained rationale"
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"currency_view": view, "book": "IFRS15"}),
+        replace(params, parameters={"currency_view": view, "period_key": "FY2026-P08"}),
+    ):
+        with pytest.raises(Problem):
+            exclusions.build(uow, invalid)
+    with pytest.raises(Problem):
+        exclusions.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+    with pytest.raises(Problem):
+        exclusions.check_view("unknown", [])
