@@ -337,6 +337,14 @@ def test_s14_r04_period_target_and_posted_by_origin() -> None:
         (26000, 14000, ("CLOSE_RELEASE",)),
     ]
     assert _node(run.trace, targets[_period(2)].node_id).value == "250.00"
+    import json
+
+    assert json.loads(
+        _node(run.trace, targets[_period(3)].node_id).params["input_period_classes"]
+    ) == [{_period(1): "TIME", _period(2): "MIXED", _period(3): "EVENT"}]
+    assert json.loads(
+        _node(run.trace, targets[_period(1)].node_id).params["input_period_classes"]
+    ) == [{_period(1): "TIME"}]
     revenue = RoleKey("ASC606", ENTITY, p1, "REVENUE_RECOGNITION", REVENUE, None, None)
     assert [t.amount_txn for t in run.posting.role_targets if t.key == revenue] == [
         -10000,

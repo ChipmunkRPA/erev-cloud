@@ -22,7 +22,7 @@ original revenue sources have the same contract, layer, movement kind, effective
 source key. Both currency totals still reconcile to original target evidence; prior targets
 and paid history retain their existing reconciliation. This preserves S14's functional TIME
 amount rather than introducing a new report-side FX or allocation rule. Multiple original
-provenances remain unsupported. Split-role inputs and non-revenue component sources retain
+provenances can additionally use the period-class path described below. Split-role inputs and non-revenue component sources retain
 their existing limits. Full mixed-workflow/API acceptance and independent accounting sign-off
 remain open.
 
@@ -40,3 +40,20 @@ Necessary verification:
   This verifies compatibility of the new metadata with that public workflow; it is not an
   end-to-end mixed-input accounting acceptance test.
 - Ruff and targeted mypy passed. No deployment was performed.
+
+
+Recognition-period source attribution now supports multiple original owners/layers across
+separately classified periods. S14 retains `input_period_classes`, aligned to its signed inputs,
+from original relief causes through the target period: NORMAL is TIME only for obligations
+released at close; other causes are EVENT. A period containing both stays MIXED. Concession
+components and unresolved multiple-input/split shares do not claim period evidence.
+
+The report matches each original S12 source key to the exact input subject and retained period,
+keeps its signed source amount and ownership, and verifies TIME totals independently in both
+currencies. This enables mixed cumulative inputs without proportional source allocation. A
+within-period mixture, missing classification or functional TIME mismatch remains unsupported.
+The single-provenance path and legacy behavior are preserved. Focused cases exercise opposite
+signs, distinct owners/layers, reversal coefficients and both currency views; the original
+engine example verifies TIME/MIXED/EVENT period metadata and historical cutoff. Existing DB
+intercompany reversal compatibility passes; full public multi-period mixed acceptance remains
+open. Migration 0220 records this scope. No deployment.

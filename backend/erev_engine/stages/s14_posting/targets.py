@@ -36,6 +36,7 @@ role key and period (§14.6). Standard library only (DG-ARC-02).
 from __future__ import annotations
 
 import dataclasses
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
@@ -247,6 +248,7 @@ class PartTarget:
     # Per role label of a split side whose shares are component amounts (JET-03 net and tax).
     split_inputs: tuple[tuple[str, tuple[NodeInput, ...]], ...] = ()
     weights: tuple[tuple[str, Fraction], ...] = ()  # split side weights by role label
+    period_classes: tuple[tuple[str, str], ...] = ()
 
     @property
     def key(self) -> tuple[str, str, str, str, str, str]:
@@ -648,10 +650,19 @@ def _relief(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarge
         )
         position = _positions(ctx, target.entity)
         by_cause: dict[str, int] = {}
+        period_causes: dict[str, dict[str, int]] = {}
         for item in causes.get((target.entity, target.subject_key), ()):
             if position[item.period_key] <= position[target.period_key]:
+                amounts = period_causes.setdefault(item.period_key, {})
                 cause = item.cause or ""
+                amounts[cause] = amounts.get(cause, 0) + item.value
                 by_cause[cause] = by_cause.get(cause, 0) + item.value
+        period_classes = tuple(
+            (period, "EVENT" if normal == 0 else "TIME" if normal == total else "MIXED")
+            for period, amounts in sorted(period_causes.items())
+            for total in (sum(amounts.values()),)
+            for normal in (amounts.get("NORMAL", 0) if target.subject_key in released else 0,)
+        )
         part = _relief_part(ob, target.subject_key in counterparties)
         time_txn = by_cause.get("NORMAL", 0) if target.subject_key in released else 0
         out.append(
@@ -668,6 +679,7 @@ def _relief(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarge
                 amount_functional=amount_functional,
                 counterparty_entity=counterparties.get(target.subject_key),
                 by_cause=tuple(sorted((c, v) for c, v in by_cause.items() if v != 0)),
+                period_classes=period_classes if not cited else (),
                 rates=rates,
                 node_ids=(target.node_id, *cited, *fx_nodes),
                 time_txn=time_txn,
@@ -1512,6 +1524,7 @@ class _Share:
     passes: frozenset[str]
     rates: tuple[RateRef, ...]
     currencies: tuple[str, str]
+    period_classes: tuple[tuple[str, str], ...] = ()
     reason: str | None = None  # the part's Table 14-A reason_code (S14-R-27)
 
 
@@ -1596,6 +1609,7 @@ def _shares(part: PartTarget) -> list[tuple[RoleKey, _Share]]:
             passes=_passes(part.part),
             rates=part.rates,
             currencies=(part.txn_currency, part.functional_currency),
+            period_classes=part.period_classes if len(inputs) == 1 and split is None else (),
             reason=spec.reason_code,
         )
         out.append((key, share))
@@ -1715,6 +1729,11 @@ def _target_node(
         "time_functional": str(time_functional),
         # A single signed input has an exact TIME contribution. Multiple inputs
         # still require component evidence; never distribute their TIME by ratio.
+        "input_period_classes": json.dumps(
+            [dict(share.period_classes) for share in shares for _ in share.inputs],
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
         "input_time_txn": "|".join(
             str(share.time_txn) if len(share.inputs) == 1 else "unresolved"
             for share in shares

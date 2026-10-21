@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Mixed revenue by retained recognition period — October 20, 2026
+
+- S14 now retains per-input period classes from original relief causes, bounded by each target
+  period. NORMAL is TIME only for close-released obligations; mixed periods stay explicit.
+  Concession/multiple-input/split shares do not acquire invented classification evidence.
+- Reporting can attribute mixed cumulative inputs across multiple owners/layers when each
+  source period has a uniform class. It preserves original signed amounts and reconciles TIME
+  independently in transaction and functional currency. FX readers accept the new annotation.
+- 46 scoped engine/source cases, the DB intercompany progress-reversal workflow and two-month
+  foreign-balance/GL journey pass. Scoped lint/types and both migrated IPE definitions match.
+  Within-period mixtures, functional allocation mismatches, split/non-revenue inputs and broad
+  mixed public-workflow acceptance remain open. Migration 0220 describes the two consumers.
+- No deployment. Independent accounting sign-off and final release verification remain open.
+
+
 ## Foreign-currency close freeze restored — October 20, 2026
 
 - FX source attribution now accepts S14's descriptive TIME/EVENT and per-input TIME annotations.

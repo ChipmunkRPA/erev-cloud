@@ -590,6 +590,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "entity and role in functional currency; either nonzero leg fails even when net "
             "differences cancel; missing subledger evidence is unavailable and v1 bindings "
             "retain two-way semantics",
+            "mixed revenue inputs spanning original sources use retained recognition-period "
+            "classes only when every source period is uniform TIME or EVENT and both currency "
+            "TIME totals reconcile; mixed periods and unmatched functional allocation remain "
+            "unavailable",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -675,6 +679,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "mixed revenue inputs use retained per-input TIME amounts in both currencies only "
             "when original sources have one contract, layer, movement kind, date and source "
             "identity; ambiguous ownership is not proportionally assigned",
+            "mixed revenue inputs spanning original sources use retained recognition-period "
+            "classes only when every source period is uniform TIME or EVENT and both currency "
+            "TIME totals reconcile; mixed periods and unmatched functional allocation remain "
+            "unavailable",
         ),
     ),
     _definition(

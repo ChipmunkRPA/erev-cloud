@@ -7,6 +7,7 @@ The source owner is independent of the obligation that recognizes the revenue.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -24,7 +25,7 @@ class InvalidRevenueTrace(ValueError):
 def input_classes(
     params: Mapping[str, str], count: int, transaction: Fraction, time: Fraction
 ) -> tuple[bool | None, ...]:
-    """Read source classes; None requires exact mixed-input TIME and unique provenance."""
+    """Read source classes; None requires exact TIME and finer original source evidence."""
     if "input_classes" not in params:
         if time and time != transaction:
             raise InvalidRevenueTrace(
@@ -211,6 +212,84 @@ def split_single_origin(
         for is_time, amount in ((True, time), (False, total - time))
         if amount
     )
+
+
+def split_mixed_sources(
+    sources: Sequence[RevenueSource],
+    *,
+    params: Mapping[str, str],
+    count: int,
+    index: int,
+    subject: str,
+    sign: int,
+    transaction_amounts: Mapping[UUID, Fraction],
+    time_txn: Fraction,
+    time_functional: Fraction,
+    view: str,
+) -> tuple[RevenueMovement, ...]:
+    """Use retained period classes without allocating a mixed period across its owners."""
+    if sign not in {-1, 1} or view not in {"transaction", "functional"}:
+        raise InvalidRevenueTrace("Invalid mixed source projection.")
+    identities = {
+        (item.contract_id, item.layer_key, item.movement_kind, item.effective_date, item.source_key)
+        for item in sources
+    }
+    if len(identities) == 1:
+        total = sign * sum(
+            (
+                item.coefficient * transaction_amounts[item.movement_id]
+                if view == "transaction"
+                else item.amount
+                for item in sources
+            ),
+            Fraction(0),
+        )
+        return split_single_origin(
+            sources, total=total, time=time_txn if view == "transaction" else time_functional
+        )
+    try:
+        inputs = json.loads(params["input_period_classes"])
+        if not isinstance(inputs, list) or len(inputs) != count:
+            raise ValueError("Invalid input count.")
+        periods = inputs[index]
+        if not isinstance(periods, dict) or any(
+            not isinstance(key, str) or value not in {"TIME", "EVENT", "MIXED"}
+            for key, value in periods.items()
+        ):
+            raise ValueError("Invalid period classes.")
+    except (KeyError, ValueError, TypeError, IndexError) as error:
+        raise InvalidRevenueTrace("Mixed sources lack retained period classifications.") from error
+    movements = []
+    found_time_txn = found_time_functional = Fraction(0)
+    for item in sources:
+        prefix = subject + "@"
+        key = item.source_key
+        if key is None or not key.startswith(prefix):
+            raise InvalidRevenueTrace("Mixed source does not name its original recognition period.")
+        period = key[len(prefix) :]
+        classification = periods.get(period)
+        if classification not in {"TIME", "EVENT"}:
+            raise InvalidRevenueTrace("Mixed recognition period requires finer source attribution.")
+        is_time = classification == "TIME"
+        transaction = sign * item.coefficient * transaction_amounts[item.movement_id]
+        functional = sign * item.amount
+        if is_time:
+            found_time_txn += transaction
+            found_time_functional += functional
+        movements.append(
+            RevenueMovement(
+                item.contract_id,
+                item.layer_key,
+                item.movement_kind,
+                item.effective_date,
+                item.source_key,
+                is_time,
+                transaction if view == "transaction" else functional,
+            )
+        )
+    if found_time_txn != time_txn or found_time_functional != time_functional:
+        raise InvalidRevenueTrace("Period sources differ from retained TIME in either currency.")
+    return tuple(movements)
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,19 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — mixed sources across recognition periods
+
+Mixed cumulative revenue inputs can now retain separate original owners/layers across periods
+whose S14 relief causes are uniformly TIME or EVENT. The reader matches the exact original
+subject/period source keys and reconciles both currency TIME totals, with no allocation ratio.
+Same-period mixtures, missing classifications and functional TIME amounts that do not equal
+classified original sources remain unavailable. Split-role and non-revenue component inputs
+remain open. Existing single-provenance and legacy paths are preserved.
+
+Scoped engine/source checks and intercompany DB compatibility pass; these do not establish
+full public mixed-workflow accounting acceptance. Independent accounting sign-off and final
+release verification remain outstanding. No deployment.
+
+
 ### October 20 — foreign-currency freeze compatibility restored
 
 The DATASET_FREEZE failure recorded under the three-way GL bridge is resolved. FX source

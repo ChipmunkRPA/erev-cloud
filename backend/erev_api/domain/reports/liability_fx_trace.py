@@ -169,6 +169,7 @@ def project(
                 "minor_unit",
                 "time_functional",
                 "input_classes",
+                "input_period_classes",
                 "input_time_txn",
                 "input_time_functional",
             }:

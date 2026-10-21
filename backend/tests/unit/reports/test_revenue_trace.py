@@ -247,3 +247,72 @@ def test_mixed_input_uses_exact_amounts_only_for_one_original_source(total, time
             split_single_origin([source, other], total=Fraction(total), time=Fraction(time))
     with pytest.raises(InvalidRevenueTrace, match="unique original"):
         split_single_origin([], total=Fraction(total), time=Fraction(time))
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional"])
+@pytest.mark.parametrize("sign", [1, -1])
+def test_mixed_period_sources_preserve_distinct_owners(view: str, sign: int) -> None:
+    import json
+    from dataclasses import replace
+
+    from erev_api.domain.reports.revenue_trace import RevenueSource, split_mixed_sources
+
+    sources = (
+        RevenueSource(
+            UUID(int=1),
+            UUID(int=11),
+            "a",
+            "LIABILITY_LAYER_CONSUMED",
+            Fraction(80),
+            source_key="ob@P1",
+        ),
+        RevenueSource(
+            UUID(int=2),
+            UUID(int=22),
+            "b",
+            "LIABILITY_LAYER_CONSUMED",
+            Fraction(40),
+            source_key="ob@P1",
+        ),
+        RevenueSource(
+            UUID(int=3),
+            UUID(int=33),
+            "c",
+            "ASSET_LAYER_SETTLED",
+            Fraction(-24),
+            source_key="ob@P2",
+            coefficient=-1,
+        ),
+    )
+    amounts = {UUID(int=1): Fraction(100), UUID(int=2): Fraction(50), UUID(int=3): Fraction(30)}
+    params = {"input_period_classes": json.dumps([{"P1": "TIME", "P2": "EVENT"}])}
+
+    def split(held=sources, config=params, time_functional=Fraction(120 * sign)):
+        return split_mixed_sources(
+            held,
+            params=config,
+            count=1,
+            index=0,
+            subject="ob",
+            sign=sign,
+            transaction_amounts=amounts,
+            time_txn=Fraction(150 * sign),
+            time_functional=time_functional,
+            view=view,
+        )
+
+    result = split()
+    assert [item.contract_id for item in result] == [UUID(int=x) for x in (11, 22, 33)]
+    assert [item.layer_key for item in result] == ["a", "b", "c"]
+    assert [item.time for item in result] == [True, True, False]
+    assert [item.amount for item in result] == [
+        sign * Fraction(x) for x in ((100, 50, -30) if view == "transaction" else (80, 40, -24))
+    ]
+    with pytest.raises(InvalidRevenueTrace, match="either currency"):
+        split(time_functional=Fraction(119 * sign))
+    with pytest.raises(InvalidRevenueTrace, match="finer source"):
+        split(config={"input_period_classes": '[{"P1":"MIXED","P2":"EVENT"}]'})
+    with pytest.raises(InvalidRevenueTrace, match="recognition period"):
+        split(held=(replace(sources[0], source_key="another@P1"), *sources[1:]))
+    with pytest.raises(InvalidRevenueTrace, match="retained period"):
+        split(config={})

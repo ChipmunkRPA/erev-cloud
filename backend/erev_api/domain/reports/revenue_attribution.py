@@ -171,6 +171,7 @@ def read(
                 "time",
                 "time_functional",
                 "input_classes",
+                "input_period_classes",
                 "input_time_txn",
                 "input_time_functional",
                 "amount_functional",
@@ -247,16 +248,21 @@ def read(
                 )
                 if total_txn != int(sign) * Fraction(nodes[child].value):
                     raise ValueError("Mixed input transaction sources do not reconcile.")
-                total_functional = int(sign) * sum(
-                    (part.amount for part in original_sources), Fraction(0)
-                )
                 parts.extend(
-                    revenue_trace.split_single_origin(
+                    revenue_trace.split_mixed_sources(
                         original_sources,
-                        total=total_txn if view == "transaction" else total_functional,
-                        time=retained_time_txn
-                        if view == "transaction"
-                        else retained_time_functional,
+                        params=node.params,
+                        count=len(node.inputs),
+                        index=index,
+                        subject=child.split(":", 1)[1].rsplit(":", 1)[0],
+                        sign=int(sign),
+                        transaction_amounts={
+                            part.movement_id: Fraction(raw_by_id[part.movement_id]["amount_txn"])
+                            for part in original_sources
+                        },
+                        time_txn=retained_time_txn,
+                        time_functional=retained_time_functional,
+                        view=view,
                     )
                 )
                 continue
