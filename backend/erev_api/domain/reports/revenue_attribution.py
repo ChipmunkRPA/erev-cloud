@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from fractions import Fraction
 from typing import Any
@@ -30,6 +30,17 @@ class Attribution:
     layer_dates: tuple[tuple[UUID, str, date], ...]
     view: str
     components: tuple[tuple[UUID, str, str, str], ...] = ()
+    gross_control_id: UUID | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AmountProof:
+    """Verified component amount and paid history, without assigning source ownership."""
+
+    amount: Fraction
+    paid_line_ids: tuple[UUID, ...]
+    evidence: tuple[tuple[UUID, str], ...]
+    view: str
 
 
 def read(
@@ -40,6 +51,28 @@ def read(
     _active: frozenset[UUID] = frozenset(),
     _cache: dict[UUID, Attribution] | None = None,
 ) -> Attribution:
+    result = _read(uow, line_id, view=view, _active=_active, _cache=_cache)
+    assert isinstance(result, Attribution)
+    return result
+
+
+def verify_component(uow: UnitOfWork, line_id: UUID, *, view: str = "functional") -> AmountProof:
+    """Verify a net/supplier amount without asserting an allocation to source owners."""
+    result = _read(uow, line_id, view=view, _amounts_only=True)
+    assert isinstance(result, AmountProof)
+    return result
+
+
+def _read(
+    uow: UnitOfWork,
+    line_id: UUID,
+    *,
+    view: str = "functional",
+    _active: frozenset[UUID] = frozenset(),
+    _cache: dict[UUID, Attribution] | None = None,
+    _amounts_only: bool = False,
+    _amount_cache: dict[UUID, AmountProof] | None = None,
+) -> Attribution | AmountProof:
     """Authorize each original computation and recurse through its sealed cutoff.
 
     Revenue and contracting-entity due-to targets retain original source attribution.
@@ -54,7 +87,12 @@ def read(
     if line_id in _active:
         raise ValueError("Cycle in retained revenue history.")
     cache = {} if _cache is None else _cache
-    if line_id in cache:
+    amount_cache = {} if _amount_cache is None else _amount_cache
+    if _amounts_only and line_id in amount_cache:
+        if amount_cache[line_id].view != view:
+            raise ValueError("Revenue amount cache mixes currency views.")
+        return amount_cache[line_id]
+    if not _amounts_only and line_id in cache:
         if cache[line_id].view != view:
             raise ValueError("Revenue attribution cache mixes currency views.")
         return cache[line_id]
@@ -200,6 +238,7 @@ def read(
                 txn_scale=txn_scale,
                 functional_scale=scale,
                 view=view,
+                attribute=not _amounts_only,
             )
         amount = Fraction(node.params["amount_functional"]) / (10**scale)
         txn = Fraction(node.value)
@@ -310,6 +349,8 @@ def read(
                 )
         if transaction != txn:
             raise ValueError("Revenue target transaction sources do not reconcile.")
+        if _amounts_only and sum((item.amount for item in parts), Fraction(0)) != amount:
+            raise ValueError("Revenue component sources differ from its original target amount.")
         if sourced_time_txn != time_txn or sourced_time_functional != time_functional:
             raise ValueError("Revenue TIME sources do not reconcile in both currencies.")
         return revenue_trace.RevenueTarget(
@@ -373,11 +414,20 @@ def read(
             != canonical_bytes({field: saved[field] for field in LINE_FIELDS})
         ):
             raise ValueError("Retained revenue history differs from the authorized ledger.")
-        found = read(uow, identity, view=view, _active=_active | {line_id}, _cache=cache)
-        paid.extend(found.delta.movements)
+        found = _read(
+            uow,
+            identity,
+            view=view,
+            _active=_active | {line_id},
+            _cache=cache,
+            _amounts_only=_amounts_only,
+            _amount_cache=amount_cache,
+        )
+        if isinstance(found, Attribution):
+            paid.extend(found.delta.movements)
         paid_ids.update((identity, *found.paid_line_ids))
         evidence.update(found.evidence)
-        for owner, layer, created in found.layer_dates:
+        for owner, layer, created in found.layer_dates if isinstance(found, Attribution) else ():
             if (owner, layer) in layer_dates and layer_dates[(owner, layer)] != created:
                 raise ValueError("Revenue history changes original layer creation date.")
             layer_dates[(owner, layer)] = created
@@ -385,6 +435,31 @@ def read(
         paid_functional += Fraction(saved["amount_functional"])
     if paid_txn != Fraction(original.detail["value"]):
         raise ValueError("Revenue history differs from the retained transaction paid amount.")
+    if _amounts_only:
+
+        def selected(target: revenue_trace.RevenueTarget | None) -> Fraction:
+            if target is None:
+                return Fraction(0)
+            if basis == "ALL":
+                return target.amount
+            return target.time_amount if basis == "TIME" else target.amount - target.time_amount
+
+        verified = (
+            selected(current)
+            - selected(before)
+            - (paid_functional if view == "functional" else paid_txn)
+        )
+        if verified != Fraction(
+            line["amount_functional" if view == "functional" else "amount_txn"]
+        ):
+            raise ValueError(
+                "Revenue component delta differs from original targets and paid history."
+            )
+        proof = AmountProof(
+            verified, tuple(sorted(paid_ids, key=str)), tuple(sorted(evidence, key=str)), view
+        )
+        amount_cache[line_id] = proof
+        return proof
     result = revenue_trace.posting_delta(
         current,
         before,
@@ -472,12 +547,14 @@ def _agent_control(
         raise ValueError("Revenue and control amounts differ without one original supplier leg.")
     supplier = suppliers[0]
     if any(
-        supplier[key] != control[key]
+        component[key] != control[key]
+        for component in ([supplier] if revenue is None else [revenue, supplier])
         for key in (
             "book_code",
             "entity_id",
             "contract_id",
             "subject_key",
+            "contract_version_id",
             "period_id",
             "origin_period_id",
             "txn_currency",
@@ -494,7 +571,10 @@ def _agent_control(
     labeled = ([(revenue, "REVENUE")] if revenue is not None else []) + [
         (supplier, revenue_roles.SUPPLIER_ROLE)
     ]
-    components = [read(uow, row["id"], view=view, _cache=cache) for row, _ in labeled]
+    try:
+        components = [read(uow, row["id"], view=view, _cache=cache) for row, _ in labeled]
+    except revenue_trace.AmbiguousSplitSource:
+        return _agent_gross_sources(uow, control, labeled, view=view, cache=cache)
     dates: dict[tuple[UUID, str], date] = {}
     for component in components:
         for owner, layer, created in component.layer_dates:
@@ -528,4 +608,47 @@ def _agent_control(
             (row["id"], label, str(row["amount_txn"]), str(row["amount_functional"]))
             for row, label in labeled
         ),
+    )
+
+
+def _agent_gross_sources(
+    uow: UnitOfWork,
+    control: Any,
+    labeled: list[tuple[Any, str]],
+    *,
+    view: str,
+    cache: dict[UUID, Attribution] | None,
+) -> tuple[UUID, Attribution]:
+    """Attribute gross control sources; separately prove net/supplier scalar histories."""
+    gross = read(uow, control["id"], view=view, _cache=cache)
+    paid = set(gross.paid_line_ids)
+    evidence = set(gross.evidence)
+    for currency_view in ("transaction", "functional"):
+        proofs: dict[UUID, AmountProof] = {}
+        total = Fraction(0)
+        for row, _ in labeled:
+            proof = _read(
+                uow, row["id"], view=currency_view, _amounts_only=True, _amount_cache=proofs
+            )
+            assert isinstance(proof, AmountProof)
+            total += proof.amount
+            paid.update(proof.paid_line_ids)
+            evidence.update(proof.evidence)
+        field = "amount_txn" if currency_view == "transaction" else "amount_functional"
+        if total != -Fraction(control[field]):
+            raise ValueError("Verified agent components do not balance gross control relief.")
+    return labeled[0][0]["id"], Attribution(
+        revenue_trace.RevenuePostingDelta(
+            tuple(replace(item, amount=-item.amount) for item in gross.delta.movements),
+            gross.delta.source_ids,
+        ),
+        tuple(sorted(paid, key=str)),
+        tuple(sorted(evidence, key=str)),
+        gross.layer_dates,
+        view,
+        tuple(
+            (row["id"], label, str(row["amount_txn"]), str(row["amount_functional"]))
+            for row, label in labeled
+        ),
+        control["id"],
     )

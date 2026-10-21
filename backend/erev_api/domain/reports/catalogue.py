@@ -604,6 +604,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "mixed recognition periods may use retained transaction and functional TIME target "
             "deltas only with one original provenance per mixed period; totals must reconcile "
             "in both currencies and ambiguous within-period owners remain unavailable",
+            "multi-source agent relief uses original gross control target and paid history for "
+            "ownership; net revenue and supplier components separately verify split formulas "
+            "and paid amounts in both currencies without allocating component amounts across "
+            "owners",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -703,6 +707,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "mixed recognition periods may use retained transaction and functional TIME target "
             "deltas only with one original provenance per mixed period; totals must reconcile "
             "in both currencies and ambiguous within-period owners remain unavailable",
+            "multi-source agent relief uses original gross control target and paid history for "
+            "ownership; net revenue and supplier components separately verify split formulas "
+            "and paid amounts in both currencies without allocating component amounts across "
+            "owners",
         ),
     ),
     _definition(

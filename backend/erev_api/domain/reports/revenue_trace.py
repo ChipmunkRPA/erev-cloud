@@ -22,6 +22,10 @@ class InvalidRevenueTrace(ValueError):
     """Revenue cannot be reproduced from its retained signed sources."""
 
 
+class AmbiguousSplitSource(InvalidRevenueTrace):
+    """A verified scalar split cannot assign individual components to source owners."""
+
+
 def input_classes(
     params: Mapping[str, str], count: int, transaction: Fraction, time: Fraction
 ) -> tuple[bool | None, ...]:
@@ -366,8 +370,13 @@ def split_role_target(
     txn_scale: int,
     functional_scale: int,
     view: str,
+    attribute: bool = True,
 ) -> RevenueTarget:
-    """Replay the original split formula; attribute only a uniquely owned revenue input."""
+    """Replay both split amounts; source attribution additionally requires one provenance.
+
+    With attribute=False the caller receives scalar target evidence only (no movements),
+    which must never be used as an attributed posting delta.
+    """
     from erev_engine.formulas import FORMULAS
 
     nodes = {node.id: node for node in trace.nodes}
@@ -383,7 +392,7 @@ def split_role_target(
         raise InvalidRevenueTrace("Split revenue requires its original cumulative input.")
     functional = "revenue_functional:" + child.split(":", 1)[1]
     sources = project(trace, functional, movements, currency=currency)
-    if (
+    if attribute and (
         len(
             {
                 (
@@ -398,7 +407,7 @@ def split_role_target(
         )
         != 1
     ):
-        raise InvalidRevenueTrace("Split revenue requires unique original source attribution.")
+        raise AmbiguousSplitSource("Split revenue requires unique original source attribution.")
     raw = {item["id"]: item for item in movements}
     transaction = sum(
         (item.coefficient * Fraction(raw[item.movement_id]["amount_txn"]) for item in sources),
@@ -452,7 +461,7 @@ def split_role_target(
     return RevenueTarget(
         amount,
         time,
-        split_single_origin(sources, total=amount, time=time),
+        split_single_origin(sources, total=amount, time=time) if attribute else (),
         tuple(sorted((item.movement_id for item in sources), key=str)),
     )
 

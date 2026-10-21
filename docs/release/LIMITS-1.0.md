@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — multi-layer agent gross relief now attributable
+
+Two original prepayment layers no longer require guessing how the net/supplier split belongs
+to each layer. The gross control line provides original source ownership through its target,
+prior target and paid history; each net/supplier component independently reproduces its scalar
+split formula and paid history in transaction and functional currency. Scalar verification
+contains no attributed movements and is rejected by the attributed posting-delta reader.
+The fallback catches only ambiguous split ownership, not arbitrary invalid evidence.
+
+A two-deposit DB journey confirms both original layers and subsequent supplier paid history,
+then exercises both public report consumers in all currency views with retained reruns. The
+single-layer and zero-net cases pass as well. Close envelopes must explicitly retain revenue
+control history; legacy envelopes without it remain unavailable. Cross-contract agent groups,
+gross-control reversal histories and broader close-pass acceptance remain to be exercised.
+Individual net/supplier per-owner allocation is still unavailable without original evidence.
+The existing gross-relief disclosure column policy is unchanged and still needs independent
+accounting acceptance. No deployment or overall production-readiness claim.
+
+
 ### October 20 — production revenue posting-class scope correction
 
 The previously listed “dedicated public mixed-period TIME workflow” is not a missing workflow

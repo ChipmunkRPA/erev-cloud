@@ -285,6 +285,11 @@ def read(
                         posted_evidence[str(entry.line_id)] = {
                             "revenue_line_id": str(revenue_id),
                             **(
+                                {"gross_control_line_id": str(result.gross_control_id)}
+                                if result.gross_control_id is not None
+                                else {}
+                            ),
+                            **(
                                 {
                                     "agent_components": [
                                         [str(identity), role, txn, functional]

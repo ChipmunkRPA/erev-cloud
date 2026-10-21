@@ -9918,3 +9918,31 @@ cleanup in the shared database session kernel was also repaired and regression-t
   fixed-allocation/remainder evidence; this change does not repair those earlier balances.
 - 27 focused tests and the DB first-batch usage test pass; lint/types and migration 0212 checked.
   No deployment or independent accounting sign-off.
+
+## Dated fixed allocation for historical RPO — October 20, 2026
+
+- Stage 09 retains original fixed allocations by reporting period and version date, including
+  returns. Historical reads reconcile this evidence to version remainders without counting
+  return reductions twice; legacy traces keep their existing behavior.
+- Earlier RPO excludes later fixed estimate changes. Same-version rollforwards attribute VC
+  movements only when complete original event shares match the dated allocation difference.
+  Positive and negative first-batch estimates are covered using real engine trace output.
+- Historical future schedule reconstruction after later modifications remains open; the
+  scheduled-remainder check still refuses unsupported schedules rather than prorating them.
+  Compound competing causes and independent accounting acceptance also remain open.
+- 109 focused tests plus two database report journeys pass; Ruff and targeted mypy pass.
+  Migration 0213 describes the evidence. No deployment.
+
+## Historical time-based schedule projection — October 20, 2026
+
+- Stage 09 now freezes the original deterministic allocation segment at cuts before later
+  fixed-allocation changes, retaining progress, exact targets and posted differences. RPO bands
+  and revenue-waterfall future periods use this dated evidence and reconcile it to the remainder.
+- Explain links name the exact cut, so a historical projected amount does not open the latest
+  fixed schedule. The original retained schedule source remains available for drill-through.
+- Real engine increase/decrease cases reproduce the pre-change future schedule by period;
+  all trace nodes replay. Targeted report, reader and explain checks and two DB journeys pass.
+- Still open: periods absent from the retained source schedule, missing original segment terms,
+  adjusted/held cuts and broader compound lifecycle attribution. These paths retain explicit
+  refusal, not proportional reconstruction. Independent accounting acceptance remains open.
+  Migration 0214 records the calculation for RPO, its rollforward and the waterfall. No deployment.

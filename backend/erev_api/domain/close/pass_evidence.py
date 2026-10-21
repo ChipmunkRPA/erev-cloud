@@ -218,6 +218,14 @@ def read_for_line(
                 "revenue_account_roles", []
             ):
                 raise ValueError("This historical close pass did not retain supplier history.")
+            if line[
+                "account_role"
+            ] == "CONTRACT_LIABILITY" and "CONTRACT_LIABILITY" not in document.get(
+                "revenue_account_roles", []
+            ):
+                raise ValueError(
+                    "This historical close pass did not retain revenue control history."
+                )
             document = {**document, "posted_lines": document["revenue_posted_lines"]}
         return document
     from erev_api.domain.reports import command_fx_evidence
@@ -342,6 +350,10 @@ def capture_posted_lines(
             (
                 or_(
                     subledger_line.c.account_role.in_(("REVENUE", "INTERCOMPANY_DUE_TO")),
+                    and_(
+                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                        subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                    ),
                     and_(
                         subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
                         subledger_line.c.account_role == "BILLING_CLEARING",

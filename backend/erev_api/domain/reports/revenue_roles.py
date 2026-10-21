@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 SUPPLIER_ROLE = "BILLING_CLEARING:AP_SUPPLIER"
-HISTORY_ROLES = ("REVENUE", "INTERCOMPANY_DUE_TO", SUPPLIER_ROLE)
+HISTORY_ROLES = ("REVENUE", "INTERCOMPANY_DUE_TO", SUPPLIER_ROLE, "CONTRACT_LIABILITY")
 
 
 def is_supplier(line: Mapping[Any, Any]) -> bool:
@@ -16,7 +16,9 @@ def is_supplier(line: Mapping[Any, Any]) -> bool:
 
 
 def allowed(line: Mapping[Any, Any]) -> bool:
-    if is_supplier(line):
+    if is_supplier(line) or (
+        line["entry_kind"] == "REVENUE_RECOGNITION" and line["account_role"] == "CONTRACT_LIABILITY"
+    ):
         return True
     return line["entry_kind"] in {"REVENUE_RECOGNITION", "INTERCOMPANY"} and (
         line["account_role"] == "REVENUE"

@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Agent gross relief across original source layers — October 20, 2026
+
+- Two prepayment layers previously failed the split-role reader's unique-origin guard. Agent
+  control attribution now falls back specifically on that ambiguity: gross control targets and
+  original control paid history supply the source owners; net/supplier scalar targets and paid
+  histories are independently replayed in both currencies. No per-owner net split is invented.
+- Revenue history captures CONTRACT_LIABILITY only for REVENUE_RECOGNITION. Close envelopes
+  declare that capability; older envelopes without it refuse the gross fallback. Both report
+  consumers retain the gross control ID alongside component amounts and original evidence.
+- The DB journey covers two 45,000 deposits, separate source layers, later supplier paid history,
+  both public reports in all currency views and identical reruns. Single-layer and zero-net cases
+  also pass. Scalar evidence has no movements and cannot masquerade as an attributed delta;
+  changed functional split amounts fail. Scoped lint/types and source checks pass.
+- Migration 0225 documents this path. Cross-contract agent groups, gross-control reversals and
+  close-pass agent acceptance still need representative coverage; individual net/supplier
+  source allocation remains unavailable without original owner evidence. Existing disclosure
+  gross-relief policy and independent accounting acceptance remain open. No deployment.
+
+
 ## Public revenue cause / posting-class distinction — October 20, 2026
 
 - Correction to preceding mixed-TIME entries: the production S13 costs_view explicitly leaves
@@ -220,36 +239,6 @@
 - Missing original calendar/terms, held or manually adjusted cuts, legacy traces without the
   new evidence and complex mixed lifecycles remain open. Independent accounting acceptance is
   outstanding. No deployment.
-
-
-## Historical time-based schedule projection — October 20, 2026
-
-- Stage 09 now freezes the original deterministic allocation segment at cuts before later
-  fixed-allocation changes, retaining progress, exact targets and posted differences. RPO bands
-  and revenue-waterfall future periods use this dated evidence and reconcile it to the remainder.
-- Explain links name the exact cut, so a historical projected amount does not open the latest
-  fixed schedule. The original retained schedule source remains available for drill-through.
-- Real engine increase/decrease cases reproduce the pre-change future schedule by period;
-  all trace nodes replay. Targeted report, reader and explain checks and two DB journeys pass.
-- Still open: periods absent from the retained source schedule, missing original segment terms,
-  adjusted/held cuts and broader compound lifecycle attribution. These paths retain explicit
-  refusal, not proportional reconstruction. Independent accounting acceptance remains open.
-  Migration 0214 records the calculation for RPO, its rollforward and the waterfall. No deployment.
-
-
-## Dated fixed allocation for historical RPO — October 20, 2026
-
-- Stage 09 retains original fixed allocations by reporting period and version date, including
-  returns. Historical reads reconcile this evidence to version remainders without counting
-  return reductions twice; legacy traces keep their existing behavior.
-- Earlier RPO excludes later fixed estimate changes. Same-version rollforwards attribute VC
-  movements only when complete original event shares match the dated allocation difference.
-  Positive and negative first-batch estimates are covered using real engine trace output.
-- Historical future schedule reconstruction after later modifications remains open; the
-  scheduled-remainder check still refuses unsupported schedules rather than prorating them.
-  Compound competing causes and independent accounting acceptance also remain open.
-- 109 focused tests plus two database report journeys pass; Ruff and targeted mypy pass.
-  Migration 0213 describes the evidence. No deployment.
 
 
 ## Outstanding release verification

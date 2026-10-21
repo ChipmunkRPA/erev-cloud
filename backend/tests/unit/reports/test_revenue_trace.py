@@ -408,7 +408,7 @@ def test_split_role_replays_original_rounding_and_preserves_source(
         ),
     )
 
-    def read(held=nodes, rows=(original,)):
+    def read(held=nodes, rows=(original,), *, attribute=True):
         return split_role_target(
             Trace(1, "test", tuple(held), {}),
             "split",
@@ -417,6 +417,7 @@ def test_split_role_replays_original_rounding_and_preserves_source(
             txn_scale=2,
             functional_scale=2,
             view=view,
+            attribute=attribute,
         )
 
     result = read()
@@ -446,6 +447,29 @@ def test_split_role_replays_original_rounding_and_preserves_source(
     )
     with pytest.raises(InvalidRevenueTrace, match="unique original source"):
         read(split_sources, split_rows)
+    scalar = read(split_sources, split_rows, attribute=False)
+    assert scalar.amount == result.amount and scalar.time_amount == result.time_amount
+    assert not scalar.movements
+    from erev_api.domain.reports.revenue_trace import posting_delta
+
+    with pytest.raises(InvalidRevenueTrace, match="sources do not reproduce"):
+        posting_delta(
+            scalar,
+            None,
+            basis="ALL",
+            paid=(),
+            expected_paid=Fraction(0),
+            expected_delta=scalar.amount,
+        )
+    with pytest.raises(InvalidRevenueTrace, match="formula or TIME"):
+        read(
+            (
+                *split_sources[:-1],
+                replace(split_sources[-1], params={**params, "amount_functional": "-2666"}),
+            ),
+            split_rows,
+            attribute=False,
+        )
     with pytest.raises(InvalidRevenueTrace, match="formula or TIME"):
         read((*nodes[:-1], replace(nodes[-1], params={**params, "amount_functional": "-2666"})))
     with pytest.raises(InvalidRevenueTrace, match="transaction sources"):

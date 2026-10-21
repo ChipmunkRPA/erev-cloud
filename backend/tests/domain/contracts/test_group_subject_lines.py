@@ -1451,10 +1451,14 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
 
 
-@pytest.mark.parametrize("net_fee", ["18000.00", "0.00"])
-def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld, net_fee: str) -> None:  # noqa: F811
+@pytest.mark.parametrize("net_fee, deposits", [("18000.00", 1), ("0.00", 1), ("18000.00", 2)])
+def test_agent_supplier_sources_retain_original_paid_history(
+    fx: FxWorld,  # noqa: F811
+    net_fee: str,
+    deposits: int,
+) -> None:  # noqa: F811
     from erev_api.db.tables import account_mapping_rule, judgement_record
-    from erev_api.domain.reports.revenue_attribution import for_control, read
+    from erev_api.domain.reports.revenue_attribution import for_control, read, verify_component
     from sqlalchemy import insert
     from support.reference import gl_account, mapping_published
     from support.rows import judgement_record_values
@@ -1516,7 +1520,16 @@ def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld, net_fe
         )
         uow.commit()
     head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == identity))
-    _recorded(fx, identity, int(head), _invoice("AGENT-ADV", "2026-08-20", "90000.00"))
+    for index in range(deposits):
+        head = fx.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == identity)
+        )
+        _recorded(
+            fx,
+            identity,
+            int(head),
+            _invoice(f"AGENT-ADV-{index}", "2026-08-20", str(Decimal("90000") / deposits)),
+        )
     for quantity, day in (("120", "2026-08-21"), ("80", "2026-08-22")):
         approved_manual_events(
             fx.place,
@@ -1558,8 +1571,18 @@ def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld, net_fe
                 if Decimal(net_fee)
                 else {"BILLING_CLEARING:AP_SUPPLIER"}
             )
-            later = read(uow, suppliers[-1]["id"], view=view)
-            assert later.delta.amount == suppliers[-1][amount]
+            if deposits == 2:
+                from erev_api.domain.reports.revenue_trace import AmbiguousSplitSource
+
+                assert result.gross_control_id == controls[0]["id"]
+                assert len({item.layer_key for item in result.delta.movements}) == 2
+                with pytest.raises(AmbiguousSplitSource):
+                    read(uow, suppliers[-1]["id"], view=view)
+                later = verify_component(uow, suppliers[-1]["id"], view=view)
+                assert later.amount == suppliers[-1][amount]
+            else:
+                later = read(uow, suppliers[-1]["id"], view=view)
+                assert later.delta.amount == suppliers[-1][amount]
             if Decimal(net_fee):
                 assert suppliers[0]["id"] in later.paid_line_ids
             else:

@@ -183,6 +183,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 signed_evidence[str(entry.line_id)] = {
                     "revenue_line_id": str(revenue_id),
                     **(
+                        {"gross_control_line_id": str(result.gross_control_id)}
+                        if result.gross_control_id is not None
+                        else {}
+                    ),
+                    **(
                         {"counterpart_role": result.components[0][1]}
                         if len(result.components) == 1
                         else {}
