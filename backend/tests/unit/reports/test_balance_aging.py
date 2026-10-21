@@ -222,3 +222,26 @@ def test_tie_rejects_wrong_owner_even_when_currency_and_role_totals_match() -> N
         tie = aging_tie(rows, [_balance(contract_asset="2000.00")])
         assert tie["expected"] == tie["actual"]
         assert tie["result"] == "FAIL", field
+
+
+def test_reporting_buckets_preserve_signed_amounts_and_translated_balance() -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports.reporting_currency import Translation
+
+    (row,) = aged_rows(
+        [
+            _layer("CONTRACT_ASSET", "0.01", date(2026, 3, 31)),
+            _layer("CONTRACT_ASSET", "0.01", date(2026, 1, 1)),
+        ],
+        {ENTITY: MARCH_END},
+    )
+    translation = Translation("GBP", {ENTITY: {"rate": "0.5"}})
+    for sign in (1, -1):
+        signed = replace(row, buckets={key: value * sign for key, value in row.buckets.items()})
+        (converted,) = aging._translated((signed,), translation)
+        assert converted.currency == "GBP"
+        assert converted.total == translation.amount(ENTITY, signed.total) == D("0.01") * sign
+        assert converted.buckets["bucket_0_30"] == D("0.01") * sign
+        assert converted.buckets["bucket_31_90"] == 0
+        assert converted.buckets["bucket_over_365"] == 0

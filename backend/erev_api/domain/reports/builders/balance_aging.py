@@ -7,13 +7,15 @@ required, including with ERP billing. Each contract/entity/role/currency reconci
 
 Older versions without aging attributions refuse rather than reconstructing presentation or
 ages from today's configuration. This report currently supports transaction currency; functional
-view is accepted only when transaction and functional currencies coincide.
+balances require transaction and functional currencies to coincide. Reporting view translates
+those functional buckets at retained approved closing rates. Cumulative bucket rounding
+preserves the translated balance; the original tie-out remains in functional currency.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from typing import Any, Final
@@ -23,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import fx_layer_movement
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, aging_attributions
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -349,6 +351,23 @@ def _check_view(params: ReportParams, found: Sequence[EntityRef], rows: Sequence
         raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
 
 
+def _translated(
+    rows: Sequence[AgedRow], translation: reporting_currency.Translation
+) -> tuple[AgedRow, ...]:
+    """Carry minor-unit rounding across ordered buckets, preserving the translated total."""
+    result = []
+    for row in rows:
+        cumulative = previous = ZERO
+        buckets = {}
+        for field in BUCKET_FIELDS:
+            cumulative += row.buckets[field]
+            current = translation.amount(row.entity_id, cumulative)
+            buckets[field] = current - previous
+            previous = current
+        result.append(replace(row, currency=translation.currency, buckets=buckets))
+    return tuple(result)
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
@@ -376,7 +395,27 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     role_filter = str(params.parameters.get("balance_role") or "ALL")
     rows = aged_rows(layers, period_ends)
     _check_view(params, found, rows)
-    shown = tuple(row for row in rows if role_filter == "ALL" or row.balance_role == role_filter)
+    check = aging_tie(rows, balances)
+    translation = None
+    key = "aging_reporting_translation_v1"
+    if params.parameters.get("currency_view") == "reporting" and (
+        params.binding is None or key in params.binding.evidence
+    ):
+        translation = reporting_currency.closing(
+            session,
+            params,
+            tenant_id=uow.principal.tenant_id,
+            entities=found,
+            periods=at,
+        )
+        rows = _translated(rows, translation)
+        if params.sources is not None:
+            params.sources.record_evidence(key, {"rounding": "cumulative_bucket"})
+    shown = tuple(
+        row
+        for row in rows
+        if row.total != ZERO and (role_filter == "ALL" or row.balance_role == role_filter)
+    )
     data: list[dict[str, Any]] = [
         {
             "row_key": row.row_key,
@@ -385,6 +424,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             "entity_code": row.entity_code,
             "balance_role": ROLE_LABELS[row.balance_role],
             "currency": row.currency,
+            **(
+                {
+                    "functional_currency": translation.rates[row.entity_id]["base_currency"],
+                    "closing_fx_rate": translation.rates[row.entity_id]["rate"],
+                }
+                if translation is not None
+                else {}
+            ),
             **{field: tie_outs.money(row.buckets[field], row.currency) for field in BUCKET_FIELDS},
             "total": tie_outs.money(row.total, row.currency),
         }
@@ -394,9 +441,25 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     totals: dict[str, Decimal] = {}
     for row in shown:
         add(totals, row.currency, row.total)
+    control: dict[str, Any] = {"total": tie_outs.by_currency(totals)}
+    columns: tuple[Column, ...] = COLUMNS
+    if translation is not None:
+        control.update(
+            reporting_currency=translation.currency,
+            translation_rates=list(translation.rates.values()),
+            translation_rounding="cumulative_bucket",
+            tie_out_currency_basis="functional",
+        )
+        columns += (
+            Column("functional_currency", "Functional currency", "code"),
+            Column("closing_fx_rate", "Closing FX rate", "decimal"),
+        )
+        check.setdefault("details", []).append(
+            {"reason": "Compared in functional currency before reporting-currency translation."}
+        )
     return ReportData(
-        columns=COLUMNS,
+        columns=columns,
         rows=tuple(data),
-        control_totals={"total": tie_outs.by_currency(totals)},
-        tie_out_results=(aging_tie(rows, balances),),
+        control_totals=control,
+        tie_out_results=(check,),
     )

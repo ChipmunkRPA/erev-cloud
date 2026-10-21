@@ -10077,3 +10077,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   The CSV companion manifest retains the complete original facts without changing CSV columns.
 - Focused export checks and lint/types pass. No accounting or report-total changes, no deployment.
   Remaining mixed-source functionality and independent accounting acceptance are still open.
+
+## Split-role revenue source reader foundation — October 20, 2026
+
+- The retained revenue reader now replays the original split role formula for a single uniquely
+  owned revenue input. Both currency shares must match original weights, role index, side sign
+  and minor-unit rounding. TIME/EVENT amounts and provenance remain independently checked.
+- 36 scoped role-template/source cases and lint/types pass, including split rounding, mixed
+  TIME amounts, changed transaction evidence and changed functional role amounts.
+- Agent report integration is NOT complete: for_control still requires net revenue to equal
+  gross control relief. Supplier history is absent from the close-pass revenue paid population.
+  Next work must retain/verify AP_SUPPLIER and reconcile the separate gross/net components;
+  removing the equality check alone would be incorrect. No public agent acceptance is claimed.
+- Multiple-origin split inputs, other mixed-source gaps and independent sign-off remain open.
+  Direct main publication only; no deployment.

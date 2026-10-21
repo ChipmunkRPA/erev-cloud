@@ -6,6 +6,20 @@
 
 
 
+## Reporting-currency balance aging — October 20, 2026
+
+- Fixed reporting view returning untranslated aging amounts when transaction and functional
+  currencies coincide. Supported functional age buckets now translate at approved retained
+  closing rates, with currency/rate columns and source evidence in control totals.
+- Cumulative bucket rounding conserves the translated contract/role total, including signed
+  amounts and tiny balances. Functional balance reconciliation remains separate and explicitly
+  labelled. New bindings retain translation behavior; legacy bindings keep original output.
+- GBP-to-USD public report/rerun, existing asset/unbilled aging and later-billing rerun journeys
+  pass. Focused core/catalogue checks, lint/types and migration 0232 roundtrip/IPE agreement pass.
+- Foreign transaction-to-functional aging still requires exact functional layer attribution;
+  this path remains unavailable. Locked aging datasets, independent accounting acceptance and
+  final candidate verification remain open. Direct main publication; no deployment.
+
 ## Dated revenue-waterfall population — October 20, 2026
 
 - New waterfall calculations exclude contracts entering after each performing entity's as-of
@@ -222,21 +236,6 @@
   Multiple-origin split inputs, zero-net agent paths, within-period mixed-source attribution,
   and broad close-pass agent acceptance remain open; no overall production readiness is claimed.
   Migration 0222 documents the two consumers. Direct main publication; no deployment.
-
-
-## Split-role revenue source reader foundation — October 20, 2026
-
-- The retained revenue reader now replays the original split role formula for a single uniquely
-  owned revenue input. Both currency shares must match original weights, role index, side sign
-  and minor-unit rounding. TIME/EVENT amounts and provenance remain independently checked.
-- 36 scoped role-template/source cases and lint/types pass, including split rounding, mixed
-  TIME amounts, changed transaction evidence and changed functional role amounts.
-- Agent report integration is NOT complete: for_control still requires net revenue to equal
-  gross control relief. Supplier history is absent from the close-pass revenue paid population.
-  Next work must retain/verify AP_SUPPLIER and reconcile the separate gross/net components;
-  removing the equality check alone would be incorrect. No public agent acceptance is claimed.
-- Multiple-origin split inputs, other mixed-source gaps and independent sign-off remain open.
-  Direct main publication only; no deployment.
 
 
 ## Outstanding release verification

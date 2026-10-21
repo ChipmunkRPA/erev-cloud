@@ -1914,6 +1914,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract",
             "customer",
             "legal_entity",
+            "tenant",
+            "period",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "fx_layer_movement.contract_version_id = contract_version_balance.contract_version_id",
@@ -1928,6 +1933,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "liability age: layer creation date to period end",
             "asset/unbilled age: engine attribution revenue date to period end",
             "balance_role when not ALL",
+            "Reporting-currency aging translates supported functional age buckets at "
+            "retained approved closing rates, rounds cumulative buckets to conserve the "
+            "translated balance; "
+            "balance tie-outs remain in functional currency; foreign transaction-currency "
+            "aging without functional layer attribution remains unavailable; legacy "
+            "bindings retain their original view",
         ),
         tie_outs=("TO_AGING_EQ_BALANCES",),
     ),

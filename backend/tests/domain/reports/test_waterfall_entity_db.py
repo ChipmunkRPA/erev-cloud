@@ -726,9 +726,7 @@ def test_waterfall_excludes_contracts_entering_after_as_of_and_retains_rerun(
     run, rows = report_run(world, "revenue_waterfall", before)
     assert O1_ROW not in keyed(rows)
     assert O2_ROW not in keyed(rows)
-    entered, active_rows = report_run(
-        world, "revenue_waterfall", {**before, "as_of": "2026-04-30"}
-    )
+    entered, active_rows = report_run(world, "revenue_waterfall", {**before, "as_of": "2026-04-30"})
     assert {O1_ROW, O2_ROW} <= keyed(active_rows).keys()
     for original in (run, entered):
         started = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
@@ -740,3 +738,44 @@ def test_waterfall_excludes_contracts_entering_after_as_of_and_retains_rerun(
         )
         assert rebuilt.status_code == 200, rebuilt.text
         assert rebuilt.json()["control_totals"] == original["control_totals"]
+
+
+@pytest.mark.slow
+def test_balance_aging_translates_functional_buckets_and_retains_rerun(world: ReportWorld) -> None:
+    from decimal import ROUND_HALF_UP
+
+    from erev_api.domain.reports.builders.balance_aging import BUCKET_FIELDS
+    from support.reference import post
+    from support.worlds import run_now
+
+    parameters = {"entity_codes": [AVM_UK], "book": "ASC606", "period_key": APRIL}
+    base, original = report_run(world, "balance_aging", parameters)
+    run, converted = report_run(
+        world, "balance_aging", {**parameters, "currency_view": "reporting"}
+    )
+    assert original
+    (rate,) = run["control_totals"]["translation_rates"]
+    assert rate["base_currency"] == "GBP" and rate["quote_currency"] == "USD"
+    source = keyed(original)
+    for row in converted:
+        if row["row_key"].startswith("TOTAL:"):
+            continue
+        before = source[row["row_key"]]
+        for bucket in BUCKET_FIELDS:
+            expected = (Decimal(before[bucket]["amount"]) * Decimal(rate["rate"])).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            assert row[bucket] == {"amount": str(expected), "currency": "USD"}
+        assert sum(Decimal(row[key]["amount"]) for key in BUCKET_FIELDS) == Decimal(
+            row["total"]["amount"]
+        )
+    assert run["tie_out_results"][0]["result"] == base["tie_out_results"][0]["result"] == "PASS"
+    assert run["control_totals"]["tie_out_currency_basis"] == "functional"
+    rerun = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    rebuilt = get(
+        world.app, f"/api/v1/report-runs/{rerun.headers['x-erev-report-run-id']}", world.maya
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["control_totals"] == run["control_totals"]

@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — reporting-currency aging view
+
+For supported functional aging balances (transaction and functional currency coincide),
+reporting view now translates age buckets using approved retained closing rates. Previously
+that request returned untranslated amounts. Source currency/rate columns and retained rate
+facts make the translation visible. Cumulative bucket rounding preserves the translated
+contract/role total; the balance tie-out stays explicitly in functional currency. Earlier
+bindings retain their original outputs.
+
+The GBP-to-USD public report and bound rerun pass, alongside existing asset/unbilled aging and
+later-billing rerun regressions. Core checks include signed sub-cent rounding without a total
+drift. Migration 0232 roundtrips and matches catalogue IPE. This does not implement foreign
+transaction-to-functional age-layer attribution or locked aging datasets. Those boundaries,
+independent accounting acceptance and final candidate verification remain open. No deployment.
+
+
 ### October 20 — waterfall contract entry cutoff
 
 The B4-1/C-3 population gap is implemented for new calculations: each performing entity's
