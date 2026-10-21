@@ -55,11 +55,7 @@ def test_columns_are_the_specification_grid(number: int, module: Any) -> None:
 def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (estimates, exclusions):
-        assert contract.strategy == "retained_inputs" and not contract.open
-    else:
-        assert contract.strategy == "open" and len(contract.open) == 1
-        assert f"RPT-{number}" in contract.open[0]
+    assert contract.strategy == "retained_inputs" and not contract.open
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -587,3 +583,83 @@ def test_scope_retained_rebuild_and_reporting(view):
         exclusions.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
     with pytest.raises(Problem):
         exclusions.check_view("unknown", [])
+
+
+def test_judgement_retained_inputs_rebuild_labels_and_withheld_count_without_database():
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    source = judgements.Source(
+        judgement_no="JDG-1",
+        topic="CONSTRAINT",
+        subject_type="contract",
+        subject_label="C-1",
+        contract_external_id="C-1",
+        book=None,
+        conclusion="Original conclusion",
+        codification_refs=("606-10-32-11",),
+        created_by=(MAYA, "USER"),
+        reviewer_id=PRIYA,
+        status="REVIEWED",
+        reviewed_at=AT,
+        supersedes_no=None,
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "selection": {
+                    key: None for key in ("book", "from_date", "to_date", "topic", "status")
+                },
+                "from_date": "2026-01-01",
+                "to_date": "2026-09-30",
+                "sources": [asdict(source)],
+                "names": {str(k): v for k, v in NAMES.items()},
+                "withheld_count": 2,
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=judgements.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={judgements.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = judgements.build(uow, params)
+    assert data.rows[0]["reviewed_at"] == AT
+    assert data.rows[0]["reviewer"] == NAMES[PRIYA]
+    assert data.rows[0]["codification_refs"] == ("606-10-32-11",)
+    assert data.control_totals["record_count"] == 3
+    retained["sources"][0].update(status="SUBMITTED", reviewer_id=None, reviewed_at=None)
+    retained["sources"][0]["conclusion"] = "Retained conclusion"
+    retained["names"][str(MAYA)] = "Original preparer"
+    changed = judgements.build(uow, params)
+    assert changed.rows[0]["reviewer"] is None
+    assert changed.rows[0]["status"] == "SUBMITTED"
+    assert changed.rows[0]["conclusion"] == "Retained conclusion"
+    assert changed.rows[0]["created_by"] == "Original preparer"
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"book": "IFRS15"}),
+        replace(params, parameters={"status": ["REVIEWED"]}),
+        replace(params, parameters={"topic": ["OTHER"]}),
+    ):
+        with pytest.raises(Problem):
+            judgements.build(uow, invalid)
+    with pytest.raises(Problem):
+        judgements.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)

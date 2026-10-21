@@ -34,12 +34,14 @@ is refused by name (REGISTER-CUTOFF-1); a live run never refuses.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -62,9 +64,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import JudgementTopic
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "judgement_register"
+EVIDENCE: Final = "judgement_inputs_v1"
 ROW_KEY_PREFIX: Final = "judgement:"  # RPT-28: row_key `judgement:<judgement no>`
 ALL_BOOKS: Final = "All books"
 HISTORY_UNAVAILABLE: Final = (
@@ -339,6 +343,7 @@ def sources(
             ),
         )
     kept = _kept(rows, params, book_code)
+    tie_outs.record_members(params, "judgement_records", (row["id"] for row in kept))
     labels = subject_labels(session, kept)
     superseded = sorted({UUID(str(row["supersedes_id"])) for row in kept if row["supersedes_id"]})
     numbers: dict[UUID, str] = {}
@@ -379,6 +384,19 @@ def sources(
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key)
+        for key in ("book", "from_date", "to_date", "topic", "status")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained judgement inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("book", "Retained inputs use another filter selection.")
+        return data_from_inputs(retained)
     session = uow.session
     first, last = support.date_range(session, params, today=True)
     bounds, book_code = support.instants(first, last), tie_outs.book_of(session, params)
@@ -386,10 +404,42 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     names = approval_queries.display_names(
         session, [value for item in found for value in (item.created_by[0], item.reviewer_id)]
     )
-    rows, totals = dataset_rows(found, names)
     withheld = withheld_count(uow, params, bounds=bounds, book_code=book_code)
-    totals["record_count"] = len(rows) + withheld
-    totals["from_date"], totals["to_date"] = first.isoformat(), last.isoformat()
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "from_date": first,
+                "to_date": last,
+                "sources": [asdict(item) for item in found],
+                "names": {str(key): value for key, value in names.items()},
+                "withheld_count": withheld,
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    found = []
+    for record in retained["sources"]:
+        values = dict(record)
+        values["codification_refs"] = tuple(values["codification_refs"])
+        values["created_by"] = (support.uuid_of(values["created_by"][0]), values["created_by"][1])
+        values["reviewer_id"] = support.uuid_of(values["reviewer_id"])
+        values["reviewed_at"] = (
+            None
+            if values["reviewed_at"] is None
+            else datetime.fromisoformat(values["reviewed_at"].replace("Z", "+00:00"))
+        )
+        found.append(Source(**values))
+    names = {UUID(key): value for key, value in retained["names"].items()}
+    rows, totals = dataset_rows(found, names)
+    totals["record_count"] = len(rows) + retained["withheld_count"]
+    totals["from_date"], totals["to_date"] = retained["from_date"], retained["to_date"]
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

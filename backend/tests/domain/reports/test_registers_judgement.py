@@ -645,6 +645,11 @@ def test_scope_exclusion_register(
         },
     )
     clock.advance(STEP)
+    pending_run, pending_rows = report_run(
+        world, "judgement_register", {"entity_codes": [AVM_US], "book": "ASC606"}
+    )
+    assert pending_rows[0]["status"] == "SUBMITTED"
+    originals.append((pending_run, pending_rows))
     reviewed = approve(app, str(judgement["approval_request_id"]), world.priya)
     assert (reviewed.status_code, reviewed.json()["status"]) == (200, "APPROVED"), reviewed.text
     clock.advance(STEP)

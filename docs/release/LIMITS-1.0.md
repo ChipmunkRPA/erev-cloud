@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Judgement register retained reconstruction — October 21, 2026
+
+- New runs retain judgement source records, subject/actor labels, conclusions, references,
+  reviewer timestamps, supersession labels, resolved dates and withheld-population counts.
+  Same-source reruns validate tenant/entity scope and book/date/topic/status selection, then
+  rebuild typed rows and totals without current judgement, subject or user reads.
+- Captures judgement-record membership. Withheld combination proposals contribute only the
+  original count, not restricted record details. Older OPEN runs keep new-evaluation behavior;
+  ad-hoc historical queries still refuse unavailable mutable-state history.
+- Necessary verification passed: 41 focused register/source-binding cases and actual report
+  API/worker flow across SUBMITTED-to-REVIEWED approval. Fresh judgement rows show the reviewer;
+  the saved run rebuilds the original SUBMITTED row with identical output hash. No-session tests
+  cover typed values, names, counts and scope/filter refusal. Scoped lint/types and migration 0311
+  frozen IPE parity passed. No deployment.
+
 ## Scope exclusion reporting and retained inputs — October 21, 2026
 
 - Reporting now preserves original out-of-scope amounts and adds explicitly labelled equivalents

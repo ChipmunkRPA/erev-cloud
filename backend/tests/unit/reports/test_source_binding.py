@@ -360,7 +360,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "sod_conflict_report",
         # BUILD_SPEC RPS-11 (lane F-RPS-REG): the judgement, estimate-change and scope-exclusion
         # registers read live, no adapter yet
-        "judgement_register",
         # BUILD_SPEC RPS-8 (lane F-RPS-REG): the late-entry report reads live, no adapter yet
         "late_entry_report",
     }

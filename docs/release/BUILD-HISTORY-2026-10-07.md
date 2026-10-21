@@ -11850,3 +11850,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   migration parity, 48 focused report/source-binding cases and scoped lint/types passed.
   Remaining: foreign legacy carrying-position sources, Adoption retained same-source replay,
   other documented adapters and final repository verification. No deployment.
+
+## Adoption Bridge retained same-source replay — October 21, 2026
+
+- New transaction, functional and reporting runs retain per-contract comparison inputs,
+  final legacy-only population, selected/resolved application date, currency basis and source/FX
+  evidence. Bound reruns reconstruct sections, position comparisons, missing-position messages,
+  membership counts and totals without consulting current books, labels, ledgers, traces or rates.
+- Retained input admission checks tenant, entity set, currency view, requested date and contract
+  selection. Decimal amounts and separately translated legacy positions are restored before
+  aggregation. Legacy ledger line IDs are captured alongside the selected primary versions.
+  Migration 0300 describes the retained basis; older OPEN runs keep new-evaluation semantics.
+- Public verification: append another USD 1,000 of December 2025 legacy revenue through the
+  normal event API and recompute; fresh transaction, functional and reporting rows all change.
+  All three original runs then rebuild identical rows and output hashes. Input-only tests have
+  no database session, recompute totals after a retained amount changes, preserve legacy-only
+  counts/unknown positions/closing-translated positions and reject scope/selection mismatches.
+- Necessary checks: 51 focused report/source-binding tests, public foreign replay, original
+  transaction disclosure, catalogue migration parity and scoped lint/types passed. No deployment.
+- Remaining: historical foreign legacy carrying-position inputs, other documented report
+  adapters and final repository verification. Adoption same-source replay is now implemented;
+  foreign legacy positions are still unavailable when their historical carrying evidence is absent.

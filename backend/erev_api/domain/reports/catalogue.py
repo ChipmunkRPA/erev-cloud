@@ -2083,6 +2083,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "judgement_record.supersedes_id = judgement_record.id",
         ),
         filters=(
+            "same-source runs retain judgement inputs, subject/actor labels, resolved dates and "
+            "withheld count; rebuild rows and totals without live reads",
             _SCOPE,
             "recorded from from_date to to_date inclusive",
             "topic and status when given",

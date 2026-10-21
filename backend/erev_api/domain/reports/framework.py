@@ -533,9 +533,7 @@ _SOD_CONFLICT_REPORT_OPEN: Final = (
     "SoD rule versions, role assignments, role permissions, memberships and SoD exceptions read "
     "live (RPS-10 RPT-25)"
 )
-_JUDGEMENT_REGISTER_OPEN: Final = (
-    "judgement records with their contracts, subjects and display names read live (RPS-11 RPT-28)"
-)
+
 
 _BOOK_BRIDGE_OPEN: Final = (
     "the entity's kept books, the REVENUE subledger lines of both books over the range, the "
@@ -884,9 +882,9 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         chain_verification_report_builder.CODE: SourceContract(
             RETAINED, (_CUTOFF, "audit chain verification records and applied date range")
         ),
-        # RPS-11 (RPT-28 to RPT-30): the registers read live; no source adapter yet.
+        # RPS-11 registers retain selected inputs for same-source reconstruction.
         judgement_register_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_JUDGEMENT_REGISTER_OPEN,)
+            RETAINED, (_CUTOFF, "judgement records, display labels and withheld population count")
         ),
         estimate_change_listing_builder.CODE: SourceContract(
             RETAINED, (_CUTOFF, "estimate version, actor, effect and reporting-rate inputs")
@@ -2077,6 +2075,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "modification_register",
             "estimate_change_listing",
             "scope_exclusion_register",
+            "judgement_register",
         }
     ):
         try:
