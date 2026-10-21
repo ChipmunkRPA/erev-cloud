@@ -2,6 +2,27 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+
+## Combined-member agent refund reporting — October 20, 2026
+
+- Fixed a real GBP 75,600 unexplained rollforward difference after a combined agent contract
+  refunded its two deposits and returned all delivered units. A full return can erase prior
+  consumed layers from the latest target; negative posted controls now identify recipients
+  for original target/paid-history replay.
+- Member billing classification now uses retained asset amounts including explicit zero.
+  This moves liability-only credit memos out of the local member's apparent asset activity,
+  without using OTHER as a plug. New source bindings preserve legacy report rerun behavior.
+- The scenario funds agent deliveries from another contract's two USD 45,000 advances at .80;
+  the agent's own advances use .84. Group allocation is independently checked, original source
+  owners remain retained, and the full return preserves the USD 90,000 x .04 GBP difference
+  in revenue/control rather than inventing a supplier balance. Both public reports rerun in
+  all three currency views; the rollforward must tie across all members.
+- Six scoped DB journeys and 35 report/catalogue unit checks pass, with lint/types and migration
+  metadata checked. Migration 0226 updates the report's IPE explanation. Broader close-pass acceptance, dated
+  mixed manual-adjustment projection, independent accounting acceptance and final release
+  verification remain open. No deployment.
+
+
 ## Agent refund and full-return reversal — October 20, 2026
 
 - A real two-deposit refund/return journey exposed two engine defects: returned units did not
@@ -225,21 +246,6 @@
   Missing calendar/terms, legacy evidence gaps, compound lifecycle/API acceptance and independent
   accounting sign-off remain open. Migration 0217 records scope. No deployment.
 
-
-## Dated recognition-hold remainder classification — October 20, 2026
-
-- Stage 09 retains the scheduled remainder and its hold/pattern evidence at each measured
-  period, plus a version-state reconciliation. Contract/report reads use that dated amount
-  and derive awaiting-trigger remainder from the independently reconciled total.
-- A later hold no longer changes an earlier cut's scheduled/awaiting split. Held cuts show
-  awaiting-trigger remainder; release restores the time-based scheduled remainder. Future
-  hold/release events also trigger the original-segment schedule projection for earlier cuts.
-- Real engine hold-only and hold-then-release cases cover January before hold, February held,
-  and March held/released; all trace nodes replay. Missing state/series and mismatched states
-  are refused. 117 scoped tests pass; DB regressions and migration 0216 verified before publish.
-- This does not complete arbitrary manual adjustment projection or combined hold/modification
-  lifecycle acceptance. Legacy evidence gaps, missing original calendar/terms, broader mixed
-  attribution and independent accounting sign-off remain open. No deployment.
 
 
 ## Outstanding release verification

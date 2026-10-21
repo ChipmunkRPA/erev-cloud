@@ -608,6 +608,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "ownership; net revenue and supplier components separately verify split formulas "
             "and paid amounts in both currencies without allocating component amounts across "
             "owners",
+            "combined-member refunds classify billing from retained asset and liability sources "
+            "even when asset consumption is zero; full-return recipients replay original negative "
+            "postings when latest targets no longer retain prior consumed layers",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),

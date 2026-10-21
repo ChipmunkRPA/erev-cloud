@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — combined-member agent refunds now source-attributed
+
+A two-contract USD/GBP journey exposed GBP 75,600 of unexplained rollforward OTHER after
+crediting and returning the agent contract in full. The report now discovers full-return
+recipients from negative posted controls when current targets no longer retain prior reliefs,
+and classifies billing from original asset evidence even when that amount is zero. Group
+endpoint/source bridges remain independently validated; no residual is used to force balance.
+New binding capabilities preserve historical reruns. Migration 0226 documents the behavior.
+
+This covers two source-owner deposits, both deliveries, the full credit/return and retained
+public report reruns in transaction, functional and reporting currency. It does not establish
+broad close-pass acceptance, arbitrary mixed manual-adjustment projection, independent
+accounting sign-off or full production readiness. The existing gross-relief disclosure policy
+is unchanged. No deployment.
+
+
 ### October 20 — agent credit memo and full-return defects resolved
 
 The representative gross-control reversal case is now implemented and verified. Returned units

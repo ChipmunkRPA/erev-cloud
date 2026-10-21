@@ -65,6 +65,8 @@ def read(
     verify_postings = uow is not None and (
         params.binding is None or delta_key in params.binding.evidence
     )
+    return_key = "revenue_return_sources_v1"
+    returns = params.binding is None or return_key in params.binding.evidence
     posted_evidence: dict[str, Any] = {}
     posted_ids: set[UUID] = set()
     attribution_cache: dict[UUID, Attribution] = {}
@@ -105,7 +107,19 @@ def read(
         sources: dict[tuple[UUID, UUID], set[UUID]] = defaultdict(set)
         retained_reliefs: dict[tuple[UUID, UUID, UUID, str], Decimal] = defaultdict(Decimal)
         cross = []
-        affected: set[UUID] = set()
+        # A full return can remove all prior consumption from the latest target.
+        # Discover its recipient from actual negative postings, then authorize the
+        # original target/paid evidence below instead of relying on surviving layers.
+        affected: set[UUID] = {
+            row.contract_id
+            for row in members
+            if returns
+            and verify_postings
+            and any(
+                entry.flow.is_revenue and entry.flow.amount < 0
+                for entry in posted.get((row.contract_id, entity), ())
+            )
+        }
         verified_revenue: dict[str, dict[UUID, revenue_trace.RevenueSource]] = {}
         for movement in movement_rows:
             node = nodes.get(str(movement["trace_node_id"]))
@@ -403,6 +417,8 @@ def read(
                 "currency_view", "Revenue asset sources differ from retained evidence."
             )
         tie_outs.record_evidence(params, "revenue_asset_sources_v1", asset_evidence)
+    if returns:
+        tie_outs.record_evidence(params, return_key, True)
     if intercompany:
         tie_outs.record_evidence(params, "revenue_intercompany_sources_v1", True)
     tie_outs.require_members(params, "revenue_transfer_layer", consumed)

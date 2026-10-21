@@ -661,11 +661,16 @@ def rollforwards(
         and documents
         and (
             asset_transfers
+            or (billing_assets and params.binding is None)
             or (
                 params.binding is not None
                 and any(
                     key in params.binding.evidence
-                    for key in ("combined_asset_bridge_v1", "combined_asset_bridge_v2")
+                    for key in (
+                        "combined_asset_bridge_v1",
+                        "combined_asset_bridge_v2",
+                        "combined_asset_bridge_v3",
+                    )
                 )
             )
         )

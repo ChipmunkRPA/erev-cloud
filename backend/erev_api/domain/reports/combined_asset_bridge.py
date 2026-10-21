@@ -19,7 +19,8 @@ if TYPE_CHECKING:
     from .builders import ReportParams
     from .builders.contract_balance_rollforward import ContractRollforward
 
-KEY = "combined_asset_bridge_v2"
+KEY = "combined_asset_bridge_v3"
+BILLING_KEY = "combined_asset_bridge_v2"
 LEGACY_KEY = "combined_asset_bridge_v1"
 ZERO = Decimal(0)
 ROLE = "contract_asset"
@@ -38,8 +39,27 @@ def apply(
     transfers: Mapping[tuple[UUID, UUID, UUID], Decimal],
     billing_assets: Mapping[tuple[UUID, UUID, UUID], Decimal],
 ) -> tuple[ContractRollforward, ...]:
-    evidence_key = KEY if params.binding is None or KEY in params.binding.evidence else LEGACY_KEY
+    evidence_key = (
+        KEY
+        if params.binding is None
+        else next(key for key in (KEY, BILLING_KEY, LEGACY_KEY) if key in params.binding.evidence)
+    )
     touched = {(owner, entity) for owner, entity, _ in transfers}
+    if evidence_key == KEY:
+        # Zero is evidence too: a memo can consume only liability layers while
+        # member presentation makes the local FIFO path classify it as an asset.
+        group_members: dict[tuple[UUID, UUID], set[UUID]] = {}
+        for row in (*opening, *closing):
+            group_members.setdefault((row.version_id, row.entity_id), set()).add(row.contract_id)
+        combined = {
+            (owner, entity)
+            for (_, entity), owners in group_members.items()
+            if len(owners) > 1
+            for owner in owners
+        }
+        touched.update(
+            (owner, entity) for owner, entity, _ in billing_assets if (owner, entity) in combined
+        )
     versions = {
         (row.version_id, row.entity_id)
         for row in (*opening, *closing)
@@ -123,7 +143,7 @@ def apply(
         changed = {name: dict(values) for name, values in lines.items()}
         changed["RECLASSIFICATIONS"][ROLE] += amount
         changed["OTHER"][ROLE] -= amount
-        if evidence_key == KEY and billed_asset is not None:
+        if evidence_key in {KEY, BILLING_KEY} and billed_asset is not None:
             # An invoice can settle another member's asset even when the issuer
             # has none. Use the original asset amount, never the residual OTHER.
             shift = billed_asset - changed["BILLINGS"][ROLE]
@@ -195,7 +215,7 @@ def apply(
             ":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())
         },
     }
-    if evidence_key == KEY:
+    if evidence_key in {KEY, BILLING_KEY}:
         evidence["billing_assets"] = {
             ":".join(map(str, key)): str(value) for key, value in sorted(billing_assets.items())
         }

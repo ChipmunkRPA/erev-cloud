@@ -1214,7 +1214,7 @@ def test_combined_return_settles_another_members_asset(fx: FxWorld) -> None:  # 
         binding = fx.place.scalar(
             select(report_run.c.source_binding).where(report_run.c.id == UUID(run["id"]))
         )
-        bridge = binding["evidence"]["combined_asset_bridge_v2"]
+        bridge = binding["evidence"]["combined_asset_bridge_v3"]
         assert len(bridge["source_transfers"]) == 2
         assert sum(map(Decimal, bridge["source_transfers"].values()), Decimal(0)) == 0
         assert {abs(Decimal(value)) for value in bridge["source_transfers"].values()} == {
@@ -1451,11 +1451,20 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
 
 
-@pytest.mark.parametrize("net_fee, deposits", [("18000.00", 1), ("0.00", 1), ("18000.00", 2)])
+@pytest.mark.parametrize(
+    "net_fee, deposits, combined",
+    [
+        ("18000.00", 1, False),
+        ("0.00", 1, False),
+        ("18000.00", 2, False),
+        ("18000.00", 2, True),
+    ],
+)
 def test_agent_supplier_sources_retain_original_paid_history(
     fx: FxWorld,  # noqa: F811
     net_fee: str,
     deposits: int,
+    combined: bool,
 ) -> None:  # noqa: F811
     from erev_api.db.tables import account_mapping_rule, judgement_record
     from erev_api.domain.reports.revenue_attribution import for_control, read, verify_component
@@ -1519,7 +1528,17 @@ def test_agent_supplier_sources_retain_original_paid_history(
             )
         )
         uow.commit()
-    head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == identity))
+    source_owner = identity
+    if combined:
+        source_owner = _gateways(fx, "AGENT-FUNDING")
+        _grouped(fx.app, fx.maya, fx.marcus, [source_owner, identity])
+        for index in range(2):
+            head = fx.place.scalar(
+                select(contract.c.head_stream_version).where(contract.c.id == source_owner)
+            )
+            _recorded(
+                fx, source_owner, int(head), _invoice(f"FUNDING-{index}", "2026-08-01", "45000.00")
+            )
     for index in range(deposits):
         head = fx.place.scalar(
             select(contract.c.head_stream_version).where(contract.c.id == identity)
@@ -1559,13 +1578,24 @@ def test_agent_supplier_sources_retain_original_paid_history(
         controls = [row for row in rows if row["account_role"] == "CONTRACT_LIABILITY"]
         suppliers = [row for row in rows if row["clearing_purpose"] == "AP_SUPPLIER"]
         assert controls and len(suppliers) >= (2 if Decimal(net_fee) else 1)
-        assert -sum(
-            (row["amount_txn"] for row in rows if row["account_role"] == "REVENUE"), Decimal(0)
-        ) == Decimal(net_fee)
+        # Group TP is 90,000 principal + 18,000 agent retained consideration.
+        # Principal SSP stays at its in-range 90,000; the agent uses the 81,000 lower bound.
+        expected_net = (
+            (Decimal("108000") * Decimal("81000") / Decimal("171000")).quantize(Decimal(".01"))
+            if combined
+            else Decimal(net_fee)
+        )
+        assert (
+            -sum(
+                (row["amount_txn"] for row in rows if row["account_role"] == "REVENUE"), Decimal(0)
+            )
+            == expected_net
+        )
         for view in ("transaction", "functional"):
             _, result = for_control(uow, controls[0]["id"], view=view)
             amount = "amount_txn" if view == "transaction" else "amount_functional"
             assert result.delta.amount == -controls[0][amount]
+            assert {item.contract_id for item in result.delta.movements} == {source_owner}
             assert {item[1] for item in result.components} == (
                 {"REVENUE", "BILLING_CLEARING:AP_SUPPLIER"}
                 if Decimal(net_fee)
@@ -1720,7 +1750,17 @@ def test_agent_supplier_sources_retain_original_paid_history(
             "CONTRACT_LIABILITY",
             "BILLING_CLEARING",
         }
-        assert all(row["transaction"] == row["functional"] == 0 for row in totals), totals
+        assert all(row["transaction"] == 0 for row in totals), totals
+        if combined:
+            # Original funding was at .80; the restored own layer is at .84.
+            # The 90,000 x .04 historical-rate difference is not a supplier balance.
+            assert {row["account_role"]: row["functional"] for row in totals} == {
+                "REVENUE": Decimal("3600"),
+                "CONTRACT_LIABILITY": Decimal("-3600"),
+                "BILLING_CLEARING": Decimal(0),
+            }
+        else:
+            assert all(row["functional"] == 0 for row in totals), totals
         for code in ("contract_balance_rollforward", "revenue_from_opening_liability"):
             for view in ("transaction", "functional", "reporting"):
                 run, rows = worlds.report_run(
@@ -1739,6 +1779,14 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 )
                 if code == "contract_balance_rollforward":
                     assert Decimal(detail["other"]["amount"]) == 0, detail
+                    assert (
+                        next(
+                            check
+                            for check in run["tie_out_results"]
+                            if check["code"] == "TO_ROLLFORWARD_BALANCES"
+                        )["result"]
+                        == "PASS"
+                    ), run["tie_out_results"]
                 elif view == "transaction":
                     assert Decimal(detail["revenue_recognized"]["amount"]) == Decimal("-90000"), (
                         detail
