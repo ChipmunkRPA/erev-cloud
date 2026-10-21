@@ -9868,3 +9868,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - 21 focused exemption/cancellation/catalogue tests and the database multi-currency RPO
   movement/retained-rate test pass; Ruff and targeted mypy pass. Migration 0208 aligns the
   calculation description. No deployment or accounting sign-off.
+
+## RPO cancellation and re-entry segments — October 20, 2026
+
+- Revenue and late restatement are now measured within each retained disclosure segment.
+  Re-entry adds the remaining balance, excluding cumulative revenue already recognized;
+  changes while excluded do not become in-scope revenue. A range starting after cancellation
+  does not recreate that earlier cancellation. Repeated cancellation/re-entry is covered.
+- Cancellation attribution now also runs when the fixed allocation delta is zero, retaining
+  recognition for obligations funded entirely by dated realized consideration.
+- 29 targeted exemption, source-history and catalogue cases pass, plus three database cases
+  for activation and late revenue after restoring the missing EXEMPTIONS zero-row expectation.
+  Ruff and targeted mypy pass.
+  Migration 0209 records the segmented calculation. These history-level cases do not establish
+  that every public contract lifecycle can create every tested history; public lifecycle
+  acceptance and competing cause decomposition remain open. No deployment.

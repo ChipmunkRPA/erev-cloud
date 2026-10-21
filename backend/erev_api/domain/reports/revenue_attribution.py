@@ -228,14 +228,14 @@ def read(
         ):
             if (
                 not isinstance(child, str)
-                or not child.startswith("revenue_cum:")
+                or not child.startswith(("revenue_cum:", "agent_gross_billing_cum:"))
                 or child not in nodes
             ):
                 raise ValueError("Revenue target requires original component attribution.")
             transaction += int(sign) * Fraction(nodes[child].value)
             if is_time:
                 sourced_time_txn += int(sign) * Fraction(nodes[child].value)
-            functional = child.replace("revenue_cum:", "revenue_functional:", 1)
+            functional = "revenue_functional:" + child.split(":", 1)[1]
             if functional not in nodes:
                 subject, key_period = child.split(":", 1)[1].rsplit(":", 1)
                 prior_sources = [
@@ -412,7 +412,7 @@ def for_control(
     view: str = "functional",
     cache: dict[UUID, Attribution] | None = None,
 ) -> tuple[UUID, Attribution]:
-    """Resolve a control line to its same-entity revenue or intercompany due-to leg."""
+    """Resolve control relief to its verified revenue, agent supplier or due-to legs."""
     control = (
         uow.session.execute(select(subledger_line).where(subledger_line.c.id == control_id))
         .mappings()
@@ -433,8 +433,10 @@ def for_control(
         .mappings()
         .all()
     )
-    if control["account_role"] != "CONTRACT_LIABILITY" or len(lines) != 1:
+    if control["account_role"] != "CONTRACT_LIABILITY" or len(lines) > 1:
         raise ValueError("Revenue control has no unique retained revenue counterpart.")
+    if not lines:
+        return _agent_control(uow, control, None, view=view, cache=cache)
     revenue = lines[0]
     if any(revenue[name] != -control[name] for name in ("amount_txn", "amount_functional")):
         return _agent_control(uow, control, revenue, view=view, cache=cache)
@@ -461,7 +463,11 @@ def _agent_control(
         .all()
     )
     suppliers = [row for row in entries if revenue_roles.is_supplier(row)]
-    if control["entry_kind"] != "REVENUE_RECOGNITION" or len(entries) != 3 or len(suppliers) != 1:
+    if (
+        control["entry_kind"] != "REVENUE_RECOGNITION"
+        or len(entries) != (2 if revenue is None else 3)
+        or len(suppliers) != 1
+    ):
         raise ValueError("Revenue and control amounts differ without one original supplier leg.")
     supplier = suppliers[0]
     if any(
@@ -477,14 +483,17 @@ def _agent_control(
             "functional_currency",
         )
     ) or any(
-        control[key] + revenue[key] + supplier[key] != 0
+        control[key] + (0 if revenue is None else revenue[key]) + supplier[key] != 0
         for key in (
             "amount_txn",
             "amount_functional",
         )
     ):
         raise ValueError("Agent gross control, net revenue and supplier amounts do not reconcile.")
-    components = [read(uow, row["id"], view=view, _cache=cache) for row in (revenue, supplier)]
+    labeled = ([(revenue, "REVENUE")] if revenue is not None else []) + [
+        (supplier, revenue_roles.SUPPLIER_ROLE)
+    ]
+    components = [read(uow, row["id"], view=view, _cache=cache) for row, _ in labeled]
     dates: dict[tuple[UUID, str], date] = {}
     for component in components:
         for owner, layer, created in component.layer_dates:
@@ -503,7 +512,7 @@ def _agent_control(
     amount_key = "amount_functional" if view == "functional" else "amount_txn"
     if delta.amount != -Fraction(control[amount_key]):
         raise ValueError("Agent source components differ from gross control relief.")
-    return revenue["id"], Attribution(
+    return labeled[0][0]["id"], Attribution(
         delta,
         tuple(
             sorted(
@@ -516,6 +525,6 @@ def _agent_control(
         view,
         tuple(
             (row["id"], label, str(row["amount_txn"]), str(row["amount_functional"]))
-            for row, label in ((revenue, "REVENUE"), (supplier, revenue_roles.SUPPLIER_ROLE))
+            for row, label in labeled
         ),
     )

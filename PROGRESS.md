@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Zero-net agent reporting — October 20, 2026
+
+- A zero-net agent entry can now use its sole AP_SUPPLIER counterpart. No zero revenue line is
+  invented. The entry must contain exactly the control and supplier lines; scope, currencies,
+  original source amounts and both-currency balancing remain mandatory.
+- Unsplit gross-billing targets now resolve original functional revenue sources. Retained report
+  evidence identifies the supplier counterpart explicitly, preserving earlier nonzero shapes.
+- The DB journey covers zero and nonzero fees, net posted amounts, original supplier history,
+  both source currencies, and both public reports in all three views with identical reruns.
+  No unexplained OTHER remains and balance tie-outs pass. Scoped lint/types pass.
+- Migration 0223 describes this path. Multi-origin split and within-period mixed attribution,
+  broader agent close/reversal acceptance and independent accounting sign-off remain open.
+  The disclosure's existing gross-control-relief column policy is unchanged. No deployment.
+
+
 ## Agent gross/net reporting attribution — October 20, 2026
 
 - Retained revenue histories now include only the AP_SUPPLIER purpose of revenue-recognition
@@ -241,22 +256,6 @@
   attributed. Other competing cause sets and fully batched first-entry decomposition remain open.
 - 32 targeted tests pass, including real engine estimate traces and missing-share rejection.
   DB currency/rate replay, lint and types pass. Migration 0210 matches catalogue. No deployment.
-
-
-## RPO cancellation and re-entry segments — October 20, 2026
-
-- Revenue and late restatement are now measured within each retained disclosure segment.
-  Re-entry adds the remaining balance, excluding cumulative revenue already recognized;
-  changes while excluded do not become in-scope revenue. A range starting after cancellation
-  does not recreate that earlier cancellation. Repeated cancellation/re-entry is covered.
-- Cancellation attribution now also runs when the fixed allocation delta is zero, retaining
-  recognition for obligations funded entirely by dated realized consideration.
-- 29 targeted exemption, source-history and catalogue cases pass, plus three database cases
-  for activation and late revenue after restoring the missing EXEMPTIONS zero-row expectation.
-  Ruff and targeted mypy pass.
-  Migration 0209 records the segmented calculation. These history-level cases do not establish
-  that every public contract lifecycle can create every tested history; public lifecycle
-  acceptance and competing cause decomposition remain open. No deployment.
 
 
 ## Outstanding release verification

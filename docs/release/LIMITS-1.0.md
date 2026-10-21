@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — zero-net agent counterpart now supported
+
+The missing-counterpart failure for zero-net agent entries is resolved: exactly one supplier
+line may balance the control line without a synthetic revenue line. Its original gross input,
+signed source movements, amounts and currencies must reconcile. The retained evidence labels
+the supplier counterpart. This also handles the engine's unsplit all-to-supplier target.
+
+The public two-report DB journey now covers both zero and nonzero fees in transaction,
+functional and reporting views with retained reruns. It confirms no unexplained rollforward
+OTHER and passing balance tie-outs. Broader close-pass/reversal acceptance is not claimed.
+Multi-origin split inputs, within-period mixed-source attribution and independent accounting
+acceptance remain open. The existing gross control-relief disclosure policy is unchanged.
+No deployment or overall production-readiness claim.
+
+
 ### October 20 — agent supplier history and gross/net source attribution
 
 The supplier-history and gross/net matcher gaps in the preceding entry are now implemented.

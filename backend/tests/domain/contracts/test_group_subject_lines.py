@@ -1451,7 +1451,8 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
 
 
-def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld) -> None:  # noqa: F811
+@pytest.mark.parametrize("net_fee", ["18000.00", "0.00"])
+def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld, net_fee: str) -> None:  # noqa: F811
     from erev_api.db.tables import account_mapping_rule, judgement_record
     from erev_api.domain.reports.revenue_attribution import for_control, read
     from sqlalchemy import insert
@@ -1507,7 +1508,7 @@ def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld) -> Non
                     questionnaire={
                         "conclusion": "AGENT",
                         "gross_to_net_basis": "FIXED_FEE",
-                        "amount": "18000.00",
+                        "amount": net_fee,
                         "obligation_key": "O1",
                     },
                 )
@@ -1544,18 +1545,25 @@ def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld) -> Non
         )
         controls = [row for row in rows if row["account_role"] == "CONTRACT_LIABILITY"]
         suppliers = [row for row in rows if row["clearing_purpose"] == "AP_SUPPLIER"]
-        assert controls and len(suppliers) >= 2
+        assert controls and len(suppliers) >= (2 if Decimal(net_fee) else 1)
+        assert -sum(
+            (row["amount_txn"] for row in rows if row["account_role"] == "REVENUE"), Decimal(0)
+        ) == Decimal(net_fee)
         for view in ("transaction", "functional"):
             _, result = for_control(uow, controls[0]["id"], view=view)
             amount = "amount_txn" if view == "transaction" else "amount_functional"
             assert result.delta.amount == -controls[0][amount]
-            assert {item[1] for item in result.components} == {
-                "REVENUE",
-                "BILLING_CLEARING:AP_SUPPLIER",
-            }
+            assert {item[1] for item in result.components} == (
+                {"REVENUE", "BILLING_CLEARING:AP_SUPPLIER"}
+                if Decimal(net_fee)
+                else {"BILLING_CLEARING:AP_SUPPLIER"}
+            )
             later = read(uow, suppliers[-1]["id"], view=view)
             assert later.delta.amount == suppliers[-1][amount]
-            assert suppliers[0]["id"] in later.paid_line_ids
+            if Decimal(net_fee):
+                assert suppliers[0]["id"] in later.paid_line_ids
+            else:
+                assert not later.paid_line_ids
 
     from erev_api.db.tables import legal_entity
     from erev_api.domain.reports.command_fx_evidence import read_revenue

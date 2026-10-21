@@ -298,9 +298,12 @@ def read(
                                 {
                                     "counterpart_role": "INTERCOMPANY_DUE_TO"
                                     if entry.entry_kind == "INTERCOMPANY"
+                                    else result.components[0][1]
+                                    if result.components
                                     else "REVENUE"
                                 }
                                 if intercompany
+                                or (result.components and len(result.components) == 1)
                                 else {}
                             ),
                             "paid_line_ids": list(map(str, result.paid_line_ids)),

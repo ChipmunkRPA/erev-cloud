@@ -598,6 +598,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and AP_SUPPLIER components in both currencies; split targets require unique "
             "original source ownership and supplier history capability, otherwise "
             "attribution is unavailable",
+            "zero-net agent control relief uses its sole retained AP_SUPPLIER counterpart, with "
+            "no synthetic revenue line; supplier amounts and original signed sources must "
+            "reconcile in both currencies",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -691,6 +694,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and AP_SUPPLIER components in both currencies; split targets require unique "
             "original source ownership and supplier history capability, otherwise "
             "attribution is unavailable",
+            "zero-net agent control relief uses its sole retained AP_SUPPLIER counterpart, with "
+            "no synthetic revenue line; supplier amounts and original signed sources must "
+            "reconcile in both currencies",
         ),
     ),
     _definition(
