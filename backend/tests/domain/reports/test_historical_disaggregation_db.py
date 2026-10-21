@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
+from uuid import UUID
 
 import pytest
 from erev_api.db import new_id
@@ -14,6 +15,7 @@ from erev_api.domain.reports.catalogue import COMMIT_VISIBILITY_REPORTS, DEFINIT
 from erev_api.enums import SubledgerPostingKind
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import Session
 from support.factories import K11World
 from tests.domain.reports.test_historical_line_cutoff_db import _lines_of, _posted
 from tests.domain.reports.test_historical_line_cutoff_db import app as app
@@ -178,3 +180,35 @@ def test_commit_visibility_catalogue_matches_migration(world: K11World) -> None:
     stored = dict(rows)
     for code in COMMIT_VISIBILITY_REPORTS:
         assert stored[code] == DEFINITIONS_BY_CODE[code].ipe_logic
+
+
+def test_commit_recovery_continues_after_failed_posting_and_retries_next_sweep(
+    world: K11World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(commit_evidence, "retain_after_commit", lambda *args: None)
+    first, stored = _posted(world)
+    with world.place.uow() as uow:
+        second = subledger.post(
+            uow,
+            book_code="ASC606",
+            posting_kind=SubledgerPostingKind.ENGINE_COMPUTE,
+            idempotency_key=f"{subledger.compute_key(stored['id'])}:recovery",
+            description="Recovery continues after an unavailable commit",
+            lines=[{**line, "id": new_id()} for line in _lines_of(world, first)],
+            contract_computation_id=stored["id"],
+        )
+        uow.commit()
+    failed_id, healthy_id = sorted((first, second.posting_id))
+    capture = commit_evidence._capture
+
+    def unavailable(session: Session, posting_id: UUID) -> None:
+        if posting_id == failed_id:
+            session.execute(text("SELECT 1 / 0"))
+        capture(session, posting_id)
+
+    monkeypatch.setattr(commit_evidence, "_capture", unavailable)
+    assert commit_evidence.recover_pending(world.place.tenant_id, batch_size=1) == (1, 1)
+    assert world.place.scalar(select(func.erev.subledger_commit_time(healthy_id))) is not None
+    monkeypatch.setattr(commit_evidence, "_capture", capture)
+    assert commit_evidence.recover_pending(world.place.tenant_id, batch_size=1) == (1, 0)
+    assert commit_evidence.recover_pending(world.place.tenant_id, batch_size=1) == (0, 0)

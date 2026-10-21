@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Automatic commit-evidence recovery — October 21, 2026
+
+- The existing minute worker sweep now retries pending posting commit evidence per tenant.
+  Recovery uses short batches, row locks with SKIP LOCKED, and savepoints per posting.
+  Keyset progression passes failed entries so they cannot starve later pending rows; each
+  failed entry is retried on the next sweep. Successful batches commit independently.
+- Immediate after-commit retention remains the normal path. Migration 0275 adds a partial
+  pending-only index so routine recovery does not scan the full ledger. Recovery logs posting
+  failures and per-tenant retained/failed totals. Tenant recovery failures do not stop the
+  existing job sweep or the next tenant.
+- Verified against PostgreSQL: an injected statement failure on the first pending posting
+  rolls back only that posting, the next batch retains the second, the next sweep recovers
+  the first, and another sweep is a no-op. Minute-sweep tenant isolation and normal historical
+  cutoff behavior pass; scoped lint and types pass. No deployment.
+- This closes automatic retry of failed post-commit retention. PostgreSQL evidence already
+  discarded before a worker can recover it remains unavailable and is explicitly refused;
+  there is no invented fallback timestamp. Other B4-11 historical-source readers remain open.
+
 ## Historical ledger commit visibility — October 21, 2026
 
 - Historical ledger readers now require the original PostgreSQL commit timestamp, closing
@@ -202,26 +220,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Initial usage/royalty batches, monetary changes after a same-day status transition, and
   multiple transitions on a monetary-event date still need ordered amount evidence. The public
   batch-to-report witness and B4-11 historical commit visibility remain open. No deployment.
-
-## Initial RPO eligibility timelines — October 21, 2026
-
-- RPO and its rollforward now read original Step 1 status nodes, linked to dated immutable
-  source events, when one initial computation contains eligibility-only entry/exit/re-entry.
-  Timeline slices retain the original computation ID, allocation and recognition evidence.
-  A report starting during an excluded interval recognizes later re-entry as eligibility,
-  not a new contract; initial computations ending excluded retain their earlier admission.
-- Stage 09 now retains original-cut deterministic schedules before later contract-status
-  changes. Without these projections, an excluded final computation erased the future lines
-  needed to report its earlier included opening. No proportional schedule reconstruction is
-  used. Older traces lacking the required historical projection still refuse that read.
-- New runs bind rpo_initial_eligibility_timeline_v1; old bound runs keep the previous timeline.
-  Migration 0269 updates both RPO definitions. Original-engine witnesses cover whole-lifecycle,
-  opening-included, opening-excluded and post-re-entry ranges, including a final excluded
-  computation. The 42 scoped engine/chain/report cases, public sequential eligibility journey
-  and retained rerun, lint/types and reversible migration/catalogue parity pass.
-- Initial batches mixing these status transitions with monetary events remain unfinished.
-  A public batch-to-report witness remains to verify; the public regression above is sequential.
-  Arbitrary historical commit visibility (B4-11) also remains open. No deployment.
 
 ## Outstanding release verification
 

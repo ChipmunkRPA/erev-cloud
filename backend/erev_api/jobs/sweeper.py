@@ -1,6 +1,9 @@
 """Job sweeper KRN-JOB (dev-guide DG-KRN-JOB-06; 05 §5.7 SCH-04, JOB-06; D-80; REQ-OPS-006,
 CTL-040).
 
+The same minute sweep retries pending ledger commit evidence before job recovery; individual
+posting failures are isolated and logged, and a tenant failure does not stop other tenants.
+
 Every minute the worker's periodic task reads the tenant directory once, together with the
 ``erev.run_job`` tasks stalled in ``doing`` whose worker stopped heartbeating
 (``JobManager.get_stalled_jobs``), and, per tenant:
@@ -38,6 +41,7 @@ from sqlalchemy.orm import Session
 from erev_api.clock import Clock
 from erev_api.db.session import DbContext, platform_session, tenant_session
 from erev_api.db.tables.platform import job, tenant
+from erev_api.domain.journals.commit_evidence import recover_pending
 from erev_api.enums import JobState
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import (
@@ -210,6 +214,8 @@ def sweep(runtime: JobRuntime, *, request_id: str = "job-sweeper") -> tuple[int,
     tenant_ids, stalled_tasks = _directory(request_id)
     requeued = stalled = 0
     for tenant_id in tenant_ids:
+        with isolated(SWEEP_FAILED, tenant_id=str(tenant_id)):
+            recover_pending(tenant_id)
         requeued += _requeue(tenant_id, now)
         requeued += _redispatch_stranded(tenant_id, runtime, stalled_tasks)
         stalled += _fail_stalled(tenant_id, runtime)

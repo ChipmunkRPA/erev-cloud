@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Automatic commit-evidence recovery — October 21, 2026
+
+- The existing minute worker sweep now retries pending posting commit evidence per tenant.
+  Recovery uses short batches, row locks with SKIP LOCKED, and savepoints per posting.
+  Keyset progression passes failed entries so they cannot starve later pending rows; each
+  failed entry is retried on the next sweep. Successful batches commit independently.
+- Immediate after-commit retention remains the normal path. Migration 0275 adds a partial
+  pending-only index so routine recovery does not scan the full ledger. Recovery logs posting
+  failures and per-tenant retained/failed totals. Tenant recovery failures do not stop the
+  existing job sweep or the next tenant.
+- Verified against PostgreSQL: an injected statement failure on the first pending posting
+  rolls back only that posting, the next batch retains the second, the next sweep recovers
+  the first, and another sweep is a no-op. Minute-sweep tenant isolation and normal historical
+  cutoff behavior pass; scoped lint and types pass. No deployment.
+- This closes automatic retry of failed post-commit retention. PostgreSQL evidence already
+  discarded before a worker can recover it remains unavailable and is explicitly refused;
+  there is no invented fallback timestamp. Other B4-11 historical-source readers remain open.
+
 ## Historical ledger commit visibility — October 21, 2026
 
 - Historical ledger readers now require the original PostgreSQL commit timestamp, closing

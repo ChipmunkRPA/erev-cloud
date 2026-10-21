@@ -10,6 +10,8 @@ from collections.abc import Iterator
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
+from uuid import uuid4
 
 import erev_api
 import pytest
@@ -17,7 +19,7 @@ from erev_api import worker
 from erev_api.cli import app
 from erev_api.clock import FrozenClock
 from erev_api.config import get_settings
-from erev_api.jobs import registry
+from erev_api.jobs import registry, sweeper
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import QUEUES
 from support.clock import FROZEN_AT, frozen_clock
@@ -205,3 +207,21 @@ def test_rel_05_worker_task_passes_the_delivered_task(
             },
         )
     ]
+
+
+def test_minute_sweep_isolates_commit_recovery_tenant_failures(
+    monkeypatch: pytest.MonkeyPatch, clock: FrozenClock
+) -> None:
+    first, second = uuid4(), uuid4()
+    recovery = Mock(side_effect=[RuntimeError("database unavailable"), (2, 0)])
+    monkeypatch.setattr(sweeper, "_directory", lambda _: ([first, second], frozenset()))
+    monkeypatch.setattr(sweeper, "recover_pending", recovery)
+    requeue = Mock(return_value=1)
+    monkeypatch.setattr(sweeper, "_requeue", requeue)
+    monkeypatch.setattr(sweeper, "_redispatch_stranded", lambda *args: 0)
+    monkeypatch.setattr(sweeper, "_fail_stalled", lambda *args: 0)
+    runtime = Mock(spec=JobRuntime)
+    runtime.clock = clock
+    assert sweeper.sweep(runtime) == (2, 0)
+    assert [call.args[0] for call in recovery.call_args_list] == [first, second]
+    assert requeue.call_count == 2
