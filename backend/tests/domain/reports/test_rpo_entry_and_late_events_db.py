@@ -43,6 +43,7 @@ from erev_api.db.tables import period, product, subledger_line
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
+from httpx import Response
 from sqlalchemy import func, select
 from support import worlds
 from support.db import TestDatabase
@@ -531,6 +532,7 @@ def test_royalty_rpo_nets_guarantee_and_waits_for_licence_satisfaction(
 @pytest.mark.slow
 @pytest.mark.parametrize("termination_kind", ["FULL", "PARTIAL"])
 @pytest.mark.parametrize("refund", [0, 40])
+@pytest.mark.parametrize("amended", [False, True])
 def test_same_day_usage_termination_public_report(
     app: FastAPI,
     keyring: KeyRing,
@@ -539,6 +541,7 @@ def test_same_day_usage_termination_public_report(
     monkeypatch: pytest.MonkeyPatch,
     termination_kind: str,
     refund: int,
+    amended: bool,
 ) -> None:
     """An approved termination must reach the termination engine and Reporting."""
     from support.factories import AVM_US_CHART, published_mapping
@@ -570,6 +573,33 @@ def test_same_day_usage_termination_public_report(
         world = worlds.k08_ulvane(app, keyring, clock, files)
     assign(world.priya.member, "revenue_reviewer")
     cid = UUID(str(world.contracts[worlds.K08].contract["id"]))
+
+    def apply_modification(created: Response) -> dict[str, Any]:
+        mid = created.json()["id"]
+        classified = post(app, f"/api/v1/modifications/{mid}/classify", world.maya, {})
+        assert classified.status_code == 200, classified.text
+        confirm_answers(app, mid, world.maya)
+        queued = post(app, f"/api/v1/modifications/{mid}/preview", world.maya, {})
+        assert queued.status_code == 202, queued.text
+        finished = worlds.run_now(world, UUID(queued.json()["id"]))
+        assert finished["state"] == "SUCCEEDED", finished
+        sent = post(
+            app,
+            f"/api/v1/modifications/{mid}/submit",
+            world.maya,
+            {"comment": "Apply the reviewed change."},
+        )
+        assert sent.status_code == 200, sent.text
+        approved = approve(app, sent.json()["approval_request_id"], world.priya)
+        assert approved.status_code == 200, approved.text
+        shown = get(app, f"/api/v1/modifications/{mid}", world.maya).json()
+        if shown["status"] == "SUBMITTED":
+            approved = approve(app, sent.json()["approval_request_id"], world.marcus)
+            assert approved.status_code == 200, approved.text
+            shown = get(app, f"/api/v1/modifications/{mid}", world.maya).json()
+        assert shown["status"] == "APPLIED", shown
+        return shown
+
     worlds.approved_manual_events(
         world.place,
         world.priya,
@@ -587,6 +617,56 @@ def test_same_day_usage_termination_public_report(
             },
         },
     )
+    if amended:
+        estimate = post(
+            app,
+            f"/api/v1/contracts/{cid}/estimates",
+            world.maya,
+            {
+                "estimate_kind": "VARIABLE_CONSIDERATION",
+                "element_code": "BONUS-SAME-DAY",
+                "vc_element_type": "BONUS",
+                "method": "MOST_LIKELY_AMOUNT",
+            },
+        )
+        assert estimate.status_code == 201, estimate.text
+        worlds.estimate_version_approved(
+            app,
+            world.maya,
+            world.priya,
+            estimate.json()["id"],
+            {
+                "effective_date": "2026-01-01",
+                "scenarios": [{"outcome": "Bonus earned", "amount": "200"}],
+                "unconstrained_amount": "200",
+                "most_conservative_amount": "200",
+                "constrained_amount": "200",
+                "rationale": "Inception-date estimate before amendment and termination.",
+            },
+            constraint_of="BONUS-SAME-DAY",
+        )
+        amendment = post(
+            app,
+            f"/api/v1/contracts/{cid}/modifications",
+            world.maya,
+            {
+                "effective_date": "2026-01-01",
+                "kind": "PRICE_CHANGE",
+                "reference": "PRICE-SAME-DAY",
+                "lines": [
+                    {
+                        "obligation_key": "O1",
+                        "action": "CHANGE",
+                        "product_code": worlds.API_CALL,
+                        "quantity_delta": "0",
+                        "consideration_delta": {"amount": "100", "currency": "USD"},
+                    }
+                ],
+                "rationale": "Increase service consideration before termination.",
+            },
+        )
+        assert amendment.status_code == 201, amendment.text
+        apply_modification(amendment)
     created = post(
         app,
         f"/api/v1/contracts/{cid}/modifications",
@@ -608,28 +688,11 @@ def test_same_day_usage_termination_public_report(
                     "consideration_delta": {"amount": str(-refund), "currency": "USD"},
                 }
             ],
-            "rationale": "End all remaining service on inception day; no refund.",
+            "rationale": "Terminate the selected scope with the stated refund.",
         },
     )
     assert created.status_code == 201, created.text
-    mid = created.json()["id"]
-    classified = post(app, f"/api/v1/modifications/{mid}/classify", world.maya, {})
-    assert classified.status_code == 200, classified.text
-    confirm_answers(app, mid, world.maya)
-    queued = post(app, f"/api/v1/modifications/{mid}/preview", world.maya, {})
-    assert queued.status_code == 202, queued.text
-    finished = worlds.run_now(world, UUID(queued.json()["id"]))
-    assert finished["state"] == "SUCCEEDED", finished
-    sent = post(app, f"/api/v1/modifications/{mid}/submit", world.maya, {"comment": "Terminate."})
-    assert sent.status_code == 200, sent.text
-    approved = approve(app, sent.json()["approval_request_id"], world.priya)
-    assert approved.status_code == 200, approved.text
-    shown = get(app, f"/api/v1/modifications/{mid}", world.maya).json()
-    if shown["status"] == "SUBMITTED":
-        approved = approve(app, sent.json()["approval_request_id"], world.marcus)
-        assert approved.status_code == 200, approved.text
-        shown = get(app, f"/api/v1/modifications/{mid}", world.maya).json()
-    assert shown["status"] == "APPLIED", shown
+    shown = apply_modification(created)
     event = get(app, f"/api/v1/events/{shown['applied_event_id']}", world.maya).json()
     assert event["event_type"] == "CONTRACT_TERMINATED", event
     contract = get(app, f"/api/v1/contracts/{cid}", world.maya).json()
@@ -637,19 +700,21 @@ def test_same_day_usage_termination_public_report(
         contract
     )
     lines, run = rollforward(world, AVM_US, "FY2026-P01")
-    assert lines["NEW_CONTRACTS"] == Decimal("160000")
-    assert lines["VC_ESTIMATE_CHANGES"] == Decimal("150")
+    # The initial computation predates the later approved estimate: even on the
+    # same effective date, its increment belongs to VC rather than new contracts.
+    assert lines["NEW_CONTRACTS"] == Decimal("160000"), lines
+    assert lines["VC_ESTIMATE_CHANGES"] == Decimal("150") + (200 if amended else 0), lines
     # Partial termination reallocates the nonrefundable remaining pool to O2;
     # full termination has no remaining recipient and recognizes it on termination.
-    continuing = ((Decimal("160000") - refund) * 31 / 365).quantize(Decimal("0.01"))
+    fixed = Decimal("160000") + (300 if amended else 0)
+    assert lines["MODIFICATIONS"] == (100 if amended else 0)
+    continuing = ((fixed - refund) * 31 / 365).quantize(Decimal("0.01"))
     expected_revenue = (
-        Decimal("160150") - refund if termination_kind == "FULL" else Decimal("150") + continuing
+        fixed + 150 - refund if termination_kind == "FULL" else Decimal("150") + continuing
     )
     assert lines["REVENUE"] == -expected_revenue
     assert lines["CANCELLATIONS"] == -refund
-    assert lines["CLOSING"] == (
-        0 if termination_kind == "FULL" else Decimal("160000") - refund - continuing
-    )
+    assert lines["CLOSING"] == (0 if termination_kind == "FULL" else fixed - refund - continuing)
     assert lines["UNEXPLAINED"] == 0
     assert ties(run) == BALANCED
 

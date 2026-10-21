@@ -20,6 +20,19 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Public same-day usage, estimate and price-change sequence — October 21, 2026
+
+- Extended the public termination journey with an approved 200 bonus estimate and 100 price
+  increase after 150 usage, all effective on inception day. The original 160,000 computation
+  already exists: NEW_CONTRACTS stays 160,000, VC_ESTIMATE_CHANGES is 350, MODIFICATIONS is 100,
+  and CANCELLATIONS is the negative refund. Full termination recognizes the remaining pool;
+  partial termination reallocates fixed consideration to the continuing obligation.
+- This checks sequential retained computations, public preparation/review/preview/application,
+  report ties and bound reruns for FULL/PARTIAL and refunds 0/40. It does not prove one initial
+  computation containing every event, or repeated termination/re-entry. No calculation change
+  was needed for this sequence. All eight targeted journeys and scoped lint pass; broader
+  lifecycle and B4-11 gaps remain open. No deployment.
+
 ## GL source selection uses one database snapshot — October 21, 2026
 
 - GL comparisons now resolve source identities, latest captured states, review status and totals
