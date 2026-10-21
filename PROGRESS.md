@@ -6,6 +6,22 @@
 
 
 
+## Same-day estimate and cancellation ordering — October 20, 2026
+
+- RPO now loads the immutable contract-event record sequence for estimate causes, using the
+  same (effective date, record sequence, event key) order as the engine. A same-day estimate
+  before the original termination can participate in the reconciled cancellation bridge;
+  missing order or an estimate at/after termination remains unsupported.
+- New bindings retain rpo_cancelled_changes_v2. Existing v1 runs keep their date-only rule and
+  retain v1 again on rerun; older runs without cancellation decomposition remain unchanged.
+  No event is reordered and no engine accounting amount changes.
+- Full-compute positive/negative estimate cases now cover same-day termination, missing order,
+  reversed order and v1 behavior. The eight targeted first-batch cases, public modification
+  reports/reruns in three views, lint/types and migration 0241 down/up catalogue parity pass.
+  No deployment; direct main publication.
+- First-entry cancellation batches, multiple cancellations, usage mixtures, combined-member
+  aging ownership, independent accounting sign-off and final-candidate checks remain open.
+
 ## Source-reconciled mixed RPO cancellations — October 20, 2026
 
 - RPO can now separate modification and original estimate changes from a single terminal
@@ -219,19 +235,6 @@
 - Single reports and disclosure workbooks share the renderer. Focused workbook and existing
   export checks pass; production renderer lint/types pass. Independent accounting acceptance
   and final candidate verification remain outstanding. Direct main publication; no deployment.
-
-## Reviewed GL source gate — October 20, 2026
-
-- New contract balance and rollforward runs require reviewed/certified GL reconciliation
-  sources. Draft, prepared, reopened or missing review states remain unavailable, with source
-  identity and reason retained; matching numbers alone cannot produce PASS.
-- Versioned v3 bindings freeze review status. Earlier v1/v2 bindings retain their original
-  arithmetic controls without live reads. Reopening a source changes new runs, not retained
-  historical reruns.
-- Eleven focused comparison/binding checks and two public API journeys pass, including
-  draft/review/reopen, deterministic reruns and dated foreign functional balances. Migration
-  0230 updates both IPE definitions. No deployment; broader lifecycle/accounting acceptance
-  and final release-candidate verification remain outstanding.
 
 ## Outstanding release verification
 

@@ -633,18 +633,20 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
 
 
 @pytest.mark.parametrize(
-    "with_modification,later_amount,added",
+    "with_modification,later_amount,added,same_day",
     [
-        (False, "200", False),
-        (False, "-50", False),
-        (True, "200", False),
-        (True, "80", False),
-        (True, "200", True),
-        (True, "80", True),
+        (False, "200", False, False),
+        (False, "-50", False, False),
+        (True, "200", False, False),
+        (True, "80", False, False),
+        (True, "200", True, False),
+        (True, "80", True, False),
+        (True, "200", False, True),
+        (True, "80", False, True),
     ],
 )
 def test_first_entry_separates_later_original_estimate_events(
-    later_amount: str, with_modification: bool, added: bool
+    later_amount: str, with_modification: bool, added: bool, same_day: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
     from erev_api.domain.reports.rpo_estimate_changes import allocations
@@ -872,7 +874,7 @@ def test_first_entry_separates_later_original_estimate_events(
             kind="TERMINATION",
             chosen_treatments={},
             treatment_summary=None,
-            effective_date=date(2026, 2, 28),
+            effective_date=date(2026, 2, 15 if same_day else 28),
             lines=tuple(
                 {
                     "obligation_key": key,
@@ -903,6 +905,16 @@ def test_first_entry_separates_later_original_estimate_events(
                 )
             ),
         )
+        termination_event = terminated.events[-1]
+        terminated = replace(
+            terminated,
+            events=tuple(
+                sorted(
+                    terminated.events,
+                    key=lambda event: (event.effective_date, event.record_seq, event.event_key),
+                )
+            ),
+        )
         terminated_book = compute(terminated).books[0]
         later_events = frozenset(event for event, day in estimates if day > entry)
         cancelled_version = replace(
@@ -910,7 +922,12 @@ def test_first_entry_separates_later_original_estimate_events(
             causes=frozenset({"CONTRACT_AMENDED", "ESTIMATE_CHANGED", "CONTRACT_TERMINATED"}),
             entries=(),
             estimate_events=later_events,
-            cancellation_events=frozenset({terminated.events[-1].event_key}),
+            cancellation_events=frozenset({termination_event.event_key}),
+            estimate_order=tuple(
+                (event.event_key, event.record_seq)
+                for event in terminated.events
+                if event.event_key in later_events
+            ),
         )
         store.boundaries[vid] = history(terminated_book.trace)
         shares = allocations(terminated_book.trace, later_events)
@@ -922,6 +939,39 @@ def test_first_entry_separates_later_original_estimate_events(
             opening_amount = Decimal(str(original_ob.columns["allocated_amount"])) / 100
             change = rpo._cancelled_changes(store, cancelled_version, subject, opening_amount)
             assert change is not None
+            if same_day:
+                assert (
+                    rpo._cancelled_changes(
+                        replace(store, same_day_cancelled_changes=False),
+                        cancelled_version,
+                        subject,
+                        opening_amount,
+                    )
+                    is None
+                )
+                assert (
+                    rpo._cancelled_changes(
+                        store,
+                        replace(cancelled_version, estimate_order=()),
+                        subject,
+                        opening_amount,
+                    )
+                    is None
+                )
+                assert (
+                    rpo._cancelled_changes(
+                        store,
+                        replace(
+                            cancelled_version,
+                            estimate_order=tuple(
+                                (event, termination_event.record_seq + 1) for event in later_events
+                            ),
+                        ),
+                        subject,
+                        opening_amount,
+                    )
+                    is None
+                )
             separated.append(change)
             assert (
                 rpo._cancelled_changes(store, cancelled_version, subject, opening_amount + 1)

@@ -978,6 +978,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "only when they reconcile from opening fixed allocation to the retained "
             "pre-termination amount; missing or ambiguous event order remains unexplained and "
             "legacy bindings keep original classification",
+            "mixed cancellation v2 admits same-day estimate changes only when immutable "
+            "contract-event record sequence proves they precede the original termination "
+            "boundary; later or missing order remains unexplained; retained v1 keeps its "
+            "date-only classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

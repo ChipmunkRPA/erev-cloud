@@ -289,6 +289,7 @@ class _Version:
     estimate_dates: tuple[tuple[str, date], ...] = ()
     modification_events: frozenset[str] = frozenset()
     cancellation_events: frozenset[str] = frozenset()
+    estimate_order: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(slots=True)
@@ -345,6 +346,7 @@ class Store:
 
     classify_added_obligations: bool = field(default=True, kw_only=True)
     classify_cancelled_changes: bool = field(default=True, kw_only=True)
+    same_day_cancelled_changes: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -422,6 +424,7 @@ def load(
     )
     events: dict[UUID, tuple[str, date]] = {}
     estimate_keys: dict[UUID, str] = {}
+    estimate_order: dict[UUID, int] = {}
     boundary_keys: dict[UUID, str] = {}
     cancellation_keys: dict[UUID, str] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
@@ -433,6 +436,7 @@ def load(
                 contract_event.c.effective_date,
                 contract_event.c.contract_id,
                 contract_event.c.stream_version,
+                contract_event.c.record_seq,
                 contract.c.external_id,
                 contract_event.c.payload["book"].as_string().label("admitted_book"),
             )
@@ -442,6 +446,7 @@ def load(
             kind = str(getattr(found["event_type"], "value", found["event_type"]))
             events[UUID(str(found["id"]))] = (kind, found["effective_date"])
             if kind == "ESTIMATE_CHANGED":
+                estimate_order[UUID(str(found["id"]))] = int(found["record_seq"])
                 estimate_keys[UUID(str(found["id"]))] = (
                     f"{contract_subject_key(str(found['external_id']))}/"
                     f"EV-{int(found['stream_version']):06d}"
@@ -507,6 +512,11 @@ def load(
                     cancellation_keys[UUID(str(item))]
                     for item in row["cause_event_ids"] or ()
                     if UUID(str(item)) in cancellation_keys
+                ),
+                estimate_order=tuple(
+                    (estimate_keys[UUID(str(item))], estimate_order[UUID(str(item))])
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in estimate_keys
                 ),
                 estimate_dates=tuple(
                     (estimate_keys[UUID(str(item))], events[UUID(str(item))][1])
@@ -1141,11 +1151,20 @@ def _cancelled_changes(
     if version.estimate_events:
         shares = store.estimate_allocations.get(version.id)
         dates = dict(version.estimate_dates)
-        if shares is None or any(
-            event not in dates or dates[event] >= termination.day
-            for event in version.estimate_events
-        ):
+        if shares is None:
             return None
+        order = dict(version.estimate_order)
+        for event in version.estimate_events:
+            day = dates.get(event)
+            if day is None or day > termination.day:
+                return None
+            if day == termination.day and (
+                not store.same_day_cancelled_changes
+                or event not in order
+                or termination.record_seq is None
+                or (order[event], event) >= (termination.record_seq, termination.event)
+            ):
+                return None
         estimate = shares.get(subject, ZERO)
     modified = sum((item.amount for item in modifications), ZERO)
     if opening + modified + estimate != termination.before:

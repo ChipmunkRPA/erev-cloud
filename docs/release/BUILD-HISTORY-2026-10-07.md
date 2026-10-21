@@ -10262,3 +10262,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Broader public API lifecycle and close-pass acceptance, independent accounting acceptance
   and final release checks remain outstanding. This completes the deterministic Step-1/manual
   projection path, not arbitrary source-changing or event-driven forecasts. No deployment.
+
+## Reviewed GL source gate — October 20, 2026
+
+- New contract balance and rollforward runs require reviewed/certified GL reconciliation
+  sources. Draft, prepared, reopened or missing review states remain unavailable, with source
+  identity and reason retained; matching numbers alone cannot produce PASS.
+- Versioned v3 bindings freeze review status. Earlier v1/v2 bindings retain their original
+  arithmetic controls without live reads. Reopening a source changes new runs, not retained
+  historical reruns.
+- Eleven focused comparison/binding checks and two public API journeys pass, including
+  draft/review/reopen, deterministic reruns and dated foreign functional balances. Migration
+  0230 updates both IPE definitions. No deployment; broader lifecycle/accounting acceptance
+  and final release-candidate verification remain outstanding.

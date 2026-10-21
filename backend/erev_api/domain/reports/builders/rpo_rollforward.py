@@ -91,15 +91,25 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if store.classify_added_obligations and params.sources is not None:
         params.sources.record_evidence(addition_evidence, True)
-    cancellation_evidence = "rpo_cancelled_changes_v1"
+    cancellation_evidence = "rpo_cancelled_changes_v2"
     store = replace(
         store,
         classify_cancelled_changes=(
+            params.binding is None
+            or cancellation_evidence in params.binding.evidence
+            or "rpo_cancelled_changes_v1" in params.binding.evidence
+        ),
+        same_day_cancelled_changes=(
             params.binding is None or cancellation_evidence in params.binding.evidence
         ),
     )
     if store.classify_cancelled_changes and params.sources is not None:
-        params.sources.record_evidence(cancellation_evidence, True)
+        params.sources.record_evidence(
+            cancellation_evidence
+            if store.same_day_cancelled_changes
+            else "rpo_cancelled_changes_v1",
+            True,
+        )
     applied = rpo.applied_expedients(session, found, book_code=book_code, known_at=params.known_at)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates

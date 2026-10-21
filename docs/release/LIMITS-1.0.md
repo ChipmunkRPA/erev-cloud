@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — same-day estimates can precede a cancellation
+
+The cancellation bridge now uses immutable contract-event record sequence to distinguish an
+estimate before termination from one after it on the same date. The order matches the engine's
+(effective date, record sequence, event key). The original pre-termination amount must still
+reconcile; missing sequence or a later estimate cannot be inferred to precede cancellation.
+New runs retain rpo_cancelled_changes_v2. Existing v1 runs retain their former date-only
+classification and preserve the v1 marker through reruns.
+
+Full-compute cases cover both estimate directions, same-day termination, absent/reversed order
+and legacy behavior. Public modification reports/reruns, types/lint and migration 0241 catalogue
+parity also pass. This supersedes the blanket same-day estimate limitation where original order
+is available. First-entry cancellation batches, multiple cancellations and usage mixtures remain
+open, as do combined-member aging ownership, independent accounting sign-off and final-candidate
+verification. No deployment.
+
+
 ### October 20 — mixed terminal cancellation attribution requires an original bridge
 
 For an already disclosed obligation, a later retained version containing modification/estimate
