@@ -355,6 +355,7 @@ class Store:
     classify_batch_usage_reentry: bool = field(default=True, kw_only=True)
     classify_same_day_entry_cancellation: bool = field(default=True, kw_only=True)
     classify_separate_cancellations: bool = field(default=True, kw_only=True)
+    classify_cancellation_cross_changes: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1157,6 +1158,45 @@ def _in_version(
     return None
 
 
+def _cancellation_boundary(
+    store: Store, changes: Sequence[rpo_boundary_changes.Change], events: frozenset[str]
+) -> tuple[rpo_boundary_changes.Change, Decimal] | None:
+    terminal = [item for item in changes if item.event in events]
+    cross = ZERO
+    if len(events) > 1:
+        if (
+            not store.classify_separate_cancellations
+            or {item.event for item in terminal} != events
+            or len(terminal) != len(events)
+            or not all(item.cancellation_stated for item in terminal)
+        ):
+            return None
+        actual = rpo_boundary_changes.cancellation(tuple(terminal))
+        if actual is None:
+            return None
+        for item in terminal:
+            if item.event == actual.event or item.amount == 0:
+                continue
+            if (
+                not store.classify_cancellation_cross_changes
+                or item.day > actual.day
+                or (
+                    item.day == actual.day
+                    and (
+                        item.record_seq is None
+                        or actual.record_seq is None
+                        or (item.record_seq, item.event) >= (actual.record_seq, actual.event)
+                    )
+                )
+            ):
+                return None
+            cross += item.amount
+        terminal = [actual]
+    if len(terminal) != 1 or terminal[0].before is None:
+        return None
+    return terminal[0], cross
+
+
 def _cancelled_changes(
     store: Store, version: _Version, subject: str, opening: Decimal
 ) -> tuple[Decimal, Decimal] | None:
@@ -1169,24 +1209,10 @@ def _cancelled_changes(
         return None
     history = store.boundaries.get(version.id, {})
     changes = history.get(subject, ())
-    terminal = [item for item in changes if item.event in version.cancellation_events]
-    if len(version.cancellation_events) > 1:
-        if (
-            not store.classify_separate_cancellations
-            or {item.event for item in terminal} != version.cancellation_events
-            or len(terminal) != len(version.cancellation_events)
-            or not all(item.cancellation_stated for item in terminal)
-        ):
-            return None
-        actual = rpo_boundary_changes.cancellation(tuple(terminal))
-        if actual is None or any(
-            item.event != actual.event and item.amount != 0 for item in terminal
-        ):
-            return None
-        terminal = [actual]
-    if len(terminal) != 1 or terminal[0].before is None:
+    boundary = _cancellation_boundary(store, changes, version.cancellation_events)
+    if boundary is None:
         return None
-    termination = terminal[0]
+    termination, cross = boundary
     if version.modification_events and not rpo_boundary_changes.complete(
         history, subject, version.modification_events
     ):
@@ -1222,7 +1248,7 @@ def _cancelled_changes(
                 return None
         estimate = shares.get(subject, ZERO)
     modified = sum((item.amount for item in modifications), ZERO)
-    if opening + modified + estimate != termination.before:
+    if opening + modified + estimate + cross != termination.before:
         return None
     return modified, estimate
 
@@ -1472,7 +1498,13 @@ def _obligation_lines(
                     opening_version,
                     modification_events=mods,
                     estimate_events=estimates,
-                    cancellation_events=frozenset({terminal.event}),
+                    cancellation_events=frozenset(
+                        item.event
+                        for item in store.boundaries.get(opening.version_id, {}).get(subject, ())
+                        if before < item.day <= terminal.day and item.kind == "CONTRACT_TERMINATED"
+                    )
+                    if store.classify_cancellation_cross_changes
+                    else frozenset({terminal.event}),
                     causes=frozenset(
                         {"CONTRACT_TERMINATED"}
                         | ({"CONTRACT_AMENDED"} if mods else set())
@@ -1490,7 +1522,13 @@ def _obligation_lines(
                 if separated is not None:
                     lines["MODIFICATIONS"] += separated[0]
                     lines["VC_ESTIMATE_CHANGES"] += separated[1]
-                    lines["CANCELLATIONS"] -= terminal.before
+                    boundary = _cancellation_boundary(
+                        reader,
+                        store.boundaries[opening.version_id][subject],
+                        scoped.cancellation_events,
+                    )
+                    assert boundary is not None
+                    lines["CANCELLATIONS"] += boundary[1] - terminal.before
                     terminal_cancellation = opening
                     if store.classify_batch_cancelled_usage:
                         batch_segment = cancelled_segment(0, opening)
@@ -1619,6 +1657,11 @@ def _obligation_lines(
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)
             boundaries = store.boundaries.get(version.id, {}).get(subject, ())
+            if pending_cancellation is current and store.classify_cancellation_cross_changes:
+                boundary = _cancellation_boundary(store, boundaries, version.cancellation_events)
+                if boundary is not None:
+                    lines["NEW_CONTRACTS"] -= boundary[1]
+                    lines["CANCELLATIONS"] += boundary[1]
             complete_boundaries = rpo_boundary_changes.complete(
                 store.boundaries.get(version.id, {}), subject, version.modification_events
             )

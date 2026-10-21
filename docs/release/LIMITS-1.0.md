@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — partial-cancellation allocation cross-effects
+
+- Original nonzero fixed-allocation changes from earlier partial terminations now enter
+  CANCELLATIONS, including first-entry/monthly cuts and mixed later-version bridges. They no
+  longer inflate NEW_CONTRACTS or prevent the original modification/estimate split. Explicit
+  per-event state and unique actual cancellation are required; nonzero effects after that
+  cancellation remain unsupported. Same-day cross-effects require original sequence evidence.
+- New rpo_cancellation_cross_changes_v1 bindings preserve the expanded rule; older report runs
+  retain their classification. Migration 0252 and catalogue describe the same evidence rule.
+- A full engine witness pools B prospectively when cancelling A, then cancels B. Original dated
+  trace reads verify full/monthly and later-version attribution, with legacy/refusal checks.
+  73 scoped cases, existing public three-view report/rerun journey, lint/types and migration
+  down/up exact IPE parity pass. The new lifecycle witness is not a new public API journey.
+- Repeated cancellation/reentry mixtures, intervening pre-termination versions, complex same-day
+  entry mixtures and combined-member aging ownership still need work. Independent accounting
+  sign-off/final-candidate checks remain open. No deployment; publish directly to main.
+
+This supersedes the previous blanket refusal of nonzero cross-effects only for original
+effects preceding the unique actual cancellation. It does not claim complete lifecycle coverage
+or production readiness.
+
 ### October 20 — independently cancelled obligations can share a computation
 
 A retained version may contain multiple termination causes while each obligation has one original

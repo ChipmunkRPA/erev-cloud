@@ -2,9 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Partial cancellations attribute allocation effects on other obligations — October 20, 2026
 
-
-
+- Original nonzero fixed-allocation changes from earlier partial terminations now enter
+  CANCELLATIONS, including first-entry/monthly cuts and mixed later-version bridges. They no
+  longer inflate NEW_CONTRACTS or prevent the original modification/estimate split. Explicit
+  per-event state and unique actual cancellation are required; nonzero effects after that
+  cancellation remain unsupported. Same-day cross-effects require original sequence evidence.
+- New rpo_cancellation_cross_changes_v1 bindings preserve the expanded rule; older report runs
+  retain their classification. Migration 0252 and catalogue describe the same evidence rule.
+- A full engine witness pools B prospectively when cancelling A, then cancels B. Original dated
+  trace reads verify full/monthly and later-version attribution, with legacy/refusal checks.
+  73 scoped cases, existing public three-view report/rerun journey, lint/types and migration
+  down/up exact IPE parity pass. The new lifecycle witness is not a new public API journey.
+- Repeated cancellation/reentry mixtures, intervening pre-termination versions, complex same-day
+  entry mixtures and combined-member aging ownership still need work. Independent accounting
+  sign-off/final-candidate checks remain open. No deployment; publish directly to main.
 
 ## Separate obligations can cancel in one retained computation — October 20, 2026
 
@@ -199,25 +212,6 @@
   No deployment; direct main publication.
 - First-entry cancellation batches, multiple cancellations, usage mixtures, combined-member
   aging ownership, independent accounting sign-off and final-candidate checks remain open.
-
-## Source-reconciled mixed RPO cancellations — October 20, 2026
-
-- RPO can now separate modification and original estimate changes from a single terminal
-  cancellation in a later retained version. Admission requires opening fixed allocation plus
-  those original deltas to equal the trace's amount immediately before termination. A residual
-  is not used as evidence. Cancellation still removes only unrecognized allocation; current
-  revenue and prior-period revenue restatements retain their own lines.
-- Cancellation identities and original before/after boundary amounts are loaded explicitly.
-  New bindings use rpo_cancelled_changes_v1; older bindings retain their former classification,
-  including in converted monthly rollforwards. No engine posting change.
-- Full-compute concession/estimate/termination traces prove the pre-termination bridge for both
-  estimate directions; mismatched starting amounts are refused. The 48 scoped cases include
-  recognized/reversed/restated revenue, realized consideration, missing bridges and legacy
-  behavior. Existing public modification reports and reruns in three views pass. Lint/types
-  and migration 0240 down/up catalogue parity pass. No deployment; direct main publication.
-- First-entry-and-cancel batches, multiple cancellations, usage-event mixtures and estimates
-  on the termination day remain unsupported by this decomposition. Combined-member aging date
-  ownership, independent accounting sign-off and final-candidate verification also remain open.
 
 ## Outstanding release verification
 

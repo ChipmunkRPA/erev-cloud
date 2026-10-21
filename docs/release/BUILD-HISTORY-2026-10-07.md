@@ -10470,3 +10470,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   views and reruns. Lint/types and migration 0239 down/up catalogue parity pass. No deployment.
 - Combined-member aging date ownership, legacy evidence gaps, cancellation mixtures, independent
   accounting sign-off and final-candidate verification remain outstanding.
+
+## Source-reconciled mixed RPO cancellations — October 20, 2026
+
+- RPO can now separate modification and original estimate changes from a single terminal
+  cancellation in a later retained version. Admission requires opening fixed allocation plus
+  those original deltas to equal the trace's amount immediately before termination. A residual
+  is not used as evidence. Cancellation still removes only unrecognized allocation; current
+  revenue and prior-period revenue restatements retain their own lines.
+- Cancellation identities and original before/after boundary amounts are loaded explicitly.
+  New bindings use rpo_cancelled_changes_v1; older bindings retain their former classification,
+  including in converted monthly rollforwards. No engine posting change.
+- Full-compute concession/estimate/termination traces prove the pre-termination bridge for both
+  estimate directions; mismatched starting amounts are refused. The 48 scoped cases include
+  recognized/reversed/restated revenue, realized consideration, missing bridges and legacy
+  behavior. Existing public modification reports and reruns in three views pass. Lint/types
+  and migration 0240 down/up catalogue parity pass. No deployment; direct main publication.
+- First-entry-and-cancel batches, multiple cancellations, usage-event mixtures and estimates
+  on the termination day remain unsupported by this decomposition. Combined-member aging date
+  ownership, independent accounting sign-off and final-candidate verification also remain open.

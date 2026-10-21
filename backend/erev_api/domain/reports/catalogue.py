@@ -1031,6 +1031,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "other termination has an explicitly retained zero fixed-allocation change for that "
             "obligation; incomplete or nonzero cross-effects remain unexplained; older bindings "
             "keep prior classification",
+            "rpo_cancellation_cross_changes_v1 attributes original fixed-allocation changes from "
+            "earlier partial terminations to cancellations, including first-entry and monthly "
+            "cuts; each termination must have explicit original state and nonzero cross-effects "
+            "must precede the unique actual cancellation; the opening plus modifications, "
+            "estimates and cross-effects must reproduce its original before amount for mixed "
+            "later-version attribution; older bindings retain prior behavior",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

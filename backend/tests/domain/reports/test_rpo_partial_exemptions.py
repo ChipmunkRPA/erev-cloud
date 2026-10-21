@@ -742,20 +742,21 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
 
 
 @pytest.mark.parametrize(
-    "with_modification,later_amount,added,same_day",
+    "with_modification,later_amount,added,same_day,cross_effect",
     [
-        (False, "200", False, False),
-        (False, "-50", False, False),
-        (True, "200", False, False),
-        (True, "80", False, False),
-        (True, "200", True, False),
-        (True, "80", True, False),
-        (True, "200", False, True),
-        (True, "80", False, True),
+        (False, "200", False, False, False),
+        (False, "-50", False, False, False),
+        (True, "200", False, False, False),
+        (True, "80", False, False, False),
+        (True, "200", True, False, False),
+        (True, "80", True, False, False),
+        (True, "200", False, True, False),
+        (True, "80", False, True, False),
+        (True, "200", False, False, True),
     ],
 )
 def test_first_entry_separates_later_original_estimate_events(
-    later_amount: str, with_modification: bool, added: bool, same_day: bool
+    later_amount: str, with_modification: bool, added: bool, same_day: bool, cross_effect: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
     from erev_api.domain.reports.rpo_estimate_changes import allocations
@@ -1021,6 +1022,7 @@ def test_first_entry_separates_later_original_estimate_events(
                 modification_key="K-01/TERM-A",
                 effective_date=date(2026, 2, 20),
                 lines=termination.lines[:1],
+                chosen_treatments={"B": "PROSPECTIVE"} if cross_effect else {},
             )
             last_termination = replace(termination, lines=termination.lines[1:])
             events = cpc_worlds.then(
@@ -1129,6 +1131,17 @@ def test_first_entry_separates_later_original_estimate_events(
             ),
         )
         store.boundaries[vid] = history(terminated_book.trace)
+        if cross_effect:
+            cross_changes = [
+                item
+                for changes in store.boundaries[vid].values()
+                for item in changes
+                if item.kind == "CONTRACT_TERMINATED"
+                and item.cancelled_on != item.day
+                and item.amount != 0
+            ]
+            assert len(cross_changes) == 1
+            assert cross_changes[0].amount > 0
         shares = allocations(terminated_book.trace, later_events)
         assert shares is not None
         store.estimate_allocations[vid] = shares
@@ -1300,6 +1313,13 @@ def test_first_entry_separates_later_original_estimate_events(
                 applied={},
             )
             assert old_result.lines["UNEXPLAINED"] != 0
+            if cross_effect:
+                (legacy_cross,) = rpo.rollforward_lines(
+                    replace(later_store, classify_cancellation_cross_changes=False),
+                    ranges={eid: (january, end)},
+                    applied={},
+                )
+                assert legacy_cross.lines["UNEXPLAINED"] != 0
         historical = variance_rpo.project(
             terminated,
             terminated_book,
