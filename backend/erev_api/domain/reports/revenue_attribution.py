@@ -239,6 +239,7 @@ def _read(
                 functional_scale=scale,
                 view=view,
                 attribute=not _amounts_only,
+                period_ends=period_ends,
             )
         amount = Fraction(node.params["amount_functional"]) / (10**scale)
         txn = Fraction(node.value)

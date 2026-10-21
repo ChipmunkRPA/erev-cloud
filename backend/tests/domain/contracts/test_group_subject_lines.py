@@ -1650,6 +1650,113 @@ def test_agent_supplier_sources_retain_original_paid_history(
             )
             assert repeated.status_code == 200 and repeated.json()["items"] == data, repeated.text
 
+    if deposits == 2:
+        head = fx.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == identity)
+        )
+        _recorded(
+            fx,
+            identity,
+            int(head),
+            {
+                "event_type": "CREDIT_MEMO_RECORDED",
+                "effective_date": "2026-09-01",
+                "payload": {
+                    "credit_memo_number": "AGENT-REFUND",
+                    "obligation_key": "O1",
+                    "amount": {"amount": "90000.00", "currency": "USD"},
+                    "issue_date": "2026-09-01",
+                },
+            },
+        )
+        returned = approved_manual_events(
+            fx.place,
+            fx.priya,
+            identity,
+            {
+                "event_type": "RETURN_RECORDED",
+                "effective_date": "2026-09-03",
+                "payload": {"obligation_key": "O1", "quantity": "200"},
+            },
+            evidence_file_ids=[],
+        )
+        assert returned["computation"]["status"] == "SUCCEEDED", returned["computation"]
+        with fx.place.uow() as uow:
+            reversals = (
+                uow.session.execute(
+                    select(subledger_line).where(
+                        subledger_line.c.contract_id == identity,
+                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                        subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                        subledger_line.c.amount_txn < 0,
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            assert reversals, "Refund and full return must reverse gross control relief"
+            for reversal in reversals:
+                for view in ("transaction", "functional"):
+                    _, restored = for_control(uow, reversal["id"], view=view)
+                    field = "amount_txn" if view == "transaction" else "amount_functional"
+                    assert restored.delta.amount == -reversal[field]
+                    assert restored.delta.source_ids
+                    assert {item.contract_id for item in restored.delta.movements} == {identity}
+        totals = fx.place.rows(
+            select(
+                subledger_line.c.account_role,
+                func.sum(subledger_line.c.amount_txn).label("transaction"),
+                func.sum(subledger_line.c.amount_functional).label("functional"),
+            )
+            .where(
+                subledger_line.c.contract_id == identity,
+                subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                subledger_line.c.book_code == "ASC606",
+            )
+            .group_by(subledger_line.c.account_role)
+        )
+        assert {row["account_role"] for row in totals} == {
+            "REVENUE",
+            "CONTRACT_LIABILITY",
+            "BILLING_CLEARING",
+        }
+        assert all(row["transaction"] == row["functional"] == 0 for row in totals), totals
+        for code in ("contract_balance_rollforward", "revenue_from_opening_liability"):
+            for view in ("transaction", "functional", "reporting"):
+                run, rows = worlds.report_run(
+                    reporting,
+                    code,
+                    {
+                        "entity_codes": [AVM_UK],
+                        "book": "ASC606",
+                        "currency_view": view,
+                        "from_period_key": SEPTEMBER,
+                        "to_period_key": SEPTEMBER,
+                    },
+                )
+                detail = next(
+                    row for row in rows if row.get("contract_external_id") == "AGENT-SOURCES"
+                )
+                if code == "contract_balance_rollforward":
+                    assert Decimal(detail["other"]["amount"]) == 0, detail
+                elif view == "transaction":
+                    assert Decimal(detail["revenue_recognized"]["amount"]) == Decimal("-90000"), (
+                        detail
+                    )
+                    assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
+                restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+                assert restarted.status_code == 202, restarted.text
+                complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+                assert complete["state"] == "SUCCEEDED", complete
+                repeated = get(
+                    fx.app,
+                    f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+                    fx.maya,
+                )
+                assert repeated.status_code == 200 and repeated.json()["items"] == rows, (
+                    repeated.text
+                )
+
 
 def test_scheduled_revenue_and_bonus_reach_public_reports(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore

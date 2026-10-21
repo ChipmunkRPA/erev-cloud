@@ -9,7 +9,7 @@ stage 09 ``revenue_cum`` period end t (D-87 L4-3-Q-24 (c)):
 - S_t = max(0, G_t − R_t), the supplier share posted to ``BILLING_CLEARING`` (``AP_SUPPLIER``).
 
 A JET-02 transfer is a measure event that moves a progress measure of the obligation's ledger
-(delivered units, costs, hours, output, milestone weight or usage); a period in which
+(delivered or returned units, costs, hours, output, milestone weight or usage); a period in which
 ``revenue_cum`` rises without such an event transfers at its end (``CLOSE_RELEASE``). Nodes:
 ``agent_gross_billing_cum:<ob>:<period>`` (``bil.attribution.v1`` mode ``sum`` over the documents
 counted) and, when S_t > 0, ``supplier_share_cum:<ob>:<period>`` (``pos.obligation.v1`` mode
@@ -57,6 +57,7 @@ SUPPLIER_MEASURE: Final = "supplier_share_cum"  # S_t
 _POSITION_FORMULA: Final = "pos.obligation.v1"
 _PROGRESS: Final = (
     "delivered_cum",
+    "returned_cum",
     "costs_cum",
     "hours_cum",
     "output_ratio",

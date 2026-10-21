@@ -408,7 +408,7 @@ def test_split_role_replays_original_rounding_and_preserves_source(
         ),
     )
 
-    def read(held=nodes, rows=(original,), *, attribute=True):
+    def read(held=nodes, rows=(original,), *, attribute=True, period_ends=None):
         return split_role_target(
             Trace(1, "test", tuple(held), {}),
             "split",
@@ -418,6 +418,7 @@ def test_split_role_replays_original_rounding_and_preserves_source(
             functional_scale=2,
             view=view,
             attribute=attribute,
+            period_ends=period_ends,
         )
 
     result = read()
@@ -474,6 +475,22 @@ def test_split_role_replays_original_rounding_and_preserves_source(
         read((*nodes[:-1], replace(nodes[-1], params={**params, "amount_functional": "-2666"})))
     with pytest.raises(InvalidRevenueTrace, match="transaction sources"):
         read(rows=({**original, "amount_txn": "100.00"},))
+
+    if classification == "EVENT":
+        from datetime import date
+
+        empty = (
+            replace(nodes[0], value="0.00"),
+            replace(nodes[-1], value="0.00", params={**params, "amount_functional": "0"}),
+        )
+        dates = {"P0": date(2026, 1, 31), "P1": date(2026, 2, 28)}
+        baseline = read(empty, (), period_ends=dates)
+        assert baseline.amount == baseline.time_amount == 0
+        assert not baseline.movements and not baseline.source_ids
+        with pytest.raises(InvalidRevenueTrace, match="source history"):
+            read(empty, ())
+        with pytest.raises(InvalidRevenueTrace, match="source history"):
+            read((*empty, replace(nodes[2], id="revenue_functional:ob:P0")), (), period_ends=dates)
 
 
 @pytest.mark.parametrize("view", ["transaction", "functional"])

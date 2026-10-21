@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — agent credit memo and full-return defects resolved
+
+The representative gross-control reversal case is now implemented and verified. Returned units
+advance the agent transfer boundary so earlier credit memos participate in gross billing. Zero
+split weights retain explicit zero role targets instead of leaving old cumulative amounts in
+place. Before this fix the return was quarantined because the entry did not balance; omitting
+the transfer-boundary fix also left gross billing and supplier balances outstanding.
+
+The two-prepayment journey fully reverses 90,000 gross, 18,000 net revenue and 72,000 supplier in
+USD, with every role also netting to zero in GBP. Source attribution validates both currencies;
+the September public reports and retained reruns pass all views. The reversal settles the
+credit-memo asset and is not relabelled as opening-liability relief. Single-layer and zero-net
+cases remain passing. Explicit empty split baselines require an original zero input, calendar
+and absence of earlier functional sources; missing later history is not treated as zero.
+
+Cross-contract agent groups and broader close-pass acceptance still need coverage. Existing
+agent disclosure presentation and independent accounting acceptance remain open, as do final
+release-candidate checks. No deployment or overall production-ready claim.
+
+
 ### October 20 — multi-layer agent gross relief now attributable
 
 Two original prepayment layers no longer require guessing how the net/supplier split belongs

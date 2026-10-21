@@ -371,6 +371,7 @@ def split_role_target(
     functional_scale: int,
     view: str,
     attribute: bool = True,
+    period_ends: Mapping[str, date] | None = None,
 ) -> RevenueTarget:
     """Replay both split amounts; source attribution additionally requires one provenance.
 
@@ -391,21 +392,46 @@ def split_role_target(
     ):
         raise InvalidRevenueTrace("Split revenue requires its original cumulative input.")
     functional = "revenue_functional:" + child.split(":", 1)[1]
-    sources = project(trace, functional, movements, currency=currency)
-    if attribute and (
-        len(
-            {
-                (
-                    item.contract_id,
-                    item.layer_key,
-                    item.movement_kind,
-                    item.effective_date,
-                    item.source_key,
-                )
-                for item in sources
-            }
+    sources: tuple[RevenueSource, ...]
+    if functional not in nodes:
+        subject, period = child.split(":", 1)[1].rsplit(":", 1)
+        try:
+            if period_ends is None:
+                raise ValueError("Original period dates are missing.")
+            end = period_ends[period]
+            if Fraction(nodes[child].value) != 0 or any(
+                candidate.startswith(f"revenue_functional:{subject}:")
+                and period_ends[candidate.rsplit(":", 1)[-1]] <= end
+                for candidate in nodes
+            ):
+                raise ValueError("Missing original source history.")
+            # Explicit zero before any original functional source is a valid baseline.
+            # Later missing nodes never erase earlier owner history.
+        except (KeyError, ValueError) as error:
+            raise InvalidRevenueTrace(
+                "Split revenue lacks original functional source history."
+            ) from error
+        sources = ()
+    else:
+        sources = project(trace, functional, movements, currency=currency)
+    if (
+        attribute
+        and sources
+        and (
+            len(
+                {
+                    (
+                        item.contract_id,
+                        item.layer_key,
+                        item.movement_kind,
+                        item.effective_date,
+                        item.source_key,
+                    )
+                    for item in sources
+                }
+            )
+            != 1
         )
-        != 1
     ):
         raise AmbiguousSplitSource("Split revenue requires unique original source attribution.")
     raw = {item["id"]: item for item in movements}
@@ -456,12 +482,14 @@ def split_role_target(
         ) from error
     if view not in {"transaction", "functional"}:
         raise InvalidRevenueTrace("Invalid split revenue currency view.")
+    if not sources and (time_txn or time_functional):
+        raise InvalidRevenueTrace("Empty split baseline has nonzero TIME amounts.")
     amount = transaction_share if view == "transaction" else functional_share
     time = time_txn if view == "transaction" else time_functional
     return RevenueTarget(
         amount,
         time,
-        split_single_origin(sources, total=amount, time=time) if attribute else (),
+        split_single_origin(sources, total=amount, time=time) if attribute and sources else (),
         tuple(sorted((item.movement_id for item in sources), key=str)),
     )
 

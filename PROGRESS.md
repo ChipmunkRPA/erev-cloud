@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Agent refund and full-return reversal — October 20, 2026
+
+- A real two-deposit refund/return journey exposed two engine defects: returned units did not
+  advance the agent's latest transfer date (so a preceding credit memo was ignored), and a
+  zero-weight role was omitted instead of clearing its old cumulative target. The original
+  return quarantined with an unbalanced revenue-recognition entry; both defects are fixed.
+- S10 now includes returned_cum changes as transfer boundaries. S14 retains zero-weight targets.
+  Split-source readers validate explicit zero baselines only before any original functional
+  source, using the retained calendar; missing later source history still refuses attribution.
+- The DB journey posts the full reversal: USD 90,000 gross / 18,000 net / 72,000 supplier, with
+  all three role balances zero in transaction and functional currency. September reports show
+  negative gross revenue and zero opening-liability relief, with retained reruns in all views.
+- Single-deposit and zero-net journeys, 63 scoped engine/source cases, lint and types pass.
+  Cross-contract agent groups and broader close-pass acceptance remain open; this supersedes
+  the prior unverified gross-refund/return case. Independent accounting acceptance and final
+  release checks remain outstanding. Direct main publication only; no deployment.
+
+
 ## Agent gross relief across original source layers — October 20, 2026
 
 - Two prepayment layers previously failed the split-role reader's unique-origin guard. Agent
@@ -222,23 +240,6 @@
 - This does not complete arbitrary manual adjustment projection or combined hold/modification
   lifecycle acceptance. Legacy evidence gaps, missing original calendar/terms, broader mixed
   attribution and independent accounting sign-off remain open. No deployment.
-
-
-## Historical periods survive removed schedule lines — October 20, 2026
-
-- Original fixed period projections now have independent trace nodes, including periods whose
-  current schedule line disappeared after a later allocation change. The engine projects over
-  the retained performing-entity calendar and original segment term.
-- RPO and revenue waterfall read these periods directly, reconcile their sum, and explain each
-  through its obligation version, reporting cut and future period. Existing currency conversion
-  uses the same projected contributions; no synthetic posted schedule line is created.
-- A real engine case reduces the later allocation to zero: original January future amounts
-  remain in RPO and waterfall even with no current schedule rows. Trace replay, trimming,
-  incomplete-evidence refusal and explain selection are covered. 115 scoped tests and two DB
-  journeys pass; lint/types and migration 0215 checked against all three IPE definitions.
-- Missing original calendar/terms, held or manually adjusted cuts, legacy traces without the
-  new evidence and complex mixed lifecycles remain open. Independent accounting acceptance is
-  outstanding. No deployment.
 
 
 ## Outstanding release verification

@@ -1598,11 +1598,11 @@ def _shares(part: PartTarget) -> list[tuple[RoleKey, _Share]]:
             inputs = _signed(part.value_inputs, sign)
         elif line.label in split_inputs:
             inputs = _signed(split_inputs[line.label], sign)
-        elif len(nonzero) == 1:
-            if line.label != nonzero[0]:
-                continue  # the share of a zero weight is 0
+        elif len(nonzero) == 1 and line.label == nonzero[0]:
             inputs = _signed(part.value_inputs, sign)
         else:
+            # A zero-weight role still needs an explicit zero cumulative target.
+            # Omitting it carries its earlier nonzero target forward and prevents reversal.
             labels = list(side.labels)
             inputs = tuple(part.value_inputs)
             split = {

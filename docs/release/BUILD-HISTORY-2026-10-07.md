@@ -9946,3 +9946,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   adjusted/held cuts and broader compound lifecycle attribution. These paths retain explicit
   refusal, not proportional reconstruction. Independent accounting acceptance remains open.
   Migration 0214 records the calculation for RPO, its rollforward and the waterfall. No deployment.
+
+## Historical periods survive removed schedule lines — October 20, 2026
+
+- Original fixed period projections now have independent trace nodes, including periods whose
+  current schedule line disappeared after a later allocation change. The engine projects over
+  the retained performing-entity calendar and original segment term.
+- RPO and revenue waterfall read these periods directly, reconcile their sum, and explain each
+  through its obligation version, reporting cut and future period. Existing currency conversion
+  uses the same projected contributions; no synthetic posted schedule line is created.
+- A real engine case reduces the later allocation to zero: original January future amounts
+  remain in RPO and waterfall even with no current schedule rows. Trace replay, trimming,
+  incomplete-evidence refusal and explain selection are covered. 115 scoped tests and two DB
+  journeys pass; lint/types and migration 0215 checked against all three IPE definitions.
+- Missing original calendar/terms, held or manually adjusted cuts, legacy traces without the
+  new evidence and complex mixed lifecycles remain open. Independent accounting acceptance is
+  outstanding. No deployment.
