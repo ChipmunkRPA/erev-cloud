@@ -15,7 +15,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.db.tables import contract_event, modification, subledger_line, subledger_posting_seal
 from erev_api.domain.reports import tie_outs
@@ -110,6 +110,9 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                 subledger_line.c.recorded_at,
                 subledger_line.c.recorded_server_at,
                 subledger_posting_seal.c.sealed_server_at,
+                func.erev.subledger_commit_time(subledger_line.c.subledger_posting_id).label(
+                    "committed_server_at"
+                ),
             )
             .select_from(subledger_line)
             .join(
@@ -130,6 +133,7 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                 subledger_line.c.recorded_at <= cutoff,
                 subledger_line.c.recorded_server_at <= cutoff,
                 subledger_posting_seal.c.sealed_server_at <= cutoff,
+                func.erev.subledger_commit_time(subledger_line.c.subledger_posting_id) <= cutoff,
             )
             .order_by(subledger_line.c.period_id, subledger_line.c.id)
         )
@@ -148,6 +152,7 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                 redact_contacts(
                     {
                         "book_code": params.book_code,
+                        "commit_visibility": True,
                         "period_ids": wanted_periods,
                         "events": event_rows,
                         "modification_booking_ids": modification_bookings,
@@ -175,6 +180,11 @@ def validate(
     for row in source["revenue"]:
         if row["entity_id"] not in scope:
             raise Problem("forbidden", "Retained revenue sources exceed the report entity scope.")
+        if source.get("commit_visibility"):
+            if not row.get("committed_server_at") or (
+                datetime.fromisoformat(row["committed_server_at"]) > cutoff
+            ):
+                raise Problem("invalid-transition", "Retained revenue commit exceeds the cutoff.")
         if (
             row["book_code"] != params.book_code
             or row["period_id"] not in period_ids

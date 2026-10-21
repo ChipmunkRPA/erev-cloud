@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Retained ledger source and incremental export windows — October 21, 2026
+
+- New subledger extracts and bookings/billings/revenue ledger contributions exclude postings
+  committed after known_at, even when their insertion and business record times precede it.
+  Original commit timestamps travel with retained input rows and are checked on rebuild.
+- New incremental subledger extracts use (known_since, known_at] in actual commit time.
+  A posting still uncommitted at the previous cutoff therefore appears in the next export,
+  including backdated business records. Existing export columns remain unchanged; old bound
+  extracts keep their recorded_at interpretation and original retained inputs.
+- Migration 0276 synchronizes both report definitions with this interpretation. Database
+  catalogue parity, a real late-commit/next-window journey, old/new bound extract rebuilds,
+  the public JSON/CSV extract controls and rerun, and retained BBR cutoff validation pass.
+  Six focused BBR unit cases plus scoped lint/types pass. No deployment.
+- B4-11 is still open for non-ledger inputs such as contract events, version availability,
+  journal state and other report-specific readers. This increment fixes the ledger source
+  populations above; it does not claim full cross-source historical snapshot reconstruction.
+
 ## Automatic commit-evidence recovery — October 21, 2026
 
 - The existing minute worker sweep now retries pending posting commit evidence per tenant.

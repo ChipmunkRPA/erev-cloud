@@ -1,7 +1,7 @@
 """BBR fiscal aggregation, signed movements and period attribution."""
 
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -228,3 +228,42 @@ def test_functional_valuation_reuses_retained_spot_rate_without_live_reads() -> 
             {"billings": [source]},
             (ENTITY,),
         )
+
+
+def test_retained_bbr_commit_evidence_is_validated_with_legacy_compatibility() -> None:
+    from erev_api.domain.reports.builders import ReportParams
+    from erev_api.domain.reports.builders.bbr_sources import validate
+
+    cutoff = datetime(2026, 10, 21, tzinfo=UTC)
+    params = ReportParams(
+        report_code="bookings_billings_revenue",
+        report_version=1,
+        parameters={},
+        entity_ids=(ENTITY.id,),
+        known_at=cutoff,
+        book_code="ASC606",
+    )
+    revenue = {
+        "entity_id": str(ENTITY.id),
+        "period_id": str(PERIODS[0].id),
+        "book_code": "ASC606",
+        **{
+            key: cutoff.isoformat()
+            for key in ("recorded_at", "recorded_server_at", "sealed_server_at")
+        },
+    }
+    source = {
+        "book_code": "ASC606",
+        "period_ids": [str(PERIODS[0].id)],
+        "events": [],
+        "revenue": [revenue],
+    }
+    validate(source, params, cutoff=cutoff, period_ids=source["period_ids"])
+    source["commit_visibility"] = True
+    with pytest.raises(Problem, match="commit exceeds"):
+        validate(source, params, cutoff=cutoff, period_ids=source["period_ids"])
+    revenue["committed_server_at"] = (cutoff + timedelta(microseconds=1)).isoformat()
+    with pytest.raises(Problem, match="commit exceeds"):
+        validate(source, params, cutoff=cutoff, period_ids=source["period_ids"])
+    revenue["committed_server_at"] = cutoff.isoformat()
+    validate(source, params, cutoff=cutoff, period_ids=source["period_ids"])

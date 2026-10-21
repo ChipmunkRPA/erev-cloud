@@ -6,7 +6,7 @@ from decimal import Decimal, localcontext
 from typing import Any, Final
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.db.tables import contract, gl_account, period, subledger_line, subledger_posting_seal
 from erev_api.domain.reports import tie_outs
@@ -19,6 +19,7 @@ from erev_api.uow import UnitOfWork
 
 CODE: Final = "extract_subledger_lines"
 EVIDENCE: Final = "extract_subledger_lines_v1"
+COMMIT_EVIDENCE: Final = "extract_subledger_commit_visibility_v1"
 # Frozen v1 columns: future schema changes must explicitly version the export contract.
 COLUMNS: Final = (
     Column("period_end_date", "period_end_date", "date"),
@@ -88,7 +89,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid("mode", "Choose Full or Incremental.")
     if mode == "INCREMENTAL" and (since is None or since >= cutoff):
         raise tie_outs.invalid("known_since", "Enter a time before the source time.")
+    commit_visibility = params.binding is None or COMMIT_EVIDENCE in params.binding.evidence
+    if commit_visibility:
+        tie_outs.record_evidence(params, COMMIT_EVIDENCE, True)
     if params.binding is None:
+        committed = func.erev.subledger_commit_time(subledger_line.c.subledger_posting_id)
         tenant = uow.principal.tenant_id
         origin = period.alias("origin_period")
         query = (
@@ -99,6 +104,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 origin.c.period_key.label("origin_period_key"),
                 gl_account.c.code.label("gl_account_code"),
                 subledger_posting_seal.c.sealed_server_at.label("_sealed_server_at"),
+                committed.label("_committed_server_at"),
             )
             .select_from(subledger_line)
             .join(
@@ -137,10 +143,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 subledger_line.c.recorded_at <= cutoff,
                 subledger_line.c.recorded_server_at <= cutoff,
                 subledger_posting_seal.c.sealed_server_at <= cutoff,
+                committed <= cutoff,
             )
         )
         if mode == "INCREMENTAL":
-            query = query.where(subledger_line.c.recorded_at > since)
+            query = query.where(committed > since)
         records = [
             json.loads(canonical_bytes(redact_contacts(dict(row))))
             for row in uow.session.execute(query).mappings()
@@ -167,12 +174,20 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 row[col.key] = date.fromisoformat(row[col.key])
             elif col.kind == "decimal":
                 row[col.key] = str(row[col.key])
+        window_stamp = row["recorded_at"]
+        if commit_visibility:
+            if not record.get("_committed_server_at"):
+                raise Problem(
+                    "invalid-transition", "Retained subledger commit evidence is missing."
+                )
+            window_stamp = datetime.fromisoformat(record["_committed_server_at"])
         if (
-            row["book_code"] != params.book_code
+            window_stamp > cutoff
+            or row["book_code"] != params.book_code
             or row["recorded_at"] > cutoff
             or row["recorded_server_at"] > cutoff
             or datetime.fromisoformat(record["_sealed_server_at"]) > cutoff
-            or (mode == "INCREMENTAL" and since is not None and row["recorded_at"] <= since)
+            or (mode == "INCREMENTAL" and since is not None and window_stamp <= since)
         ):
             raise Problem(
                 "invalid-transition", "Retained subledger line lies outside the extract window."

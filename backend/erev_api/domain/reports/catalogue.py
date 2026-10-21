@@ -274,6 +274,14 @@ COMMIT_VISIBILITY_NOTE: Final = (
 )
 
 
+RETAINED_COMMIT_REPORTS: Final = ("extract_subledger_lines", "bookings_billings_revenue")
+RETAINED_COMMIT_NOTE: Final = (
+    "new retained ledger sources require actual posting commit time at or before known_at; "
+    "commit timestamps are retained with source rows; older bound datasets keep their "
+    "original inputs and interpretation"
+)
+
+
 def _definition(
     code: str,
     name: str,
@@ -300,10 +308,15 @@ def _definition(
         ipe_logic={
             "version": 1,
             "source_tables": list(sources)
-            + (["subledger_posting_commit"] if code in COMMIT_VISIBILITY_REPORTS else []),
+            + (
+                ["subledger_posting_commit"]
+                if code in COMMIT_VISIBILITY_REPORTS or code in RETAINED_COMMIT_REPORTS
+                else []
+            ),
             "joins": list(joins),
             "filters": list(filters)
-            + ([COMMIT_VISIBILITY_NOTE] if code in COMMIT_VISIBILITY_REPORTS else []),
+            + ([COMMIT_VISIBILITY_NOTE] if code in COMMIT_VISIBILITY_REPORTS else [])
+            + ([RETAINED_COMMIT_NOTE] if code in RETAINED_COMMIT_REPORTS else []),
             "parameters": list(schema["properties"]),
         },
         tie_outs=tuple(tie_outs),
@@ -2512,7 +2525,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "subledger_line.recorded_at at or before the source time",
             "source time is known_at; lock datasets unsupported",
             "line recorded_server_at and posting sealed_server_at at or before source time",
-            _INCREMENTAL,
+            "mode INCREMENTAL: original posting committed after known_since and at or before "
+            "known_at; extract_subledger_commit_visibility_v1 retains this basis; older bound "
+            "extracts preserve the recorded_at basis",
         ),
     ),
     _definition(

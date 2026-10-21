@@ -10,8 +10,18 @@ from uuid import UUID
 import pytest
 from erev_api.db import new_id
 from erev_api.domain.journals import commit_evidence, subledger
-from erev_api.domain.reports.builders import ReportParams, disaggregation
-from erev_api.domain.reports.catalogue import COMMIT_VISIBILITY_REPORTS, DEFINITIONS_BY_CODE
+from erev_api.domain.reports.builders import (
+    ReportParams,
+    SourceCollector,
+    bbr_sources,
+    disaggregation,
+    extract_subledger_lines,
+)
+from erev_api.domain.reports.catalogue import (
+    COMMIT_VISIBILITY_REPORTS,
+    DEFINITIONS_BY_CODE,
+    RETAINED_COMMIT_REPORTS,
+)
 from erev_api.enums import SubledgerPostingKind
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
@@ -178,7 +188,7 @@ def test_commit_visibility_catalogue_matches_migration(world: K11World) -> None:
             text("SELECT code, ipe_logic FROM erev.report_definition WHERE version = 1")
         ).all()
     stored = dict(rows)
-    for code in COMMIT_VISIBILITY_REPORTS:
+    for code in (*COMMIT_VISIBILITY_REPORTS, *RETAINED_COMMIT_REPORTS):
         assert stored[code] == DEFINITIONS_BY_CODE[code].ipe_logic
 
 
@@ -212,3 +222,66 @@ def test_commit_recovery_continues_after_failed_posting_and_retries_next_sweep(
     monkeypatch.setattr(commit_evidence, "_capture", capture)
     assert commit_evidence.recover_pending(world.place.tenant_id, batch_size=1) == (1, 0)
     assert commit_evidence.recover_pending(world.place.tenant_id, batch_size=1) == (0, 0)
+
+
+def test_retained_sources_and_incremental_extract_use_commit_window(world: K11World) -> None:
+    first, stored = _posted(world)
+    lines = _lines_of(world, first)
+    periods = {line["period_id"] for line in lines}
+    with world.place.uow() as uow:
+        later = subledger.post(
+            uow,
+            book_code="ASC606",
+            posting_kind=SubledgerPostingKind.ENGINE_COMPUTE,
+            idempotency_key=f"{subledger.compute_key(stored['id'])}:retained-cutoff",
+            description="Late commit with an earlier business record timestamp",
+            lines=[{**line, "id": new_id()} for line in lines],
+            contract_computation_id=stored["id"],
+        )
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        uow.commit()
+    params = ReportParams(
+        report_code=extract_subledger_lines.CODE,
+        report_version=1,
+        parameters={},
+        entity_ids=(world.entity_id,),
+        known_at=cutoff,
+        book_code="ASC606",
+        sources=SourceCollector(),
+    )
+    with world.place.uow() as uow:
+        original = extract_subledger_lines.build(uow, params)
+        bbr = bbr_sources.read(uow, replace(params, sources=None), period_ids=periods)
+    assert {row["subledger_posting_id"] for row in original.rows} == {str(first)}
+    assert {row["id"] for row in bbr["revenue"]} == {
+        str(line["id"]) for line in lines if str(line["account_role"]) == "REVENUE"
+    }
+    assert params.sources is not None
+    bound = params.sources.binding(row_keys=[row["row_key"] for row in original.rows])
+    end = world.place.scalar(select(func.clock_timestamp()))
+    with world.place.uow() as uow:
+        incremental = extract_subledger_lines.build(
+            uow,
+            replace(
+                params,
+                known_at=end,
+                sources=None,
+                parameters={"mode": "INCREMENTAL", "known_since": cutoff.isoformat()},
+            ),
+        )
+        rerun = extract_subledger_lines.build(
+            uow, replace(params, binding=bound, known_at=end, sources=None)
+        )
+    assert {row["subledger_posting_id"] for row in incremental.rows} == {str(later.posting_id)}
+    assert rerun.rows == original.rows
+    legacy_evidence = dict(bound.evidence)
+    legacy_evidence.pop(extract_subledger_lines.COMMIT_EVIDENCE)
+    legacy_evidence[extract_subledger_lines.EVIDENCE] = [
+        {key: value for key, value in row.items() if key != "_committed_server_at"}
+        for row in legacy_evidence[extract_subledger_lines.EVIDENCE]
+    ]
+    with world.place.uow() as uow:
+        legacy = extract_subledger_lines.build(
+            uow, replace(params, binding=replace(bound, evidence=legacy_evidence), sources=None)
+        )
+    assert legacy.rows == original.rows

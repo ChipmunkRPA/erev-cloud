@@ -274,7 +274,7 @@ def test_subledger_extract_seal_cutoff_and_controls(
 ) -> None:
     from decimal import Decimal
 
-    from erev_api.db.tables import subledger_line, subledger_posting_seal
+    from erev_api.db.tables import subledger_line, subledger_posting_commit, subledger_posting_seal
     from erev_api.domain.reports.builders.extract_subledger_lines import COLUMNS
     from sqlalchemy import func
 
@@ -313,7 +313,11 @@ def test_subledger_extract_seal_cutoff_and_controls(
         {**params, "known_at": (first_seal - timedelta(microseconds=1)).isoformat()},
     )
     assert before == []
-    since = min(r["recorded_at"] for r in source)
+    commits = {
+        r["subledger_posting_id"]: r["committed_server_at"]
+        for r in world.place.rows(select(subledger_posting_commit))
+    }
+    since = min(commits[r["subledger_posting_id"]] for r in source)
     _, incremental = report_run(
         world,
         "extract_subledger_lines",
@@ -324,7 +328,7 @@ def test_subledger_extract_seal_cutoff_and_controls(
         },
     )
     assert {r["id"] for r in incremental} == {
-        str(r["id"]) for r in source if r["recorded_at"] > since
+        str(r["id"]) for r in source if commits[r["subledger_posting_id"]] > since
     }
     csv_run, _ = report_run(world, "extract_subledger_lines", params, output_format="CSV")
     base = f"{REPORT_RUNS}/{csv_run['id']}/output"
