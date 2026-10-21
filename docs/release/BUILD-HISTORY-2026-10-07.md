@@ -10137,3 +10137,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and migrated catalogue checks pass. Migration 0224 documents the two consumers. A dedicated
   public mixed-period workflow, multi-origin split and independent accounting sign-off remain
   open. No deployment; direct main publication.
+
+## Public revenue cause / posting-class distinction — October 20, 2026
+
+- Correction to preceding mixed-TIME entries: the production S13 costs_view explicitly leaves
+  released_at_close empty for revenue (L3-2-Q-15). Deterministic NORMAL revenue and TP_CHANGE
+  therefore post as EVENT. The schedule close-release flag is not the posting classifier.
+  Conditional mixed-TIME support is an internal producer capability, not a presently missing
+  public revenue workflow; do not change posting timing merely to exercise that capability.
+- The actual public workflow uses a prepaid GBP service and an approved May bonus. Its May
+  schedule separates NORMAL 3,224.18 and TP_CHANGE 445.05; public revenue/opening relief is
+  3,669.23. Original counterpart amounts and EVENT-only target evidence are checked independently.
+  Both public reports pass all three views and retained reruns, with zero OTHER and balance ties.
+- Remaining live priorities include multi-origin agent split attribution and documented dated
+  projection gaps. Independent accounting sign-off and final-candidate checks remain required.
+  No deployment. This entry supersedes the earlier public mixed-TIME acceptance task.

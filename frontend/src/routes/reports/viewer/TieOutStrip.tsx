@@ -13,6 +13,7 @@ import type { TieOutResult } from "../../../lib/api/queries/reports";
 import { formatMoney, NO_VALUE } from "../../../lib/format";
 import { t } from "../../../lib/i18n/t";
 import { isMoney, type Money, tieOutName } from "./specs";
+import { GlReconciliationDetails } from "./GlReconciliationDetails";
 
 function amounts(value: unknown): readonly Money[] {
   if (isMoney(value)) {
@@ -87,67 +88,71 @@ export function TieOutStrip({ results, testIdPrefix = "SF-08" }: TieOutStripProp
               {(item.details?.length ?? 0) > 0 ? (
                 <details className="w-full text-body-sm text-fg-2">
                   <summary className="cursor-pointer">{t("reports.tieOuts.details")}</summary>
-                  <ul className="mt-2 flex flex-col gap-2">
-                    {item.details?.map((detail, index) => (
-                      <li key={index}>
-                        {[detail.entity, detail.role].filter(Boolean).join(" · ")}
-                        {detail.source_status
-                          ? ` (GL source: ${detail.source_status.toLowerCase()})`
-                          : null}
-                        {detail.reason ? (
-                          `: ${detail.reason}`
-                        ) : (
-                          <span className="num">
-                            {` — GL ${inline({ amount: detail.gl ?? "", currency: detail.currency ?? "" })}; `}
-                            {`Rollforward ${inline({ amount: detail.rollforward ?? "", currency: detail.currency ?? "" })}; `}
-                            {`Difference ${inline({ amount: detail.difference ?? "", currency: detail.currency ?? "" })}`}
-                          </span>
-                        )}
-                        {detail.source_subledger !== undefined ? (
-                          <div className="num mt-1 flex flex-wrap gap-x-4">
-                            <span>
-                              {t("reports.tieOuts.retainedSubledger", {
-                                amount: inline({
-                                  amount: detail.source_subledger,
-                                  currency: detail.currency ?? "",
-                                }),
-                              })}
+                  {item.code === "TO_ROLLFORWARD_EQ_GL" ? (
+                    <GlReconciliationDetails details={item.details ?? []} />
+                  ) : (
+                    <ul className="mt-2 flex flex-col gap-2">
+                      {item.details?.map((detail, index) => (
+                        <li key={index}>
+                          {[detail.entity, detail.role].filter(Boolean).join(" · ")}
+                          {detail.source_status
+                            ? ` (GL source: ${detail.source_status.toLowerCase()})`
+                            : null}
+                          {detail.reason ? (
+                            `: ${detail.reason}`
+                          ) : (
+                            <span className="num">
+                              {` — GL ${inline({ amount: detail.gl ?? "", currency: detail.currency ?? "" })}; `}
+                              {`Rollforward ${inline({ amount: detail.rollforward ?? "", currency: detail.currency ?? "" })}; `}
+                              {`Difference ${inline({ amount: detail.difference ?? "", currency: detail.currency ?? "" })}`}
                             </span>
-                            <span>
-                              {t("reports.tieOuts.subledgerGlDifference", {
-                                amount: inline({
-                                  amount: detail.subledger_gl_difference ?? "",
-                                  currency: detail.currency ?? "",
-                                }),
-                              })}
-                            </span>
-                            <span>
-                              {t("reports.tieOuts.reportSubledgerDifference", {
-                                amount: inline({
-                                  amount: detail.report_subledger_difference ?? "",
-                                  currency: detail.currency ?? "",
-                                }),
-                              })}
-                            </span>
-                          </div>
-                        ) : null}
-                        {detail.bridge_reason ? (
-                          <div className="mt-1">{detail.bridge_reason}</div>
-                        ) : null}
-                        {detail.reconciliation_id &&
-                        detail.entity &&
-                        detail.book_code &&
-                        detail.period_key ? (
-                          <Link
-                            className="ml-2 underline"
-                            to={`/close/${[detail.entity, detail.book_code, detail.period_key].map(encodeURIComponent).join("/")}/reconciliations/${encodeURIComponent(detail.reconciliation_id)}`}
-                          >
-                            {t("reports.tieOuts.source")}
-                          </Link>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
+                          )}
+                          {detail.source_subledger !== undefined ? (
+                            <div className="num mt-1 flex flex-wrap gap-x-4">
+                              <span>
+                                {t("reports.tieOuts.retainedSubledger", {
+                                  amount: inline({
+                                    amount: detail.source_subledger,
+                                    currency: detail.currency ?? "",
+                                  }),
+                                })}
+                              </span>
+                              <span>
+                                {t("reports.tieOuts.subledgerGlDifference", {
+                                  amount: inline({
+                                    amount: detail.subledger_gl_difference ?? "",
+                                    currency: detail.currency ?? "",
+                                  }),
+                                })}
+                              </span>
+                              <span>
+                                {t("reports.tieOuts.reportSubledgerDifference", {
+                                  amount: inline({
+                                    amount: detail.report_subledger_difference ?? "",
+                                    currency: detail.currency ?? "",
+                                  }),
+                                })}
+                              </span>
+                            </div>
+                          ) : null}
+                          {detail.bridge_reason ? (
+                            <div className="mt-1">{detail.bridge_reason}</div>
+                          ) : null}
+                          {detail.reconciliation_id &&
+                          detail.entity &&
+                          detail.book_code &&
+                          detail.period_key ? (
+                            <Link
+                              className="ml-2 underline"
+                              to={`/close/${[detail.entity, detail.book_code, detail.period_key].map(encodeURIComponent).join("/")}/reconciliations/${encodeURIComponent(detail.reconciliation_id)}`}
+                            >
+                              {t("reports.tieOuts.source")}
+                            </Link>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </details>
               ) : null}
             </li>

@@ -681,6 +681,9 @@ describe("SF-08:report viewer", () => {
             reconciliation_id: "retained-source",
             book_code: "ASC606",
             period_key: "FY2026-P08",
+            result: "FAIL",
+            bridge_result: "FAIL",
+            source_status: "REVIEWED",
             source_subledger: "90.00",
             subledger_gl_difference: "-20.00",
             report_subledger_difference: "10.00",
@@ -692,10 +695,20 @@ describe("SF-08:report viewer", () => {
             entity: "AVM-US",
             role: "CONTRACT_ASSET",
             currency: "USD",
+            result: "FAIL",
             gl: "10.00",
             rollforward: "20.00",
             difference: "10.00",
           },
+          {
+            entity: "AVM-UK",
+            role: "UNBILLED_RECEIVABLE",
+            currency: "GBP",
+            result: "NOT_APPLICABLE",
+            source_status: "DRAFT",
+            reason: "The GL reconciliation has not been reviewed or certified.",
+          },
+          { reason: "Compared in functional currency before reporting translation." },
         ],
       },
     ];
@@ -708,13 +721,30 @@ describe("SF-08:report viewer", () => {
     fireEvent.click(summary);
     expect(screen.getByText("AVM-US · CONTRACT_LIABILITY")).toBeTruthy();
     expect(screen.getByText("AVM-US · CONTRACT_ASSET")).toBeTruthy();
-    expect(screen.getByText("Retained subledger USD 90.00")).toBeTruthy();
-    expect(screen.getByText(/Subledger − GL USD.*20.00/)).toBeTruthy();
-    expect(screen.getByText("Report − subledger USD 10.00")).toBeTruthy();
-    expect(screen.getByText(/GL USD 110.00; Rollforward USD 100.00;/)).toBeTruthy();
+    const table = screen.getByRole("table", { name: /GL reconciliation/ });
+    const liability = within(table).getByRole("row", { name: /AVM-US · CONTRACT_LIABILITY/ });
+    expect(within(liability).getByText("USD 90.00")).toBeTruthy();
+    expect(within(liability).getByText(/USD.*20.00/)).toBeTruthy();
+    expect(within(liability).getByText("USD 10.00")).toBeTruthy();
+    expect(within(liability).getByText("USD 110.00")).toBeTruthy();
+    expect(within(liability).getByText("GL source: REVIEWED")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open GL reconciliation" }).getAttribute("href")).toBe(
       "/close/AVM-US/ASC606/FY2026-P08/reconciliations/retained-source",
     );
+    const filter = screen.getByLabelText("Show GL comparisons");
+    fireEvent.change(filter, { target: { value: "fail" } });
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(within(table).queryByText(/AVM-UK/)).toBeNull();
+    fireEvent.change(filter, { target: { value: "unavailable" } });
+    expect(within(table).getAllByRole("row")).toHaveLength(2);
+    expect(within(table).getByText("GL source: DRAFT")).toBeTruthy();
+    // Missing amounts stay unavailable, never numeric zero. The note survives filtering.
+    expect(within(table).queryByText(/GBP 0.00/)).toBeNull();
+    expect(
+      screen.getByText("Compared in functional currency before reporting translation."),
+    ).toBeTruthy();
+    fireEvent.change(filter, { target: { value: "all" } });
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
   });
 
   it("tie-out difference is the API figure", async () => {

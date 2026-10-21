@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — actionable GL comparison review; member-aging decision pending
+
+The viewer displays GL comparison evidence in a table with separate GL, retained subledger,
+report closing and three difference columns. Comparison and bridge outcomes, retained review
+status and reconciliation links remain visible per row. Users can filter recorded discrepancies
+or unavailable comparisons without recalculating the report. Missing numbers are not zero;
+older details without recorded row results are not promoted to PASS. General notes, including
+the functional-currency comparison basis, stay visible under filters. Targeted viewer checks,
+TypeScript and scoped lint pass. This adds no accounting logic or deployment.
+
+For combined-contract liability aging, S10-R-23 and S12 retain member liability totals, while
+original liability layers carry payment-owner dates. The current sources do not determine a
+unique member-to-original-date assignment. The owner has been asked to choose between preserving
+payer-owned aging with a separate member-allocation adjustment and allocating original dated
+layers on the existing member liability basis. This choice is pending; no inferred date-allocation
+policy has been implemented. Independent accounting acceptance remains outstanding.
+
 ### October 20 — locked balance aging and historical manifest compatibility
 
 New locks now include BALANCE_AGING in all three currency views. The original period-end

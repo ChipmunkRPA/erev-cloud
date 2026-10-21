@@ -6,6 +6,23 @@
 
 
 
+## GL reconciliation review table — October 20, 2026
+
+- The report viewer now presents retained GL comparisons as a table: GL, retained subledger,
+  report closing, both bridge differences and the net difference. Each row keeps its comparison
+  and bridge results, source review status and original reconciliation link. Functional-currency
+  scope is stated explicitly; unavailable values stay blank rather than becoming zero.
+- Users can show all rows, recorded discrepancies or unavailable comparisons without changing
+  the accounting run. General comparison notes remain visible when filtering. Older details
+  without recorded results are not inferred to pass from their displayed amounts.
+- Targeted viewer checks exercise offsetting aggregate differences, filters, missing amounts,
+  source links and retained notes; TypeScript and scoped lint pass. Direct main publication;
+  no deployment or accounting-calculation change.
+- Combined-contract aging needs a presentation decision: retain original payer-owned layers with
+  a separate member-allocation adjustment, or apportion original dated layers on the existing
+  member liability basis. Current engine member totals alone do not specify that date ownership.
+  The question has been raised with the owner; no new allocation rule is silently assumed.
+
 ## Locked balance aging — October 20, 2026
 
 - New closes freeze BALANCE_AGING alongside the existing twelve datasets. Original age buckets,
@@ -223,22 +240,6 @@
   close-pass agent acceptance still need representative coverage; individual net/supplier
   source allocation remains unavailable without original owner evidence. Existing disclosure
   gross-relief policy and independent accounting acceptance remain open. No deployment.
-
-
-## Public revenue cause / posting-class distinction — October 20, 2026
-
-- Correction to preceding mixed-TIME entries: the production S13 costs_view explicitly leaves
-  released_at_close empty for revenue (L3-2-Q-15). Deterministic NORMAL revenue and TP_CHANGE
-  therefore post as EVENT. The schedule close-release flag is not the posting classifier.
-  Conditional mixed-TIME support is an internal producer capability, not a presently missing
-  public revenue workflow; do not change posting timing merely to exercise that capability.
-- The actual public workflow uses a prepaid GBP service and an approved May bonus. Its May
-  schedule separates NORMAL 3,224.18 and TP_CHANGE 445.05; public revenue/opening relief is
-  3,669.23. Original counterpart amounts and EVENT-only target evidence are checked independently.
-  Both public reports pass all three views and retained reruns, with zero OTHER and balance ties.
-- Remaining live priorities include multi-origin agent split attribution and documented dated
-  projection gaps. Independent accounting sign-off and final-candidate checks remain required.
-  No deployment. This entry supersedes the earlier public mixed-TIME acceptance task.
 
 
 ## Outstanding release verification
