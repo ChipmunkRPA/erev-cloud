@@ -970,6 +970,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and its monthly-average translated amount; details sum by report currency to "
             "EXEMPTIONS even when original range endpoints cancel; older bindings keep their "
             "existing controls",
+            "first-batch added obligations may omit pre-creation boundaries only with "
+            "original absent-before creation evidence and independently retained earlier "
+            "event order; zero allocation alone never proves absence and missing post-"
+            "creation evidence remains unsupported",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

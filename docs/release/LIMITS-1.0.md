@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — creation evidence closes the first-batch added-obligation gap
+
+New engine traces explicitly retain whether an obligation existed before its modification boundary
+and the original event sequence. First-batch RPO may treat an earlier missing subject boundary as
+pre-creation only when creation is explicit and another obligation retains the earlier event's
+order. This handles same-day modification followed by addition without manufacturing zero rows.
+Zero amounts alone never establish absence. Missing creation/order or post-creation boundaries
+remain unsupported, and older traces are not backfilled.
+
+Full-compute cases cover a concession, same-day addition and later positive/negative estimate
+movements, original trace replay and historical/monthly RPO cuts. Public modification reports in
+three currency views and reruns remain valid. Migration 0239 documents this evidence. This
+supersedes the prior blanket limitation for first-batch obligations lacking pre-creation rows;
+legacy evidence gaps and cancellation mixtures remain. Combined-member aging date ownership,
+independent accounting sign-off and final-candidate checks remain outstanding. No deployment.
+
+
 ### October 20 — monthly translated exemption movements are reviewable
 
 Converted RPO rollforwards retain contract-period exemption movements in transaction currency and

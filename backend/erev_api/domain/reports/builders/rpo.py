@@ -1224,9 +1224,9 @@ def _obligation_lines(
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)
             boundaries = store.boundaries.get(version.id, {}).get(subject, ())
-            complete_boundaries = bool(
-                version.modification_events
-            ) and version.modification_events <= {item.event for item in boundaries}
+            complete_boundaries = rpo_boundary_changes.complete(
+                store.boundaries.get(version.id, {}), subject, version.modification_events
+            )
             if complete_boundaries:
                 modified = sum(
                     (

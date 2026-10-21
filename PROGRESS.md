@@ -6,6 +6,23 @@
 
 
 
+## First-batch RPO creation boundaries — October 20, 2026
+
+- Stage 06 records whether the obligation existed before each boundary and the original
+  event record sequence. For an obligation added after earlier modifications, RPO can now prove
+  those earlier subject boundaries are legitimately absent instead of requiring nonexistent rows.
+  Earlier event order must still be retained on another obligation in that same computation.
+- A zero before amount alone is not absence evidence. Missing creation or earlier event order,
+  multiple creation histories and missing post-creation boundaries keep the conservative fallback.
+  Legacy traces are not backfilled; original accounting amounts and event order are unchanged.
+- Full compute witnesses combine a price decrease, an addition later on the SAME day and a
+  subsequent estimate increase/decrease in one first computation. New contracts, modifications,
+  estimates and historical/monthly cuts reconcile, and the new trace nodes re-evaluate. The
+  40 scoped report cases and public modification/report journey pass, including three currency
+  views and reruns. Lint/types and migration 0239 down/up catalogue parity pass. No deployment.
+- Combined-member aging date ownership, legacy evidence gaps, cancellation mixtures, independent
+  accounting sign-off and final-candidate verification remain outstanding.
+
 ## Monthly RPO exemption translation details — October 20, 2026
 
 - Converted rollforwards now retain each nonzero contract-period exemption movement in its
@@ -214,24 +231,6 @@
 - Broader public API lifecycle and close-pass acceptance, independent accounting acceptance
   and final release checks remain outstanding. This completes the deterministic Step-1/manual
   projection path, not arbitrary source-changing or event-driven forecasts. No deployment.
-
-## Original-cut royalty manual projection — October 20, 2026
-
-- Added historical manual release/defer/override projection for fixed guarantees plus realized
-  royalty components. Frozen snapshots filter both measure events and estimate pins by their
-  original effective/application dates. Separate royalty projection nodes retain statement and
-  accrual sources without duplicating live true-up nodes.
-- Projections require stable original royalty sources, recognized amounts and guarantees over
-  the frozen horizon. Unsupported source changes remain explicit refusals. The override anchor
-  now retains recognized royalties, with subsequent signed changes separate from time respread.
-- Six JPY journeys cover all three adjustment kinds, later statements above/below the guarantee,
-  later accruals and releases. Every trace replays; future periods equal the original schedule,
-  survive the contract reader, and sum to the original dated remainder. Downward corrections
-  preserve the existing approved manual-release floor rather than bypassing S09-R-38.
-- Related recognition/dated-reader checks and lint/types pass. Migration 0228 was applied locally;
-  the three IPE definitions match the catalogue. Netted mixed projections, broader public API lifecycle
-  and close-pass acceptance, independent accounting acceptance and final release checks remain
-  open. Direct main publication; no deployment.
 
 ## Outstanding release verification
 

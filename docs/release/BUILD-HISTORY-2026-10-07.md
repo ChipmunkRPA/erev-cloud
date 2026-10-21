@@ -10226,3 +10226,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and all three IPE definitions match the catalogue. Lint/types pass. Royalty/netted mixed projections, broader
   public API lifecycle and close-pass acceptance, independent accounting acceptance and final
   release checks remain open. Direct main publication; no deployment.
+
+## Original-cut royalty manual projection — October 20, 2026
+
+- Added historical manual release/defer/override projection for fixed guarantees plus realized
+  royalty components. Frozen snapshots filter both measure events and estimate pins by their
+  original effective/application dates. Separate royalty projection nodes retain statement and
+  accrual sources without duplicating live true-up nodes.
+- Projections require stable original royalty sources, recognized amounts and guarantees over
+  the frozen horizon. Unsupported source changes remain explicit refusals. The override anchor
+  now retains recognized royalties, with subsequent signed changes separate from time respread.
+- Six JPY journeys cover all three adjustment kinds, later statements above/below the guarantee,
+  later accruals and releases. Every trace replays; future periods equal the original schedule,
+  survive the contract reader, and sum to the original dated remainder. Downward corrections
+  preserve the existing approved manual-release floor rather than bypassing S09-R-38.
+- Related recognition/dated-reader checks and lint/types pass. Migration 0228 was applied locally;
+  the three IPE definitions match the catalogue. Netted mixed projections, broader public API lifecycle
+  and close-pass acceptance, independent accounting acceptance and final release checks remain
+  open. Direct main publication; no deployment.

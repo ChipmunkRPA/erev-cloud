@@ -1,5 +1,6 @@
 """Dated fixed allocation movements measured by the original modification engine."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -15,6 +16,8 @@ class Change:
     event: str
     kind: str
     amount: Decimal
+    created: bool = False
+    record_seq: int | None = None
 
 
 def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
@@ -44,11 +47,20 @@ def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
                 or values[0] != values[2] - values[1]
             ):
                 raise ValueError("Inconsistent boundary evidence")
+            created = before.params.get("present") == "false"
+            sequence = node.params.get("record_seq")
+            record_seq = None if sequence is None else int(sequence)
+            if created and (values[1] != 0 or record_seq is None):
+                raise ValueError("Creation must have an absent zero before-state and event order")
+            if record_seq is not None and record_seq < 1:
+                raise ValueError("Invalid event sequence")
             change = Change(
                 date.fromisoformat(node.params["as_of"]),
                 event,
                 node.params["event_type"],
                 values[0],
+                created,
+                record_seq,
             )
         except (KeyError, ValueError, InvalidOperation) as exc:
             raise Problem(
@@ -59,3 +71,36 @@ def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
         subject: tuple(sorted(changes, key=lambda item: (item.day, item.event)))
         for subject, changes in found.items()
     }
+
+
+def complete(
+    boundaries: Mapping[str, tuple[Change, ...]], subject: str, events: frozenset[str]
+) -> bool:
+    """Require every boundary since original creation; absence before creation is evidenced.
+
+    A zero allocation alone never proves absence. Earlier missing subject boundaries are
+    accepted only when the engine explicitly retained its creation and the missing event's
+    order is independently present on another obligation from that same computation.
+    """
+    changes = boundaries.get(subject, ())
+    missing = events - {item.event for item in changes}
+    if not events:
+        return False
+    if not missing:
+        return True
+    created = [item for item in changes if item.created and item.record_seq is not None]
+    if len(created) != 1:
+        return False
+    first = created[0]
+    assert first.record_seq is not None
+    creation_order = (first.day, first.record_seq, first.event)
+    order: dict[str, tuple[date, int, str]] = {}
+    for items in boundaries.values():
+        for item in items:
+            if item.record_seq is None:
+                continue
+            key = (item.day, item.record_seq, item.event)
+            if item.event in order and order[item.event] != key:
+                raise Problem("validation-failed", "RPO boundary event order is inconsistent.")
+            order[item.event] = key
+    return all(event in order and order[event] < creation_order for event in missing)

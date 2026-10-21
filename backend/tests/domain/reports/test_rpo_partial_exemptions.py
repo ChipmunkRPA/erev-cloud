@@ -579,10 +579,18 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
 
 
 @pytest.mark.parametrize(
-    "with_modification,later_amount", [(False, "200"), (False, "-50"), (True, "200"), (True, "80")]
+    "with_modification,later_amount,added",
+    [
+        (False, "200", False),
+        (False, "-50", False),
+        (True, "200", False),
+        (True, "80", False),
+        (True, "200", True),
+        (True, "80", True),
+    ],
 )
 def test_first_entry_separates_later_original_estimate_events(
-    later_amount: str, with_modification: bool
+    later_amount: str, with_modification: bool, added: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
     from erev_api.domain.reports.rpo_estimate_changes import allocations
@@ -613,6 +621,34 @@ def test_first_entry_separates_later_original_estimate_events(
             ),
         )
         modification = Decimal(-20)
+        if added:
+            addition = replace(
+                concession,
+                modification_key="K-01/MOD-2",
+                kind="ADD_OBLIGATION",
+                chosen_treatments={"A": "PROSPECTIVE", "B": "PROSPECTIVE", "C": "PROSPECTIVE"},
+                lines=(
+                    {
+                        "obligation_key": "C",
+                        "action": "ADD",
+                        "product_code": "PROD-B",
+                        "quantity_delta": Decimal(1),
+                        "consideration_delta": Decimal(40),
+                        "start_date": date(2026, 2, 1),
+                        "end_date": date(2026, 12, 31),
+                    },
+                ),
+            )
+            base = replace(
+                base,
+                contracts=tuple(
+                    replace(c, modifications=(*c.modifications, addition)) for c in base.contracts
+                ),
+                events=tuple(
+                    cpc_worlds.amended(list(base.events), addition, addition.chosen_treatments)
+                ),
+            )
+            modification += 40
     bundle = worlds.with_changes(
         base,
         [worlds.later_version(targeted, 2, date(2026, 2, 15), later_amount)],
@@ -676,6 +712,33 @@ def test_first_entry_separates_later_original_estimate_events(
     from erev_api.domain.reports.rpo_boundary_changes import history
 
     store.boundaries[vid] = history(book.trace)
+    if added:
+        from erev_api.domain.reports.rpo_boundary_changes import complete
+
+        assert complete(store.boundaries[vid], "K-01/C", version.modification_events)
+        # Zero before-value alone is not evidence of an obligation's absence.
+        without_creation = {
+            subject: tuple(replace(change, created=False) for change in changes)
+            for subject, changes in store.boundaries[vid].items()
+        }
+        assert not complete(without_creation, "K-01/C", version.modification_events)
+        created_event = next(
+            change.event for change in store.boundaries[vid]["K-01/C"] if change.created
+        )
+        missing_prior = {
+            subject: tuple(change for change in changes if change.event == created_event)
+            for subject, changes in store.boundaries[vid].items()
+        }
+        assert not complete(missing_prior, "K-01/C", version.modification_events)
+        creation = next(change for change in store.boundaries[vid]["K-01/C"] if change.created)
+        assert creation.record_seq is not None
+        later_boundary = replace(
+            creation, event="missing-later", record_seq=creation.record_seq + 1
+        )
+        missing_later = {**store.boundaries[vid], "another-subject": (later_boundary,)}
+        assert not complete(
+            missing_later, "K-01/C", version.modification_events | {"missing-later"}
+        )
     if with_modification:
         from erev_engine.trace import reevaluate
 
