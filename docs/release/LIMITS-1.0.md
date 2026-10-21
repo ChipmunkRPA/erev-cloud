@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — same-day RPO entry/cancellation across retained versions
+
+- RPO rollforward now preserves the original gross entry, revenue and cancellation when a
+  fixed contract activates and terminates on the same day and later retained versions exist.
+  Previously the single-version gate could silently omit all three movements despite a zero
+  closing balance. Later memo versions retain the original movements; later disclosure re-entry
+  adds only the remaining balance and does not recognize the earlier revenue twice.
+- New bindings retain rpo_same_day_entry_chains_v1; legacy bindings keep the single-version
+  eligibility. Original dated termination/realization requirements and competing-cause guards
+  remain in force. Migration 0258 records the rule in the report IPE catalogue.
+- Original engine termination witnesses with zero/40 refunds cover later memo and re-entry
+  read-layer versions, legacy behavior and absent boundary evidence. The 74-case related suite
+  had 73 passes and one overly broad legacy assertion; corrected scoped cases pass. Public
+  currency report/retained-rate rerun, lint/types and migration down/up exact catalogue parity
+  pass. Later versions are supplied read-layer witnesses, not new public lifecycle commands.
+- Intervening versions before termination, mixed same-day entry causes, broader repeated
+  cancellation/re-entry, B4-11 concurrent commit visibility, combined-member aging ownership,
+  independent accounting sign-off and final-candidate checks remain open. No deployment.
+
+
 ### October 20 — readable retained RPO exchange-rate evidence
 
 - RPO and RPO rollforward viewers now expose retained exchange-rate legs by entity,

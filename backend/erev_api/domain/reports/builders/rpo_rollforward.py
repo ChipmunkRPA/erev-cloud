@@ -180,6 +180,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if store.classify_same_day_entry_cancellation and params.sources is not None:
         params.sources.record_evidence(entry_cancel_evidence, True)
+    entry_chain_evidence = "rpo_same_day_entry_chains_v1"
+    store = replace(
+        store,
+        classify_same_day_entry_chains=(
+            params.binding is None or entry_chain_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_same_day_entry_chains and params.sources is not None:
+        params.sources.record_evidence(entry_chain_evidence, True)
     separate_cancel_evidence = "rpo_separate_cancellations_v1"
     store = replace(
         store,

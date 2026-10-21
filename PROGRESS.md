@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Same-day RPO entry/cancellation survives later versions — October 20, 2026
+
+- RPO rollforward now preserves the original gross entry, revenue and cancellation when a
+  fixed contract activates and terminates on the same day and later retained versions exist.
+  Previously the single-version gate could silently omit all three movements despite a zero
+  closing balance. Later memo versions retain the original movements; later disclosure re-entry
+  adds only the remaining balance and does not recognize the earlier revenue twice.
+- New bindings retain rpo_same_day_entry_chains_v1; legacy bindings keep the single-version
+  eligibility. Original dated termination/realization requirements and competing-cause guards
+  remain in force. Migration 0258 records the rule in the report IPE catalogue.
+- Original engine termination witnesses with zero/40 refunds cover later memo and re-entry
+  read-layer versions, legacy behavior and absent boundary evidence. The 74-case related suite
+  had 73 passes and one overly broad legacy assertion; corrected scoped cases pass. Public
+  currency report/retained-rate rerun, lint/types and migration down/up exact catalogue parity
+  pass. Later versions are supplied read-layer witnesses, not new public lifecycle commands.
+- Intervening versions before termination, mixed same-day entry causes, broader repeated
+  cancellation/re-entry, B4-11 concurrent commit visibility, combined-member aging ownership,
+  independent accounting sign-off and final-candidate checks remain open. No deployment.
+
 ## Retained RPO FX evidence is readable in viewers and exports — October 20, 2026
 
 - RPO and RPO rollforward viewers now expose retained exchange-rate legs by entity,
@@ -192,24 +211,6 @@
   Multiple cancellations within one computation, intervening pre-termination versions, same-day
   entry/cancellation and combined-member aging ownership remain open. Independent accounting
   sign-off and final-candidate checks remain open. Direct main publication; no deployment.
-
-## First-batch realized-fee cancellation settles before re-entry — October 20, 2026
-
-- An original cancellation embedded in the first/opening computation can now settle its dated
-  realized fees at the next retained re-entry. Intermediate cancelled corrections supply the
-  final evidence for that segment; fees are settled once before admission of the new remainder.
-  The fixed allocation bridge and retained revenue recognition remain separate.
-- New bindings use rpo_cancelled_usage_v5. Retained v1-v4 preserve scope and markers on rerun.
-  Missing realized evidence, missing obligations or excluded intermediate versions still cannot
-  authorize the new segment reader. Original accounting amounts and events are unchanged.
-- The 70 scoped report cases cover direct and intermediate-correction re-entry after first-batch
-  or same-version monthly cancellation, positive/negative realized changes, revenue reversals,
-  line-level expected results and legacy behavior. Existing public modification reports/reruns
-  in three views, scoped lint/types and migration 0248 down/up IPE parity are the release checks.
-  New combinations use retained-reader witnesses, not a new public API lifecycle journey.
-- Multiple cancellations within one computation, intervening pre-termination versions, same-day
-  entry/cancellation and combined-member aging ownership remain open. Independent accounting
-  sign-off and final-candidate verification remain open. Direct main; no deployment.
 
 ## Outstanding release verification
 

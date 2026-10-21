@@ -1074,6 +1074,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "detail schema, labelled as monthly movements without claiming FX translation or "
             "equality to the range endpoint-based Exemptions line; older transaction bindings "
             "retain their prior detail population",
+            "rpo_same_day_entry_chains_v1 preserves original same-day activation and "
+            "cancellation gross movements when subsequent retained versions exist; subsequent "
+            "disclosure re-entry admits only its remaining balance, without duplicating pre- "
+            "entry revenue; original termination boundaries and dated realization remain "
+            "required; older bindings retain their single-version eligibility",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

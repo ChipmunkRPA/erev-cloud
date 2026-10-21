@@ -2019,6 +2019,70 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(refund: i
         applied={},
     )
     assert legacy.lines["NEW_CONTRACTS"] == 0
+    # Later retained versions must not suppress original same-day gross movements.
+    for reenter in (False, True):
+        later_id = uuid4()
+        later = replace(
+            version,
+            id=later_id,
+            version_no=2,
+            effective=end,
+            causes=frozenset({"CONTRACT_ACTIVATED" if reenter else "MEMO_ADDED"}),
+            entries=((cid, end),) if reenter else (),
+        )
+        later_obligations = tuple(
+            replace(
+                ob,
+                version_id=later_id,
+                cancelled=not reenter,
+                allocated=store.cuts[vid, end][ob.row_id].revenue + Decimal(30)
+                if reenter
+                else ob.allocated,
+            )
+            for ob in obligations
+        )
+        later_cuts = {
+            (later_id, day): {
+                ob.row_id: replace(
+                    store.cuts[vid, day][ob.row_id],
+                    fixed_allocation=ob.allocated,
+                    awaiting=Decimal(30),
+                    satisfaction_status="PARTIALLY_SATISFIED",
+                )
+                if reenter
+                else store.cuts[vid, day][ob.row_id]
+                for ob in later_obligations
+            }
+            for day in (before, entry, end)
+        }
+        chained = replace(
+            store,
+            versions={gid: (version, later)},
+            chains={cid: (version, later)},
+            obligations={vid: tuple(obligations), later_id: later_obligations},
+            cuts={**store.cuts, **later_cuts},
+            boundaries={**store.boundaries, later_id: store.boundaries[vid]},
+        )
+        (chained_result,) = rpo.rollforward_lines(chained, ranges={eid: (before, end)}, applied={})
+        expected = {**result.lines}
+        if reenter:
+            expected["NEW_CONTRACTS"] += 60
+            expected["CLOSING"] = Decimal(60)
+        assert chained_result.lines == expected
+        (old_chain,) = rpo.rollforward_lines(
+            replace(chained, classify_same_day_entry_chains=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        if not reenter or refund:
+            assert old_chain.lines["NEW_CONTRACTS"] != expected["NEW_CONTRACTS"]
+        (missing_boundary,) = rpo.rollforward_lines(
+            replace(chained, boundaries={}),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        if not reenter or refund:
+            assert missing_boundary.lines["NEW_CONTRACTS"] != expected["NEW_CONTRACTS"]
     exempt = replace(
         store,
         obligations={

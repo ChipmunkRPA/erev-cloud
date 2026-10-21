@@ -358,6 +358,7 @@ class Store:
     classify_cancellation_cross_changes: bool = field(default=True, kw_only=True)
     classify_continuing_cancellations: bool = field(default=True, kw_only=True)
     classify_mixed_continuing_changes: bool = field(default=True, kw_only=True)
+    classify_same_day_entry_chains: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1347,7 +1348,8 @@ def _obligation_lines(
     if (
         store.classify_same_day_entry_cancellation
         and opening_version is None
-        and len(moved) == 1
+        and moved
+        and (len(moved) == 1 or store.classify_same_day_entry_chains)
         and moved[0].included
         and {"CONTRACT_ACTIVATED", "CONTRACT_TERMINATED"} <= moved[0].causes
         and moved[0].causes

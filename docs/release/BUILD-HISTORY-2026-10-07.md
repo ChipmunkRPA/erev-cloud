@@ -10614,3 +10614,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   computation, versions intervening before termination, same-day entry/cancellation and combined-
   member aging ownership remain open. Independent sign-off/final-candidate checks remain open.
   Direct main publication; no deployment.
+
+## First-batch realized-fee cancellation settles before re-entry — October 20, 2026
+
+- An original cancellation embedded in the first/opening computation can now settle its dated
+  realized fees at the next retained re-entry. Intermediate cancelled corrections supply the
+  final evidence for that segment; fees are settled once before admission of the new remainder.
+  The fixed allocation bridge and retained revenue recognition remain separate.
+- New bindings use rpo_cancelled_usage_v5. Retained v1-v4 preserve scope and markers on rerun.
+  Missing realized evidence, missing obligations or excluded intermediate versions still cannot
+  authorize the new segment reader. Original accounting amounts and events are unchanged.
+- The 70 scoped report cases cover direct and intermediate-correction re-entry after first-batch
+  or same-version monthly cancellation, positive/negative realized changes, revenue reversals,
+  line-level expected results and legacy behavior. Existing public modification reports/reruns
+  in three views, scoped lint/types and migration 0248 down/up IPE parity are the release checks.
+  New combinations use retained-reader witnesses, not a new public API lifecycle journey.
+- Multiple cancellations within one computation, intervening pre-termination versions, same-day
+  entry/cancellation and combined-member aging ownership remain open. Independent accounting
+  sign-off and final-candidate verification remain open. Direct main; no deployment.
