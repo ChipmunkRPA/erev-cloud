@@ -13,7 +13,7 @@ from decimal import Decimal, localcontext
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.session import system_entity_scope
@@ -27,8 +27,9 @@ from erev_api.db.tables import (
     period,
     subledger_line,
 )
+from erev_api.domain.journals import subledger
 from erev_api.domain.journals.queries import drill_ids
-from erev_api.domain.reports.builders import je_population
+from erev_api.domain.reports import journal_history
 from erev_api.domain.reports.builders.extract_journal_lines import COLUMNS, STATE_TIMES
 from erev_api.domain.reports.evidence_archive import PackFile
 from erev_api.domain.reports.evidence_commands import PERMISSIONS
@@ -82,7 +83,7 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
                     subledger_line.c.tenant_id == tenant,
                     subledger_line.c.contract_id.in_(selected.contract_ids),
                     subledger_line.c.recorded_at <= cutoff,
-                    subledger_line.c.recorded_server_at <= cutoff,
+                    subledger.recorded_by(cutoff, historical=True),
                     subledger_line.c.effective_date <= as_of,
                 )
                 .distinct()
@@ -101,6 +102,9 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
         for row in uow.session.execute(
             select(
                 *(journal_line.c[col.key] for col in COLUMNS[:-4]),
+                func.erev.source_commit_time("journal_line", journal_line.c.id).label(
+                    "line_committed_at"
+                ),
                 journal_entry.c.je_no,
                 journal_run.c.run_no,
                 journal_batch.c.external_id.label("batch_external_id"),
@@ -138,6 +142,7 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
                 journal_line.c.tenant_id == tenant,
                 journal_line.c.entity_id.in_(footprint),
                 journal_line.c.created_at <= cutoff,
+                func.erev.source_commit_time("journal_line", journal_line.c.id) <= cutoff,
                 journal_entry.c.created_at <= cutoff,
                 journal_batch.c.created_at <= cutoff,
                 journal_run.c.created_at <= cutoff,
@@ -145,10 +150,8 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
             .order_by(journal_run.c.run_no, journal_entry.c.je_no, journal_line.c.line_no)
         ).mappings()
     ]
-    histories = je_population.transition_history(
-        uow.session,
-        sorted({row["run_id"] for row in candidates}),
-        {row["journal_batch_id"]: row["run_id"] for row in candidates},
+    candidates = journal_history.restore(
+        uow.session, candidates, cutoff, batch_key="journal_batch_id"
     )
     records = []
     contracts = set(selected.contract_ids)
@@ -163,7 +166,12 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
         sources = [
             dict(item)
             for item in uow.session.execute(
-                select(subledger_line)
+                select(
+                    subledger_line,
+                    func.erev.subledger_commit_time(subledger_line.c.subledger_posting_id).label(
+                        "committed_server_at"
+                    ),
+                )
                 .where(
                     subledger_line.c.tenant_id == tenant,
                     subledger_line.c.id.in_(ids),
@@ -200,7 +208,9 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
                 require_for_entity(uow.ctx, permission, entity)
         for item in sources:
             if (
-                item["recorded_at"] > cutoff
+                item["committed_server_at"] is None
+                or item["committed_server_at"] > cutoff
+                or item["recorded_at"] > cutoff
                 or item["created_at"] > cutoff
                 or item["recorded_server_at"] > cutoff
                 or item["effective_date"] > as_of
@@ -219,15 +229,19 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
                 contribution[f"net_{basis}"] = sum(
                     (item[f"amount_{basis}"] for item in sampled), Decimal(0)
                 )
-        state = je_population.state_as_of(row, cutoff, histories.get(row["run_id"], ()))
         records.append(
             {
                 "line": {column.key: row[column.key] for column in COLUMNS},
                 "run_id": row["run_id"],
-                "run_state_as_of": state.run_state,
-                "approved_at_as_of": state.approved_at,
-                "batch_acknowledged_at_as_of": state.acknowledged_at,
-                "cancelled_as_of": state.cancelled,
+                "run_state_as_of": row["run_state"],
+                "approved_at_as_of": row["run_approved_at"],
+                "batch_acknowledged_at_as_of": row["batch_acknowledged_at"],
+                "cancelled_as_of": row["run_state"] == "cancelled",
+                "commit_evidence": {
+                    "line_committed_at": row["line_committed_at"],
+                    "run_revision_id": row["_run_revision_id"],
+                    "batch_revision_id": row["_batch_revision_id"],
+                },
                 "sample_contribution": contribution,
                 "sources": [
                     {
@@ -262,13 +276,15 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
         canonical_bytes(
             redact_contacts(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "as_of": as_of,
                     "known_at": cutoff,
                     "lines": records,
                     "basis": (
                         "Whole journal lines and sampled contributions; "
-                        "cancelled runs are labelled at cutoff."
+                        "cancelled runs are labelled at committed cutoff. "
+                        "Original journal and posting commits are retained "
+                        "with lifecycle revisions."
                     ),
                 }
             )

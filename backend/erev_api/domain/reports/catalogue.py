@@ -2758,6 +2758,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "schedule_line",
             "subledger_line",
             "calc_trace",
+            "journal_line",
+            "journal_entry",
+            "journal_batch",
+            "journal_run",
+            "report_source_revision",
+            "historical_source_commit",
+            "subledger_posting_commit",
         ),
         joins=(
             "evidence_pack.contract_ids holds the sampled contracts",
@@ -2770,6 +2777,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         filters=(
             "contract.external_id in contract_external_ids (1 to 50)",
             "figures as of as_of and known at known_at",
+            "sample/journals.json v2 uses original journal/underlying posting commits and "
+            "committed run/batch revisions; cancelled lines remain explicitly labelled at cutoff",
+            "journal sample totals retain whole aggregated lines and separate sampled "
+            "contributions; old archives remain unchanged",
             _SCOPE,
         ),
     ),

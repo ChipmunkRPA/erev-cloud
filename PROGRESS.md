@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Contract sample journal commit evidence — October 21, 2026
+
+- New sample/journals.json v2 excludes journal lines committed after the request cutoff and
+  resolves run/batch lifecycle through committed revisions. Cancelled lines remain in evidence
+  with their state at cutoff; a late-committed cancellation cannot rewrite the old state.
+- Posting-entity discovery respects complete original posting commits. Every drilled source
+  line must have committed by cutoff before contributing to whole-line reconciliation and the
+  separately calculated sampled-contract amount. Evidence includes original journal/posting
+  commit times and run/batch revision identities; existing archived packs remain unchanged.
+- Migration 0281 synchronizes the contract sample catalogue's source tables and cutoff basis.
+  Necessary checks passed: exclusion before journal commit, actual overlapping cancellation,
+  historical/latest state labels, contribution conservation, full computation/sample archive
+  and PDF/XLSX flow, catalogue parity, scoped lint/types.
+- Remaining: first-generation ancillary approval/ack/name histories and broader sample event,
+  computation, decision and document histories need their own cutoff review. Period dates
+  changed after cutoff continue to refuse explicitly. This completes the journal slice, not
+  an assertion that every source in the entire evidence pack has historical commit coverage.
+  No deployment.
+
 ## JE Population retained inputs — October 21, 2026
 
 - New JE Population reports retain source records, resolved actor/display labels and independent
@@ -211,26 +230,6 @@ review and publish changes without PR accumulation, and do not deploy.
   eligibility lifecycle coverage and B4-11 arbitrary historical commit visibility. Billing
   and credit event admission is implemented but has no dedicated new mixed-batch witness in
   this increment. This is feature progress, not a repository-completion claim.
-
-## Return-path original event positions — October 21, 2026
-
-- Return estimate pins now carry their original applying-event order from stage 04.
-  Recognition selects both the estimate and the allocation unit rate at the requested
-  event position. Actual returns after an estimate consume its remaining expected units,
-  including later returns on the same date; stage 04 pricing and stage 09 recognition
-  now use the same ordering rule.
-- RPO event-position evidence now includes return-path net fixed allocations using that
-  same cutoff for the segment rate, expected units and actual returns. A later estimate
-  or price change cannot rewrite an earlier eligibility exit. Legacy internal pins
-  without event-order metadata remain excluded from positional evidence.
-- Seventy-seven scoped pricing, returns, disclosure and ordered-eligibility cases pass,
-  including original pricing-to-recognition same-day return consumption, frozen recognition
-  across later estimate/price changes, and positional trace re-evaluation. Scoped lint/types
-  pass. No schema/catalogue change; existing bound runs retain their original trace.
-- Still open: initial Reporting timelines that include actual return/delivery causes,
-  public mixed-batch end-to-end coverage, full royalty eligibility lifecycle coverage and
-  B4-11 arbitrary historical commit visibility. This fixes positional return amounts; it
-  does not claim every return lifecycle is enabled in the report. No deployment.
 
 ## Outstanding release verification
 

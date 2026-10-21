@@ -756,3 +756,72 @@ def test_je_population_retains_inputs_and_committed_cancellation(
     ).json()
     assert legacy_data != data
     assert {row["entity_code"] for row in legacy_data["rows"]} == {"AVM-RENAMED"}
+
+
+def test_sample_journals_use_committed_lines_and_lifecycle(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from dataclasses import replace
+    from datetime import date
+    from decimal import Decimal
+
+    from erev_api.domain.journals.commands import cancel_run
+    from erev_api.domain.reports import evidence_sample_journals
+    from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.domain.reports.evidence_selection import SourceSelection
+    from erev_api.schemas.journals import JournalRunCancelIn
+    from support.worlds import K01, journal_run
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    before = world.place.scalar(select(func.clock_timestamp()))
+    journal = journal_run(world)
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp)
+    permissions = world.place.principal.permissions | PERMISSIONS | {"journal.run"}
+    principal = replace(
+        world.place.principal,
+        permissions=permissions,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            **{p: "*" for p in permissions},
+        },
+    )
+    selection = SourceSelection(
+        tenant_id=principal.tenant_id,
+        known_at=stamp,
+        entity_ids=(),
+        contract_ids=(UUID(str(world.contracts[K01].contract["id"])),),
+    )
+
+    def collect(at):
+        with world.place.uow(principal) as reader:
+            result = evidence_sample_journals.collect(
+                reader, replace(selection, known_at=at), as_of=date(2026, 9, 30)
+            )
+        return json.loads(result.files[0].content)
+
+    assert collect(before)["lines"] == []
+    original = collect(stamp)
+    assert original["schema_version"] == 2
+    assert original["lines"]
+    for row in original["lines"]:
+        assert row["run_state_as_of"] == "draft"
+        assert row["commit_evidence"]["run_revision_id"]
+        assert row["commit_evidence"]["batch_revision_id"]
+        assert row["commit_evidence"]["line_committed_at"]
+        assert all(source["committed_server_at"] for source in row["sources"])
+        assert Decimal(row["sample_contribution"]["net_functional"]) == (
+            Decimal(row["line"]["debit_functional"]) - Decimal(row["line"]["credit_functional"])
+        )
+    with world.place.uow(principal) as writer:
+        cancel_run(writer, UUID(journal["id"]), JournalRunCancelIn(reason="Sample cutoff"))
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    assert collect(cutoff)["lines"] == original["lines"]
+    latest = collect(clock.now())
+    assert len(latest["lines"]) == len(original["lines"])
+    assert all(row["cancelled_as_of"] for row in latest["lines"])
+    assert all(row["run_state_as_of"] == "cancelled" for row in latest["lines"])

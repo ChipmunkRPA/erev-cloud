@@ -11200,3 +11200,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: public initial mixed-batch end-to-end coverage, return-path positional
   rates/estimates (not substituted), full royalty eligibility lifecycle coverage, and B4-11
   arbitrary historical commit visibility. This increment does not claim repository completion.
+
+## Return-path original event positions — October 21, 2026
+
+- Return estimate pins now carry their original applying-event order from stage 04.
+  Recognition selects both the estimate and the allocation unit rate at the requested
+  event position. Actual returns after an estimate consume its remaining expected units,
+  including later returns on the same date; stage 04 pricing and stage 09 recognition
+  now use the same ordering rule.
+- RPO event-position evidence now includes return-path net fixed allocations using that
+  same cutoff for the segment rate, expected units and actual returns. A later estimate
+  or price change cannot rewrite an earlier eligibility exit. Legacy internal pins
+  without event-order metadata remain excluded from positional evidence.
+- Seventy-seven scoped pricing, returns, disclosure and ordered-eligibility cases pass,
+  including original pricing-to-recognition same-day return consumption, frozen recognition
+  across later estimate/price changes, and positional trace re-evaluation. Scoped lint/types
+  pass. No schema/catalogue change; existing bound runs retain their original trace.
+- Still open: initial Reporting timelines that include actual return/delivery causes,
+  public mixed-batch end-to-end coverage, full royalty eligibility lifecycle coverage and
+  B4-11 arbitrary historical commit visibility. This fixes positional return amounts; it
+  does not claim every return lifecycle is enabled in the report. No deployment.
