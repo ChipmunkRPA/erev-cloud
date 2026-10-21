@@ -20,6 +20,7 @@ CLO-6.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -81,6 +82,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     store = rpo.load(
         session, entity_ids=params.entity_ids, book_code=book_code, cutoff=cutoff, params=params
     )
+    addition_evidence = "rpo_added_obligations_v1"
+    store = replace(
+        store,
+        classify_added_obligations=(
+            params.binding is None or addition_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_added_obligations and params.sources is not None:
+        params.sources.record_evidence(addition_evidence, True)
     applied = rpo.applied_expedients(session, found, book_code=book_code, known_at=params.known_at)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates

@@ -6,6 +6,23 @@
 
 
 
+## RPO obligations added to existing contracts — October 20, 2026
+
+- Fixed a classification defect: an obligation absent from the opening version was always
+  treated as NEW_CONTRACTS, even when an already disclosed contract added it by amendment.
+  Added obligations now follow the modification/estimate causes of that existing contract.
+  First admission and cancellation re-entry keep their admission semantics; ambiguous mixed
+  changes without original estimate shares remain unexplained rather than becoming new contracts.
+- New report bindings retain rpo_added_obligations_v1. Earlier bindings preserve their original
+  classification on rerun; the same selected semantics feed converted monthly rollforwards.
+- The public Marrowby approval journey adds O2 and redistributes O1: all 60,000 is MODIFICATIONS,
+  NEW_CONTRACTS and UNEXPLAINED are zero, and all ties pass in transaction, functional and
+  reporting views with identical reruns (USD in each view). The 38 scoped report cases cover
+  mixed additions, legacy behavior, entry/re-entry and exemptions; lint/types and migration
+  0237 down/up catalogue parity pass. No deployment; publish directly to main.
+- This does not supply missing first-batch boundary history, resolve combined-member aging date
+  ownership or provide independent accounting sign-off. Those remain outstanding.
+
 ## RPO first-batch modification attribution — October 20, 2026
 
 - Stage 06 now retains fixed-allocation before/after amounts and signed changes for every
@@ -217,26 +234,6 @@
   and all three IPE definitions match the catalogue. Lint/types pass. Royalty/netted mixed projections, broader
   public API lifecycle and close-pass acceptance, independent accounting acceptance and final
   release checks remain open. Direct main publication; no deployment.
-
-## Combined-member agent refund reporting — October 20, 2026
-
-- Fixed a real GBP 75,600 unexplained rollforward difference after a combined agent contract
-  refunded its two deposits and returned all delivered units. A full return can erase prior
-  consumed layers from the latest target; negative posted controls now identify recipients
-  for original target/paid-history replay.
-- Member billing classification now uses retained asset amounts including explicit zero.
-  This moves liability-only credit memos out of the local member's apparent asset activity,
-  without using OTHER as a plug. New source bindings preserve legacy report rerun behavior.
-- The scenario funds agent deliveries from another contract's two USD 45,000 advances at .80;
-  the agent's own advances use .84. Group allocation is independently checked, original source
-  owners remain retained, and the full return preserves the USD 90,000 x .04 GBP difference
-  in revenue/control rather than inventing a supplier balance. Both public reports rerun in
-  all three currency views; the rollforward must tie across all members.
-- Six scoped DB journeys and 35 report/catalogue unit checks pass, with lint/types and migration
-  metadata checked. Migration 0226 updates the report's IPE explanation. Broader close-pass acceptance, dated
-  mixed manual-adjustment projection, independent accounting acceptance and final release
-  verification remain open. No deployment.
-
 
 ## Outstanding release verification
 

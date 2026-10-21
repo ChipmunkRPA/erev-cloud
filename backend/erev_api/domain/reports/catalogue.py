@@ -962,6 +962,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "attributed shares; a separate dated reporting remainder excludes already-recognized "
             "deposit revenue while preserving contract measurement balances; projected future "
             "periods must reconcile to that net remainder",
+            "new obligations added to an already disclosed contract follow modification and "
+            "estimate causes instead of new contracts; first admission and re-entry keep "
+            "admission rules; bindings without rpo_added_obligations_v1 retain their original "
+            "classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

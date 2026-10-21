@@ -342,6 +342,7 @@ class Store:
     # (version, date) → obligation-version row → the obligation at that date (``measure``)
     cuts: dict[tuple[UUID, date], Mapping[UUID, to_date.ObligationAt]] = field(default_factory=dict)
 
+    classify_added_obligations: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1155,6 +1156,7 @@ def _obligation_lines(
         )
 
     previous_obligation = opening
+    previous_version = opening_version
     previous = ZERO if opening is None else fixed(opening, before)
     realised_opening = ZERO if opening is None else store.at(opening, before).realised
     terminal_cancellation: _Ob | None = None
@@ -1176,6 +1178,18 @@ def _obligation_lines(
 
     for version in moved:
         current = _in_version(store, version, obligation_id)
+        # A new obligation in an already disclosed contract is a movement of that
+        # contract. Its absent opening obligation does not make it a new contract.
+        admission = previous_obligation is None and (
+            not store.classify_added_obligations
+            or previous_version is None
+            or not previous_version.included
+            or was_cancelled
+            or (
+                current is not None
+                and any(contract_id == current.contract_id for contract_id, _ in version.entries)
+            )
+        )
         if current is not None:
             if terminal_cancellation is not None:
                 lines["CANCELLATIONS"] += recognition(terminal_cancellation, version.effective)
@@ -1198,7 +1212,7 @@ def _obligation_lines(
                 terminal_cancellation,
             )
         allocated = ZERO if current is None else fixed(current, end)
-        if current is not None and previous_obligation is None:
+        if current is not None and admission:
             # Fees realized by completed periods before admission enter with the contract;
             # later realization is independently identified variable consideration.
             entry_realised = (
@@ -1265,7 +1279,7 @@ def _obligation_lines(
             lines["CANCELLATIONS"] -= removed
             lines["VC_ESTIMATE_CHANGES"] += removed
         delta = allocated - previous
-        if previous_obligation is None:
+        if admission:
             line: str | None = "NEW_CONTRACTS"
         else:
             realised_is_separate = current is not None and store.at(current, end).realised_traced
@@ -1307,6 +1321,7 @@ def _obligation_lines(
                 )
         previous = allocated
         previous_obligation = current
+        previous_version = version
     closing = _in_version(store, closing_version, obligation_id)
     if opening is not None and closing is not None and not moved:
         open_fixed = store.at(opening, before).fixed_allocation

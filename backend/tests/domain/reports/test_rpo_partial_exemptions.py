@@ -494,8 +494,10 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
 @pytest.mark.parametrize(
     "closing,estimate,modification", [(150, 20, 30), (100, 20, -20), (90, -20, 10)]
 )
+@pytest.mark.parametrize("added", [False, True])
+@pytest.mark.parametrize("mixed", [False, True])
 def test_mixed_modification_and_estimate_uses_retained_event_shares(
-    closing: int, estimate: int, modification: int
+    closing: int, estimate: int, modification: int, added: bool, mixed: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
 
@@ -503,7 +505,12 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
     before, end = date(2026, 1, 31), date(2026, 2, 28)
     first = rpo._Version(vid, gid, 1, True, date(2026, 1, 1), frozenset())
     second = rpo._Version(
-        next_vid, gid, 2, True, end, frozenset({"CONTRACT_AMENDED", "ESTIMATE_CHANGED"})
+        next_vid,
+        gid,
+        2,
+        True,
+        end,
+        frozenset({"CONTRACT_AMENDED", "ESTIMATE_CHANGED"} if mixed else {"CONTRACT_AMENDED"}),
     )
     old = rpo._Ob(
         oid,
@@ -535,7 +542,7 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
     )
     store = rpo.Store(
         {gid: (first, second)},
-        {vid: (old,), next_vid: (new,)},
+        {vid: () if added else (old,), next_vid: (new,)},
         {cid: (first, second)},
         {
             (vid, before): {oid: at},
@@ -544,13 +551,30 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
             (next_vid, end): {oid: replace(at, awaiting=Decimal(closing))},
         },
     )
+    if added:
+        (legacy,) = rpo.rollforward_lines(
+            replace(store, classify_added_obligations=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert legacy.lines["NEW_CONTRACTS"] == closing
+        assert legacy.lines["MODIFICATIONS"] == 0
     (unknown,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
-    assert unknown.lines["UNEXPLAINED"] == closing - 100
-    assert unknown.lines["MODIFICATIONS"] == unknown.lines["VC_ESTIMATE_CHANGES"] == 0
+    opening = 0 if added else 100
+    delta = closing - opening
+    assert unknown.lines["NEW_CONTRACTS"] == 0
+    assert unknown.lines["OPENING"] == opening
+    assert unknown.lines["CLOSING"] == closing
+    assert unknown.lines["UNEXPLAINED"] == (delta if mixed else 0)
+    assert unknown.lines["MODIFICATIONS"] == (0 if mixed else delta)
+    assert unknown.lines["VC_ESTIMATE_CHANGES"] == 0
     store.estimate_allocations[next_vid] = {"C/O": Decimal(estimate)}
     (known,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
-    assert known.lines["VC_ESTIMATE_CHANGES"] == estimate
-    assert known.lines["MODIFICATIONS"] == modification
+    assert known.lines["NEW_CONTRACTS"] == 0
+    assert known.lines["VC_ESTIMATE_CHANGES"] == (estimate if mixed else 0)
+    assert known.lines["MODIFICATIONS"] == (
+        (modification + (100 if added else 0)) if mixed else delta
+    )
     assert known.lines["UNEXPLAINED"] == 0
 
 

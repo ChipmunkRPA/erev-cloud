@@ -10188,3 +10188,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Cross-contract agent groups and broader close-pass acceptance remain open; this supersedes
   the prior unverified gross-refund/return case. Independent accounting acceptance and final
   release checks remain outstanding. Direct main publication only; no deployment.
+
+## Combined-member agent refund reporting — October 20, 2026
+
+- Fixed a real GBP 75,600 unexplained rollforward difference after a combined agent contract
+  refunded its two deposits and returned all delivered units. A full return can erase prior
+  consumed layers from the latest target; negative posted controls now identify recipients
+  for original target/paid-history replay.
+- Member billing classification now uses retained asset amounts including explicit zero.
+  This moves liability-only credit memos out of the local member's apparent asset activity,
+  without using OTHER as a plug. New source bindings preserve legacy report rerun behavior.
+- The scenario funds agent deliveries from another contract's two USD 45,000 advances at .80;
+  the agent's own advances use .84. Group allocation is independently checked, original source
+  owners remain retained, and the full return preserves the USD 90,000 x .04 GBP difference
+  in revenue/control rather than inventing a supplier balance. Both public reports rerun in
+  all three currency views; the rollforward must tie across all members.
+- Six scoped DB journeys and 35 report/catalogue unit checks pass, with lint/types and migration
+  metadata checked. Migration 0226 updates the report's IPE explanation. Broader close-pass acceptance, dated
+  mixed manual-adjustment projection, independent accounting acceptance and final release
+  verification remain open. No deployment.

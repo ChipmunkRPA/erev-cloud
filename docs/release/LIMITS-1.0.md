@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — added obligations no longer inflate new-contract RPO
+
+New report runs distinguish a new obligation on an already disclosed contract from a contract
+entering disclosure. The former follows its amendment/estimate causes; first entry and
+cancellation re-entry retain their existing rules. Missing original evidence for mixed causes
+still leaves the change unexplained. Bindings carry rpo_added_obligations_v1 so older runs keep
+their original classification; converted monthly projections use the same selected behavior.
+
+A real approved Marrowby addition and redistribution now reports the full 60,000 as MODIFICATIONS,
+zero NEW_CONTRACTS and zero UNEXPLAINED. All ties and identical reruns pass in transaction,
+functional and reporting views (USD for this witness). Scoped cases also cover mixed estimates,
+legacy output, exemptions and re-entry; migration 0237 matches the catalogue after down/up.
+This does not repair missing first-batch boundary evidence or decide combined-member aging date
+ownership. Independent accounting sign-off and final-candidate verification remain outstanding.
+
+
 ### October 20 — first-batch RPO modification and estimate attribution
 
 New computations retain original fixed-allocation amounts before and after each modification

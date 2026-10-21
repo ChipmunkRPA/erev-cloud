@@ -959,6 +959,56 @@ def test_wld_x_06_applied_schedule_by_obligation(
     assert values[0].contract_id == contract_id
     assert len(values[0].basis_ids) == 3
 
+    # The added O2 and O1's redistribution together are one 60,000 modification,
+    # not a new contract plus a negative modification on the original obligation.
+    for view in ("transaction", "functional", "reporting"):
+        started = post(
+            k02.app,
+            "/api/v1/report-runs",
+            k02.place.author,
+            {
+                "report_code": "rpo_rollforward",
+                "parameters": {
+                    "entity_codes": ["AVM-US"],
+                    "currency_view": view,
+                    "book": "ASC606",
+                    "from_period_key": "FY2026-P09",
+                    "to_period_key": "FY2026-P09",
+                },
+                "output_format": "JSON",
+            },
+        )
+        assert started.status_code == 202, started.text
+        _work(k02.place, UUID(started.json()["id"]), runtime)
+        completed = get(k02.app, f"/api/v1/jobs/{started.json()['id']}", k02.place.author)
+        assert completed.status_code == 200, completed.text
+        assert completed.json()["state"] == "SUCCEEDED", completed.text
+        run_id = started.headers["x-erev-report-run-id"]
+        shown = get(k02.app, f"/api/v1/report-runs/{run_id}", k02.place.author)
+        assert shown.status_code == 200, shown.text
+        assert all(tie["result"] == "PASS" for tie in shown.json()["tie_out_results"]), shown.text
+        data = get(
+            k02.app, f"/api/v1/report-runs/{run_id}/data", k02.place.author, {"limit": "200"}
+        )
+        assert data.status_code == 200, data.text
+        lines = {
+            row["line_code"]: Decimal(row["rpo"]["amount"])
+            for row in data.json()["items"]
+            if row.get("section") == 1
+        }
+        assert lines["NEW_CONTRACTS"] == 0
+        assert lines["MODIFICATIONS"] == Decimal("60000.00")
+        assert lines["UNEXPLAINED"] == 0
+        restarted = post(k02.app, f"/api/v1/report-runs/{run_id}/rerun", k02.place.author, {})
+        assert restarted.status_code == 202, restarted.text
+        _work(k02.place, UUID(restarted.json()["id"]), runtime)
+        repeated_id = restarted.headers["x-erev-report-run-id"]
+        repeated = get(
+            k02.app, f"/api/v1/report-runs/{repeated_id}/data", k02.place.author, {"limit": "200"}
+        )
+        assert repeated.status_code == 200, repeated.text
+        assert repeated.json()["items"] == data.json()["items"]
+
 
 def test_separate_contract_books_new_contract(
     k02: K02World, runtime: JobRuntime, clock: FrozenClock
