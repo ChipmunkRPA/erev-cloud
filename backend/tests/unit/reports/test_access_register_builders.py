@@ -93,12 +93,15 @@ def test_rpt_43_columns_are_t_plt_19_in_the_specified_order() -> None:
 
 @pytest.mark.parametrize(("number", "module"), MODULES)
 def test_registration_and_catalogue(number: int, module: Any) -> None:
-    """``framework.BUILDERS`` admits the six codes with an ``open`` source contract that names
-    what it reads; each definition's kind and row key are the specification's."""
+    """The register sources remain OPEN; audit export retains its event inputs.
+    Each definition's kind and row key still match the specification."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    assert contract.strategy == "open" and len(contract.open) == 1
-    assert f"RPT-{number}" in contract.open[0]
+    if module is audit_export:
+        assert contract.strategy == "retained_inputs" and not contract.open
+    else:
+        assert contract.strategy == "open" and len(contract.open) == 1
+        assert f"RPT-{number}" in contract.open[0]
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -1225,3 +1228,45 @@ def test_a_run_is_visible_under_the_run_permission_of_its_report() -> None:
     )
     assert f"({not_in_three}" in sql and f") AND ({within}" in sql
     assert [entity] in list(bound.values())
+
+
+def test_retained_audit_inputs_rebuild_controls_without_database() -> None:
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    inputs = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "events": [_event(8), _event(3, detail={"token": "do-not-export"})],
+            }
+        )
+    )
+    binding = SourceBinding(
+        cutoff=AT,
+        versions={},
+        labels={},
+        row_keys=frozenset({"event:3", "event:8"}),
+        strategy=RETAINED,
+        evidence={audit_export.EVIDENCE: inputs},
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    params = replace(_params({}), binding=binding)
+    rebuilt = audit_export.build(uow, params)
+    assert [row["chain_seq"] for row in rebuilt.rows] == [3, 8]
+    assert rebuilt.control_totals["row_count"] == 2
+    assert "do-not-export" not in rebuilt.rows[0]["detail"]
+    inputs["events"] = inputs["events"][:1]
+    changed = audit_export.build(uow, params)
+    assert changed.control_totals == {
+        "row_count": 1,
+        "first_chain_seq": 8,
+        "last_chain_seq": 8,
+        "last_hmac": f"{8:064x}",
+    }
+    assert [row["chain_seq"] for row in changed.rows] == [8]
+    with pytest.raises(Problem, match="another workspace"):
+        audit_export.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)

@@ -551,7 +551,6 @@ _APPROVALS_REGISTER_OPEN: Final = (
     "approval requests with their steps, decisions, auto-approval rules, entity codes and "
     "display names read live (RPS-10 RPT-26)"
 )
-_AUDIT_LOG_EXPORT_OPEN: Final = "audit events of the workspace read live (RPS-10 RPT-43)"
 _CHAIN_VERIFICATION_REPORT_OPEN: Final = "audit chain verification rows read live (RPS-10 RPT-44)"
 _JUDGEMENT_REGISTER_OPEN: Final = (
     "judgement records with their contracts, subjects and display names read live (RPS-11 RPT-28)"
@@ -902,7 +901,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         approvals_register_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_APPROVALS_REGISTER_OPEN,)
         ),
-        audit_log_export_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_AUDIT_LOG_EXPORT_OPEN,)),
+        audit_log_export_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "redacted audit input events and original commit evidence"),
+        ),
         chain_verification_report_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_CHAIN_VERIFICATION_REPORT_OPEN,)
         ),
@@ -2066,7 +2068,8 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
     ``kind``; ``bound: false`` with the kind for an as-locked, pending, failed or legacy run."""
     kind = run_kind(run)
     if kind in (KIND_BOUND, KIND_RETAINED) or (
-        kind == KIND_OPEN and run.get("report_code") in {"forecast_outputs", "je_population"}
+        kind == KIND_OPEN
+        and run.get("report_code") in {"forecast_outputs", "je_population", "audit_log_export"}
     ):
         try:
             binding = SourceBinding.from_stored(run["source_binding"])

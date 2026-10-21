@@ -1048,6 +1048,36 @@ def test_journal_ancillary_sources_exclude_late_commits(
                 replace(selection, known_at=before_request_commit),
                 approval_request_ids=(request_id,),
             )
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceCollector, audit_log_export
+
+    for parameters in ({"contract_id": str(cid)}, {}):
+        params = ReportParams(
+            report_code="audit_log_export",
+            report_version=1,
+            parameters=parameters,
+            entity_ids=(),
+            known_at=cutoff,
+            historical=True,
+            sources=SourceCollector(),
+        )
+        with world.place.uow(principal) as reader:
+            old_export = audit_log_export.build(reader, params)
+            new_export = audit_log_export.build(reader, replace(params, known_at=now, sources=None))
+        assert str(audit_id) not in {row["id"] for row in old_export.rows}
+        assert str(audit_id) in {row["id"] for row in new_export.rows}
+        bound = params.sources.binding(
+            row_keys=[row["row_key"] for row in old_export.rows],
+            strategy=RETAINED,
+        )
+        # No database is provided: rebuild must derive rows/controls solely from input evidence.
+        rebuilt = audit_log_export.build(
+            SimpleNamespace(principal=principal),
+            replace(params, known_at=now, sources=None, binding=bound),
+        )
+        assert rebuilt.rows == old_export.rows
+        assert rebuilt.control_totals == old_export.control_totals
     commit_evidence.recover_pending_sources(world.place.tenant_id)
     for kind, identity in (
         ("approval_decision", decision["id"]),

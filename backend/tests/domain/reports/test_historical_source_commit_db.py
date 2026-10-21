@@ -295,6 +295,7 @@ def test_source_commit_archive_and_catalogue_are_protected(world: K11World) -> N
         "je_population",
         "contract_sample_pack",
         "approvals_register",
+        "audit_log_export",
     ):
         assert stored_ipe[code] == DEFINITIONS_BY_CODE[code].ipe_logic, code
 

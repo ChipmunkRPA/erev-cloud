@@ -2487,13 +2487,18 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "Audit events in chain order with every T-PLT-19 column, redacted JSON values and a "
         "manifest (REQ-PLT-018).",
         ("from", "to", "object_type", "object_id", "contract_id", "actor_id", "action", "outcome"),
-        sources=("audit_event", "audit_event_contract"),
+        sources=("audit_event", "audit_event_contract", "historical_source_commit"),
         joins=("audit_event_contract.audit_event_id = audit_event.id",),
         filters=(
             "audit_event.occurred_at from from to to",
             "object_type, object_id, actor_id and action when given",
             "outcome among the literals given",
             "with contract_id the events that name the contract (audit_event_contract)",
+            "historical basis requires original audit commits by known_at; record basis preserves "
+            "transaction-local visibility",
+            "audit_log_export_inputs_v1 retains redacted input events and historical "
+            "commit evidence; "
+            "same-source reruns rebuild rows and controls without live audit reads",
             "chain_seq order; JSON columns redacted per erev_api.audit.REDACT",
         ),
     ),

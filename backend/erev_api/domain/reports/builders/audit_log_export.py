@@ -8,8 +8,9 @@ with the column names as headers. The filters are those of the audit log (API-R-
 ``object_type``, ``object_id``, ``actor_id`` and ``action`` match exactly; ``outcome`` keeps the
 events of any of the E-81 literals given; ``from`` is inclusive and ``to`` exclusive on
 ``occurred_at``. Without ``to`` the export ends at the run's record cutoff ("now"); events after
-the cutoff are never read. T-PLT-19 is append-only, so an export as of an earlier ``known_at``
-states exactly the events that had occurred by then.
+the cutoff are never read. Historical reads additionally require original audit transaction
+commits by the cutoff. Same-source reruns rebuild rows and control totals from retained,
+redacted input events; record-basis reads preserve transaction-local visibility.
 
 ``contract_id`` (item RPT-43-PARAMS-1; 04 §16.14, T-PLT-48): the trail of that contract — every
 event that names it, whatever its object type — read by the statement the audit log's list reads
@@ -31,6 +32,7 @@ without rows.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from types import MappingProxyType
@@ -38,7 +40,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy import ColumnElement, Select, func, select
 
 from erev_api.audit.redact import redact
 from erev_api.db.tables import audit_event
@@ -47,9 +49,11 @@ from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ColumnKind, ReportData
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "audit_log_export"
+EVIDENCE: Final = "audit_log_export_inputs_v1"
 ROW_KEY_PREFIX: Final = "event:"  # RPT-43: row_key `event:<chain_seq>`
 START_AFTER_END: Final = "Start must be on or before end."
 JSON_COLUMNS: Final = ("before", "after", "diff", "detail")
@@ -177,16 +181,47 @@ def events_statement(params: ReportParams, *, cutoff: datetime) -> Select[Any]:
         source = audit_log.trail_source(UUID(str(contract_id)))
         columns = source.columns
         read = source.statement.with_only_columns(*(columns[name].label(name) for name in FIELDS))
+    if params.historical:
+        committed_at = func.erev.source_commit_time("audit_event", columns["id"])
+        read = read.add_columns(committed_at.label("committed_server_at")).where(
+            committed_at <= cutoff
+        )
     return read.where(*filters(params, cutoff=cutoff, columns=columns)).order_by(
         columns["chain_seq"]
     )
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
-    session = uow.session
-    cutoff = tie_outs.cutoff_for(session, params)
-    statement = events_statement(params, cutoff=cutoff)
-    rows, totals = dataset_rows(dict(row) for row in session.execute(statement).mappings())
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id):
+            raise Problem(
+                "forbidden", "The retained audit population belongs to another workspace."
+            )
+        events = retained["events"]
+    else:
+        session = uow.session
+        cutoff = tie_outs.cutoff_for(session, params)
+        statement = events_statement(params, cutoff=cutoff)
+        events = []
+        for source in session.execute(statement).mappings():
+            event = dict(source)
+            if event["source_ip"] is not None:
+                event["source_ip"] = str(event["source_ip"])
+            for name in JSON_COLUMNS:
+                event[name] = redact(event[name])
+            events.append(event)
+        retained = json.loads(
+            canonical_bytes({"tenant_id": uow.principal.tenant_id, "events": events})
+        )
+        tie_outs.record_evidence(params, EVIDENCE, retained)
+    restored = []
+    for source in events:
+        event = dict(source)
+        if isinstance(event["occurred_at"], str):
+            event["occurred_at"] = datetime.fromisoformat(event["occurred_at"])
+        restored.append(event)
+    rows, totals = dataset_rows(restored)
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

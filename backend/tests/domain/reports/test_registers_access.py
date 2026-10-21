@@ -1496,6 +1496,26 @@ def test_audit_log_export_object_filter(k03: K03World, clock: FrozenClock) -> No
     assert manifest.json()["control_totals"] == run["control_totals"]
     assert K03_EXTERNAL_ID == "PRJ-CB-2026-01"
 
+    assert run["sources"]["kind"] == "retained"
+    with world.place.uow() as uow:
+        uow.audit(
+            action="contract.update",
+            object_type="contract",
+            object_id=k03.contract_id,
+            contract_id=k03.contract_id,
+        )
+        uow.commit()
+    rerun = post(world.app, f"{REPORT_RUNS}/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    rerun_id = rerun.headers[REPORT_RUN_ID_HEADER]
+    repeated = get(world.app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+    shown = get(world.app, f"{REPORT_RUNS}/{rerun_id}", world.maya).json()
+    assert shown["control_totals"] == run["control_totals"]
+    assert shown["sources"]["kind"] == "retained"
+
 
 # --- REQ-RPT-001 ----------------------------------------------------------------------------------
 

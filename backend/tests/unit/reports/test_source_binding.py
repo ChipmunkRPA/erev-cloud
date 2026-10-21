@@ -290,17 +290,18 @@ def test_sources_out_summarises_a_bound_run_and_classifies_every_other_lifecycle
         )
     )
     assert (opened.bound, opened.kind, opened.strategy) == (False, framework.KIND_OPEN, OPEN)
-    legacy_je = framework.sources_out(
-        _row(
-            report_code="je_population",
-            source_binding=replace(BINDING, strategy=OPEN, versions={}).to_stored(),
+    for code in ("je_population", "audit_log_export"):
+        legacy = framework.sources_out(
+            _row(
+                report_code=code,
+                source_binding=replace(BINDING, strategy=OPEN, versions={}).to_stored(),
+            )
         )
-    )
-    assert (legacy_je.bound, legacy_je.kind, legacy_je.strategy) == (
-        False,
-        framework.KIND_OPEN,
-        OPEN,
-    )
+        assert (legacy.bound, legacy.kind, legacy.strategy) == (
+            False,
+            framework.KIND_OPEN,
+            OPEN,
+        )
 
 
 def test_every_registered_live_builder_states_its_source_contract() -> None:
@@ -355,7 +356,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "user_access_listing",
         "sod_conflict_report",
         "approvals_register",
-        "audit_log_export",
         "chain_verification_report",
         # BUILD_SPEC RPS-11 (lane F-RPS-REG): the judgement, estimate-change and scope-exclusion
         # registers read live, no adapter yet
