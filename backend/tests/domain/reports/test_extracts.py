@@ -918,3 +918,74 @@ def test_journal_ancillary_sources_exclude_late_commits(
             )
         )
         assert cutoff < commit <= now
+
+
+def test_sample_documents_use_committed_attachment_lifecycle(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    import io
+    from dataclasses import replace
+    from datetime import date
+
+    from erev_api.domain.platform.attachments import attach_evidence, void_attachment
+    from erev_api.domain.reports import evidence_sample_documents
+    from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.domain.reports.evidence_selection import SourceSelection
+    from erev_api.enums import FilePurpose
+    from erev_api.files.store import store_file
+    from support.worlds import K01
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    permissions = world.place.principal.permissions | PERMISSIONS
+    principal = replace(
+        world.place.principal,
+        permissions=permissions,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            **{p: "*" for p in permissions},
+        },
+    )
+    cid = UUID(str(world.contracts[K01].contract["id"]))
+    selection = SourceSelection(principal.tenant_id, clock.now(), (), (cid,))
+    content = b"contract,evidence\nK01,committed cutoff\n"
+    with world.place.uow(principal) as writer:
+        stored = store_file(
+            writer,
+            purpose=FilePurpose.ATTACHMENT,
+            stream=io.BytesIO(content),
+            original_filename="contract.csv",
+            media_type="text/csv",
+        )
+        attachments = attach_evidence(
+            writer, file_object_id=stored["id"], subject_type="contract", subject_ids=[cid]
+        )
+        before_commit = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+
+    def collect(at):
+        with world.place.uow(principal) as reader:
+            result = evidence_sample_documents.collect(
+                reader,
+                replace(selection, known_at=at),
+                as_of=date(2026, 9, 30),
+                event_ids=(),
+                approval_request_ids=(),
+            )
+        return result, json.loads(result.files[0].content)
+
+    assert collect(before_commit)[1]["attachments"] == []
+    result, original = collect(clock.now())
+    assert result.file_ids == (stored["id"],)
+    assert result.files[1].content == content
+    assert original["schema_version"] == 2
+    assert original["attachments"][0]["source_revision_id"]
+    assert original["attachments"][0]["committed_at"]
+    with world.place.uow(principal) as writer:
+        void_attachment(writer, attachments[0], reason="Historical sample test")
+        before_void_commit = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    assert collect(before_void_commit)[1]["attachments"] == original["attachments"]
+    assert collect(clock.now())[1]["attachments"] == []

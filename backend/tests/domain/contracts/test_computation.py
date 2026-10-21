@@ -6147,6 +6147,12 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
             subject_type="contract_event",
             subject_ids=events.event_ids[:1],
         )
+        uow.commit()
+    clock.set(
+        max(clock.now(), world.place.scalar(select(func.clock_timestamp()))) + timedelta(seconds=1)
+    )
+    events = replace(events, selection=replace(events.selection, known_at=clock.now()))
+    with world.place.uow(principal) as uow:
         documents = evidence_sample_documents.collect(
             uow,
             events.selection,

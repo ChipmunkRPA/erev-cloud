@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Contract sample attachment lifecycle history — October 21, 2026
+
+- Migration 0285 captures source-owned attachment revisions, including void transitions;
+  original revision commits use the existing queue/recovery path. Upgrade requires an empty
+  attachment table instead of fabricating history, and retained revisions prevent downgrade.
+- Sample documents v2 chooses the latest committed attachment revision by request cutoff.
+  Late-committed creation stays out; late-committed voiding preserves the original association
+  at an earlier cutoff. Each index row retains its source revision and commit time. Referenced
+  contract events also require their original commit before cutoff.
+- Current subject/file authorization, availability, upload-purpose limits, safe archive paths,
+  byte hashes and archive limits remain mandatory. Historical selection does not restore
+  shredded bytes or bypass revoked file grants. Existing saved packs keep their original bytes.
+- Necessary checks passed: real overlapping attachment creation and void transactions, original
+  bytes and revision evidence, full sample archive/PDF/XLSX flow, catalogue parity, database
+  architecture and scoped lint/types. The full sample fixture now commits attachments before
+  collecting them, matching the historical visibility contract. No deployment.
+- Remaining: actor/display-name history, approval-request/audit histories, and the other OPEN
+  report inputs. File metadata still follows current authorized file-read semantics; unavailable
+  historical bytes or incompatible metadata refuse rather than fetching external references.
+
 ## Committed contract identities in sample evidence — October 21, 2026
 
 - Sample selection v2 and computation member files now resolve contract identity fields from

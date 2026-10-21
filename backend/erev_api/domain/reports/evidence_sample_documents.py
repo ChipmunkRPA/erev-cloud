@@ -9,14 +9,19 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 
 from erev_api.auth.dependencies import require_for_entity
-from erev_api.db.tables import approval_request, contract_event, file_attachment
+from erev_api.db.tables import (
+    approval_request,
+    contract_event,
+    file_attachment,
+    report_source_revision,
+)
 from erev_api.domain.platform import file_access
 from erev_api.domain.platform.attachments import ATTACHABLE_PURPOSES
 from erev_api.domain.reports.evidence_archive import MAX_FILES, MAX_PAYLOAD_BYTES, PackFile
@@ -69,6 +74,7 @@ def collect(
                 contract_event.c.id.in_(event_ids),
                 contract_event.c.contract_id.in_(selected.contract_ids),
                 contract_event.c.recorded_at <= cutoff,
+                func.erev.source_commit_time("contract_event", contract_event.c.id) <= cutoff,
                 contract_event.c.effective_date <= as_of,
             )
         )
@@ -108,13 +114,12 @@ def collect(
         kind = str(request.subject_type).lower()
         if kind in file_access.ATTACHMENT_SUBJECTS:
             subjects.add((kind, request.subject_id))
-    attachments = (
+    candidates = (
         uow.session.execute(
             select(file_attachment)
             .where(
                 file_attachment.c.tenant_id == tenant,
                 file_attachment.c.created_at <= cutoff,
-                or_(file_attachment.c.voided_at.is_(None), file_attachment.c.voided_at > cutoff),
                 or_(
                     *(
                         and_(
@@ -135,6 +140,40 @@ def collect(
         .mappings()
         .all()
     )
+    # Subject and file identity are immutable; revisions decide creation/void visibility.
+    revision = report_source_revision
+    revisions = uow.session.execute(
+        select(
+            revision.c.source_id,
+            revision.c.id,
+            revision.c.document,
+            func.erev.source_commit_time("report_source_revision", revision.c.id).label(
+                "committed_at"
+            ),
+        )
+        .where(
+            revision.c.tenant_id == tenant,
+            revision.c.source_kind == "file_attachment",
+            revision.c.source_id.in_([row["id"] for row in candidates]),
+            revision.c.recorded_at <= cutoff,
+            func.erev.source_commit_time("report_source_revision", revision.c.id) <= cutoff,
+        )
+        .distinct(revision.c.source_id)
+        .order_by(revision.c.source_id, revision.c.revision_no.desc())
+    ).mappings()
+    visible = {}
+    for captured in revisions:
+        document = captured["document"]
+        if document["voided_at"] is not None:
+            continue
+        restored = dict(document)
+        for key in ("id", "file_object_id", "subject_id"):
+            restored[key] = UUID(restored[key])
+        restored["created_at"] = datetime.fromisoformat(restored["created_at"])
+        restored["source_revision_id"] = captured["id"]
+        restored["committed_at"] = captured["committed_at"]
+        visible[restored["id"]] = restored
+    attachments = [visible[row["id"]] for row in candidates if row["id"] in visible]
     # Authorize the owning subject as well as the file. Being its uploader must not bypass
     # permission to read the sample's contract or approval evidence.
     for attachment in attachments:
@@ -186,6 +225,8 @@ def collect(
             "subject_id": row["subject_id"],
             "file_id": row["file_object_id"],
             "attached_at": row["created_at"],
+            "source_revision_id": row["source_revision_id"],
+            "committed_at": row["committed_at"],
             "description": row["description"],
             "path": f"documents/{row['file_object_id']}/content",
             "original_filename": metadata[row["file_object_id"]]["original_filename"],
@@ -201,11 +242,12 @@ def collect(
             "sample/documents.json",
             canonical_bytes(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "as_of": as_of,
                     "known_at": cutoff,
                     "attachments": index,
-                    "basis": "Stored attachments at the cutoff; no external references fetched.",
+                    "basis": "Committed attachment revisions at cutoff; current file grants "
+                    "and integrity checks required; no external references fetched.",
                 }
             ),
         ),

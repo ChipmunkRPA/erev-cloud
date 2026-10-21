@@ -2759,6 +2759,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "schedule_line",
             "subledger_line",
             "calc_trace",
+            "file_attachment",
+            "file_object",
             "journal_line",
             "journal_entry",
             "journal_batch",
@@ -2786,6 +2788,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "selection.json v2 and computation member identities use committed contract header "
             "revisions at known_at; missing history refuses; current and historical owner "
             "permissions are enforced before export",
+            "documents.json v2 uses committed attachment lifecycle revisions at cutoff; "
+            "current subject/file grants, availability and byte integrity remain mandatory",
             "journal sample totals retain whole aggregated lines and separate sampled "
             "contributions; old archives remain unchanged",
             _SCOPE,

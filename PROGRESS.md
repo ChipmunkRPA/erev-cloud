@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Contract sample attachment lifecycle history — October 21, 2026
+
+- Migration 0285 captures source-owned attachment revisions, including void transitions;
+  original revision commits use the existing queue/recovery path. Upgrade requires an empty
+  attachment table instead of fabricating history, and retained revisions prevent downgrade.
+- Sample documents v2 chooses the latest committed attachment revision by request cutoff.
+  Late-committed creation stays out; late-committed voiding preserves the original association
+  at an earlier cutoff. Each index row retains its source revision and commit time. Referenced
+  contract events also require their original commit before cutoff.
+- Current subject/file authorization, availability, upload-purpose limits, safe archive paths,
+  byte hashes and archive limits remain mandatory. Historical selection does not restore
+  shredded bytes or bypass revoked file grants. Existing saved packs keep their original bytes.
+- Necessary checks passed: real overlapping attachment creation and void transactions, original
+  bytes and revision evidence, full sample archive/PDF/XLSX flow, catalogue parity, database
+  architecture and scoped lint/types. The full sample fixture now commits attachments before
+  collecting them, matching the historical visibility contract. No deployment.
+- Remaining: actor/display-name history, approval-request/audit histories, and the other OPEN
+  report inputs. File metadata still follows current authorized file-read semantics; unavailable
+  historical bytes or incompatible metadata refuse rather than fetching external references.
+
 ## Committed contract identities in sample evidence — October 21, 2026
 
 - Sample selection v2 and computation member files now resolve contract identity fields from
@@ -204,24 +224,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - B4-11 is still open for non-ledger inputs such as contract events, version availability,
   journal state and other report-specific readers. This increment fixes the ledger source
   populations above; it does not claim full cross-source historical snapshot reconstruction.
-
-## Automatic commit-evidence recovery — October 21, 2026
-
-- The existing minute worker sweep now retries pending posting commit evidence per tenant.
-  Recovery uses short batches, row locks with SKIP LOCKED, and savepoints per posting.
-  Keyset progression passes failed entries so they cannot starve later pending rows; each
-  failed entry is retried on the next sweep. Successful batches commit independently.
-- Immediate after-commit retention remains the normal path. Migration 0275 adds a partial
-  pending-only index so routine recovery does not scan the full ledger. Recovery logs posting
-  failures and per-tenant retained/failed totals. Tenant recovery failures do not stop the
-  existing job sweep or the next tenant.
-- Verified against PostgreSQL: an injected statement failure on the first pending posting
-  rolls back only that posting, the next batch retains the second, the next sweep recovers
-  the first, and another sweep is a no-op. Minute-sweep tenant isolation and normal historical
-  cutoff behavior pass; scoped lint and types pass. No deployment.
-- This closes automatic retry of failed post-commit retention. PostgreSQL evidence already
-  discarded before a worker can recover it remains unavailable and is explicitly refused;
-  there is no invented fallback timestamp. Other B4-11 historical-source readers remain open.
 
 ## Outstanding release verification
 
