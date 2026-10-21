@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Original-date usage across initial eligibility batches — October 21, 2026
+
+- Stage 09 now retains realized allocation at original contract-event dates for usage/royalty
+  components, using the same realization calculation as its retained period/version amounts.
+  A dedicated reader validates these dated trace values; missing dates are not inferred from
+  month-end values. Recognition and realization remain distinct.
+- Initial usage timelines now use these exact dates at admission, eligibility exit and re-entry.
+  Fees realized before exit are VC movements; fees realized while excluded enter with the
+  remaining re-entry balance. Old report bindings keep the previous timeline. Migration 0271
+  adds rpo_initial_usage_timeline_v1 to both RPO definitions.
+- Two original-engine usage journeys cover fees before exit and while excluded within the
+  same month. Opening/closing, VC, eligibility and zero unexplained movement reconcile;
+  missing original date evidence is refused. The 43 scoped usage/royalty/eligibility checks,
+  public initial-usage and sequential eligibility/rerun regressions, lint/types and reversible
+  migration/catalogue parity pass. The royalty checks cover the existing engine behavior,
+  not a complete royalty eligibility journey.
+- Same-day monetary events after a status transition, multiple transitions on a monetary date,
+  the public mixed-batch witness, full royalty eligibility witness and B4-11 historical commit
+  visibility remain open. No deployment.
+
 ## Monetary events in initial eligibility batches — October 21, 2026
 
 - Initial RPO eligibility timelines now retain dated amendment and estimate slices, using

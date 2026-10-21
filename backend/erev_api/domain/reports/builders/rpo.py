@@ -133,6 +133,7 @@ from erev_api.domain.reports import (
     rpo_duration,
     rpo_estimate_changes,
     rpo_quotas,
+    rpo_realised_dates,
     tie_outs,
 )
 from erev_api.domain.reports.builders import ReportParams, filter_problem
@@ -298,6 +299,7 @@ class _Version:
     eligibility_exits: tuple[tuple[UUID, date], ...] = ()
     cause_events: frozenset[str] = frozenset()
     dated_slice: bool = False
+    usage_slice: bool = False
 
 
 @dataclass(slots=True)
@@ -384,6 +386,20 @@ class Store:
     estimate_event_allocations: dict[tuple[UUID, str], Mapping[str, Decimal]] = field(
         default_factory=dict
     )
+
+    realised_dates: dict[UUID, Mapping[str, Mapping[date, Decimal]]] = field(default_factory=dict)
+
+    def realised_boundary(self, ob: _Ob, day: date) -> Decimal:
+        if not any(v.id == ob.version_id and v.usage_slice for v in self.chains[ob.contract_id]):
+            return self.at(ob, day).realised
+        subject = obligation_subject_key(ob.external_id, ob.obligation_key)
+        value = self.realised_dates.get(ob.version_id, {}).get(subject, {}).get(day)
+        if value is None:
+            raise to_date.Unreadable(
+                f"obligations[{ob.obligation_key}].realised_allocation",
+                "Original event-date realization evidence is required at this lifecycle boundary.",
+            )
+        return value
 
     def version_at(self, contract_id: UUID, day: date) -> _Version | None:
         """The version a contract is read from at ``day``: the last one of its chain effective
@@ -775,7 +791,13 @@ def load(
     mixed_timeline = (
         params is None or params.binding is None or mixed_key in params.binding.evidence
     )
+    usage_key = "rpo_initial_usage_timeline_v1"
+    usage_timeline = (
+        params is None or params.binding is None or usage_key in params.binding.evidence
+    )
     if timelines:
+        if usage_timeline and params is not None and params.sources is not None:
+            params.sources.record_evidence(usage_key, True)
         if mixed_timeline and params is not None and params.sources is not None:
             params.sources.record_evidence(mixed_key, True)
         if params is not None and params.sources is not None:
@@ -791,7 +813,7 @@ def load(
             if trace is None:
                 continue
             expanded = initial_eligibility_timeline(
-                first, cid, trace, status_events, mixed=mixed_timeline
+                first, cid, trace, status_events, mixed=mixed_timeline, usage=usage_timeline
             )
             if expanded is not None:
                 chains[cid] = (*expanded, *chain[1:])
@@ -809,9 +831,12 @@ def initial_eligibility_timeline(
     events: Mapping[str, tuple[UUID, str, date, int]],
     *,
     mixed: bool = False,
+    usage: bool = False,
 ) -> tuple[_Version, ...] | None:
     """Read status slices of one original computation without inventing new computations."""
-    money_kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"}
+    money_kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"} | (
+        {"USAGE_REPORTED"} if usage else set()
+    )
     if version.version_no != 1 or not version.causes <= (
         {
             "CONTRACT_BOOKED",
@@ -879,7 +904,7 @@ def initial_eligibility_timeline(
         return None
     if not version.causes & money_kinds:
         return tuple(result)
-    return _monetary_timeline(version, contract_id, trace, events, result)
+    return _monetary_timeline(version, contract_id, trace, events, result, usage=usage)
 
 
 def _monetary_timeline(
@@ -888,9 +913,11 @@ def _monetary_timeline(
     trace: Trace,
     events: Mapping[str, tuple[UUID, str, date, int]],
     statuses: Sequence[_Version],
+    *,
+    usage: bool,
 ) -> tuple[_Version, ...] | None:
     """Keep each monetary cause on its original date, using event-specific retained shares."""
-    kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"}
+    kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"} | ({"USAGE_REPORTED"} if usage else set())
     if not version.cause_events or not version.cause_events <= events.keys():
         return None
     monetary = {
@@ -939,6 +966,7 @@ def _monetary_timeline(
                 state,
                 effective=day,
                 dated_slice=True,
+                usage_slice="USAGE_REPORTED" in version.causes,
                 causes=frozenset(event[1] for event in own.values())
                 | (transition.causes if transition else frozenset()),
                 entries=transition.entries if transition else (),
@@ -1171,6 +1199,7 @@ def measure(
             trace = trace_store.load_trace(session, version.id)
             if trace is not None:
                 store.boundaries[version.id] = rpo_boundary_changes.history(trace)
+                store.realised_dates[version.id] = rpo_realised_dates.history(trace)
                 changes = rpo_estimate_changes.allocations(trace, version.estimate_events)
                 if changes is not None:
                     store.estimate_allocations[version.id] = changes
@@ -2097,7 +2126,7 @@ def _obligation_lines(
                 is not None
             ):
                 revenue = recognition(exiting, version.effective)
-                realized = store.at(exiting, version.effective).realised
+                realized = store.realised_boundary(exiting, version.effective)
                 modified, estimate = separated
                 lines["MODIFICATIONS"] += modified
                 lines["VC_ESTIMATE_CHANGES"] += estimate
@@ -2219,8 +2248,10 @@ def _obligation_lines(
                 if store.at(current, end).realised_traced
                 else ZERO
             )
-            if reentry and store.classify_usage_reentry and store.at(current, end).realised_traced:
-                entry_realised = store.at(current, version.effective).realised
+            if version.usage_slice or (
+                reentry and store.classify_usage_reentry and store.at(current, end).realised_traced
+            ):
+                entry_realised = store.realised_boundary(current, version.effective)
             lines[entry_line] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)

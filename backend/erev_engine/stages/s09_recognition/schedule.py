@@ -1288,8 +1288,7 @@ def _emit_dated_schedule(
             for event in st.measure_events
         )
         later_status = any(
-            day > cut
-            for day, _ in evaluator.contract.status_in_book.get(str(ctx.book_code), ())
+            day > cut for day, _ in evaluator.contract.status_in_book.get(str(ctx.book_code), ())
         )
         if seg is None or not (
             later_allocation
@@ -1725,6 +1724,25 @@ def _emit_realised_allocation(
             },
             narrative_key=_narrative(REALISED_FORMULA),
         )
+
+    if dated:
+        # Lifecycle reports need the original event-date amount, not a later month-end fee.
+        for day in sorted(
+            {event.effective_date for event in st.events if event.contract_key == ob.contract_key}
+        ):
+            value = realised_at(ctx, st, ob, day, evaluator.posted(day))
+            tb.node(
+                measure="realised_allocation_at_date",
+                subject_key=ob.subject_key,
+                period_key=day.isoformat(),
+                value=value,
+                currency=ctx.txn_currency,
+                minor_unit=evaluator.mu,
+                formula_id=REALISED_FORMULA,
+                inputs=[target.node_id for target in targets],
+                params={"allocated": str(value), "as_of": day.isoformat(), "kind": "posted"},
+                narrative_key=_narrative(REALISED_FORMULA),
+            )
 
 
 def build(

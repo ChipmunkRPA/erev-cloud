@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Original-date usage across initial eligibility batches — October 21, 2026
+
+- Stage 09 now retains realized allocation at original contract-event dates for usage/royalty
+  components, using the same realization calculation as its retained period/version amounts.
+  A dedicated reader validates these dated trace values; missing dates are not inferred from
+  month-end values. Recognition and realization remain distinct.
+- Initial usage timelines now use these exact dates at admission, eligibility exit and re-entry.
+  Fees realized before exit are VC movements; fees realized while excluded enter with the
+  remaining re-entry balance. Old report bindings keep the previous timeline. Migration 0271
+  adds rpo_initial_usage_timeline_v1 to both RPO definitions.
+- Two original-engine usage journeys cover fees before exit and while excluded within the
+  same month. Opening/closing, VC, eligibility and zero unexplained movement reconcile;
+  missing original date evidence is refused. The 43 scoped usage/royalty/eligibility checks,
+  public initial-usage and sequential eligibility/rerun regressions, lint/types and reversible
+  migration/catalogue parity pass. The royalty checks cover the existing engine behavior,
+  not a complete royalty eligibility journey.
+- Same-day monetary events after a status transition, multiple transitions on a monetary date,
+  the public mixed-batch witness, full royalty eligibility witness and B4-11 historical commit
+  visibility remain open. No deployment.
+
 ## Monetary events in initial eligibility batches — October 21, 2026
 
 - Initial RPO eligibility timelines now retain dated amendment and estimate slices, using
@@ -194,42 +214,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Original-engine/public-command coverage for these same-day usage mixtures remains outstanding,
   along with broader repeated cancellation/re-entry and concurrent commit visibility. Continue
   the October 21 repository-only scope; no deployment or independent accounting review gate.
-
-## Original inception estimates in same-day RPO entry — October 21, 2026
-
-- Same-day activation/termination now retains initial variable consideration in NEW_CONTRACTS
-  when every original estimate has an INCEPTION pin and an admission-date event. The engine
-  treats inception-date versions as initial price regardless of same-day record order; the report
-  follows that rule rather than inventing a routed estimate delta. Amendments and refunds remain
-  separately attributed, including through later retained memo/re-entry versions.
-- Missing original pins preserve prior eligibility. New bindings retain
-  rpo_same_day_entry_estimates_v1; legacy bindings retain their old behavior. Migration 0262
-  adds the matching IPE note. The reader loads the pins from original retained engine traces.
-- All 80 related cases, public currency/rate rerun, scoped lint/types and reversible migration
-  catalogue parity pass. Original-engine scenarios cover estimates before and after activation,
-  optional amendments, refunds, later versions and missing evidence. These use supplied report
-  versions; no new public same-day contract-command journey is claimed.
-- Same-day usage mixtures, broader repeated cancellation/re-entry and concurrent commit visibility
-  remain open. The October 21 repository-only scope continues; no deployment.
-
-## Original same-day RPO entry amendments — October 21, 2026
-
-- RPO now separates original amendments after same-day activation and before termination:
-  an original 100 contract followed by a -20 amendment retains NEW_CONTRACTS 100 and
-  MODIFICATIONS -20, alongside the original revenue and refund/cancellation amounts.
-  Previously the mixed cause set suppressed the original entry entirely.
-- The reader retains admission record sequence from the original bound cause events. Complete
-  amendment boundaries, strictly ordered original records and continuity into termination's
-  before-state are required. Later memo/re-entry versions do not count the amendment again.
-  New bindings retain rpo_same_day_entry_modifications_v1; legacy eligibility is unchanged.
-  Migration 0261 adds the IPE rule.
-- All 76 related cases pass; targeted missing/contradictory admission-order checks also pass.
-  The witnesses use original engine amendment/termination calculations with supplied retained
-  report versions. Public currency/rate rerun, scoped lint/types and reversible migration
-  catalogue parity pass; no claim of a new public same-day contract command journey.
-- Same-day mixtures involving estimates/usage and broader repeated cancellation/re-entry remain
-  open, as does concurrent commit visibility. Continue the October 21 repository-only scope;
-  no deployment or independent accounting sign-off gate.
 
 ## Outstanding release verification
 

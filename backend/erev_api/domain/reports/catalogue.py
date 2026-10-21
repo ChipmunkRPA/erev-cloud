@@ -912,6 +912,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "while excluded enter through the remaining re-entry balance; same-day monetary "
             "events after a status transition require additional ordered evidence and retain "
             "the previous timeline; old bindings retain their original classification",
+            "rpo_initial_usage_timeline_v1 assigns initial usage events to eligibility "
+            "segments using original event-date realized allocations; fees realized before "
+            "exit are VC movements and fees realized while excluded enter with the remaining "
+            "re-entry balance; original date evidence is required and missing values are not "
+            "replaced by month-end amounts; same-day ordered limitations remain; older "
+            "bindings keep their prior timeline",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -1155,6 +1161,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "while excluded enter through the remaining re-entry balance; same-day monetary "
             "events after a status transition require additional ordered evidence and retain "
             "the previous timeline; old bindings retain their original classification",
+            "rpo_initial_usage_timeline_v1 assigns initial usage events to eligibility "
+            "segments using original event-date realized allocations; fees realized before "
+            "exit are VC movements and fees realized while excluded enter with the remaining "
+            "re-entry balance; original date evidence is required and missing values are not "
+            "replaced by month-end amounts; same-day ordered limitations remain; older "
+            "bindings keep their prior timeline",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

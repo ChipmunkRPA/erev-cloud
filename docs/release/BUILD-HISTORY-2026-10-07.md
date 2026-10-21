@@ -10910,3 +10910,39 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The targeted database journey and lint pass. This closes the missing transaction-currency
   command-to-report witness; earlier scoped functional/reporting evidence remains as recorded.
   No deployment or additional production-readiness gate is introduced.
+
+## Original same-day RPO entry amendments — October 21, 2026
+
+- RPO now separates original amendments after same-day activation and before termination:
+  an original 100 contract followed by a -20 amendment retains NEW_CONTRACTS 100 and
+  MODIFICATIONS -20, alongside the original revenue and refund/cancellation amounts.
+  Previously the mixed cause set suppressed the original entry entirely.
+- The reader retains admission record sequence from the original bound cause events. Complete
+  amendment boundaries, strictly ordered original records and continuity into termination's
+  before-state are required. Later memo/re-entry versions do not count the amendment again.
+  New bindings retain rpo_same_day_entry_modifications_v1; legacy eligibility is unchanged.
+  Migration 0261 adds the IPE rule.
+- All 76 related cases pass; targeted missing/contradictory admission-order checks also pass.
+  The witnesses use original engine amendment/termination calculations with supplied retained
+  report versions. Public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass; no claim of a new public same-day contract command journey.
+- Same-day mixtures involving estimates/usage and broader repeated cancellation/re-entry remain
+  open, as does concurrent commit visibility. Continue the October 21 repository-only scope;
+  no deployment or independent accounting sign-off gate.
+
+## Original inception estimates in same-day RPO entry — October 21, 2026
+
+- Same-day activation/termination now retains initial variable consideration in NEW_CONTRACTS
+  when every original estimate has an INCEPTION pin and an admission-date event. The engine
+  treats inception-date versions as initial price regardless of same-day record order; the report
+  follows that rule rather than inventing a routed estimate delta. Amendments and refunds remain
+  separately attributed, including through later retained memo/re-entry versions.
+- Missing original pins preserve prior eligibility. New bindings retain
+  rpo_same_day_entry_estimates_v1; legacy bindings retain their old behavior. Migration 0262
+  adds the matching IPE note. The reader loads the pins from original retained engine traces.
+- All 80 related cases, public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass. Original-engine scenarios cover estimates before and after activation,
+  optional amendments, refunds, later versions and missing evidence. These use supplied report
+  versions; no new public same-day contract-command journey is claimed.
+- Same-day usage mixtures, broader repeated cancellation/re-entry and concurrent commit visibility
+  remain open. The October 21 repository-only scope continues; no deployment.
