@@ -1021,6 +1021,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and currency with original and already-translated differences; nonzero source "
             "differences remain reviewable even when they offset or round to zero; earlier "
             "bindings keep their existing control totals",
+            "rpo_same_day_entry_cancel_v1 preserves new-contract, recognized-revenue and "
+            "cancellation movements for a single first fixed-only computation with same-day "
+            "activation and original termination evidence; closing RPO remains zero and full "
+            "exemptions still apply; other event mixtures and legacy bindings retain prior "
+            "behavior",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

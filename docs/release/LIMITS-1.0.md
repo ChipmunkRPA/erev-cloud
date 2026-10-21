@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — fixed same-day activation and cancellation preserve movements
+
+For one first computation containing booked/activated/terminated/memo causes only, an original
+termination on the activation date can now preserve gross NEW_CONTRACTS, REVENUE and
+CANCELLATIONS even though closing RPO is zero. The original before-allocation and termination
+date must be present and the dated realized amount must be explicitly traced as zero. Full
+exemptions still omit the contract's movements. New bindings retain rpo_same_day_entry_cancel_v1;
+earlier runs keep their original classification. No accounting output or event order changes.
+
+Full engine refund/non-refund witnesses read the original dated output traces, using the actual
+event-cause set. They verify gross movement lines and zero standalone closing RPO; an adapted
+reader check verifies full exemption omission. All 72 scoped cases, existing public modification
+reports/reruns in three currency views, scoped lint/types and migration 0250 down/up IPE parity
+pass. The new witnesses do not claim a full public same-day lifecycle journey.
+
+Same-day entry/cancellation with modification, estimate or usage mixtures, multiple cancellations
+in one computation, versions intervening before termination and combined-member aging ownership
+remain open. Independent accounting sign-off and final-candidate verification remain open.
+No deployment and no claim of production readiness.
+
+
 ### October 20 — converted RPO source differences are reviewable by month
 
 New functional/reporting RPO rollforwards retain unexplained_details containing each nonzero

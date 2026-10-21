@@ -6,6 +6,22 @@
 
 
 
+## Same-day fixed activation and cancellation retain gross movements — October 20, 2026
+
+- A single first computation with same-day activation and cancellation can now retain the
+  original fixed allocation as NEW_CONTRACTS, original recognized revenue and the cancelled
+  remainder, instead of omitting every movement because closing status is CANCELLED.
+  Original termination date/before allocation and explicit zero realized evidence are required.
+  Booked/activation/termination/memo causes are admitted; other event mixtures remain outside
+  this path. Full exemptions still omit the movement; closing disclosure remains zero.
+- New bindings retain rpo_same_day_entry_cancel_v1; earlier runs preserve their classification.
+- Full engine refund/non-refund witnesses use actual dated trace reads and all original event
+  causes. The 72 scoped cases, existing public three-view reports/reruns, lint/types and
+  migration 0250 down/up IPE parity pass. The new engine cases are not a new API lifecycle test.
+- Same-day modification/estimate/usage mixtures, multiple cancellations in one computation,
+  intervening pre-termination versions and combined-member aging ownership remain open.
+  Independent accounting sign-off and final-candidate checks remain open. No deployment.
+
 ## Reviewable monthly unexplained RPO differences — October 20, 2026
 
 - Confirmed all 59 catalogue definitions have registered execution paths. Converted RPO
@@ -218,23 +234,6 @@
   catalogue parity are the necessary checks. No deployment; direct main publication.
 - Combined-member aging date ownership, missing first-batch boundary histories, independent
   accounting sign-off and final-candidate verification remain outstanding.
-
-## RPO obligations added to existing contracts — October 20, 2026
-
-- Fixed a classification defect: an obligation absent from the opening version was always
-  treated as NEW_CONTRACTS, even when an already disclosed contract added it by amendment.
-  Added obligations now follow the modification/estimate causes of that existing contract.
-  First admission and cancellation re-entry keep their admission semantics; ambiguous mixed
-  changes without original estimate shares remain unexplained rather than becoming new contracts.
-- New report bindings retain rpo_added_obligations_v1. Earlier bindings preserve their original
-  classification on rerun; the same selected semantics feed converted monthly rollforwards.
-- The public Marrowby approval journey adds O2 and redistributes O1: all 60,000 is MODIFICATIONS,
-  NEW_CONTRACTS and UNEXPLAINED are zero, and all ties pass in transaction, functional and
-  reporting views with identical reruns (USD in each view). The 38 scoped report cases cover
-  mixed additions, legacy behavior, entry/re-entry and exemptions; lint/types and migration
-  0237 down/up catalogue parity pass. No deployment; publish directly to main.
-- This does not supply missing first-batch boundary history, resolve combined-member aging date
-  ownership or provide independent accounting sign-off. Those remain outstanding.
 
 ## Outstanding release verification
 

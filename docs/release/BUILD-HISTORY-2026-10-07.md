@@ -10419,3 +10419,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Old traces are not backfilled. Missing modification boundaries, newly introduced obligations
   lacking a complete boundary history and cancellation mixtures retain existing limitations.
   Combined-member aging date ownership and independent accounting sign-off remain open.
+
+## RPO obligations added to existing contracts — October 20, 2026
+
+- Fixed a classification defect: an obligation absent from the opening version was always
+  treated as NEW_CONTRACTS, even when an already disclosed contract added it by amendment.
+  Added obligations now follow the modification/estimate causes of that existing contract.
+  First admission and cancellation re-entry keep their admission semantics; ambiguous mixed
+  changes without original estimate shares remain unexplained rather than becoming new contracts.
+- New report bindings retain rpo_added_obligations_v1. Earlier bindings preserve their original
+  classification on rerun; the same selected semantics feed converted monthly rollforwards.
+- The public Marrowby approval journey adds O2 and redistributes O1: all 60,000 is MODIFICATIONS,
+  NEW_CONTRACTS and UNEXPLAINED are zero, and all ties pass in transaction, functional and
+  reporting views with identical reruns (USD in each view). The 38 scoped report cases cover
+  mixed additions, legacy behavior, entry/re-entry and exemptions; lint/types and migration
+  0237 down/up catalogue parity pass. No deployment; publish directly to main.
+- This does not supply missing first-batch boundary history, resolve combined-member aging date
+  ownership or provide independent accounting sign-off. Those remain outstanding.

@@ -1547,3 +1547,167 @@ def test_one_computation_separates_realized_fees_from_cancellation(
             applied={},
         )
         assert legacy_reentry.lines != expected
+
+
+@pytest.mark.parametrize("refund", [0, 40])
+def test_original_same_day_activation_and_cancellation_keeps_movements(refund: int) -> None:
+    from erev_api.domain.contracts import to_date
+    from erev_api.domain.reports.rpo_boundary_changes import history
+    from erev_engine.bundle import MappingRuleInput
+    from support import cpc_worlds
+
+    entry, before, end = date(2026, 1, 1), date(2025, 12, 31), date(2026, 1, 31)
+    base = worlds.targeted_world(estimates=[])
+    termination = replace(
+        cpc_worlds.concession("0", entry, key="A"),
+        modification_key="K-01/TERM",
+        kind="TERMINATION",
+        status="APPLIED",
+        price_change_amount=None,
+        questionnaire={},
+        chosen_treatments={},
+        treatment_summary=None,
+        lines=tuple(
+            {
+                "obligation_key": key,
+                "action": "REMOVE",
+                "product_code": f"PROD-{key}",
+                "quantity_delta": Decimal(0),
+                "consideration_delta": Decimal(-refund) / 2,
+            }
+            for key in ("A", "B")
+        ),
+    )
+    bundle = replace(
+        base,
+        contracts=tuple(replace(c, modifications=(termination,)) for c in base.contracts),
+        events=tuple(
+            cpc_worlds.then(
+                list(base.events),
+                "CONTRACT_TERMINATED",
+                entry,
+                {
+                    "modification_id": termination.modification_key,
+                    "termination_kind": "FULL",
+                    "refund_amount": Decimal(refund),
+                },
+                modification_key=termination.modification_key,
+            )
+        ),
+        books=tuple(
+            replace(
+                b,
+                account_mapping=replace(
+                    b.account_mapping,
+                    rules=tuple(
+                        sorted(
+                            (
+                                *b.account_mapping.rules,
+                                MappingRuleInput(
+                                    "REFUND_LIABILITY",
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    "2110",
+                                    {},
+                                    0,
+                                    0,
+                                ),
+                            ),
+                            key=lambda rule: (
+                                rule.account_role,
+                                rule.clearing_purpose or "",
+                                rule.account_code,
+                            ),
+                        )
+                    ),
+                ),
+            )
+            for b in base.books
+        ),
+    )
+    book = compute(bundle).books[0]
+    vid, cid, eid, gid = (uuid4() for _ in range(4))
+    version = rpo._Version(
+        vid,
+        gid,
+        1,
+        True,
+        entry,
+        frozenset(event.event_type for event in bundle.events),
+        entries=((cid, entry),),
+    )
+    obligations, rows = [], []
+    for output in book.obligation_versions:
+        columns = output.columns
+        oid = uuid4()
+        assert columns["satisfaction_status"] == "CANCELLED"
+        obligations.append(
+            rpo._Ob(
+                oid,
+                vid,
+                oid,
+                cid,
+                "K-01",
+                str(columns["obligation_key"]),
+                "Service",
+                None,
+                None,
+                None,
+                eid,
+                "E",
+                "USD",
+                "POINT_IN_TIME",
+                end,
+                entry,
+                Decimal(str(columns["allocated_amount"])) / 100,
+                True,
+            )
+        )
+        row = {**columns, "id": oid, "contract_id": cid, "trace_nodes": output.trace_nodes}
+        for field in ("revenue_cum", "billed_cum", "scheduled_amount", "awaiting_trigger_amount"):
+            row[field] = Decimal(str(columns[field])) / 100
+        ratio = columns["progress_ratio"]
+        row["progress_ratio"] = Decimal(ratio.numerator) / Decimal(ratio.denominator)
+        rows.append(row)
+    nodes = to_date.nodes_of(
+        book.trace.nodes,
+        starts={
+            (p.period_key, p.end_date): (p.start_date,) for e in bundle.entities for p in e.periods
+        },
+    )
+    store = rpo.Store(
+        {gid: (version,)},
+        {vid: tuple(obligations)},
+        {cid: (version,)},
+        {
+            (vid, day): to_date.version_at(
+                {"version_no": "SAME_DAY"}, rows, nodes=nodes, external_ids={cid: "K-01"}, as_of=day
+            ).obligations
+            for day in (before, entry, end)
+        },
+        boundaries={vid: history(book.trace)},
+    )
+    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert result.lines["NEW_CONTRACTS"] == 100
+    assert result.lines["REVENUE"] == -(100 - refund)
+    assert result.lines["CANCELLATIONS"] == -refund
+    assert result.lines["OPENING"] == result.lines["CLOSING"] == result.lines["UNEXPLAINED"] == 0
+    assert not rpo.rows_at(store, as_of={eid: end}, bands=rpo.DEFAULT_BANDS, applied={})
+    (legacy,) = rpo.rollforward_lines(
+        replace(store, classify_same_day_entry_cancellation=False),
+        ranges={eid: (before, end)},
+        applied={},
+    )
+    assert legacy.lines["NEW_CONTRACTS"] == 0
+    exempt = replace(
+        store,
+        obligations={
+            vid: tuple(replace(ob, recognition_method="RIGHT_TO_INVOICE") for ob in obligations)
+        },
+    )
+    assert not rpo.rollforward_lines(
+        exempt, ranges={eid: (before, end)}, applied={eid: frozenset({"POL-198"})}
+    )

@@ -171,6 +171,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             ),
             True,
         )
+    entry_cancel_evidence = "rpo_same_day_entry_cancel_v1"
+    store = replace(
+        store,
+        classify_same_day_entry_cancellation=(
+            params.binding is None or entry_cancel_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_same_day_entry_cancellation and params.sources is not None:
+        params.sources.record_evidence(entry_cancel_evidence, True)
     applied = rpo.applied_expedients(session, found, book_code=book_code, known_at=params.known_at)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates

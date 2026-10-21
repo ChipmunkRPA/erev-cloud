@@ -353,6 +353,7 @@ class Store:
     classify_cancelled_usage_chains: bool = field(default=True, kw_only=True)
     classify_usage_reentry: bool = field(default=True, kw_only=True)
     classify_batch_usage_reentry: bool = field(default=True, kw_only=True)
+    classify_same_day_entry_cancellation: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1239,11 +1240,43 @@ def _obligation_lines(
             break
     if described is None:
         return
+    same_day_entry = None
+    if (
+        store.classify_same_day_entry_cancellation
+        and opening_version is None
+        and len(moved) == 1
+        and moved[0].included
+        and {"CONTRACT_ACTIVATED", "CONTRACT_TERMINATED"} <= moved[0].causes
+        and moved[0].causes
+        <= {"CONTRACT_BOOKED", "CONTRACT_ACTIVATED", "CONTRACT_TERMINATED", "MEMO_ADDED"}
+    ):
+        version = moved[0]
+        candidate = next(
+            (
+                ob
+                for ob in store.obligations.get(version.id, ())
+                if ob.obligation_id == obligation_id and ob.cancelled
+            ),
+            None,
+        )
+        if candidate is not None:
+            terminal = store.cancellation(candidate)
+            if (
+                terminal is not None
+                and terminal.before is not None
+                and terminal.day == version.effective
+                and dict(version.entries).get(candidate.contract_id) == terminal.day
+                and store.at(candidate, end).realised_traced
+                and store.at(candidate, end).realised == 0
+            ):
+                same_day_entry = candidate
     relevant = [
         (version, ob)
         for version in (opening_version, *moved, closing_version)
         if version is not None and (ob := _in_version(store, version, obligation_id)) is not None
     ]
+    if same_day_entry is not None:
+        relevant.append((moved[0], same_day_entry))
     # A closing exemption cannot erase a previously disclosed opening balance.
     # Preserve the old omission only when every retained version is fully exempt.
     if relevant and all(
@@ -1474,6 +1507,8 @@ def _obligation_lines(
             previous_obligation = None
             was_cancelled = True
         current = _in_version(store, version, obligation_id)
+        if same_day_entry is not None and same_day_entry.version_id == version.id:
+            current = same_day_entry
         # A new obligation in an already disclosed contract is a movement of that
         # contract. Its absent opening obligation does not make it a new contract.
         admission = previous_obligation is None and (
