@@ -6,6 +6,25 @@
 
 
 
+## Realized fees follow cancellation and re-entry segments — October 20, 2026
+
+- For separately retained cancellation/re-entry versions, realized fees now use the final
+  cancellation evidence up to the next re-entry cut. Re-entry admits fixed plus realized
+  allocation net of pre-entry revenue, and pre-entry realized fees are removed from in-scope
+  VC changes. This repairs misclassification that could previously balance in total while
+  understating NEW_CONTRACTS and overstating VC_ESTIMATE_CHANGES.
+- New bindings use rpo_cancelled_usage_v4; retained v1-v3 keep their feature scope and markers.
+  Excluded/missing obligations or absent realization evidence do not authorize the segment read.
+  Original fixed allocation and revenue traces remain unchanged.
+- All 70 scoped cases pass, including usage fees through one/repeated cancellation and re-entry,
+  reports beginning before/after cancellation, line-level expected amounts and legacy behavior.
+  Existing public modification reports/reruns in three views, lint/types and migration 0247
+  down/up IPE parity pass. New re-entry cases are retained-reader witnesses, not API journeys.
+- First-batch/same-version usage cancellation followed by re-entry, multiple cancellations in one
+  computation, versions intervening before termination, same-day entry/cancellation and combined-
+  member aging ownership remain open. Independent sign-off/final-candidate checks remain open.
+  Direct main publication; no deployment.
+
 ## Realized-fee cancellation follows continuously cancelled version chains — October 20, 2026
 
 - A retained cancelled tail now supplies the final realized-fee amount only when every
@@ -214,23 +233,6 @@
   pass, with lint/types and migration 0235 down/up catalogue parity. No deployment.
 - This does not reconstruct mutable reconciliation history that was never retained. Combined
   member-aging date ownership, independent accounting sign-off and final-candidate checks remain.
-
-## GL reconciliation review table — October 20, 2026
-
-- The report viewer now presents retained GL comparisons as a table: GL, retained subledger,
-  report closing, both bridge differences and the net difference. Each row keeps its comparison
-  and bridge results, source review status and original reconciliation link. Functional-currency
-  scope is stated explicitly; unavailable values stay blank rather than becoming zero.
-- Users can show all rows, recorded discrepancies or unavailable comparisons without changing
-  the accounting run. General comparison notes remain visible when filtering. Older details
-  without recorded results are not inferred to pass from their displayed amounts.
-- Targeted viewer checks exercise offsetting aggregate differences, filters, missing amounts,
-  source links and retained notes; TypeScript and scoped lint pass. Direct main publication;
-  no deployment or accounting-calculation change.
-- Combined-contract aging needs a presentation decision: retain original payer-owned layers with
-  a separate member-allocation adjustment, or apportion original dated layers on the existing
-  member liability basis. Current engine member totals alone do not specify that date ownership.
-  The question has been raised with the owner; no new allocation rule is silently assumed.
 
 ## Outstanding release verification
 

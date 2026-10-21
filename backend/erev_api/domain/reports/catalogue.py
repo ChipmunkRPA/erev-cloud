@@ -1009,6 +1009,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "realization evidence; final realized fees and recognized revenue use the final "
             "retained source, while original fixed changes retain their termination bridge; "
             "earlier v1 and v2 bindings preserve their classification",
+            "rpo_cancelled_usage_v4 reads realized fees for each retained cancellation segment "
+            "through the next re-entry cut; re-entry admits its fixed plus realized allocation "
+            "net of prior revenue and removes pre-entry realized fees from in-scope VC changes; "
+            "retained v1-v3 bindings preserve prior classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

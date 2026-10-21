@@ -520,10 +520,11 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
         assert updated.lines == expected
 
 
+@pytest.mark.parametrize("realized_fees", [False, True])
 @pytest.mark.parametrize("repeated", [False, True])
 @pytest.mark.parametrize("start_after_cancellation", [False, True])
 def test_reentry_uses_remaining_balance_and_segment_revenue(
-    repeated: bool, start_after_cancellation: bool
+    repeated: bool, start_after_cancellation: bool, realized_fees: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
 
@@ -593,20 +594,64 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
                     None,
                 )
             }
+    final_fee = 20 + (len(states) - 1) * 5 + 10
+    if realized_fees:
+        for index, version in enumerate(versions):
+            stored_fee = final_fee if index == len(states) - 1 else 20 + index * 5
+            obligations[version.id] = tuple(
+                replace(ob, allocated=Decimal(100 + stored_fee)) for ob in obligations[version.id]
+            )
+            for day in days:
+                fee = 20
+                for event_index, (event_day, _, _) in enumerate(states[: index + 1]):
+                    if day >= event_day:
+                        fee = 20 + event_index * 5
+                if index == len(states) - 1 and day == end:
+                    fee = final_fee
+                point = cuts[version.id, day][oid]
+                cuts[version.id, day] = {
+                    oid: replace(
+                        point,
+                        awaiting=point.awaiting + (0 if states[index][1] else fee),
+                        fixed_allocation=Decimal(100),
+                        realised=Decimal(fee),
+                        realised_stored=Decimal(stored_fee),
+                        realised_traced=True,
+                    )
+                }
     chain = tuple(versions)
     store = rpo.Store({gid: chain}, obligations, {cid: chain}, cuts)
     (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
-    assert result.lines["OPENING"] == (0 if start_after_cancellation else 60)
-    assert result.lines["CANCELLATIONS"] == (
-        (0 if start_after_cancellation else -55) + (-40 if repeated else 0)
+    assert result.lines["OPENING"] == (
+        0 if start_after_cancellation else 60 + (20 if realized_fees else 0)
     )
-    assert result.lines["NEW_CONTRACTS"] == (80 if repeated else 50)
+    assert result.lines["CANCELLATIONS"] == (
+        (0 if start_after_cancellation else -55 - (25 if realized_fees else 0))
+        + (-40 - (35 if realized_fees else 0) if repeated else 0)
+    )
+    assert result.lines["NEW_CONTRACTS"] == (80 if repeated else 50) + (
+        (70 if repeated else 30) if realized_fees else 0
+    )
     assert result.lines["REVENUE"] == (
         (0 if start_after_cancellation else -5) + (-20 if repeated else -10)
     )
     assert result.lines["LATE_EVENTS"] == 0
-    assert result.lines["CLOSING"] == 100 - final_revenue
+    assert result.lines["CLOSING"] == 100 - final_revenue + (final_fee if realized_fees else 0)
+    assert result.lines["VC_ESTIMATE_CHANGES"] == (
+        (0 if start_after_cancellation else 5) + (5 if repeated else 0) + 10 if realized_fees else 0
+    )
     assert result.lines["UNEXPLAINED"] == 0
+
+    if realized_fees:
+        (legacy,) = rpo.rollforward_lines(
+            replace(store, classify_usage_reentry=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        # The old classification could balance while admitting too little RPO
+        # and overstating in-scope fee changes. Check the individual lines.
+        assert legacy.lines["NEW_CONTRACTS"] != result.lines["NEW_CONTRACTS"]
+        assert legacy.lines["VC_ESTIMATE_CHANGES"] != result.lines["VC_ESTIMATE_CHANGES"]
 
 
 @pytest.mark.parametrize(

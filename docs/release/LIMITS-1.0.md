@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — separately retained usage cancellation and re-entry segments
+
+Realized-fee cancellation attribution now stops at the next disclosure re-entry. The final
+cancelled version in that segment supplies realized fees at the same cut used for retained
+revenue. Re-entry admits fixed plus realized allocation net of pre-entry revenue, and pre-entry
+realized fees are excluded from in-scope VC changes. Previously, individual NEW_CONTRACTS and
+VC_ESTIMATE_CHANGES lines could be wrong despite a zero unexplained total. New runs retain
+rpo_cancelled_usage_v4; v1-v3 runs keep their prior scope and markers on rerun.
+
+Seventy scoped reader cases pass, including one and repeated cancellation/re-entry with realized
+fees, ranges beginning before or after cancellation, explicit expected line amounts and legacy
+behavior. These adapt retained versions and are not a new public API reactivation journey.
+Existing public modification reports/reruns in three currency views, scoped lint/types and
+migration 0247 down/up IPE parity pass.
+
+The new segment path requires distinct retained cancellation and re-entry versions. First-batch
+or same-version usage cancellation followed by re-entry, multiple cancellations in one
+computation, intervening pre-termination versions, same-day entry/cancellation and combined-member
+aging ownership remain open. Independent accounting sign-off and final-candidate verification
+remain open. No deployment and no claim of production readiness.
+
+
 ### October 20 — realized-fee attribution reaches a continuously cancelled version tail
 
 First-batch, opening-version and later-version cancellation bridges can now use the final

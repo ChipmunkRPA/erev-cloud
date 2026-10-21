@@ -10369,3 +10369,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   owner layers do not reconcile still refuses. A new close now also requires its aging dataset
   to be reproducible; historical computations missing the required traces can require recompute.
   Independent accounting sign-off and final-candidate release checks remain open.
+
+## GL reconciliation review table — October 20, 2026
+
+- The report viewer now presents retained GL comparisons as a table: GL, retained subledger,
+  report closing, both bridge differences and the net difference. Each row keeps its comparison
+  and bridge results, source review status and original reconciliation link. Functional-currency
+  scope is stated explicitly; unavailable values stay blank rather than becoming zero.
+- Users can show all rows, recorded discrepancies or unavailable comparisons without changing
+  the accounting run. General comparison notes remain visible when filtering. Older details
+  without recorded results are not inferred to pass from their displayed amounts.
+- Targeted viewer checks exercise offsetting aggregate differences, filters, missing amounts,
+  source links and retained notes; TypeScript and scoped lint pass. Direct main publication;
+  no deployment or accounting-calculation change.
+- Combined-contract aging needs a presentation decision: retain original payer-owned layers with
+  a separate member-allocation adjustment, or apportion original dated layers on the existing
+  member liability basis. Current engine member totals alone do not specify that date ownership.
+  The question has been raised with the owner; no new allocation rule is silently assumed.

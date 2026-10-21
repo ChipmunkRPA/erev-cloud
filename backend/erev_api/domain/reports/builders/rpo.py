@@ -351,6 +351,7 @@ class Store:
     classify_cancelled_usage: bool = field(default=True, kw_only=True)
     classify_batch_cancelled_usage: bool = field(default=True, kw_only=True)
     classify_cancelled_usage_chains: bool = field(default=True, kw_only=True)
+    classify_usage_reentry: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1327,6 +1328,31 @@ def _obligation_lines(
             latest = candidate
         return latest
 
+    def cancelled_segment(start: int) -> tuple[_Ob, date] | None:
+        """Retained cancellation evidence up to the next disclosure re-entry."""
+        if not store.classify_usage_reentry:
+            return None
+        latest = None
+        for retained in moved[start:]:
+            if not retained.included:
+                return None
+            candidate = next(
+                (
+                    ob
+                    for ob in store.obligations.get(retained.id, ())
+                    if ob.obligation_id == obligation_id
+                ),
+                None,
+            )
+            if candidate is None or not store.at(candidate, end).realised_traced:
+                return None
+            if store.visible(candidate, retained.effective) is not None:
+                return None if latest is None else (latest, retained.effective)
+            if not candidate.cancelled:
+                return None
+            latest = candidate
+        return None if latest is None else (latest, end)
+
     if opening is not None:
         terminal = store.cancellation(opening)
         if (
@@ -1433,6 +1459,7 @@ def _obligation_lines(
                 and any(contract_id == current.contract_id for contract_id, _ in version.entries)
             )
         )
+        reentry = current is not None and previous_obligation is None and was_cancelled
         if current is not None:
             if terminal_cancellation is not None:
                 lines["CANCELLATIONS"] += recognition(terminal_cancellation, version.effective)
@@ -1504,6 +1531,8 @@ def _obligation_lines(
                 if store.at(current, end).realised_traced
                 else ZERO
             )
+            if reentry and store.classify_usage_reentry and store.at(current, end).realised_traced:
+                entry_realised = store.at(current, version.effective).realised
             lines["NEW_CONTRACTS"] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)
@@ -1558,6 +1587,7 @@ def _obligation_lines(
                 lines["NEW_CONTRACTS"] -= change
                 lines["VC_ESTIMATE_CHANGES"] += change
         cancelled_usage = None
+        usage_segment = cancelled_segment(index) if current is None else None
         if (
             store.classify_cancelled_usage
             and current is None
@@ -1569,19 +1599,24 @@ def _obligation_lines(
                     and closing_version.id == version.id
                 )
                 or cancelled_tail(index) is not None
+                or usage_segment is not None
             )
             and "CONTRACT_TERMINATED" in version.causes
             and store.at(previous_obligation, end).realised_traced
         ):
-            cancelled_usage = cancelled_tail(index) or next(
-                (
-                    ob
-                    for ob in store.obligations.get(version.id, ())
-                    if ob.obligation_id == obligation_id
-                    and ob.cancelled
-                    and store.at(ob, end).realised_traced
-                ),
-                None,
+            cancelled_usage = (
+                (usage_segment[0] if usage_segment is not None else None)
+                or cancelled_tail(index)
+                or next(
+                    (
+                        ob
+                        for ob in store.obligations.get(version.id, ())
+                        if ob.obligation_id == obligation_id
+                        and ob.cancelled
+                        and store.at(ob, end).realised_traced
+                    ),
+                    None,
+                )
             )
         if current is None and previous_obligation is not None:
             removed = (
@@ -1593,7 +1628,8 @@ def _obligation_lines(
                 # The terminating computation includes newly realized fees and
                 # corrections absent from the previous version. Its full retained
                 # realization is removed from RPO; the change remains a VC movement.
-                removed = store.at(cancelled_usage, end).realised
+                until = end if usage_segment is None else usage_segment[1]
+                removed = store.at(cancelled_usage, until).realised
             lines["CANCELLATIONS"] -= removed
             lines["VC_ESTIMATE_CHANGES"] += removed
         delta = allocated - previous
