@@ -837,3 +837,51 @@ def test_book_bridge_foreign_revenue_uses_posted_functional_amounts(
     assert nonzero_balances > 0
     assert {row["currency"] for row in reporting_rows} == {"USD"}
     assert tie_of(reporting, "TO_BRIDGE_DRIVERS_EQ_DIFFERENCE")["result"] == "PASS"
+
+    # A later posted bill changes the live ending balances, but the original reporting
+    # view rebuilds from its retained per-contract amounts and driver facts.
+    from erev_api.db.tables import contract
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn
+    from support.factories import appended
+    from support.reference import get, post
+    from support.worlds import REPORT_RUN_ID_HEADER, run_now
+
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == k04.contract_id)
+    )
+    appended(
+        world.place,
+        k04.contract_id,
+        int(head),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=date(2026, 9, 30),
+                payload=BillingRecordedV1.model_validate(
+                    {
+                        "invoice_number": "INV-BRIDGE-LATER",
+                        "line_external_id": "INV-BRIDGE-LATER-1",
+                        "obligation_key": "O1",
+                        "amount": {"amount": "100.00", "currency": "GBP"},
+                        "issue_date": "2026-09-30",
+                    }
+                ),
+            )
+        ],
+    )
+    computed(world.place, k04.group_id)
+    _, current_rows = report_run(
+        world, "book_bridge", {**uk_parameters, "currency_view": "reporting"}
+    )
+    assert current_rows != reporting_rows
+    started = post(app, f"{REPORT_RUNS}/{reporting['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    rerun_id = started.headers[REPORT_RUN_ID_HEADER]
+    data = get(app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+    assert data.status_code == 200, data.text
+    assert data.json()["items"] == reporting_rows

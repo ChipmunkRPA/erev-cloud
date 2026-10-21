@@ -923,7 +923,9 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 "and spot FX sources",
             ),
         ),
-        book_bridge_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_BOOK_BRIDGE_OPEN,)),
+        book_bridge_builder.CODE: SourceContract(
+            RETAINED, (_CUTOFF, "per-contract book amounts, currency basis and driver facts")
+        ),
         adoption_bridge_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_ADOPTION_BRIDGE_OPEN,)),
         intercompany_pairs_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_INTERCOMPANY_PAIRS_OPEN,)
@@ -2072,6 +2074,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "audit_log_export",
             "approvals_register",
             "chain_verification_report",
+            "book_bridge",
         }
     ):
         try:

@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Book Bridge same-source rebuild — October 21, 2026
+
+- New runs retain the pre-aggregation per-contract amounts for both books, the selected currency
+  basis and consumed driver facts. A same-source rerun rebuilds all three sections, counts,
+  totals and the driver tie-out from those inputs without reading current contract labels,
+  book configuration, balances or FX rates. Workspace/entity and currency-view checks remain.
+- The registered source strategy is retained_inputs; older OPEN runs preserve their original
+  new-evaluation semantics. Migration 0295 describes retained inputs and the reporting FX tables.
+- Necessary verification passed: a later GBP bill/recomputation changes the live reporting-view
+  balances while the original public rerun keeps its rows and output hash; input-only rebuild
+  recomputes driver totals without a session and rejects scope/view mismatch; catalogue parity,
+  40 focused builder/source-binding tests and scoped lint/types pass. No deployment.
+- Causal attribution remains unfinished: the existing collectibility/reversal flags do not
+  isolate simultaneous effects, and framework/licence/advance-FX residuals require counterfactual
+  computation. The engine exposes resolved BookInput policies and original computation evidence;
+  the close-variance worker already separates authorized input reads from SQL-free engine runs.
+  Extend that pattern for book-policy phases, verify original book endpoints, and preserve any
+  unreproduced residual rather than labelling an entire difference from a historical event flag.
+- Also remaining: Adoption Bridge currency support, Intercompany Pairs retained input replay
+  and residual attribution, other documented adapters and final repository validation.
+
 ## Intercompany Pairs functional and reporting currencies — October 21, 2026
 
 - Functional view now reads the posted functional amount/currency of each entity's lines.

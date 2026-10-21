@@ -11467,3 +11467,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: actor/display-name history, sample contract identity labels, approval-request/audit
   and document histories. These readers now cover immutable event/version commit availability;
   this does not claim complete historical reconstruction of every source in a sample pack.
+
+## Committed contract identities in sample evidence — October 21, 2026
+
+- Sample selection v2 and computation member files now resolve contract identity fields from
+  committed header revisions at the requested cutoff, retaining revision identity and commit
+  time. Current selectors still authorize the requested contracts; historical/current owner
+  scopes are checked before export. Missing cutoff history refuses explicitly.
+- Contract external IDs remain fixed by the existing application rule; no rename capability
+  was added. The gap closed here is committed existence and header-version provenance, not a
+  new mutable business identifier. A backdated creation committed after cutoff cannot be
+  presented as an already-existing sampled contract.
+- Migration 0284 synchronizes catalogue metadata. Necessary checks passed: real overlapping
+  header/event/version changes, consistent selected/member revision identities, refusal before
+  the first committed header, full sample archive/PDF/XLSX flow, catalogue parity and scoped
+  lint/types. Existing stored archives remain unchanged. No deployment.
+- Remaining: actor/display-name history, approval-request/audit and document histories, and
+  other report-specific inputs still listed as OPEN. These contract identities do not replace
+  the remaining source-specific cutoff work or final repository release verification.

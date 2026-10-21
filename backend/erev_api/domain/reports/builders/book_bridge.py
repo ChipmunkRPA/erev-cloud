@@ -38,6 +38,8 @@ their effects remain in ``OTHER`` and their cells are empty when OTHER holds a d
 contracts and an unclassified difference, its cell is also empty: the full residual remains in
 OTHER until causal evidence can separate the FX component. Reporting view translates functional
 revenue at each period average rate and ending balances at the closing rate, recording both bases.
+Same-source reruns rebuild all sections and totals from retained per-contract amounts and driver
+facts, without rereading current books, contract labels, balances or FX rates.
 
 Section 1 "Summary by measure": ``row_key`` ``measure:<MEASURE>``; section 2 "Difference by
 driver": ``row_key`` ``driver:<DRIVER>:<MEASURE>``, every driver for each measure in which a
@@ -49,12 +51,14 @@ the driver effects sum to the section 1 difference.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
@@ -66,9 +70,11 @@ from erev_api.domain.reports.builders.out_of_period_register import refuse_locke
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, EntityRef, PeriodRef
 from erev_api.enums import BookCode, ContractStatus
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "book_bridge"
+EVIDENCE: Final = "book_bridge_inputs_v1"
 TO_BRIDGE_DRIVERS_EQ_DIFFERENCE: Final = tie_outs.TO_BRIDGE_DRIVERS_EQ_DIFFERENCE
 DEFAULT_CURRENCY_VIEW: Final = "functional"  # SCREENS_B RPT-33 "default `functional`"
 ASC606: Final = BookCode.ASC606.value
@@ -613,22 +619,65 @@ def sources(
     ]
 
 
+def _restore_sources(records: Sequence[Mapping[str, Any]]) -> list[Compared]:
+    return [
+        Compared(
+            contract_external_id=record["contract_external_id"],
+            currency=record["currency"],
+            asc606={key: Decimal(value) for key, value in record["asc606"].items()},
+            ifrs15={key: Decimal(value) for key, value in record["ifrs15"].items()},
+            step1_differs=record["step1_differs"],
+            impairment_reversed=record["impairment_reversed"],
+            fx_attribution_unavailable=record["fx_attribution_unavailable"],
+        )
+        for record in records
+    ]
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
-    session = uow.session
-    entities, periods, _ = ranges(session, params)
-    if len(entities) != 1 or not _keeps_both(session, entities[0]):
-        raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
-    (entity,) = entities
-    items = periods[entity.id]
-    found = (
-        sources(session, params, entity, items, tenant_id=uow.principal.tenant_id) if items else []
-    )
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity) for entity in params.entity_ids
+        }:
+            raise Problem("forbidden", "The retained book bridge exceeds report scope.")
+        if retained["currency_view"] != view:
+            raise tie_outs.invalid(
+                "currency_view", "The retained book bridge uses another currency view."
+            )
+    else:
+        session = uow.session
+        entities, periods, _ = ranges(session, params)
+        if len(entities) != 1 or not _keeps_both(session, entities[0]):
+            raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
+        (entity,) = entities
+        items = periods[entity.id]
+        found = (
+            sources(session, params, entity, items, tenant_id=uow.principal.tenant_id)
+            if items
+            else []
+        )
+        retained = json.loads(
+            canonical_bytes(
+                {
+                    "tenant_id": uow.principal.tenant_id,
+                    "entity_ids": params.entity_ids,
+                    "currency_view": view,
+                    "functional_currency": entity.functional_currency,
+                    "display_currency": found[0].currency if found else entity.functional_currency,
+                    "sources": [asdict(item) for item in found],
+                }
+            )
+        )
+        tie_outs.record_evidence(params, EVIDENCE, retained)
+    found = _restore_sources(retained["sources"])
     check_view(
-        str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW),
+        view,
         found,
-        functional_currency=entity.functional_currency,
-        reporting_currency_code=found[0].currency if found else entity.functional_currency,
+        functional_currency=retained["functional_currency"],
+        reporting_currency_code=retained["display_currency"],
     )
     rows, totals, tie = dataset_rows(found)
     return ReportData(

@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Book Bridge same-source rebuild — October 21, 2026
+
+- New runs retain the pre-aggregation per-contract amounts for both books, the selected currency
+  basis and consumed driver facts. A same-source rerun rebuilds all three sections, counts,
+  totals and the driver tie-out from those inputs without reading current contract labels,
+  book configuration, balances or FX rates. Workspace/entity and currency-view checks remain.
+- The registered source strategy is retained_inputs; older OPEN runs preserve their original
+  new-evaluation semantics. Migration 0295 describes retained inputs and the reporting FX tables.
+- Necessary verification passed: a later GBP bill/recomputation changes the live reporting-view
+  balances while the original public rerun keeps its rows and output hash; input-only rebuild
+  recomputes driver totals without a session and rejects scope/view mismatch; catalogue parity,
+  40 focused builder/source-binding tests and scoped lint/types pass. No deployment.
+- Causal attribution remains unfinished: the existing collectibility/reversal flags do not
+  isolate simultaneous effects, and framework/licence/advance-FX residuals require counterfactual
+  computation. The engine exposes resolved BookInput policies and original computation evidence;
+  the close-variance worker already separates authorized input reads from SQL-free engine runs.
+  Extend that pattern for book-policy phases, verify original book endpoints, and preserve any
+  unreproduced residual rather than labelling an entire difference from a historical event flag.
+- Also remaining: Adoption Bridge currency support, Intercompany Pairs retained input replay
+  and residual attribution, other documented adapters and final repository validation.
+
 ## Intercompany Pairs functional and reporting currencies — October 21, 2026
 
 - Functional view now reads the posted functional amount/currency of each entity's lines.
@@ -208,24 +229,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: actor/display-name history, approval-request/audit histories, and the other OPEN
   report inputs. File metadata still follows current authorized file-read semantics; unavailable
   historical bytes or incompatible metadata refuse rather than fetching external references.
-
-## Committed contract identities in sample evidence — October 21, 2026
-
-- Sample selection v2 and computation member files now resolve contract identity fields from
-  committed header revisions at the requested cutoff, retaining revision identity and commit
-  time. Current selectors still authorize the requested contracts; historical/current owner
-  scopes are checked before export. Missing cutoff history refuses explicitly.
-- Contract external IDs remain fixed by the existing application rule; no rename capability
-  was added. The gap closed here is committed existence and header-version provenance, not a
-  new mutable business identifier. A backdated creation committed after cutoff cannot be
-  presented as an already-existing sampled contract.
-- Migration 0284 synchronizes catalogue metadata. Necessary checks passed: real overlapping
-  header/event/version changes, consistent selected/member revision identities, refusal before
-  the first committed header, full sample archive/PDF/XLSX flow, catalogue parity and scoped
-  lint/types. Existing stored archives remain unchanged. No deployment.
-- Remaining: actor/display-name history, approval-request/audit and document histories, and
-  other report-specific inputs still listed as OPEN. These contract identities do not replace
-  the remaining source-specific cutoff work or final repository release verification.
 
 ## Outstanding release verification
 

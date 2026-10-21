@@ -69,8 +69,11 @@ def test_columns_are_the_specification_grid(number: int, module: Any) -> None:
 def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    assert contract.strategy == "open" and len(contract.open) == 1
-    assert f"RPT-{number}" in contract.open[0]
+    if module is bridge:
+        assert contract.strategy == "retained_inputs" and not contract.open
+    else:
+        assert contract.strategy == "open" and len(contract.open) == 1
+        assert f"RPT-{number}" in contract.open[0]
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -748,3 +751,67 @@ def test_intercompany_functional_currencies_do_not_create_false_breaks() -> None
     rows, _, tie = pairs.dataset_rows(translated, run_entities={"US", "UK"})
     assert rows[0]["unmatched_amount"] == usd("2.00")
     assert tie["result"] == "FAIL"
+
+
+def test_book_bridge_retained_inputs_rebuild_without_live_reads() -> None:
+    import json
+    from dataclasses import asdict, replace
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    tenant_id, entity_id = UUID(int=1), UUID(int=2)
+    item = bridge.Compared(
+        "FX-ORIGINAL",
+        "USD",
+        {"REVENUE": D("130")},
+        {"REVENUE": D("125")},
+        fx_attribution_unavailable=True,
+    )
+    evidence = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": tenant_id,
+                "entity_ids": [entity_id],
+                "currency_view": "reporting",
+                "functional_currency": "GBP",
+                "display_currency": "USD",
+                "sources": [asdict(item)],
+            }
+        )
+    )
+    at = datetime(2026, 9, 30, tzinfo=UTC)
+    params = ReportParams(
+        report_code=bridge.CODE,
+        report_version=1,
+        parameters={"currency_view": "reporting"},
+        entity_ids=(entity_id,),
+        known_at=at,
+        binding=SourceBinding(
+            cutoff=at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={bridge.EVIDENCE: evidence},
+        ),
+    )
+    # No session exists: a bound rebuild cannot consult books, currencies or ledger rows.
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant_id))
+    data = bridge.build(uow, params)
+    expected_rows, expected_totals, expected_tie = bridge.dataset_rows([item])
+    assert data.rows == tuple(expected_rows)
+    assert data.control_totals == expected_totals
+    assert data.tie_out_results == (expected_tie,)
+    evidence["sources"][0]["asc606"]["REVENUE"] = "140"
+    changed = bridge.build(uow, params)
+    assert changed.control_totals["revenue_difference"] == {"USD": "15.00"}
+    assert keyed(changed.rows)["driver:OTHER:REVENUE"]["effect"] == usd("15.00")
+    with pytest.raises(Problem, match="report scope"):
+        bridge.build(uow, replace(params, entity_ids=(UUID(int=3),)))
+    with pytest.raises(Problem, match="report scope"):
+        bridge.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=UUID(int=4))), params)
+    with pytest.raises(Problem):
+        bridge.build(uow, replace(params, parameters={"currency_view": "functional"}))

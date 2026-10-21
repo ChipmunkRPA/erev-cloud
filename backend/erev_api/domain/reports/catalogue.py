@@ -2183,6 +2183,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract",
             "legal_entity",
             "period",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "contract_version_balance.contract_version_id = contract_version.id",
@@ -2193,6 +2197,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         filters=(
             "one entity of entity_codes keeping both ASC606 and IFRS15",
             _PERIODS,
+            "same-source reruns rebuild from retained per-contract book amounts, currency basis "
+            "and driver facts without rereading live balances, labels or FX rates",
             "the same contracts compared in both books, differences attributed to drivers",
             "functional view uses posted functional revenue and dated engine member balances; "
             "transaction view preserves original currencies; reporting view uses each period "
