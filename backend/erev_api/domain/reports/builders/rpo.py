@@ -368,6 +368,7 @@ class Store:
     classify_same_day_entry_estimates: bool = field(default=True, kw_only=True)
     classify_same_day_entry_usage: bool = field(default=True, kw_only=True)
     classify_eligibility_changes: bool = field(default=True, kw_only=True)
+    classify_mixed_eligibility: bool = field(default=True, kw_only=True)
     inception_estimate_events: set[tuple[UUID, str]] = field(default_factory=set, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
@@ -946,6 +947,7 @@ def measure(
         for version in chain:
             if version.id not in wanted or not (
                 version.entries
+                or (store.classify_mixed_eligibility and version.eligibility_exits)
                 or any(
                     CAUSE_LINES.get(kind) in {"MODIFICATIONS", "CANCELLATIONS"}
                     for kind in version.causes
@@ -1307,6 +1309,47 @@ def _continuing_changes(
     if modified + estimate + cancellation != delta:
         return None
     return modified, estimate
+
+
+def _eligibility_changes(
+    store: Store, version: _Version, subject: str, delta: Decimal
+) -> tuple[Decimal, Decimal] | None:
+    """Explain fixed changes before a retained eligibility exit from original evidence."""
+    neutral = {"COLLECTIBILITY_ASSESSED", "SIGNIFICANT_CHANGE_FLAGGED", "MEMO_ADDED"}
+    if version.causes <= neutral:
+        return (ZERO, ZERO) if delta == ZERO else None
+    if not store.classify_mixed_eligibility or not version.causes <= neutral | {
+        "CONTRACT_AMENDED",
+        "ESTIMATE_CHANGED",
+        "USAGE_REPORTED",
+    }:
+        return None
+    if ("CONTRACT_AMENDED" in version.causes and not version.modification_events) or (
+        "ESTIMATE_CHANGED" in version.causes and not version.estimate_events
+    ):
+        return None
+    history = store.boundaries.get(version.id, {})
+    if version.modification_events and not rpo_boundary_changes.complete(
+        history, subject, version.modification_events
+    ):
+        return None
+    changes = [
+        item for item in history.get(subject, ()) if item.event in version.modification_events
+    ]
+    if any(item.day > version.effective for item in changes):
+        return None
+    estimate = ZERO
+    if version.estimate_events:
+        dates = dict(version.estimate_dates)
+        shares = store.estimate_allocations.get(version.id)
+        if shares is None or any(
+            event not in dates or dates[event] > version.effective
+            for event in version.estimate_events
+        ):
+            return None
+        estimate = shares.get(subject, ZERO)
+    modified = sum((item.amount for item in changes), ZERO)
+    return (modified, estimate) if modified + estimate == delta else None
 
 
 def _cancelled_changes(
@@ -1780,8 +1823,6 @@ def _obligation_lines(
             )
             == 1
             and "COLLECTIBILITY_ASSESSED" in version.causes
-            and version.causes
-            <= {"COLLECTIBILITY_ASSESSED", "SIGNIFICANT_CHANGE_FLAGGED", "MEMO_ADDED"}
         ):
             # The retained excluded computation still carries recognition through
             # the exit. Do not present loss of eligibility as a legal termination.
@@ -1796,12 +1837,25 @@ def _obligation_lines(
             if (
                 exiting is not None
                 and not exiting.cancelled
-                and fixed(exiting, version.effective) == previous
                 and store.at(exiting, end).realised_traced
+                and (
+                    separated := _eligibility_changes(
+                        store,
+                        version,
+                        obligation_subject_key(exiting.external_id, exiting.obligation_key),
+                        fixed(exiting, version.effective) - previous,
+                    )
+                )
+                is not None
             ):
                 revenue = recognition(exiting, version.effective)
                 realized = store.at(exiting, version.effective).realised
-                lines["ELIGIBILITY_CHANGES"] -= previous + realized - revenue
+                modified, estimate = separated
+                lines["MODIFICATIONS"] += modified
+                lines["VC_ESTIMATE_CHANGES"] += estimate
+                lines["ELIGIBILITY_CHANGES"] -= (
+                    fixed(exiting, version.effective) + realized - revenue
+                )
                 lines["VC_ESTIMATE_CHANGES"] += realized
                 outside_scope = True
                 previous = ZERO

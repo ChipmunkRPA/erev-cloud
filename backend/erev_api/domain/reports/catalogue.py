@@ -1126,6 +1126,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and original dated projection evidence; older bindings retain their original "
             "version dates; database trace reads preserve projection cut, period_key and "
             "refusal reason",
+            "rpo_mixed_eligibility_v1 separates original amendment and estimate allocations "
+            "from retained collectibility exits; complete event evidence dated no later than "
+            "the exit must reconcile the fixed change; dated realized fees remain VC movements "
+            "and the resulting remaining balance leaves through eligibility changes; older "
+            "bindings retain their previous classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

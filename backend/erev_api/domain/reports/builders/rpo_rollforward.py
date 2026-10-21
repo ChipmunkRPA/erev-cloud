@@ -93,6 +93,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         session, entity_ids=params.entity_ids, book_code=book_code, cutoff=cutoff, params=params
     )
     store = replace(store, classify_eligibility_changes=eligibility)
+    mixed_eligibility_key = "rpo_mixed_eligibility_v1"
+    store = replace(
+        store,
+        classify_mixed_eligibility=(
+            params.binding is None or mixed_eligibility_key in params.binding.evidence
+        ),
+    )
+    if store.classify_mixed_eligibility and params.sources is not None:
+        params.sources.record_evidence(mixed_eligibility_key, True)
     addition_evidence = "rpo_added_obligations_v1"
     store = replace(
         store,

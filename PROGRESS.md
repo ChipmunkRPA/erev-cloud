@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Mixed allocation changes at RPO eligibility exit — October 21, 2026
+
+- Retained collectibility exits can now separate concurrent CONTRACT_AMENDED and
+  ESTIMATE_CHANGED allocations from the eligibility movement. Original amendment boundaries
+  and complete estimate-event shares must reconcile the fixed allocation change; events after
+  the exit, missing evidence and competing unsupported causes retain their unresolved result.
+  Dated realization stays in VC; the resulting remaining balance leaves through eligibility.
+- Trace loading includes excluded eligibility versions with estimates even when there is no
+  amendment or entry. New report runs retain rpo_mixed_eligibility_v1; older bound runs retain
+  the previous classification. Migration 0268 documents the rule without changing report columns.
+- Four original-engine journeys cover plain exit/re-entry, price modification, estimate change,
+  and both together. Their separate movements reconcile to original revenue schedules and
+  remaining allocation. Missing evidence and legacy behavior are checked. The public reviewed
+  exit/re-entry report and bound rerun, scoped types/lint, and reversible migration/catalogue
+  parity pass. Mixed-event public command batching is not yet independently verified.
+- Multiple eligibility transitions within one initial computation and B4-11 arbitrary historical
+  commit visibility remain open. This closes the supported retained mixed-exit decomposition,
+  not every lifecycle combination. No deployment or additional accounting sign-off gate.
+
 ## Public eligibility workflow and historical projection reads — October 21, 2026
 
 - The public reviewed collectibility/re-entry journey exposed two implementation faults.
@@ -196,25 +215,6 @@ review and publish changes without PR accumulation, and do not deploy.
   No migration/schema change; no new full combined-contract command-to-lock claim.
 - Continue the October 21 public-repository scope. No deployment, no independent accounting
   sign-off gate, no migration-to-live or sandbox lock-chain requirement.
-
-## Original-owner aging and separate member allocations — October 21, 2026
-
-- Implemented aging_member_adjustments_v1: original liability buckets retain their receiving
-  contract and date; a separate Member allocation adjustment column bridges to the member's
-  presented balance. Allocation adjustments have no invented age. Original owners remain
-  visible even when their adjusted balance is zero, and group adjustment totals conserve cash
-  layer balances. Complete retained engine member populations are required; unsupported or
-  missing evidence is not silently repaired. Reporting translation preserves buckets and the
-  adjusted total; retained legacy bindings keep their earlier schema.
-- Re-lock comparisons treat allocation_adjustment as a monetary measure. Migration 0260 adds
-  the IPE explanation. Targeted aging and re-lock checks, the platform historical-aging journey,
-  the public functional/reporting aging rerun, lint/types and reversible migration catalogue
-  parity passed. The combined-owner witness exercises retained-row/trace inputs; a full combined
-  contract command-to-lock journey remains to verify before claiming all scenarios covered.
-- Development scope is now public repository completion, not production readiness. Migration
-  promotion, complete approval coverage, sandbox lock-chain reproduction and independent
-  accounting sign-off are not completion gates. Sandbox refresh/isolation and key financial
-  controls remain in scope. Preserve noncommercial licensing/publication exclusions; no deployment.
 
 ## Outstanding release verification
 

@@ -82,6 +82,7 @@ def test_transaction_report_retains_offsetting_monthly_gaps_and_legacy_binding(m
     assert all(g["movement"] == g["translated_movement"] for g in gaps)
     assert days[1] in measured[-1][eid]
     assert sources.evidence["rpo_eligibility_changes_v1"] is True
+    assert sources.evidence["rpo_mixed_eligibility_v1"] is True
     assert "eligibility_changes" in {column.key for column in result.columns}
     assert any(row.get("line_code") == "ELIGIBILITY_CHANGES" for row in result.rows)
     assert sources.evidence["rpo_transaction_monthly_gaps_v1"] is True

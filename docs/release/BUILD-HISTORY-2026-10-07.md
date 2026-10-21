@@ -10864,3 +10864,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   contract's aging and show member allocation adjustments separately. The policy question is
   resolved; implementation remains outstanding. After this current RPO fix is published,
   pause development as requested; do not start the aging implementation until resumed.
+
+## Original-owner aging and separate member allocations — October 21, 2026
+
+- Implemented aging_member_adjustments_v1: original liability buckets retain their receiving
+  contract and date; a separate Member allocation adjustment column bridges to the member's
+  presented balance. Allocation adjustments have no invented age. Original owners remain
+  visible even when their adjusted balance is zero, and group adjustment totals conserve cash
+  layer balances. Complete retained engine member populations are required; unsupported or
+  missing evidence is not silently repaired. Reporting translation preserves buckets and the
+  adjusted total; retained legacy bindings keep their earlier schema.
+- Re-lock comparisons treat allocation_adjustment as a monetary measure. Migration 0260 adds
+  the IPE explanation. Targeted aging and re-lock checks, the platform historical-aging journey,
+  the public functional/reporting aging rerun, lint/types and reversible migration catalogue
+  parity passed. The combined-owner witness exercises retained-row/trace inputs; a full combined
+  contract command-to-lock journey remains to verify before claiming all scenarios covered.
+- Development scope is now public repository completion, not production readiness. Migration
+  promotion, complete approval coverage, sandbox lock-chain reproduction and independent
+  accounting sign-off are not completion gates. Sandbox refresh/isolation and key financial
+  controls remain in scope. Preserve noncommercial licensing/publication exclusions; no deployment.

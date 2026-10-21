@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Mixed allocation changes at RPO eligibility exit — October 21, 2026
+
+- Retained collectibility exits can now separate concurrent CONTRACT_AMENDED and
+  ESTIMATE_CHANGED allocations from the eligibility movement. Original amendment boundaries
+  and complete estimate-event shares must reconcile the fixed allocation change; events after
+  the exit, missing evidence and competing unsupported causes retain their unresolved result.
+  Dated realization stays in VC; the resulting remaining balance leaves through eligibility.
+- Trace loading includes excluded eligibility versions with estimates even when there is no
+  amendment or entry. New report runs retain rpo_mixed_eligibility_v1; older bound runs retain
+  the previous classification. Migration 0268 documents the rule without changing report columns.
+- Four original-engine journeys cover plain exit/re-entry, price modification, estimate change,
+  and both together. Their separate movements reconcile to original revenue schedules and
+  remaining allocation. Missing evidence and legacy behavior are checked. The public reviewed
+  exit/re-entry report and bound rerun, scoped types/lint, and reversible migration/catalogue
+  parity pass. Mixed-event public command batching is not yet independently verified.
+- Multiple eligibility transitions within one initial computation and B4-11 arbitrary historical
+  commit visibility remain open. This closes the supported retained mixed-exit decomposition,
+  not every lifecycle combination. No deployment or additional accounting sign-off gate.
+
 ## Public eligibility workflow and historical projection reads — October 21, 2026
 
 - The public reviewed collectibility/re-entry journey exposed two implementation faults.
