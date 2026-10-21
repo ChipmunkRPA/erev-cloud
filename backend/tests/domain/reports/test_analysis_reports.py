@@ -778,3 +778,29 @@ def test_book_bridge_foreign_revenue_uses_posted_functional_amounts(
     assert {row["currency"] for row in transaction_rows} == {"GBP"}
     assert tie_of(functional, "TO_BRIDGE_DRIVERS_EQ_DIFFERENCE")["result"] == "PASS"
     assert tie_of(transaction, "TO_BRIDGE_DRIVERS_EQ_DIFFERENCE")["result"] == "PASS"
+
+    # UK revenue arose in April/May: use those averages (1.27), not September's
+    # 1.28 average or 1.29 closing rate. Ending balances use September closing.
+    uk_parameters = {
+        "entity_codes": [AVM_UK],
+        "from_period_key": "FY2026-P04",
+        "to_period_key": SEPTEMBER_2026,
+    }
+    _, uk_rows = report_run(world, "book_bridge", uk_parameters)
+    reporting, reporting_rows = report_run(
+        world, "book_bridge", {**uk_parameters, "currency_view": "reporting"}
+    )
+    uk = keyed(uk_rows)
+    translated = keyed(reporting_rows)
+    assert translated["measure:REVENUE"]["asc606_amount"] == usd("12337.15")
+    assert translated["measure:REVENUE"]["ifrs15_amount"] == usd("12337.15")
+    nonzero_balances = 0
+    for measure in book_bridge.BALANCE_OF:
+        for book in ("asc606_amount", "ifrs15_amount"):
+            original = Decimal(uk[f"measure:{measure}"][book]["amount"])
+            nonzero_balances += original != 0
+            expected = book_bridge.tie_outs.money(original * Decimal("1.29"), "USD")
+            assert translated[f"measure:{measure}"][book] == expected
+    assert nonzero_balances > 0
+    assert {row["currency"] for row in reporting_rows} == {"USD"}
+    assert tie_of(reporting, "TO_BRIDGE_DRIVERS_EQ_DIFFERENCE")["result"] == "PASS"

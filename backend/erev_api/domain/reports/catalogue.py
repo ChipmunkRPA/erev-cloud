@@ -2195,7 +2195,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _PERIODS,
             "the same contracts compared in both books, differences attributed to drivers",
             "functional view uses posted functional revenue and dated engine member balances; "
-            "transaction view preserves original currencies; reporting view is unavailable",
+            "transaction view preserves original currencies; reporting view uses each period "
+            "average for functional revenue and the ending closing rate for functional balances",
             "foreign functional residuals remain in OTHER; advance-consideration FX is "
             "unquantified when causal evidence cannot isolate it, never an unsupported zero",
         ),

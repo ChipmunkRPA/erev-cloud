@@ -722,4 +722,5 @@ def test_book_bridge_functional_fx_residual_is_not_a_false_zero() -> None:
     with pytest.raises(Problem) as refused:
         bridge.check_view("reporting", [item], functional_currency="USD")
     assert refused.value.errors[0].field == "parameters.currency_view"
-    assert refused.value.errors[0].message == "Choose Transaction or Functional currency."
+    assert refused.value.errors[0].message == "Reporting currency projection is required."
+    bridge.check_view("reporting", [item], functional_currency="GBP", reporting_currency_code="USD")

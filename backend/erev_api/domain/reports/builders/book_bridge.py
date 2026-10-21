@@ -36,7 +36,8 @@ remeasurement and historical layers rather than translating all captions at one 
 their effects remain in ``OTHER`` and their cells are empty when OTHER holds a difference.
 ``ADVANCE_CONSIDERATION_FX`` is zero in transaction currency. In a functional view with foreign
 contracts and an unclassified difference, its cell is also empty: the full residual remains in
-OTHER until causal evidence can separate the FX component. Reporting-currency view is not served.
+OTHER until causal evidence can separate the FX component. Reporting view translates functional
+revenue at each period average rate and ending balances at the closing rate, recording both bases.
 
 Section 1 "Summary by measure": ``row_key`` ``measure:<MEASURE>``; section 2 "Difference by
 driver": ``row_key`` ``driver:<DRIVER>:<MEASURE>``, every driver for each measure in which a
@@ -58,7 +59,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract, contract_version, entity_book, subledger_line
-from erev_api.domain.reports import functional_balances, tie_outs
+from erev_api.domain.reports import functional_balances, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY, ranges
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
@@ -201,11 +202,22 @@ def driver_of(item: Compared, measure: str) -> str:
     return OTHER
 
 
-def check_view(view: str, found: Iterable[Compared], *, functional_currency: str) -> None:
-    """Accept transaction or already-projected functional inputs; reject other views."""
-    if view not in {"transaction", "functional"}:
-        raise tie_outs.invalid("currency_view", "Choose Transaction or Functional currency.")
-    if view != "transaction" and any(item.currency != functional_currency for item in found):
+def check_view(
+    view: str,
+    found: Iterable[Compared],
+    *,
+    functional_currency: str,
+    reporting_currency_code: str | None = None,
+) -> None:
+    """Validate the currency of the already-projected inputs."""
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid(
+            "currency_view", "Choose Transaction, Functional or Reporting currency."
+        )
+    expected = reporting_currency_code if view == "reporting" else functional_currency
+    if view == "reporting" and expected is None:
+        raise tie_outs.invalid("currency_view", "Reporting currency projection is required.")
+    if view != "transaction" and any(item.currency != expected for item in found):
         raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
 
 
@@ -375,14 +387,17 @@ def _revenue(
     entity: EntityRef,
     items: Sequence[PeriodRef],
     into: dict[UUID, _Contract],
+    translations: Mapping[UUID, reporting_currency.Translation] | None = None,
 ) -> None:
     """The entity's revenue per contract and book over ``items``: credit less debit of the
     ``REVENUE`` lines recorded by ``known_at``."""
     functional = (
-        str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) == "functional"
+        str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) != "transaction"
     )
     currency = subledger_line.c.functional_currency if functional else subledger_line.c.txn_currency
-    amount = subledger_line.c.amount_functional if functional else subledger_line.c.amount_txn
+    amount_column = (
+        subledger_line.c.amount_functional if functional else subledger_line.c.amount_txn
+    )
     statement = (
         select(
             subledger_line.c.contract_id,
@@ -390,7 +405,8 @@ def _revenue(
             subledger_line.c.book_code,
             currency.label("currency"),
             subledger_line.c.txn_currency,
-            func.sum(amount).label("amount"),
+            subledger_line.c.period_id,
+            func.sum(amount_column).label("amount"),
         )
         .select_from(
             subledger_line.join(
@@ -413,19 +429,30 @@ def _revenue(
             contract.c.external_id,
             subledger_line.c.book_code,
             subledger_line.c.txn_currency,
+            subledger_line.c.period_id,
             currency,
         )
         .order_by(contract.c.external_id, subledger_line.c.book_code)
     )
     for row in session.execute(statement).mappings():
+        display_currency = str(row["currency"]).strip()
+        amount = Decimal(row["amount"])
+        if functional and display_currency != entity.functional_currency:
+            raise tie_outs.invalid(
+                "currency_view", "Posted functional currency differs from entity."
+            )
+        if translations is not None:
+            translation = translations[UUID(str(row["period_id"]))]
+            amount = translation.amount(entity.id, amount)
+            display_currency = translation.currency
         found = into.setdefault(
             UUID(str(row["contract_id"])),
-            _Contract(str(row["external_id"]), str(row["currency"]).strip()),
+            _Contract(str(row["external_id"]), display_currency),
         )
         found.has_foreign_currency |= str(row["txn_currency"]).strip() != entity.functional_currency
         amounts = found.book(str(row["book_code"]))
         # a revenue line is a credit: signed debit positive (T-SL-04)
-        amounts[REVENUE] = amounts.get(REVENUE, ZERO) - Decimal(row["amount"])
+        amounts[REVENUE] = amounts.get(REVENUE, ZERO) - amount
 
 
 def _balances(
@@ -434,6 +461,7 @@ def _balances(
     entity: EntityRef,
     last: PeriodRef,
     into: dict[UUID, _Contract],
+    translation: reporting_currency.Translation | None = None,
 ) -> None:
     """The presented balances of each book at the end of ``last``."""
     cutoff = tie_outs.cutoff_for(session, params)
@@ -447,7 +475,7 @@ def _balances(
             params=params,
         )
         foreign = {row.contract_id for row in rows if row.currency != entity.functional_currency}
-        if str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) == "functional":
+        if str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) != "transaction":
             rows = functional_balances.read(
                 session,
                 params,
@@ -456,6 +484,8 @@ def _balances(
                 periods={entity.id: last},
                 book_code=book_code,
             )
+        if translation is not None:
+            rows = translation.balances(rows)
         for row in rows:
             found = into.setdefault(row.contract_id, _Contract(row.external_id, row.currency))
             found.has_foreign_currency |= row.contract_id in foreign
@@ -528,12 +558,41 @@ def _impairment_reversed(
 
 
 def sources(
-    session: Session, params: ReportParams, entity: EntityRef, items: Sequence[PeriodRef]
+    session: Session,
+    params: ReportParams,
+    entity: EntityRef,
+    items: Sequence[PeriodRef],
+    *,
+    tenant_id: UUID,
 ) -> list[Compared]:
     """Every contract of the entity with an amount in either book over ``items``."""
     contracts: dict[UUID, _Contract] = {}
-    _revenue(session, params, entity, items, contracts)
-    _balances(session, params, entity, items[-1], contracts)
+    closing = None
+    averages = None
+    if str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW) == "reporting":
+        closing = reporting_currency.rates_for_period(
+            session,
+            params,
+            tenant_id=tenant_id,
+            entities=(entity,),
+            periods={entity.id: items[-1]},
+            evidence_key="book_bridge_closing_rate_v1",
+        )
+        averages = {
+            item.id: reporting_currency.rates_for_period(
+                session,
+                params,
+                tenant_id=tenant_id,
+                entities=(entity,),
+                periods={entity.id: item},
+                rate_type="average",
+                evidence_key=f"book_bridge_average_rate_v1:{item.key}",
+                target_currency=closing.currency,
+            )
+            for item in items
+        }
+    _revenue(session, params, entity, items, contracts, averages)
+    _balances(session, params, entity, items[-1], contracts, closing)
     differing = _step1_differs(session, params, contracts)
     reversed_ids = _impairment_reversed(session, params, entity, items[-1])
     return [
@@ -547,7 +606,7 @@ def sources(
             fx_attribution_unavailable=(
                 found.has_foreign_currency
                 and str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
-                == "functional"
+                != "transaction"
             ),
         )
         for contract_id, found in sorted(contracts.items(), key=lambda pair: pair[1].external_id)
@@ -562,11 +621,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
     (entity,) = entities
     items = periods[entity.id]
-    found = sources(session, params, entity, items) if items else []
+    found = (
+        sources(session, params, entity, items, tenant_id=uow.principal.tenant_id) if items else []
+    )
     check_view(
         str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW),
         found,
         functional_currency=entity.functional_currency,
+        reporting_currency_code=found[0].currency if found else entity.functional_currency,
     )
     rows, totals, tie = dataset_rows(found)
     return ReportData(

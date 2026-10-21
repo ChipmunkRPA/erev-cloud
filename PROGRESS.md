@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Book Bridge reporting-currency view — October 21, 2026
+
+- Reporting view now translates each contract/book/period's posted functional revenue using
+  its approved period-average rate, then aggregates the range. Ending functional member
+  balances use the final period closing rate. Both books share the same target currency and
+  rate basis; historical functional layers are projected before reporting translation.
+- Rate IDs, versions, period and cutoff are recorded through the existing reporting-rate
+  evidence helper. Missing approved rates refuse the run; no inversion, triangulation or
+  current-rate substitution is introduced. Migration 0293 updates the report IPE description.
+- Necessary validation passed: public dual-book GBP-to-USD report across April–September,
+  revenue translated at 1.27 rather than September average 1.28/closing 1.29; nonzero ending
+  balances translated at 1.29; driver tie-out, transaction/functional regression, six focused
+  builder tests, catalogue migration parity and scoped lint/types.
+- Remaining: granular framework/licence/advance-FX causal attribution, Book Bridge retained
+  input replay, Adoption Bridge and Intercompany Pairs currency/source gaps, other documented
+  incomplete adapters and final repository validation. OPEN reruns remain new evaluations;
+  recorded rate evidence alone does not claim same-source report retention. No deployment.
+
 ## Book Bridge foreign-contract functional amounts — October 21, 2026
 
 - The registered Book Bridge still rejected foreign contracts in Functional view. It now reads
@@ -207,24 +225,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: actor/display-name history, sample contract identity labels, approval-request/audit
   and document histories. These readers now cover immutable event/version commit availability;
   this does not claim complete historical reconstruction of every source in a sample pack.
-
-## JE Population approval and acknowledgement commits — October 21, 2026
-
-- Migration 0282 queues original approval-decision and posting-acknowledgement commits
-  atomically with insertion. The existing tenant recovery worker archives pending commit
-  evidence. Upgrade requires empty decision/ack tables rather than inventing historical
-  timestamps; downgrade refuses retained evidence. Catalogue metadata is synchronized.
-- First-generation historical JE Population filters these ancillary records by actual commit
-  before choosing its approver and GL document. A backdated but late-committed record cannot
-  enter the old cutoff. Record-basis and close-owned reads retain transaction-local behavior;
-  previously retained reports continue to rebuild from their saved inputs.
-- Necessary checks passed: real overlapping decision/ack commits with old/new cutoffs,
-  preceding approver retention, recovery timestamp archival, public JE Population reruns,
-  existing close/reopen population flow, catalogue parity and database architecture; scoped
-  lint/types pass. No deployment.
-- Remaining: first-generation actor/display-name history and broader sample approval-request,
-  audit, event, computation and document histories. This change covers JE Population's
-  decision/ack readers; it does not silently apply a partial cutoff to entire approval packs.
 
 ## Outstanding release verification
 

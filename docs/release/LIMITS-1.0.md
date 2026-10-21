@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Book Bridge reporting-currency view — October 21, 2026
+
+- Reporting view now translates each contract/book/period's posted functional revenue using
+  its approved period-average rate, then aggregates the range. Ending functional member
+  balances use the final period closing rate. Both books share the same target currency and
+  rate basis; historical functional layers are projected before reporting translation.
+- Rate IDs, versions, period and cutoff are recorded through the existing reporting-rate
+  evidence helper. Missing approved rates refuse the run; no inversion, triangulation or
+  current-rate substitution is introduced. Migration 0293 updates the report IPE description.
+- Necessary validation passed: public dual-book GBP-to-USD report across April–September,
+  revenue translated at 1.27 rather than September average 1.28/closing 1.29; nonzero ending
+  balances translated at 1.29; driver tie-out, transaction/functional regression, six focused
+  builder tests, catalogue migration parity and scoped lint/types.
+- Remaining: granular framework/licence/advance-FX causal attribution, Book Bridge retained
+  input replay, Adoption Bridge and Intercompany Pairs currency/source gaps, other documented
+  incomplete adapters and final repository validation. OPEN reruns remain new evaluations;
+  recorded rate evidence alone does not claim same-source report retention. No deployment.
+
 ## Book Bridge foreign-contract functional amounts — October 21, 2026
 
 - The registered Book Bridge still rejected foreign contracts in Functional view. It now reads
