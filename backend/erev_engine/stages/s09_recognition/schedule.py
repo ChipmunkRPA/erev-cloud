@@ -1780,6 +1780,10 @@ def _emit_rpo_event_positions(
         "CONTRACT_AMENDED",
         "ESTIMATE_CHANGED",
         "USAGE_REPORTED",
+        "DELIVERY_RECORDED",
+        "RETURN_RECORDED",
+        "BILLING_RECORDED",
+        "CREDIT_MEMO_RECORDED",
     }
     for event in events:
         if event.event_type not in kinds:

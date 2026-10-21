@@ -302,6 +302,7 @@ class _Version:
     dated_slice: bool = False
     usage_slice: bool = False
     position_event: str | None = None
+    performance_slice: bool = False
 
 
 @dataclass(slots=True)
@@ -395,9 +396,9 @@ class Store:
         default_factory=dict
     )
 
-    def position(self, ob: _Ob, event: str) -> rpo_positions.Point:
+    def position(self, ob: _Ob, event: str, side: str = "after") -> rpo_positions.Point:
         subject = obligation_subject_key(ob.external_id, ob.obligation_key)
-        point = self.positions.get(ob.version_id, {}).get(subject, {}).get((event, "after"))
+        point = self.positions.get(ob.version_id, {}).get(subject, {}).get((event, side))
         if point is None:
             raise to_date.Unreadable(
                 f"obligations[{ob.obligation_key}].event_position",
@@ -817,7 +818,13 @@ def load(
     ordered_timeline = (
         params is None or params.binding is None or ordered_key in params.binding.evidence
     )
+    performance_key = "rpo_initial_performance_timeline_v1"
+    performance_timeline = (
+        params is None or params.binding is None or performance_key in params.binding.evidence
+    )
     if timelines:
+        if performance_timeline and params is not None and params.sources is not None:
+            params.sources.record_evidence(performance_key, True)
         if ordered_timeline and params is not None and params.sources is not None:
             params.sources.record_evidence(ordered_key, True)
         if usage_timeline and params is not None and params.sources is not None:
@@ -844,6 +851,7 @@ def load(
                 mixed=mixed_timeline,
                 usage=usage_timeline,
                 ordered=ordered_timeline,
+                performance=performance_timeline,
             )
             if expanded is not None:
                 chains[cid] = (*expanded, *chain[1:])
@@ -863,11 +871,19 @@ def initial_eligibility_timeline(
     mixed: bool = False,
     usage: bool = False,
     ordered: bool = False,
+    performance: bool = False,
 ) -> tuple[_Version, ...] | None:
     """Read status slices of one original computation without inventing new computations."""
     money_kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"} | (
         {"USAGE_REPORTED"} if usage else set()
     )
+    if ordered and performance:
+        money_kinds |= {
+            "DELIVERY_RECORDED",
+            "RETURN_RECORDED",
+            "BILLING_RECORDED",
+            "CREDIT_MEMO_RECORDED",
+        }
     if version.version_no != 1 or not version.causes <= (
         {
             "CONTRACT_BOOKED",
@@ -937,7 +953,16 @@ def initial_eligibility_timeline(
     if ordered:
         expanded = _ordered_timeline(version, contract_id, trace, events, result, money_kinds)
         if expanded is not None:
-            return expanded
+            return tuple(
+                dataclasses.replace(item, performance_slice=performance) for item in expanded
+            )
+        if performance and version.causes & {
+            "DELIVERY_RECORDED",
+            "RETURN_RECORDED",
+            "BILLING_RECORDED",
+            "CREDIT_MEMO_RECORDED",
+        }:
+            return None  # Never drop unmeasured performance events into a date-only timeline.
         result = [dataclasses.replace(item, position_event=None) for item in result]
     if not version.causes & money_kinds:
         return tuple(result)
@@ -2219,6 +2244,27 @@ def _obligation_lines(
         if same_day_entry is not None and same_day_entry.version_id == version.id:
             current = same_day_entry
         if (
+            version.performance_slice
+            and version.position_event is not None
+            and previous_obligation is not None
+        ):
+            measured = next(
+                (
+                    ob
+                    for ob in store.obligations.get(version.id, ())
+                    if ob.obligation_id == obligation_id
+                ),
+                None,
+            )
+            if measured is not None:
+                # Separate time-only return-window releases from the following event's
+                # effect. The exact before-event amount is original retained evidence.
+                prior_event_amount = store.position(
+                    measured, version.position_event, "before"
+                ).fixed
+                lines["VC_ESTIMATE_CHANGES"] += prior_event_amount - previous
+                previous = prior_event_amount
+        if (
             store.classify_eligibility_changes
             and previous_obligation is not None
             and not version.included
@@ -2524,6 +2570,13 @@ def _obligation_lines(
             # It cannot also make a fixed amendment ambiguous or explain an otherwise
             # unsupported fixed change. Competing remaining cause lines stay unexplained.
             line = next(iter(causes)) if len(causes) == 1 else None
+            if version.performance_slice and version.causes <= {
+                "DELIVERY_RECORDED",
+                "RETURN_RECORDED",
+                "BILLING_RECORDED",
+                "CREDIT_MEMO_RECORDED",
+            }:
+                line = "VC_ESTIMATE_CHANGES"
             changes = _estimate_changes(store, version)
             if (
                 causes == {"MODIFICATIONS", "VC_ESTIMATE_CHANGES"}
@@ -2646,6 +2699,10 @@ def _obligation_lines(
                     lines["CANCELLATIONS"] += cancelled
                     lines["VC_ESTIMATE_CHANGES"] += change
                     lines["MODIFICATIONS"] += modifications
+    if closing is not None and closing_version is not None and closing_version.performance_slice:
+        # After the last ordered event, only dated return-measure changes remain
+        # in fixed allocation (for example expiry of the remaining return right).
+        lines["VC_ESTIMATE_CHANGES"] += fixed(closing, end) - previous
     settle_batch_usage()
     realised_closing = ZERO if closing is None else store.at(closing, end).realised
     lines["VC_ESTIMATE_CHANGES"] += realised_closing - realised_opening

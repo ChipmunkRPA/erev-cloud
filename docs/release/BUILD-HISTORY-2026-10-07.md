@@ -11006,3 +11006,38 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This establishes a consistent GL source-selection statement, not historical commit timestamps
   or a transaction-wide snapshot for every report source. B4-11 arbitrary historical commit
   visibility remains open, as do broader RPO mixed-lifecycle journeys. No deployment.
+
+## Public same-day usage, estimate and price-change sequence — October 21, 2026
+
+- Extended the public termination journey with an approved 200 bonus estimate and 100 price
+  increase after 150 usage, all effective on inception day. The original 160,000 computation
+  already exists: NEW_CONTRACTS stays 160,000, VC_ESTIMATE_CHANGES is 350, MODIFICATIONS is 100,
+  and CANCELLATIONS is the negative refund. Full termination recognizes the remaining pool;
+  partial termination reallocates fixed consideration to the continuing obligation.
+- This checks sequential retained computations, public preparation/review/preview/application,
+  report ties and bound reruns for FULL/PARTIAL and refunds 0/40. It does not prove one initial
+  computation containing every event, or repeated termination/re-entry. No calculation change
+  was needed for this sequence. All eight targeted journeys and scoped lint pass; broader
+  lifecycle and B4-11 gaps remain open. No deployment.
+
+## RPO contract eligibility changes — October 21, 2026
+
+- New RPO runs show ELIGIBILITY_CHANGES separately from new contracts, legal termination and
+  disclosure exemptions. A retained collectibility exit requires an original not-probable event
+  in the selected book at the version date, unchanged fixed allocation and dated realization.
+  Criteria-met re-entry carries the remaining balance, excluding already recognized revenue
+  and fees from earlier excluded segments. Repeated supported exits/re-entry are handled; a
+  first-ever criteria admission remains NEW_CONTRACTS.
+- The original Step 1 engine journey exits with opening RPO 1,100 and re-enters with 900: the
+  net eligibility movement is -200, with no new-contract or termination amount and no unexplained
+  difference. Repeated segments, start-after-exit and realized fees have targeted witnesses;
+  monthly functional/reporting translation uses each month's retained average rates.
+- New bindings retain rpo_eligibility_changes_v1. Older bindings keep their original calculation
+  and columns. Generic output rows/columns and re-lock comparison include the new monetary line;
+  migration 0266 updates IPE. Targeted RPO checks, the public rollforward path, lint/types and
+  reversible migration/catalogue parity pass.
+- Fully terminated contracts cannot be reactivated by the product. Earlier supplied re-entry
+  fixtures did not prove that workflow. Mixed eligibility exits with price/estimate changes,
+  multiple transitions inside one initial computation and B4-11 commit visibility remain open.
+  The new eligibility journey uses original engine outputs; a public reassessment-to-report
+  journey is still unverified. No deployment.

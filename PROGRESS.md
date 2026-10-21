@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Performance events in initial RPO eligibility batches — October 21, 2026
+
+- Ordered initial Reporting timelines now admit delivery, actual return, billing and credit
+  events with original before/after monetary evidence. Performance-driven net allocation
+  changes are VC movements while included; changes while excluded enter with the remaining
+  re-entry balance. Retained evidence also separates return-window expiry before a later event
+  from that event's own cause, and measures expiry after the final event through report end.
+- Migration 0273 versions this interpretation for RPO/rollforward. Older bound runs retain
+  their original timeline. Missing required performance positions cannot silently fall back
+  to a date-only timeline that drops those events.
+- Thirty-four scoped original-engine/report cases pass, including twelve actual-return and
+  delivery cases spanning pre/post-exit events, excess/partial expected returns, and expiry
+  before/after the eligibility boundary. All reconcile with zero unexplained movement.
+  Public sequential eligibility/re-entry and bound rerun pass; both catalogue definitions
+  match upgrade/downgrade; scoped lint/types pass. No deployment.
+- Remaining work includes public initial mixed-batch end-to-end coverage, full royalty
+  eligibility lifecycle coverage and B4-11 arbitrary historical commit visibility. Billing
+  and credit event admission is implemented but has no dedicated new mixed-batch witness in
+  this increment. This is feature progress, not a repository-completion claim.
+
 ## Return-path original event positions — October 21, 2026
 
 - Return estimate pins now carry their original applying-event order from stage 04.
@@ -198,41 +218,6 @@ review and publish changes without PR accumulation, and do not deploy.
   reader cases, scoped lint/types and the public journey pass. Mixed eligibility exits with
   amendments/estimates, multiple transitions in one initial computation and B4-11 commit
   visibility remain open. No deployment or expanded approval requirement.
-
-## RPO contract eligibility changes — October 21, 2026
-
-- New RPO runs show ELIGIBILITY_CHANGES separately from new contracts, legal termination and
-  disclosure exemptions. A retained collectibility exit requires an original not-probable event
-  in the selected book at the version date, unchanged fixed allocation and dated realization.
-  Criteria-met re-entry carries the remaining balance, excluding already recognized revenue
-  and fees from earlier excluded segments. Repeated supported exits/re-entry are handled; a
-  first-ever criteria admission remains NEW_CONTRACTS.
-- The original Step 1 engine journey exits with opening RPO 1,100 and re-enters with 900: the
-  net eligibility movement is -200, with no new-contract or termination amount and no unexplained
-  difference. Repeated segments, start-after-exit and realized fees have targeted witnesses;
-  monthly functional/reporting translation uses each month's retained average rates.
-- New bindings retain rpo_eligibility_changes_v1. Older bindings keep their original calculation
-  and columns. Generic output rows/columns and re-lock comparison include the new monetary line;
-  migration 0266 updates IPE. Targeted RPO checks, the public rollforward path, lint/types and
-  reversible migration/catalogue parity pass.
-- Fully terminated contracts cannot be reactivated by the product. Earlier supplied re-entry
-  fixtures did not prove that workflow. Mixed eligibility exits with price/estimate changes,
-  multiple transitions inside one initial computation and B4-11 commit visibility remain open.
-  The new eligibility journey uses original engine outputs; a public reassessment-to-report
-  journey is still unverified. No deployment.
-
-## Public same-day usage, estimate and price-change sequence — October 21, 2026
-
-- Extended the public termination journey with an approved 200 bonus estimate and 100 price
-  increase after 150 usage, all effective on inception day. The original 160,000 computation
-  already exists: NEW_CONTRACTS stays 160,000, VC_ESTIMATE_CHANGES is 350, MODIFICATIONS is 100,
-  and CANCELLATIONS is the negative refund. Full termination recognizes the remaining pool;
-  partial termination reallocates fixed consideration to the continuing obligation.
-- This checks sequential retained computations, public preparation/review/preview/application,
-  report ties and bound reruns for FULL/PARTIAL and refunds 0/40. It does not prove one initial
-  computation containing every event, or repeated termination/re-entry. No calculation change
-  was needed for this sequence. All eight targeted journeys and scoped lint pass; broader
-  lifecycle and B4-11 gaps remain open. No deployment.
 
 ## Outstanding release verification
 

@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Performance events in initial RPO eligibility batches — October 21, 2026
+
+- Ordered initial Reporting timelines now admit delivery, actual return, billing and credit
+  events with original before/after monetary evidence. Performance-driven net allocation
+  changes are VC movements while included; changes while excluded enter with the remaining
+  re-entry balance. Retained evidence also separates return-window expiry before a later event
+  from that event's own cause, and measures expiry after the final event through report end.
+- Migration 0273 versions this interpretation for RPO/rollforward. Older bound runs retain
+  their original timeline. Missing required performance positions cannot silently fall back
+  to a date-only timeline that drops those events.
+- Thirty-four scoped original-engine/report cases pass, including twelve actual-return and
+  delivery cases spanning pre/post-exit events, excess/partial expected returns, and expiry
+  before/after the eligibility boundary. All reconcile with zero unexplained movement.
+  Public sequential eligibility/re-entry and bound rerun pass; both catalogue definitions
+  match upgrade/downgrade; scoped lint/types pass. No deployment.
+- Remaining work includes public initial mixed-batch end-to-end coverage, full royalty
+  eligibility lifecycle coverage and B4-11 arbitrary historical commit visibility. Billing
+  and credit event admission is implemented but has no dedicated new mixed-batch witness in
+  this increment. This is feature progress, not a repository-completion claim.
+
 ## Return-path original event positions — October 21, 2026
 
 - Return estimate pins now carry their original applying-event order from stage 04.

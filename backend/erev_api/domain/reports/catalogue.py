@@ -924,6 +924,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "re-entries; changes while excluded enter with the remaining re-entry balance; "
             "missing required positions are not replaced with day-end amounts; historical "
             "bindings preserve their original timeline",
+            "rpo_initial_performance_timeline_v1 includes original delivery, return, billing "
+            "and credit events in ordered initial eligibility timelines; net fixed allocation "
+            "changes from performance and return-window expiry are VC movements while included; "
+            "excluded changes enter with the remaining re-entry balance; exact before-event "
+            "amounts separate time-only releases from subsequent monetary causes; required "
+            "original positions cannot be replaced by date-only timelines; older bindings "
+            "preserve their original interpretation",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -1179,6 +1186,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "re-entries; changes while excluded enter with the remaining re-entry balance; "
             "missing required positions are not replaced with day-end amounts; historical "
             "bindings preserve their original timeline",
+            "rpo_initial_performance_timeline_v1 includes original delivery, return, billing "
+            "and credit events in ordered initial eligibility timelines; net fixed allocation "
+            "changes from performance and return-window expiry are VC movements while included; "
+            "excluded changes enter with the remaining re-entry balance; exact before-event "
+            "amounts separate time-only releases from subsequent monetary causes; required "
+            "original positions cannot be replaced by date-only timelines; older bindings "
+            "preserve their original interpretation",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

@@ -14,21 +14,16 @@ from support import step1_worlds as worlds
 from support.ordered_step1 import bundle_at_exit
 
 
-@pytest.mark.parametrize("kind", ["usage", "estimate", "amendment"])
-@pytest.mark.parametrize("after", [False, True])
-@pytest.mark.parametrize("reenter", [False, True])
-def test_same_day_monetary_attribution(kind, after, reenter):
-    admitted, exited = date(2026, 1, 1), date(2026, 2, 10)
-    before, end = date(2026, 1, 31), date(2026, 3, 31)
-    bundle = bundle_at_exit(kind, after=after, reenter=reenter)
+def report_store(bundle, before, end, *, performance=False):
+    admitted = date(2026, 1, 1)
     book = compute(bundle).books[0]
     vid, cid, gid, eid, oid = (uuid4() for _ in range(5))
     initial = rpo._Version(
         vid,
         gid,
         1,
-        reenter,
-        exited,
+        book.contract_version.columns["status_in_book"] == "ACTIVE",
+        max(event.effective_date for event in bundle.events),
         frozenset(event.event_type for event in bundle.events),
         entries=((cid, admitted),),
         cause_events=frozenset(event.event_key for event in bundle.events),
@@ -45,13 +40,16 @@ def test_same_day_monetary_attribution(kind, after, reenter):
         mixed=True,
         usage=True,
         ordered=True,
+        performance=performance,
     )
     assert timeline is not None
-    if reenter or after:
-        # A retained binding without the ordered-evidence feature keeps its old refusal.
-        assert rpo.initial_eligibility_timeline(
-            initial, cid, book.trace, event_map, mixed=True, usage=True
-        ) is None
+    if performance:
+        assert (
+            rpo.initial_eligibility_timeline(
+                initial, cid, book.trace, event_map, mixed=True, usage=True, ordered=True
+            )
+            is None
+        )
     output = book.obligation_versions[0]
     columns = output.columns
     ob = rpo._Ob(
@@ -99,7 +97,7 @@ def test_same_day_monetary_attribution(kind, after, reenter):
             external_ids={cid: worlds.CONTRACT},
             as_of=day,
         ).obligations
-        for day in {before, end, admitted, exited}
+        for day in {before, end, *(event.effective_date for event in bundle.events)}
     }
     store = rpo.Store(
         {gid: (initial,)},
@@ -109,6 +107,17 @@ def test_same_day_monetary_attribution(kind, after, reenter):
         realised_dates={vid: rpo_realised_dates.history(book.trace)},
         positions={vid: rpo_positions.history(book.trace)},
     )
+    return store, eid, vid, oid, book, cuts
+
+
+@pytest.mark.parametrize("kind", ["usage", "estimate", "amendment"])
+@pytest.mark.parametrize("after", [False, True])
+@pytest.mark.parametrize("reenter", [False, True])
+def test_same_day_monetary_attribution(kind, after, reenter):
+    exited = date(2026, 2, 10)
+    before, end = date(2026, 1, 31), date(2026, 3, 31)
+    bundle = bundle_at_exit(kind, after=after, reenter=reenter)
+    store, eid, vid, oid, book, cuts = report_store(bundle, before, end)
     (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
     points = next(iter(store.positions[vid].values()))
     exit_point = next(
@@ -139,3 +148,82 @@ def test_same_day_monetary_attribution(kind, after, reenter):
     assert result.lines["UNEXPLAINED"] == 0, result.lines
     with pytest.raises(to_date.Unreadable):
         rpo.rollforward_lines(replace(store, positions={}), ranges={eid: (before, end)}, applied={})
+
+
+@pytest.mark.parametrize("after", [False, True])
+@pytest.mark.parametrize(
+    "exited,end",
+    [
+        (date(2026, 2, 10), date(2026, 2, 28)),
+        (date(2026, 2, 10), date(2026, 3, 31)),
+        (date(2026, 3, 20), date(2026, 3, 31)),
+    ],
+)
+@pytest.mark.parametrize("returned", ["0.2", "0.05"])
+def test_returns_and_delivery_follow_original_eligibility_order(after, exited, end, returned):
+    from support import cpc_worlds
+    from support.recognition import estimate_version
+
+    jan = date(2026, 1, 1)
+    before = date(2026, 1, 31)
+    bundle = worlds.time_world(
+        paid=None,
+        steps=[("C", jan, "")],
+        template_changes={"recognition_method": "UNITS_DELIVERED"},
+        policies={
+            "returns.model": "EXPECTED_RETURNS",
+            "returns.returned_units_scope": "REDUCE_CONTRACT_QUANTITY",
+        },
+    )
+    estimate = replace(
+        estimate_version(f"{worlds.CONTRACT}/RET", "RETURN_RATE", 1, jan),
+        obligation_key=worlds.SERVICE,
+        expected_quantity=Decimal("0.1"),
+        parameters={
+            "window_end_date": "2026-03-15",
+            "carrying_cost_per_unit": "0",
+            "recovery_cost_per_unit": "0",
+        },
+    )
+    events = cpc_worlds.pinned(list(bundle.events), estimate)
+    events = worlds.delivered(events, date(2026, 1, 15), worlds.SERVICE, "0.5")
+    events = worlds.significant_change(events, exited, "Distress")
+    if after:
+        events = worlds.not_probable(events, exited)
+    events = cpc_worlds.then(
+        events,
+        "RETURN_RECORDED",
+        exited,
+        {
+            "obligation_key": worlds.SERVICE,
+            "quantity": Decimal(returned),
+            "refund_amount": Decimal(returned) * 1200,
+        },
+    )
+    events = worlds.delivered(events, exited, worlds.SERVICE, "0.1")
+    if not after:
+        events = worlds.not_probable(events, exited)
+    events = worlds.criteria_met(events, exited)
+    bundle = replace(
+        bundle,
+        events=tuple(events),
+        estimate_versions=(estimate,),
+        known_at=max(bundle.known_at, *(event.recorded_at for event in events)),
+    )
+    store, eid, vid, oid, book, cuts = report_store(bundle, before, end, performance=True)
+    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    # January: net allocation 1,080, recognized 480, RPO 600.
+    # Delivery adds 0.1 units. Excess actual returns lower net allocation; otherwise
+    # remaining expected returns expire in March, increasing allocation and revenue equally.
+    excess = Decimal(120) if returned == "0.2" else Decimal(0)
+    release = Decimal(60) if returned == "0.05" and end.month == 3 else Decimal(0)
+    assert result.lines["OPENING"] == 600
+    expected_vc = (-excess if not after else 0) + release
+    expected_revenue = (-120 + excess if not after else 0) - release
+    if after and exited.month == 3:
+        expected_vc, expected_revenue = Decimal(120), Decimal(-120)
+    assert result.lines["VC_ESTIMATE_CHANGES"] == expected_vc
+    assert result.lines["ELIGIBILITY_CHANGES"] == (0 if not after else -120)
+    assert result.lines["CLOSING"] == 480
+    assert result.lines["REVENUE"] == expected_revenue
+    assert result.lines["UNEXPLAINED"] == 0, result.lines
