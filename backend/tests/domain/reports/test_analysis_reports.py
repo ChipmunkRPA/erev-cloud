@@ -418,6 +418,17 @@ def test_book_bridge_drivers_sum(
         "book_bridge",
         {"entity_codes": [US01], "from_period_key": "FY2026-P01", "to_period_key": "FY2026-P03"},
     )
+    from erev_api.db.tables import report_run as report_run_table
+    from erev_api.domain.reports import book_bridge_replay
+
+    binding = world.place.scalar(
+        select(report_run_table.c.source_binding).where(
+            report_run_table.c.id == UUID(str(run["id"]))
+        )
+    )
+    executions = binding["evidence"][book_bridge_replay.EVIDENCE]
+    assert executions, binding["evidence"]["book_bridge_replay_selection_v1"]
+    assert any(step["driver"] == "COLLECTIBILITY" for item in executions for step in item["steps"])
     assert run["parameters"]["currency_view"] == "functional"  # SCREENS_B RPT-33 default
     found = keyed(rows)
     measures = {

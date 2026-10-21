@@ -12,8 +12,15 @@ report compares the two books contract by contract:
   ``LOSS_PROVISION``: the presented balances of each book at the end of the range
   (``tie_outs.balances_at``: the latest contract version of the book in the disclosures).
 
-A difference is ASC 606 less IFRS 15. Each contract's difference in a measure has one driver,
-identified from stored facts, in this order:
+A difference is ASC 606 less IFRS 15. New worker runs first verify original computation hashes
+and both monetary endpoints, then exchange resolved policies in driver order. The collectibility
+phase also exchanges book-scoped Step 1 assessments and reviewed outcomes in memory. Each
+increment is attributed separately; interactions belong to the later phase and any unreproduced
+remainder stays OTHER. Multiple effects can offset even when the endpoint difference is zero.
+Execution hashes and policy/event references are retained. Engine calls run outside SQL.
+
+For older retained inputs or sources unavailable for verified replay, the existing fact-based
+classification remains, in this order:
 
 1. ``COLLECTIBILITY`` — the Step 1 conclusion differed between the books: at a computation
    recorded by the cutoff exactly one of them held the contract as not a contract (E-06
@@ -32,8 +39,9 @@ identified from stored facts, in this order:
 The transaction view compares original currency amounts. The functional view reads posted
 functional revenue and the engine's dated functional member-balance targets, preserving monetary
 remeasurement and historical layers rather than translating all captions at one current rate.
-``FRAMEWORK_ELECTIONS`` and ``LICENCE_RENEWALS`` cannot yet be isolated from stored driver facts;
-their effects remain in ``OTHER`` and their cells are empty when OTHER holds a difference.
+Verified counterfactual effects quantify ``FRAMEWORK_ELECTIONS`` and ``LICENCE_RENEWALS``.
+Without that evidence their effects remain in ``OTHER``; unquantified zero cells are empty when
+OTHER holds a difference. Nonzero proven effects remain visible alongside a separate residual.
 ``ADVANCE_CONSIDERATION_FX`` is zero in transaction currency. In a functional view with foreign
 contracts and an unclassified difference, its cell is also empty: the full residual remains in
 OTHER until causal evidence can separate the FX component. Reporting view translates functional
@@ -130,7 +138,7 @@ DRIVER_LABELS: Final[Mapping[str, str]] = {
     "ADVANCE_CONSIDERATION_FX": "Advance consideration FX (IFRIC 22)",
     OTHER: "Other",
 }
-# Drivers no stored fact identifies in 1.0: their effect is inside OTHER (module docstring).
+# Without verified replay these drivers stay inside OTHER (module docstring).
 UNIDENTIFIED: Final = ("FRAMEWORK_ELECTIONS", "LICENCE_RENEWALS")
 ENTITY_REQUIRED: Final = "Choose an entity that keeps both the ASC 606 and IFRS 15 books."
 MEASURE_PREFIX: Final = "measure:"
@@ -164,6 +172,7 @@ class Compared:
     step1_differs: bool = False  # ``step1_differs`` over the contract's versions in both books
     impairment_reversed: bool = False  # the IFRS 15 book posted a JET-09d reversal
     fx_attribution_unavailable: bool = False
+    driver_effects: Mapping[str, Mapping[str, Decimal]] | None = None
 
     def amounts(self, measure: str) -> tuple[Decimal, Decimal]:
         return self.asc606.get(measure, ZERO), self.ifrs15.get(measure, ZERO)
@@ -237,6 +246,11 @@ def dataset_rows(
             item
             for item in found
             if any(amount != 0 for measure in MEASURES for amount in item.amounts(measure))
+            or any(
+                effect != 0
+                for effects in (item.driver_effects or {}).values()
+                for effect in effects.values()
+            )
         ),
         key=lambda item: item.contract_external_id,
     )
@@ -253,23 +267,38 @@ def dataset_rows(
             into[measure][0] += first
             into[measure][1] += second
             difference = item.difference(measure)
-            if difference == 0:
+            if item.driver_effects is None:
+                contributions = {driver_of(item, measure): difference}
+            else:
+                contributions = dict(item.driver_effects.get(measure, {}))
+                if (
+                    set(contributions) - set(DRIVERS)
+                    or sum(contributions.values(), ZERO) != difference
+                ):
+                    raise Problem(
+                        "validation-failed", "Book bridge driver effects do not reconcile."
+                    )
+            contributions = {code: value for code, value in contributions.items() if value != 0}
+            if not contributions:
                 continue
-            driver = driver_of(item, measure)
-            if item.fx_attribution_unavailable and driver == OTHER:
+            driver = next(iter(contributions)) if len(contributions) == 1 else "MULTIPLE"
+            if item.fx_attribution_unavailable and OTHER in contributions:
                 unknown_fx.add((item.currency, measure))
             by_driver = effects.setdefault(
                 (item.currency, measure), {code: [ZERO, 0] for code in DRIVERS}
             )
-            by_driver[driver][0] += difference
-            by_driver[driver][1] += 1
+            for code, effect in contributions.items():
+                by_driver[code][0] += effect
+                by_driver[code][1] += 1
             contract_rows.append(
                 {
                     "row_key": f"{CONTRACT_PREFIX}{item.contract_external_id}:{measure}",
                     "section": 3,
                     "contract_external_id": item.contract_external_id,
                     "driver_code": driver,
-                    "driver_label": DRIVER_LABELS[driver],
+                    "driver_label": "Multiple drivers"
+                    if driver == "MULTIPLE"
+                    else DRIVER_LABELS[driver],
                     "measure_code": measure,
                     "measure_label": MEASURE_LABELS[measure],
                     "currency": item.currency,
@@ -315,9 +344,16 @@ def dataset_rows(
             unattributed = differing[OTHER][1] > 0
             for driver in DRIVERS:
                 effect, affected = differing[driver]
-                hidden = unattributed and (
-                    driver in UNIDENTIFIED
-                    or (driver == "ADVANCE_CONSIDERATION_FX" and (currency, measure) in unknown_fx)
+                hidden = (
+                    unattributed
+                    and effect == 0
+                    and (
+                        driver in UNIDENTIFIED
+                        or (
+                            driver == "ADVANCE_CONSIDERATION_FX"
+                            and (currency, measure) in unknown_fx
+                        )
+                    )
                 )
                 rows.append(
                     {
@@ -629,6 +665,12 @@ def _restore_sources(records: Sequence[Mapping[str, Any]]) -> list[Compared]:
             step1_differs=record["step1_differs"],
             impairment_reversed=record["impairment_reversed"],
             fx_attribution_unavailable=record["fx_attribution_unavailable"],
+            driver_effects=None
+            if record.get("driver_effects") is None
+            else {
+                measure: {driver: Decimal(value) for driver, value in effects.items()}
+                for measure, effects in record["driver_effects"].items()
+            },
         )
         for record in records
     ]
@@ -647,6 +689,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             raise tie_outs.invalid(
                 "currency_view", "The retained book bridge uses another currency view."
             )
+    elif params.execution_result is not None:
+        from erev_api.domain.reports import book_bridge_replay
+
+        if not isinstance(params.execution_result, book_bridge_replay.Calculated):
+            raise Problem("invalid-transition", "Invalid book bridge execution result.")
+        retained = book_bridge_replay.consume(uow, params, params.execution_result)
     else:
         session = uow.session
         entities, periods, _ = ranges(session, params)

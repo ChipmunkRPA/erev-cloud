@@ -1,5 +1,31 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Book Bridge verified phased attribution — October 21, 2026
+
+- Added an authorized worker read/compute/publish path: verify original retained computation
+  outputs and both book monetary endpoints, then run counterfactual ASC606 policy families in
+  driver order using IFRS15 resolved values. Engine calls run outside SQL and heartbeat between
+  evaluations. Publication rechecks complete-group read permission; ordinary narrow report
+  scope does not gain access to a broader computation. Migration 0296 describes this basis.
+- The collectibility phase also exchanges book-scoped Step 1 assessments/criteria events and
+  reviewed collectibility/not-a-contract outcomes in memory. This is necessary because those
+  recorded facts can differ even when policy replacement alone leaves revenue unchanged.
+  Original event records are never edited. Input/output hashes and policy/event references
+  accompany the retained per-contract driver effects.
+- Multiple quantified causes now appear separately, including offsetting effects with a zero
+  net difference. Later phases receive interactions. Proven nonzero effects remain visible
+  beside OTHER; unsupported counterfactual phases leave the unproven remainder in OTHER.
+  Older retained inputs and groups without verified common endpoints retain existing semantics.
+- Necessary checks passed: real engine shipping election attributes USD 50 to FRAMEWORK_ELECTIONS;
+  the public collectibility bridge performs actual replay and retains its expected -3,000 result;
+  foreign functional/reporting views and same-source rerun after later billing pass; mismatched
+  originals/endpoints get no causal labels, unavailable phases preserve the residual, offsetting
+  causes remain visible; 29 focused tests, catalogue parity and scoped lint/types pass.
+- Remaining: dedicated licence-renewal and advance-consideration FX scenarios and any resulting
+  gaps, non-policy/book-context residuals, Adoption Bridge multi-currency, Intercompany Pairs
+  retained replay, other documented adapters and final repository verification. No deployment;
+  this is a concrete attribution increment, not a claim that every book difference is explained.
+
 ## Book Bridge same-source rebuild — October 21, 2026
 
 - New runs retain the pre-aggregation per-contract amounts for both books, the selected currency

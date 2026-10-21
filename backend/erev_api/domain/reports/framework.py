@@ -2449,6 +2449,7 @@ def _export_requester(
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
     if str(run["report_code"]) in {
+        "book_bridge",
         "rpo",
         "rpo_rollforward",
         "contract_balance_rollforward",
@@ -2580,7 +2581,7 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                 detail={"job_id": str(jc.job_id)},
             )
             uow.commit()
-    execution_result = None
+    execution_result: object | None = None
     if str(run["report_code"]) == variance_builder.CODE:
         with jc.unit_of_work() as read_uow:
             source_run = _lock_run(read_uow.session, run_id)
@@ -2598,6 +2599,24 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             return compute(bundle)
 
         execution_result = variance_builder.calculate(prepared, engine=variance_compute)
+        jc.heartbeat()
+    if str(run["report_code"]) == book_bridge_builder.CODE and report_params(run).binding is None:
+        from erev_engine import compute as book_compute
+
+        from erev_api.domain.reports import book_bridge_replay
+
+        with jc.unit_of_work() as read_uow:
+            source_run = _lock_run(read_uow.session, run_id)
+            ctx = _export_requester(jc, read_uow, source_run)
+            book_prepared = book_bridge_replay.prepare(
+                read_uow, replace(report_params(source_run), requester=ctx)
+            )
+
+        def compute_book(bundle: Any) -> Any:
+            jc.heartbeat()
+            return book_compute(bundle)
+
+        execution_result = book_bridge_replay.calculate(book_prepared, engine=compute_book)
         jc.heartbeat()
     with jc.unit_of_work() as uow:
         session = uow.session

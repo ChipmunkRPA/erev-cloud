@@ -2177,6 +2177,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         overrides=_ONE_ENTITY,
         sources=(
             "contract_version",
+            "contract_computation",
+            "computation_evidence",
             "contract_version_balance",
             "schedule_line",
             "subledger_line",
@@ -2197,6 +2199,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         filters=(
             "one entity of entity_codes keeping both ASC606 and IFRS15",
             _PERIODS,
+            "authorized original computations must reproduce both book endpoints before "
+            "SQL-free phased policy replay; collectibility also exchanges book-scoped Step 1 facts",
+            "phase effects sum with OTHER residuals; interactions belong to the later phase; "
+            "offsetting causes remain visible; unavailable replay preserves existing "
+            "source semantics",
             "same-source reruns rebuild from retained per-contract book amounts, currency basis "
             "and driver facts without rereading live balances, labels or FX rates",
             "the same contracts compared in both books, differences attributed to drivers",

@@ -20,6 +20,32 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Book Bridge verified phased attribution — October 21, 2026
+
+- Added an authorized worker read/compute/publish path: verify original retained computation
+  outputs and both book monetary endpoints, then run counterfactual ASC606 policy families in
+  driver order using IFRS15 resolved values. Engine calls run outside SQL and heartbeat between
+  evaluations. Publication rechecks complete-group read permission; ordinary narrow report
+  scope does not gain access to a broader computation. Migration 0296 describes this basis.
+- The collectibility phase also exchanges book-scoped Step 1 assessments/criteria events and
+  reviewed collectibility/not-a-contract outcomes in memory. This is necessary because those
+  recorded facts can differ even when policy replacement alone leaves revenue unchanged.
+  Original event records are never edited. Input/output hashes and policy/event references
+  accompany the retained per-contract driver effects.
+- Multiple quantified causes now appear separately, including offsetting effects with a zero
+  net difference. Later phases receive interactions. Proven nonzero effects remain visible
+  beside OTHER; unsupported counterfactual phases leave the unproven remainder in OTHER.
+  Older retained inputs and groups without verified common endpoints retain existing semantics.
+- Necessary checks passed: real engine shipping election attributes USD 50 to FRAMEWORK_ELECTIONS;
+  the public collectibility bridge performs actual replay and retains its expected -3,000 result;
+  foreign functional/reporting views and same-source rerun after later billing pass; mismatched
+  originals/endpoints get no causal labels, unavailable phases preserve the residual, offsetting
+  causes remain visible; 29 focused tests, catalogue parity and scoped lint/types pass.
+- Remaining: dedicated licence-renewal and advance-consideration FX scenarios and any resulting
+  gaps, non-policy/book-context residuals, Adoption Bridge multi-currency, Intercompany Pairs
+  retained replay, other documented adapters and final repository verification. No deployment;
+  this is a concrete attribution increment, not a claim that every book difference is explained.
+
 ## Book Bridge same-source rebuild — October 21, 2026
 
 - New runs retain the pre-aggregation per-contract amounts for both books, the selected currency
@@ -192,43 +218,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: standalone audit-export cutoff/retention, first-generation actor/display names,
   register rule/step display inputs and other OPEN report adapters. This completes the sample
   pack's approval/audit commit cutoff, not all historical source reconstruction. No deployment.
-
-## Approvals register committed request state — October 21, 2026
-
-- Migration 0286 captures source-owned approval-request revisions, including terminal state
-  transitions. Original commit evidence uses existing revision recovery. Upgrade requires an
-  empty request table instead of fabricated history; retained revisions prevent downgrade.
-- Historical Approvals Register selects committed request revisions and original decision
-  commits before applying status filters. Late submission stays outside the old population;
-  late approval preserves the preceding PENDING state and earlier decisions. Default record
-  basis retains its existing business-time behavior.
-- Necessary checks passed: real overlapping approval/decision commits, PENDING versus APPROVED
-  status filters at old/new cutoffs, exclusion before request creation commit, existing public
-  register flow, catalogue parity, database architecture and scoped lint/types. No deployment.
-- Remaining: register names/rule/step display inputs and same-source retention remain OPEN;
-  audit commit visibility must be completed before switching sample approval packs to the new
-  request reader, so this does not combine committed requests with an inconsistent audit slice.
-  Personnel names and other listed report inputs still need work; no completion claim is made.
-
-## Contract sample attachment lifecycle history — October 21, 2026
-
-- Migration 0285 captures source-owned attachment revisions, including void transitions;
-  original revision commits use the existing queue/recovery path. Upgrade requires an empty
-  attachment table instead of fabricating history, and retained revisions prevent downgrade.
-- Sample documents v2 chooses the latest committed attachment revision by request cutoff.
-  Late-committed creation stays out; late-committed voiding preserves the original association
-  at an earlier cutoff. Each index row retains its source revision and commit time. Referenced
-  contract events also require their original commit before cutoff.
-- Current subject/file authorization, availability, upload-purpose limits, safe archive paths,
-  byte hashes and archive limits remain mandatory. Historical selection does not restore
-  shredded bytes or bypass revoked file grants. Existing saved packs keep their original bytes.
-- Necessary checks passed: real overlapping attachment creation and void transactions, original
-  bytes and revision evidence, full sample archive/PDF/XLSX flow, catalogue parity, database
-  architecture and scoped lint/types. The full sample fixture now commits attachments before
-  collecting them, matching the historical visibility contract. No deployment.
-- Remaining: actor/display-name history, approval-request/audit histories, and the other OPEN
-  report inputs. File metadata still follows current authorized file-read semantics; unavailable
-  historical bytes or incompatible metadata refuse rather than fetching external references.
 
 ## Outstanding release verification
 
