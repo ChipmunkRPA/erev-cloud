@@ -934,3 +934,99 @@ def test_priced_right_to_invoice_advance_billing_keeps_performance_and_aging(
     assert row["bucket_0_30"] == {"currency": "USD", "amount": "5550.00"}
     assert row["total"] == {"currency": "USD", "amount": "11050.00"}
     assert run["tie_out_results"][0]["result"] == "PASS"
+
+
+@pytest.mark.slow
+def test_historical_gl_never_falls_back_after_latest_source_changes(
+    world: ReportWorld, clock: FrozenClock
+) -> None:
+    from datetime import timedelta
+
+    from support import reconciliations as recon
+    from support.record_clock import on_record_time
+
+    world = on_record_time(world)
+    assign(world.priya.member, "revenue_reviewer")
+    world = carrying(world, maya=enrolled(world.app, clock, world.maya.member))
+    file_id = recon.uploaded(
+        world.app,
+        world.maya,
+        "historical-gl.csv",
+        recon.trial_balance_csv(
+            [
+                ("2100", "USD", "-29944.11"),
+                ("1200", "USD", "0"),
+                ("1105", "USD", "0"),
+            ]
+        ),
+    )
+
+    def reviewed() -> dict[str, Any]:
+        draft = recon.generated(
+            world.app,
+            world.maya,
+            world.runtime,
+            entity_code=AVM_US,
+            period_key=SEPTEMBER_2026,
+            kind=recon.SUBLEDGER_TO_GL,
+            book="ASC606",
+        )
+        recon.attached(world.app, world.maya, world.runtime, draft["id"], {"file_id": file_id})
+        for item in recon.items_of(world.app, world.maya, draft["id"]):
+            response = recon.explain(
+                world.app, world.maya, item, "Three balance roles in this trial balance."
+            )
+            assert response.status_code == 200, response.text
+        prepared = recon.prepare(world.app, world.maya, draft["id"])
+        assert prepared.status_code == 200, prepared.text
+        signed = recon.sign(world.app, world.priya, draft["id"])
+        assert signed.status_code == 200, signed.text
+        return draft
+
+    older = reviewed()
+    clock.advance(timedelta(minutes=1))
+    latest = reviewed()
+    assert latest["id"] != older["id"]
+    cutoff = clock.now().isoformat()
+    selectors = (
+        ("contract_balance_rollforward", SEPTEMBER),
+        (
+            "contract_balances",
+            {"entity_codes": [AVM_US], "book": "ASC606", "period_key": SEPTEMBER_2026},
+        ),
+    )
+    accepted = []
+    for code, parameters in selectors:
+        run, _ = report_run(world, code, {**parameters, "known_at": cutoff})
+        result = tie(run, tie_outs.TO_ROLLFORWARD_EQ_GL)
+        assert result["result"] == "PASS", result
+        assert result["details"][0]["reconciliation_id"] == latest["id"]
+        accepted.append(run)
+    clock.advance(timedelta(minutes=1))
+    reopened = recon.reopen(world.app, world.marcus, latest["id"], "Review a later GL revision")
+    assert reopened.status_code == 200, reopened.text
+    unavailable = []
+    for code, parameters in selectors:
+        run, _ = report_run(world, code, {**parameters, "known_at": cutoff})
+        result = tie(run, tie_outs.TO_ROLLFORWARD_EQ_GL)
+        assert result["result"] == "NOT_APPLICABLE", result
+        (detail,) = result["details"]
+        assert detail["reconciliation_id"] == latest["id"]
+        assert "changed after the report cutoff" in detail["reason"]
+        assert "source_status" not in detail and "gl" not in detail
+        unavailable.append(run)
+    # Previously captured accepted evidence stays accepted; new unavailable evidence stays so.
+    for retained in (*accepted, *unavailable):
+        restarted = post(world.app, f"/api/v1/report-runs/{retained['id']}/rerun", world.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = run_now(world, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        rebuilt = get(
+            world.app,
+            f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}",
+            world.maya,
+        )
+        assert rebuilt.status_code == 200, rebuilt.text
+        assert tie(rebuilt.json(), tie_outs.TO_ROLLFORWARD_EQ_GL) == tie(
+            retained, tie_outs.TO_ROLLFORWARD_EQ_GL
+        )

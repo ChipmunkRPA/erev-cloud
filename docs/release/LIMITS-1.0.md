@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — historical GL selection cannot fall back to stale reviewed evidence
+
+New GL comparison bindings (v4) choose the latest reconciliation identity eligible at the report
+cutoff before inspecting its mutable state. Previously, a later update excluded that row from
+the query and could select an older reviewed reconciliation, falsely passing a historical report.
+If the selected source changed after the cutoff, its historical review state and totals are not
+assumed: the comparison is NOT_APPLICABLE and retains the source identity and explicit reason.
+Current post-cutoff amounts and status are not copied into that historical report.
+
+Existing v1/v2/v3 bindings keep their original retained controls. Previously accepted v4 runs
+and newly unavailable v4 runs also replay from their own retained evidence. The public API case
+uses two reviewed sources, reopens the latest after the cutoff, and verifies both balance reports
+and their reruns. The existing review workflow, 12 scoped controls, lint/types, and migration
+0235 down/up IPE parity pass. This does not reconstruct mutable source history that was never
+retained. Combined member-aging date ownership, accounting acceptance and final-candidate release
+checks remain outstanding. No deployment.
+
 ### October 20 — actionable GL comparison review; member-aging decision pending
 
 The viewer displays GL comparison evidence in a table with separate GL, retained subledger,

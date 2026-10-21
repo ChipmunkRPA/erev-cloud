@@ -105,7 +105,12 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
 
 @pytest.mark.parametrize(
     "evidence_key",
-    [rollforward_gl.LEGACY_EVIDENCE, rollforward_gl.BRIDGE_EVIDENCE, rollforward_gl.EVIDENCE],
+    [
+        rollforward_gl.LEGACY_EVIDENCE,
+        rollforward_gl.BRIDGE_EVIDENCE,
+        rollforward_gl.REVIEW_EVIDENCE,
+        rollforward_gl.EVIDENCE,
+    ],
 )
 def test_retained_gl_rebuild_never_reads_current_reconciliation(evidence_key: str) -> None:
     from typing import cast
@@ -118,7 +123,9 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation(evidence_key: st
     sources = {
         str(entity.id): {
             "id": str(uuid4()),
-            "status": "REVIEWED" if evidence_key == rollforward_gl.EVIDENCE else "DRAFT",
+            "status": "REVIEWED"
+            if evidence_key in {rollforward_gl.EVIDENCE, rollforward_gl.REVIEW_EVIDENCE}
+            else "DRAFT",
             "totals": [
                 {
                     "account_role": role,

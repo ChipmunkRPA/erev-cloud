@@ -6,6 +6,22 @@
 
 
 
+## Historical GL source identity — October 20, 2026
+
+- Fixed a historical comparison defect: filtering updated_at before selecting the latest GL
+  reconciliation could skip a later-reopened source and falsely PASS against an older reviewed
+  source. New v4 runs select the latest eligible identity first; a later mutation now records
+  NOT_APPLICABLE with its source link and a historical-evidence reason, without future totals
+  or future review status. No older source is substituted.
+- Previously retained v1/v2 arithmetic and v3 reviewed-source evidence keep their original
+  controls. Accepted and unavailable v4 runs also reproduce from their retained evidence.
+- Public API checks create two independently reviewed GL sources, then reopen the latest after
+  the cutoff. Both balance reports refuse the stale fallback; earlier accepted runs and new
+  unavailable runs rerun identically. The existing review workflow and 12 scoped control cases
+  pass, with lint/types and migration 0235 down/up catalogue parity. No deployment.
+- This does not reconstruct mutable reconciliation history that was never retained. Combined
+  member-aging date ownership, independent accounting sign-off and final-candidate checks remain.
+
 ## GL reconciliation review table — October 20, 2026
 
 - The report viewer now presents retained GL comparisons as a table: GL, retained subledger,
@@ -221,25 +237,6 @@
   Cross-contract agent groups and broader close-pass acceptance remain open; this supersedes
   the prior unverified gross-refund/return case. Independent accounting acceptance and final
   release checks remain outstanding. Direct main publication only; no deployment.
-
-
-## Agent gross relief across original source layers — October 20, 2026
-
-- Two prepayment layers previously failed the split-role reader's unique-origin guard. Agent
-  control attribution now falls back specifically on that ambiguity: gross control targets and
-  original control paid history supply the source owners; net/supplier scalar targets and paid
-  histories are independently replayed in both currencies. No per-owner net split is invented.
-- Revenue history captures CONTRACT_LIABILITY only for REVENUE_RECOGNITION. Close envelopes
-  declare that capability; older envelopes without it refuse the gross fallback. Both report
-  consumers retain the gross control ID alongside component amounts and original evidence.
-- The DB journey covers two 45,000 deposits, separate source layers, later supplier paid history,
-  both public reports in all currency views and identical reruns. Single-layer and zero-net cases
-  also pass. Scalar evidence has no movements and cannot masquerade as an attributed delta;
-  changed functional split amounts fail. Scoped lint/types and source checks pass.
-- Migration 0225 documents this path. Cross-contract agent groups, gross-control reversals and
-  close-pass agent acceptance still need representative coverage; individual net/supplier
-  source allocation remains unavailable without original owner evidence. Existing disclosure
-  gross-relief policy and independent accounting acceptance remain open. No deployment.
 
 
 ## Outstanding release verification

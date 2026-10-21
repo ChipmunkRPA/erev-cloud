@@ -495,6 +495,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "GL bridge v3 requires the latest retained reconciliation to be reviewed or "
             "certified; draft, prepared, reopened or missing status is unavailable; "
             "historical v1 and v2 bindings preserve their original arithmetic controls",
+            "GL bridge v4 selects the latest source identity before checking mutable state; "
+            "a source changed after the report cutoff is unavailable and never replaced "
+            "by an older reviewed source; retained v1-v3 bindings remain unchanged",
         ),
         tie_outs=("TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -610,9 +613,6 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "entity and role in functional currency; either nonzero leg fails even when net "
             "differences cancel; missing subledger evidence is unavailable and v1 bindings "
             "retain two-way semantics",
-            "GL bridge v3 requires the latest retained reconciliation to be reviewed or "
-            "certified; draft, prepared, reopened or missing status is unavailable; "
-            "historical v1 and v2 bindings preserve their original arithmetic controls",
             "mixed revenue inputs spanning original sources use retained recognition-period "
             "classes only when every source period is uniform TIME or EVENT and both currency "
             "TIME totals reconcile; mixed periods and unmatched functional allocation remain "
@@ -634,6 +634,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "combined-member refunds classify billing from retained asset and liability sources "
             "even when asset consumption is zero; full-return recipients replay original negative "
             "postings when latest targets no longer retain prior consumed layers",
+            "GL bridge v3 requires the latest retained reconciliation to be reviewed or "
+            "certified; draft, prepared, reopened or missing status is unavailable; "
+            "historical v1 and v2 bindings preserve their original arithmetic controls",
+            "GL bridge v4 selects the latest source identity before checking mutable state; "
+            "a source changed after the report cutoff is unavailable and never replaced "
+            "by an older reviewed source; retained v1-v3 bindings remain unchanged",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),

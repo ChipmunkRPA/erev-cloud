@@ -10152,3 +10152,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining live priorities include multi-origin agent split attribution and documented dated
   projection gaps. Independent accounting sign-off and final-candidate checks remain required.
   No deployment. This entry supersedes the earlier public mixed-TIME acceptance task.
+
+## Agent gross relief across original source layers — October 20, 2026
+
+- Two prepayment layers previously failed the split-role reader's unique-origin guard. Agent
+  control attribution now falls back specifically on that ambiguity: gross control targets and
+  original control paid history supply the source owners; net/supplier scalar targets and paid
+  histories are independently replayed in both currencies. No per-owner net split is invented.
+- Revenue history captures CONTRACT_LIABILITY only for REVENUE_RECOGNITION. Close envelopes
+  declare that capability; older envelopes without it refuse the gross fallback. Both report
+  consumers retain the gross control ID alongside component amounts and original evidence.
+- The DB journey covers two 45,000 deposits, separate source layers, later supplier paid history,
+  both public reports in all currency views and identical reruns. Single-layer and zero-net cases
+  also pass. Scalar evidence has no movements and cannot masquerade as an attributed delta;
+  changed functional split amounts fail. Scoped lint/types and source checks pass.
+- Migration 0225 documents this path. Cross-contract agent groups, gross-control reversals and
+  close-pass agent acceptance still need representative coverage; individual net/supplier
+  source allocation remains unavailable without original owner evidence. Existing disclosure
+  gross-relief policy and independent accounting acceptance remain open. No deployment.
