@@ -987,6 +987,7 @@ class ObligationAt:
     period_schedule: tuple[tuple[str, date, Decimal], ...] | None = None
     projection_error: str | None = None
     report_scheduled: Decimal | None = None
+    fixed_measured: Measured | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1164,6 +1165,7 @@ def version_at(
             realised, _ = _read(nodes, REALISED, subject, day, named, stored=realised_stored)
             shift += realised_stored - realised
         fixed_allocation = None
+        fixed_at = None
         fixed_state = nodes.states.get(f"{FIXED_ALLOCATION}:{subject}")
         if fixed_state is None and _measures(nodes, FIXED_ALLOCATION, subject):
             raise Unreadable(
@@ -1183,7 +1185,7 @@ def version_at(
                     f"obligations[{subject}].{FIXED_ALLOCATION}",
                     "Retained fixed allocation does not reconcile to the version remainder.",
                 )
-            fixed_allocation, _ = _read(
+            fixed_allocation, fixed_at = _read(
                 nodes,
                 FIXED_ALLOCATION,
                 subject,
@@ -1265,6 +1267,7 @@ def version_at(
             realised=realised,
             realised_stored=realised_stored,
             fixed_allocation=fixed_allocation,
+            fixed_measured=_measured(fixed_at),
             realised_traced=realised_state is not None,
             fixed_schedule_cut=schedule_cut
             if dated_schedule is not None

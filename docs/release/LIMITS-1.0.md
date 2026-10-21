@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Monetary events in initial eligibility batches — October 21, 2026
+
+- Initial RPO eligibility timelines now retain dated amendment and estimate slices, using
+  original event-specific allocation shares. Changes before exit are separately classified;
+  changes while excluded are included in the remaining re-entry balance, not NEW_CONTRACTS
+  or in-scope modification/VC lines. Original computation IDs and amounts remain unchanged.
+- The dated reader now exposes the fixed-allocation measurement date separately from revenue.
+  A frozen revenue target may be dated at the exit while allocation still measures month-end.
+  Lifecycle cuts remove later same-period changes using complete original boundaries/shares,
+  preventing an excluded-period amendment from being included in the earlier exit balance.
+- Fixed an engine invariant failure on estimates during a Step 1 revenue freeze. Matching
+  frozen before/after targets retain a zero catch-up with the freeze date and S02-R-05 guard;
+  the new allocation remains available for subsequent re-entry. Other segment checks remain.
+- New reports retain rpo_initial_monetary_timeline_v1; older bindings retain their prior
+  timeline. Migration 0270 updates both RPO definitions. Eight original-engine scenarios cover
+  price/estimate/both at exit and during exclusion, final included/excluded states and four
+  report start positions. The 132 scoped engine/reader/report cases, public sequential
+  eligibility/rerun regression, lint/types and reversible migration/catalogue parity pass.
+- Initial usage/royalty batches, monetary changes after a same-day status transition, and
+  multiple transitions on a monetary-event date still need ordered amount evidence. The public
+  batch-to-report witness and B4-11 historical commit visibility remain open. No deployment.
+
 ## Initial RPO eligibility timelines — October 21, 2026
 
 - RPO and its rollforward now read original Step 1 status nodes, linked to dated immutable

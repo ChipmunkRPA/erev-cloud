@@ -906,6 +906,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "pre-exit deterministic schedules retain original-cut projections; monetary event "
             "batches and unavailable original evidence retain their previous behavior; older "
             "bindings retain their original version timeline",
+            "rpo_initial_monetary_timeline_v1 assigns initial eligibility-batch amendments, "
+            "and estimates to their original dates; event-specific shares and retained "
+            "boundaries remove later same-period fixed changes from lifecycle cuts; changes "
+            "while excluded enter through the remaining re-entry balance; same-day monetary "
+            "events after a status transition require additional ordered evidence and retain "
+            "the previous timeline; old bindings retain their original classification",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -1143,6 +1149,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "pre-exit deterministic schedules retain original-cut projections; monetary event "
             "batches and unavailable original evidence retain their previous behavior; older "
             "bindings retain their original version timeline",
+            "rpo_initial_monetary_timeline_v1 assigns initial eligibility-batch amendments, "
+            "and estimates to their original dates; event-specific shares and retained "
+            "boundaries remove later same-period fixed changes from lifecycle cuts; changes "
+            "while excluded enter through the remaining re-entry balance; same-day monetary "
+            "events after a status transition require additional ordered evidence and retain "
+            "the previous timeline; old bindings retain their original classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

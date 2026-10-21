@@ -453,8 +453,17 @@ def _emit_catch_up(
     d = ev.effective_date
     before = target_at_position(ctx, st, ob, d, event=ev, inclusive=False)
     after = target_at_position(ctx, st, ob, d, event=ev, inclusive=True)
+    # Step 1 freezes recognition at an earlier date. A later allocation change
+    # preserves that same target until re-entry, so it has no immediate catch-up.
+    frozen = (
+        before.as_of == after.as_of
+        and before.as_of < d
+        and before.segment == after.segment
+        and before.value == after.value
+        and before.fixed_exact == after.fixed_exact
+    )
     for target, seg in ((before, segments[0]), (after, segments[1])):
-        if target.segment is not None and target.segment != seg:
+        if not frozen and target.segment is not None and target.segment != seg:
             raise _invariant(
                 "stage 09 measures another segment at the boundary",
                 ev,
@@ -469,6 +478,9 @@ def _emit_catch_up(
         **_side(after, segments[1], "after"),
     }
     guard = after.guard or before.guard
+    if frozen:
+        guard = "S02-R-05:FROZEN"
+        params["frozen_at"] = before.as_of.isoformat()
     if guard is not None:
         params["guard"] = guard
     if after.progress is not None:

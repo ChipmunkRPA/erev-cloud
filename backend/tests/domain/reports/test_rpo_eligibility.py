@@ -1,7 +1,7 @@
 """RPO eligibility exits and re-entry from original Step 1 computations."""
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -13,11 +13,15 @@ from erev_engine import compute
 from support import allocation_worlds, cpc_worlds, step1_worlds
 
 
+@pytest.mark.parametrize("days_after_exit", [0, 5])
 @pytest.mark.parametrize("modified", [False, True])
 @pytest.mark.parametrize("estimated", [False, True])
-def test_original_collectibility_exit_and_reentry(modified: bool, estimated: bool) -> None:
+def test_original_collectibility_exit_and_reentry(
+    modified: bool, estimated: bool, days_after_exit: int
+) -> None:
     before, end = date(2026, 1, 31), date(2026, 3, 31)
     admitted, exited, returned = date(2026, 1, 1), date(2026, 2, 10), date(2026, 3, 1)
+    money_day = exited + timedelta(days=days_after_exit)
     steps = [
         ("C", admitted, ""),
         ("S", exited, "Customer deterioration"),
@@ -27,6 +31,7 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
     cid, eid, gid, oid = (uuid4() for _ in range(4))
     versions, obligations, cuts, boundaries = [], {}, {}, {}
     estimates_by_version = {}
+    estimate_events_by_version = {}
     schedules_by_version = {}
     retained_bundles = {}
     retained_books = {}
@@ -48,7 +53,7 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
             amendments = []
             if index:
                 if modified:
-                    amendment = cpc_worlds.concession("120", exited, key=step1_worlds.SERVICE)
+                    amendment = cpc_worlds.concession("120", money_day, key=step1_worlds.SERVICE)
                     amendment = replace(
                         amendment,
                         price_change_amount=None,
@@ -59,7 +64,7 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
                     amendments.append(amendment)
                     events = cpc_worlds.amended(events, amendment)
                 if estimated:
-                    updated = allocation_worlds.later_version(estimates[0], 2, exited, "60")
+                    updated = allocation_worlds.later_version(estimates[0], 2, money_day, "60")
                     estimates.append(updated)
                     events = cpc_worlds.pinned(events, updated)
                 events = step1_worlds.significant_change(events, exited, "Customer deterioration")
@@ -68,11 +73,25 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
                     events = step1_worlds.criteria_met(events, returned)
             bundle = replace(
                 bundle,
-                events=tuple(events),
+                events=tuple(
+                    sorted(events, key=lambda e: (e.effective_date, e.record_seq, e.event_key))
+                ),
+                known_at=max(bundle.known_at, *(e.recorded_at for e in events)),
                 estimate_versions=tuple(estimates),
                 contracts=(replace(bundle.contracts[0], modifications=tuple(amendments)),),
             )
         book = compute(bundle).books[0]
+        if estimated and days_after_exit and index:
+            frozen = [
+                node
+                for node in book.trace.nodes
+                if node.measure.startswith("catch_up@")
+                and node.params.get("v_new") == "C-STEP1/BASE@v2"
+            ]
+            assert len(frozen) == 1
+            assert Decimal(frozen[0].value) == 0
+            assert frozen[0].params["frozen_at"] == exited.isoformat()
+            assert frozen[0].params["guard"] == "S02-R-05:FROZEN"
         vid = uuid4()
         retained_bundles[vid] = bundle
         retained_books[vid] = book
@@ -102,6 +121,14 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         )
         versions.append(version)
         boundaries[vid] = rpo_boundary_changes.history(book.trace)
+        for event in bundle.events:
+            if event.event_type == "ESTIMATE_CHANGED":
+                event_shares = rpo_estimate_changes.allocations(
+                    book.trace,
+                    frozenset({event.event_key}),
+                )
+                if event_shares is not None:
+                    estimate_events_by_version[vid, event.event_key] = event_shares
         shares = rpo_estimate_changes.allocations(book.trace, version.estimate_events)
         if shares is not None:
             estimates_by_version[vid] = shares
@@ -152,7 +179,7 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
                 for p in entity.periods
             },
         )
-        for day in (before, end, admitted, exited, returned, date(2025, 12, 31)):
+        for day in (before, end, admitted, exited, returned, money_day, date(2025, 12, 31)):
             cuts[vid, day] = to_date.version_at(
                 {"version_no": index + 1},
                 [row],
@@ -168,61 +195,66 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         cuts,
         boundaries=boundaries,
         estimate_allocations=estimates_by_version,
+        estimate_event_allocations=estimate_events_by_version,
     )
-    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
-    assert result.lines["OPENING"] == 1100, result.lines
-    assert result.lines["NEW_CONTRACTS"] == 0, result.lines
-    assert result.lines["CANCELLATIONS"] == 0, result.lines
-    assert result.lines["UNEXPLAINED"] == 0, result.lines
-    # Reconcile disclosure to original engine schedules, independent of RPO movement logic.
     total_price = Decimal(1200 + (120 if modified else 0) + (60 if estimated else 0))
-    assert result.lines["CLOSING"] == total_price - schedules_by_version[versions[2].id]
     exit_revenue = schedules_by_version[versions[1].id]
     entry_revenue = schedules_by_version[versions[2].id]
-    assert result.lines["ELIGIBILITY_CHANGES"] == exit_revenue - entry_revenue
-    assert result.lines["VC_ESTIMATE_CHANGES"] == (60 if estimated else 0)
-    assert result.lines["MODIFICATIONS"] == (120 if modified else 0), result.lines
-    assert result.lines["REVENUE"] == 100 - exit_revenue, result.lines
+    price_at_exit = total_price if days_after_exit == 0 else Decimal(1200)
+    if days_after_exit == 0:
+        (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+        assert result.lines["OPENING"] == 1100, result.lines
+        assert result.lines["NEW_CONTRACTS"] == 0, result.lines
+        assert result.lines["CANCELLATIONS"] == 0, result.lines
+        assert result.lines["UNEXPLAINED"] == 0, result.lines
+        # Reconcile disclosure to original engine schedules, independent of RPO movement logic.
+        assert result.lines["CLOSING"] == total_price - schedules_by_version[versions[2].id]
+        assert result.lines["ELIGIBILITY_CHANGES"] == exit_revenue - entry_revenue
+        assert result.lines["VC_ESTIMATE_CHANGES"] == (60 if estimated else 0)
+        assert result.lines["MODIFICATIONS"] == (120 if modified else 0), result.lines
+        assert result.lines["REVENUE"] == 100 - exit_revenue, result.lines
 
-    # Without the new binding, preserve the old calculation rather than rewrite history.
-    (legacy,) = rpo.rollforward_lines(
-        replace(store, classify_eligibility_changes=False), ranges={eid: (before, end)}, applied={}
-    )
-    assert legacy.lines["ELIGIBILITY_CHANGES"] == 0
-    assert legacy.lines != result.lines
-    if modified and not estimated:
-        # Original engine schedules: Jan 100; the exit retains Feb 4.08;
-        # re-entry retains March 187.69, admitting RPO 1,028.23.
-        # The 120 price increase must stay separate from that eligibility balance.
-        assert result.lines["CLOSING"] == Decimal("1028.23")
-    if modified or estimated:
-        missing_evidence = replace(
-            store,
-            boundaries={} if modified else boundaries,
-            estimate_allocations={} if estimated else estimates_by_version,
-        )
-        (incomplete,) = rpo.rollforward_lines(
-            missing_evidence,
+        # Without the new binding, preserve the old calculation rather than rewrite history.
+        (legacy,) = rpo.rollforward_lines(
+            replace(store, classify_eligibility_changes=False),
             ranges={eid: (before, end)},
             applied={},
         )
-        assert incomplete.lines != result.lines
-        (old,) = rpo.rollforward_lines(
-            replace(store, classify_mixed_eligibility=False),
-            ranges={eid: (before, end)},
-            applied={},
-        )
-        assert old.lines != result.lines
-        return
-    # A competing price change must not be hidden inside the eligibility movement.
-    mixed = replace(versions[1], causes=versions[1].causes | {"CONTRACT_AMENDED"})
-    mixed_chain = (versions[0], mixed, versions[2])
-    (unsupported,) = rpo.rollforward_lines(
-        replace(store, versions={gid: mixed_chain}, chains={cid: mixed_chain}),
-        ranges={eid: (before, end)},
-        applied={},
-    )
-    assert unsupported.lines["ELIGIBILITY_CHANGES"] == 0
+        assert legacy.lines["ELIGIBILITY_CHANGES"] == 0
+        assert legacy.lines != result.lines
+        if modified and not estimated:
+            # Original engine schedules: Jan 100; the exit retains Feb 4.08;
+            # re-entry retains March 187.69, admitting RPO 1,028.23.
+            # The 120 price increase must stay separate from that eligibility balance.
+            assert result.lines["CLOSING"] == Decimal("1028.23")
+        if modified or estimated:
+            missing_evidence = replace(
+                store,
+                boundaries={} if modified else boundaries,
+                estimate_allocations={} if estimated else estimates_by_version,
+            )
+            (incomplete,) = rpo.rollforward_lines(
+                missing_evidence,
+                ranges={eid: (before, end)},
+                applied={},
+            )
+            assert incomplete.lines != result.lines
+            (old,) = rpo.rollforward_lines(
+                replace(store, classify_mixed_eligibility=False),
+                ranges={eid: (before, end)},
+                applied={},
+            )
+            assert old.lines != result.lines
+        if not (modified or estimated):
+            # A competing price change must not be hidden inside the eligibility movement.
+            mixed = replace(versions[1], causes=versions[1].causes | {"CONTRACT_AMENDED"})
+            mixed_chain = (versions[0], mixed, versions[2])
+            (unsupported,) = rpo.rollforward_lines(
+                replace(store, versions={gid: mixed_chain}, chains={cid: mixed_chain}),
+                ranges={eid: (before, end)},
+                applied={},
+            )
+            assert unsupported.lines["ELIGIBILITY_CHANGES"] == 0
 
     # A single initial computation contains all three status transitions.
     # Retain its actual version ID, trace and dated recognition for every slice.
@@ -230,25 +262,30 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         versions[-1],
         version_no=1,
         causes=frozenset(event.event_type for event in bundle.events),
+        cause_events=frozenset(event.event_key for event in bundle.events),
     )
     event_map = {
         event.event_key: (cid, event.event_type, event.effective_date, event.record_seq)
         for event in bundle.events
     }
-    timeline = rpo.initial_eligibility_timeline(initial, cid, book.trace, event_map)
+    timeline = rpo.initial_eligibility_timeline(initial, cid, book.trace, event_map, mixed=True)
+    if modified or estimated:
+        assert rpo.initial_eligibility_timeline(initial, cid, book.trace, event_map) is None
     assert timeline is not None
-    assert [(v.effective, v.included) for v in timeline] == [
-        (admitted, True),
-        (exited, False),
-        (returned, True),
-    ]
+    expected_states = [(admitted, True), (exited, False)]
+    if days_after_exit and (modified or estimated):
+        expected_states.append((money_day, False))
+    expected_states.append((returned, True))
+    assert [(v.effective, v.included) for v in timeline] == expected_states
     assert {v.id for v in timeline} == {initial.id}
     batched = replace(store, versions={gid: (initial,)}, chains={cid: timeline})
+    closing = total_price - entry_revenue
+    net_eligibility = exit_revenue - price_at_exit + closing
     for cut, opening, new, eligibility, revenue in (
-        (date(2025, 12, 31), 0, 1200, -200, -100),
-        (before, 1100, 0, -200, 0),
-        (exited, 0, 0, 900, 0),
-        (returned, 900, 0, 0, 0),
+        (date(2025, 12, 31), 0, 1200, net_eligibility, -exit_revenue),
+        (before, 1100, 0, net_eligibility, 100 - exit_revenue),
+        (exited, 0, 0, closing, 0),
+        (returned, closing, 0, 0, 0),
     ):
         (batch,) = rpo.rollforward_lines(
             batched,
@@ -259,7 +296,13 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         assert batch.lines["NEW_CONTRACTS"] == new, batch.lines
         assert batch.lines["ELIGIBILITY_CHANGES"] == eligibility, batch.lines
         assert batch.lines["REVENUE"] == revenue, batch.lines
-        assert batch.lines["CLOSING"] == 900, batch.lines
+        assert batch.lines["CLOSING"] == closing, batch.lines
+        assert batch.lines["MODIFICATIONS"] == (
+            120 if modified and cut < exited and not days_after_exit else 0
+        )
+        assert batch.lines["VC_ESTIMATE_CHANGES"] == (
+            60 if estimated and cut < exited and not days_after_exit else 0
+        )
         assert batch.lines["CANCELLATIONS"] == batch.lines["UNEXPLAINED"] == 0, batch.lines
     assert rpo.initial_eligibility_timeline(initial, cid, book.trace, {}) is None
 
@@ -268,12 +311,14 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         versions[1],
         version_no=1,
         causes=frozenset(e.event_type for e in retained_bundles[versions[1].id].events),
+        cause_events=frozenset(e.event_key for e in retained_bundles[versions[1].id].events),
     )
     exit_timeline = rpo.initial_eligibility_timeline(
         initial_exit,
         cid,
         retained_books[versions[1].id].trace,
         event_map,
+        mixed=True,
     )
     assert exit_timeline is not None
     exited_store = replace(
@@ -282,8 +327,8 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         chains={cid: exit_timeline},
     )
     for cut, opening, new, eligibility, revenue in (
-        (date(2025, 12, 31), 0, 1200, -1100, -100),
-        (before, 1100, 0, -1100, 0),
+        (date(2025, 12, 31), 0, 1200, exit_revenue - price_at_exit, -exit_revenue),
+        (before, 1100, 0, exit_revenue - price_at_exit, 100 - exit_revenue),
     ):
         (batch,) = rpo.rollforward_lines(
             exited_store,

@@ -296,6 +296,8 @@ class _Version:
     estimate_order: tuple[tuple[str, int], ...] = ()
     entry_order: tuple[tuple[UUID, int], ...] = ()
     eligibility_exits: tuple[tuple[UUID, date], ...] = ()
+    cause_events: frozenset[str] = frozenset()
+    dated_slice: bool = False
 
 
 @dataclass(slots=True)
@@ -491,6 +493,7 @@ def load(
     entry_sequences: dict[UUID, int] = {}
     eligibility_exits: dict[UUID, tuple[UUID, date]] = {}
     status_events: dict[str, tuple[UUID, str, date, int]] = {}
+    event_keys: dict[UUID, str] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -514,6 +517,7 @@ def load(
                 f"{contract_subject_key(str(found['external_id']))}/"
                 f"EV-{int(found['stream_version']):06d}"
             )
+            event_keys[UUID(str(found["id"]))] = natural_key
             status_events[natural_key] = (
                 UUID(str(found["contract_id"])),
                 kind,
@@ -592,6 +596,11 @@ def load(
                 entry_order=tuple(
                     (cid, value[1])
                     for cid, value in sorted(orders.items(), key=lambda pair: str(pair[0]))
+                ),
+                cause_events=frozenset(
+                    event_keys[UUID(str(item))]
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in event_keys
                 ),
                 eligibility_exits=tuple(
                     eligibility_exits[UUID(str(item))]
@@ -762,7 +771,13 @@ def load(
     chains = chains_of(versions, obligations, _memberships(session, obligations, cutoff))
     timeline_key = "rpo_initial_eligibility_timeline_v1"
     timelines = params is None or params.binding is None or timeline_key in params.binding.evidence
+    mixed_key = "rpo_initial_monetary_timeline_v1"
+    mixed_timeline = (
+        params is None or params.binding is None or mixed_key in params.binding.evidence
+    )
     if timelines:
+        if mixed_timeline and params is not None and params.sources is not None:
+            params.sources.record_evidence(mixed_key, True)
         if params is not None and params.sources is not None:
             params.sources.record_evidence(timeline_key, True)
         retained_traces: dict[UUID, Trace | None] = {}
@@ -775,7 +790,9 @@ def load(
             trace = retained_traces[first.id]
             if trace is None:
                 continue
-            expanded = initial_eligibility_timeline(first, cid, trace, status_events)
+            expanded = initial_eligibility_timeline(
+                first, cid, trace, status_events, mixed=mixed_timeline
+            )
             if expanded is not None:
                 chains[cid] = (*expanded, *chain[1:])
     return Store(
@@ -790,16 +807,22 @@ def initial_eligibility_timeline(
     contract_id: UUID,
     trace: Trace,
     events: Mapping[str, tuple[UUID, str, date, int]],
+    *,
+    mixed: bool = False,
 ) -> tuple[_Version, ...] | None:
     """Read status slices of one original computation without inventing new computations."""
-    if version.version_no != 1 or not version.causes <= {
-        "CONTRACT_BOOKED",
-        "CONTRACT_ACTIVATED",
-        "CONTRACT_CRITERIA_MET",
-        "COLLECTIBILITY_ASSESSED",
-        "SIGNIFICANT_CHANGE_FLAGGED",
-        "MEMO_ADDED",
-    }:
+    money_kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"}
+    if version.version_no != 1 or not version.causes <= (
+        {
+            "CONTRACT_BOOKED",
+            "CONTRACT_ACTIVATED",
+            "CONTRACT_CRITERIA_MET",
+            "COLLECTIBILITY_ASSESSED",
+            "SIGNIFICANT_CHANGE_FLAGGED",
+            "MEMO_ADDED",
+        }
+        | (money_kinds if mixed else set())
+    ):
         return None
     points: list[tuple[date, int, str, str]] = []
     seen: set[str] = set()
@@ -852,7 +875,96 @@ def initial_eligibility_timeline(
         )
         included = now
     # One admission already has the ordinary first-entry behavior.
-    return tuple(result) if len(result) > 1 else None
+    if len(result) < 2:
+        return None
+    if not version.causes & money_kinds:
+        return tuple(result)
+    return _monetary_timeline(version, contract_id, trace, events, result)
+
+
+def _monetary_timeline(
+    version: _Version,
+    contract_id: UUID,
+    trace: Trace,
+    events: Mapping[str, tuple[UUID, str, date, int]],
+    statuses: Sequence[_Version],
+) -> tuple[_Version, ...] | None:
+    """Keep each monetary cause on its original date, using event-specific retained shares."""
+    kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"}
+    if not version.cause_events or not version.cause_events <= events.keys():
+        return None
+    monetary = {
+        key: events[key]
+        for key in version.cause_events
+        if events[key][0] == contract_id and events[key][1] in kinds
+    }
+    if {event[1] for event in monetary.values()} != version.causes & kinds:
+        return None
+    dated = {status.effective: status for status in statuses}
+    if len(dated) != len(statuses):
+        return None
+    # A date-only fixed balance cannot separate a change after a same-day exit/entry.
+    # Inception estimate pins belong to the initial allocation and are not later deltas.
+    for key, (_, kind, day, sequence) in monetary.items():
+        if day not in dated:
+            continue
+        status = dated[day]
+        transitions = [
+            events[cause]
+            for cause in version.cause_events
+            if (event := events[cause])[0] == contract_id
+            and event[2] == day
+            and event[1] in status.causes
+        ]
+        if len(transitions) != 1:
+            return None
+        if sequence > transitions[0][3] and not (
+            day == statuses[0].effective
+            and kind == "ESTIMATE_CHANGED"
+            and rpo_estimate_changes.at_inception(trace, key)
+        ):
+            return None
+    days = sorted(set(dated) | {event[2] for event in monetary.values()})
+    result: list[_Version] = []
+    for day in days:
+        if day < statuses[0].effective:
+            continue
+        state = next(status for status in reversed(statuses) if status.effective <= day)
+        transition = dated.get(day)
+        own = {key: event for key, event in monetary.items() if event[2] == day}
+        estimates = frozenset(key for key, event in own.items() if event[1] == "ESTIMATE_CHANGED")
+        amendments = frozenset(key for key, event in own.items() if event[1] == "CONTRACT_AMENDED")
+        result.append(
+            dataclasses.replace(
+                state,
+                effective=day,
+                dated_slice=True,
+                causes=frozenset(event[1] for event in own.values())
+                | (transition.causes if transition else frozenset()),
+                entries=transition.entries if transition else (),
+                entry_order=transition.entry_order if transition else (),
+                eligibility_exits=transition.eligibility_exits if transition else (),
+                estimate_events=estimates,
+                estimate_dates=tuple((key, day) for key in sorted(estimates)),
+                estimate_order=tuple((key, own[key][3]) for key in sorted(estimates)),
+                modification_events=amendments,
+                cause_events=frozenset(own),
+            )
+        )
+    return tuple(result)
+
+
+def _estimate_changes(store: Store, version: _Version) -> Mapping[str, Decimal] | None:
+    if not version.dated_slice:
+        return store.estimate_allocations.get(version.id)
+    result: dict[str, Decimal] = {}
+    for event in version.estimate_events:
+        shares = store.estimate_event_allocations.get((version.id, event))
+        if shares is None:
+            return None
+        for subject, amount in shares.items():
+            result[subject] = result.get(subject, ZERO) + amount
+    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -1400,7 +1512,7 @@ def _continuing_changes(
         return None
     estimate = ZERO
     if version.estimate_events:
-        shares = store.estimate_allocations.get(version.id)
+        shares = _estimate_changes(store, version)
         dates = dict(version.estimate_dates)
         if shares is None or any(
             event not in dates or dates[event] > end for event in version.estimate_events
@@ -1443,7 +1555,7 @@ def _eligibility_changes(
     estimate = ZERO
     if version.estimate_events:
         dates = dict(version.estimate_dates)
-        shares = store.estimate_allocations.get(version.id)
+        shares = _estimate_changes(store, version)
         if shares is None or any(
             event not in dates or dates[event] > version.effective
             for event in version.estimate_events
@@ -1487,7 +1599,7 @@ def _cancelled_changes(
             return None
     estimate = ZERO
     if version.estimate_events:
-        shares = store.estimate_allocations.get(version.id)
+        shares = _estimate_changes(store, version)
         dates = dict(version.estimate_dates)
         if shares is None:
             return None
@@ -1666,11 +1778,45 @@ def _obligation_lines(
 
     def fixed(ob: _Ob, day: date) -> Decimal:
         at = store.at(ob, day)
-        return (
+        value = (
             ob.allocated - at.realised_stored
             if at.fixed_allocation is None
             else at.fixed_allocation
         )
+        # The general dated reader measures period ends. Internal lifecycle boundaries
+        # must exclude later same-period allocation changes using their original amounts.
+        if at.fixed_measured is not None:
+            subject = obligation_subject_key(ob.external_id, ob.obligation_key)
+            for sliced in store.chains.get(ob.contract_id, ()):
+                if not (
+                    sliced.id == ob.version_id
+                    and sliced.dated_slice
+                    and day < sliced.effective <= at.fixed_measured.end_date
+                ):
+                    continue
+                history = store.boundaries.get(ob.version_id, {})
+                if sliced.modification_events and not rpo_boundary_changes.complete(
+                    history, subject, sliced.modification_events
+                ):
+                    raise to_date.Unreadable(
+                        f"obligations[{ob.obligation_key}].fixed_allocation",
+                        "Original amendment evidence is required at the eligibility boundary.",
+                    )
+                shares = _estimate_changes(store, sliced)
+                if shares is None:
+                    raise to_date.Unreadable(
+                        f"obligations[{ob.obligation_key}].fixed_allocation",
+                        "Original estimate shares are required at the eligibility boundary.",
+                    )
+                value -= shares.get(subject, ZERO) + sum(
+                    (
+                        change.amount
+                        for change in history.get(subject, ())
+                        if change.event in sliced.modification_events
+                    ),
+                    ZERO,
+                )
+        return value
 
     previous_obligation = opening
     previous_version = opening_version
@@ -2011,7 +2157,11 @@ def _obligation_lines(
                 ),
                 terminal_cancellation,
             )
-        allocated = ZERO if current is None else fixed(current, end)
+        allocated = (
+            ZERO
+            if current is None
+            else fixed(current, version.effective if version.dated_slice else end)
+        )
         if (
             current is not None
             and current.cancelled
@@ -2205,7 +2355,7 @@ def _obligation_lines(
             # It cannot also make a fixed amendment ambiguous or explain an otherwise
             # unsupported fixed change. Competing remaining cause lines stay unexplained.
             line = next(iter(causes)) if len(causes) == 1 else None
-            changes = store.estimate_allocations.get(version.id)
+            changes = _estimate_changes(store, version)
             if (
                 causes == {"MODIFICATIONS", "VC_ESTIMATE_CHANGES"}
                 and changes is not None
