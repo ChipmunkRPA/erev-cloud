@@ -994,6 +994,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "cancellations before later retained versions; subsequent cancelled versions carry "
             "current retained revenue and re-entry admits only its remaining allocation; legacy "
             "bindings retain prior classification",
+            "rpo_cancelled_usage_v1 separates terminal realized-fee changes from fixed "
+            "cancellation attribution when opening and terminating versions both retain dated "
+            "realization evidence; a single later termination uses its realized amount, while "
+            "fixed modifications and estimates still require the original pre-termination "
+            "bridge; legacy bindings keep prior classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

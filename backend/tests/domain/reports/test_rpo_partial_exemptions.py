@@ -335,11 +335,20 @@ def test_rollforward_exemption_changes_preserve_both_endpoints(
         assert sum(row.total for row in rows if row.exemption is None) == movement.lines[key]
 
 
-@pytest.mark.parametrize("mixed", [False, True])
-@pytest.mark.parametrize("realised", [False, True])
+@pytest.mark.parametrize(
+    "mixed,realised,usage_delta",
+    [
+        (False, False, 0),
+        (False, True, 0),
+        (True, False, 0),
+        (True, True, 0),
+        (True, True, 30),
+        (True, True, -20),
+    ],
+)
 @pytest.mark.parametrize("restated,revenue", [(40, 40), (40, 50), (45, 50), (40, 0)])
 def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
-    restated: int, revenue: int, realised: bool, mixed: bool
+    restated: int, revenue: int, realised: bool, mixed: bool, usage_delta: int
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
 
@@ -446,11 +455,32 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
         assert unmatched.lines["UNEXPLAINED"] != 0
         assert unmatched.lines["MODIFICATIONS"] == 0
         store.boundaries[next_vid] = valid
+    if realised and mixed:
+        second = replace(second, causes=second.causes | {"USAGE_REPORTED"})
+        store = replace(store, versions={gid: (first, second)}, chains={cid: (first, second)})
+        store.cuts[next_vid, end] = {
+            oid: replace(store.cuts[next_vid, end][oid], realised=Decimal(100 + usage_delta))
+        }
+        (legacy_usage,) = rpo.rollforward_lines(
+            replace(store, classify_cancelled_usage=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert legacy_usage.lines["UNEXPLAINED"] != 0
+        evidenced = store.cuts[next_vid, end]
+        store.cuts[next_vid, end] = {oid: replace(evidenced[oid], realised_traced=False)}
+        (missing_realization,) = rpo.rollforward_lines(
+            store, ranges={eid: (before, end)}, applied={}
+        )
+        assert missing_realization.lines["UNEXPLAINED"] != 0
+        store.cuts[next_vid, end] = evidenced
+    else:
+        usage_delta = 0
     (movement,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
     assert movement.lines["OPENING"] == 60
-    assert movement.lines["CANCELLATIONS"] == -(100 + (50 if mixed else 0) - revenue)
+    assert movement.lines["CANCELLATIONS"] == -(100 + (50 if mixed else 0) + usage_delta - revenue)
     assert movement.lines["MODIFICATIONS"] == (30 if mixed else 0)
-    assert movement.lines["VC_ESTIMATE_CHANGES"] == (20 if mixed else 0)
+    assert movement.lines["VC_ESTIMATE_CHANGES"] == (20 if mixed else 0) + usage_delta
     assert movement.lines["REVENUE"] == -(revenue - restated)
     assert movement.lines["LATE_EVENTS"] == -(restated - 40)
     assert movement.lines["CLOSING"] == movement.lines["UNEXPLAINED"] == 0

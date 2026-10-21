@@ -10317,3 +10317,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Foreign transaction-to-functional aging still requires exact functional layer attribution;
   this path remains unavailable. Locked aging datasets, independent accounting acceptance and
   final candidate verification remain open. Direct main publication; no deployment.
+
+## Original functional aging layers — October 20, 2026
+
+- Foreign asset/unbilled aging now reads original S12 reclass shares in functional currency,
+  retaining the original S10 revenue date. Missing, wrong-currency or unlinked share evidence
+  is refused; no report-side FX ratio is applied to those balances.
+- Liability aging uses signed functional creation/consumption/remeasurement amounts from the
+  selected version's immutable layers. Historical carrying and the approved monetary override
+  preserve original creation dates, including partial consumption.
+- New functional bindings retain this source path. Each member/role must match its dated
+  functional balance before display; unmatched combined-member ownership remains unavailable.
+  Reporting translation follows the existing retained closing-rate/cumulative-rounding path.
+- Four API journeys pass: EUR unbilled dated remeasurement and reruns, historical and monetary
+  USD/GBP liability layers with partial consumption, and reporting translation compatibility.
+  Targeted core checks, lint/types and migration 0233 roundtrip/IPE agreement pass.
+- A separate diagnostic exposed S04-R-02 failure after over-billing a right-to-invoice contract;
+  it is recorded in LIMITS for follow-up. Locked aging datasets, combined-member allocation
+  expansion, independent accounting acceptance and final candidate checks remain open.

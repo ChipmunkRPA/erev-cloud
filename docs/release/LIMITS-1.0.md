@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — realized fees in a later terminal version are separately attributed
+
+With an opening obligation and one later terminating version, original dated realization on
+both versions lets RPO use the terminating version's realized amount. Newly realized fees or
+signed corrections are VC movements; their revenue remains on REVENUE and they do not distort
+fixed cancellation attribution. Modification/estimate mixtures still require opening fixed
+allocation plus original deltas to reconcile to the pre-termination boundary. Missing realized
+traces do not authorize this path. New runs retain rpo_cancelled_usage_v1; older bindings retain
+the previous classification on rerun.
+
+Fifty-eight report-reader cases and six engine realization cases pass. Reader coverage includes
+positive/negative/zero changes, prior revenue restatement and reversal, absent evidence and old
+binding behavior. Existing public modification reports/reruns in three currency views and scoped
+lint/types pass, with migration 0244 down/up IPE parity. This does not establish a new public
+API usage-plus-termination journey or complete coverage of all usage/cancellation combinations.
+
+First-entry and same-version usage cancellation, multi-version usage chains, multiple cancellations
+within one computation, versions intervening before cancellation, same-day entry/cancellation,
+and combined-member aging ownership remain open. Independent accounting sign-off and final-candidate
+verification remain open. No deployment and no claim of production readiness.
+
+
 ### October 20 — retained versions no longer discard an earlier cancellation bridge
 
 The original first-batch cancellation and an opening obligation's same-version cancellation

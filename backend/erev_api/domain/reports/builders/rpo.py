@@ -348,6 +348,7 @@ class Store:
     classify_cancelled_changes: bool = field(default=True, kw_only=True)
     same_day_cancelled_changes: bool = field(default=True, kw_only=True)
     classify_cancelled_chains: bool = field(default=True, kw_only=True)
+    classify_cancelled_usage: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1504,12 +1505,38 @@ def _obligation_lines(
                 )
                 lines["NEW_CONTRACTS"] -= change
                 lines["VC_ESTIMATE_CHANGES"] += change
-        elif current is None and previous_obligation is not None:
+        cancelled_usage = None
+        if (
+            store.classify_cancelled_usage
+            and current is None
+            and previous_obligation is not None
+            and len(moved) == 1
+            and closing_version is not None
+            and closing_version.id == version.id
+            and "CONTRACT_TERMINATED" in version.causes
+            and store.at(previous_obligation, end).realised_traced
+        ):
+            cancelled_usage = next(
+                (
+                    ob
+                    for ob in store.obligations.get(version.id, ())
+                    if ob.obligation_id == obligation_id
+                    and ob.cancelled
+                    and store.at(ob, end).realised_traced
+                ),
+                None,
+            )
+        if current is None and previous_obligation is not None:
             removed = (
                 store.at(previous_obligation, version.effective).realised
                 if store.at(previous_obligation, end).realised_traced
                 else ZERO
             )
+            if cancelled_usage is not None:
+                # The terminating computation includes newly realized fees and
+                # corrections absent from the previous version. Its full retained
+                # realization is removed from RPO; the change remains a VC movement.
+                removed = store.at(cancelled_usage, end).realised
             lines["CANCELLATIONS"] -= removed
             lines["VC_ESTIMATE_CHANGES"] += removed
         delta = allocated - previous
@@ -1545,7 +1572,7 @@ def _obligation_lines(
                 and "CANCELLATIONS" in causes
                 and len(causes) > 1
                 and causes <= {"CANCELLATIONS", "MODIFICATIONS", "VC_ESTIMATE_CHANGES"}
-                and "USAGE_REPORTED" not in version.causes
+                and ("USAGE_REPORTED" not in version.causes or cancelled_usage is not None)
             ):
                 separated = _cancelled_changes(
                     store,
