@@ -14,7 +14,8 @@ a request of all entities only in a run that names every entity), narrowed by ``
 
 - ``status`` is the request's E-05 status at the run's record cutoff, derived from its
   ``decided_at`` and ``voided_at`` (T-PLT-17 is IM-S with timestamped terminal transitions);
-  decisions after the cutoff are not read.
+  decisions after the cutoff are not read. Historical basis instead uses committed request
+  revisions and decisions, excluding late commits before state/status filtering.
 - ``preparer`` and ``approver`` are display names, "System" for the SYSTEM principal (an
   auto-approval); ``on_behalf_of`` names the delegator of a delegated decision; ``auto_rule_key``
   and ``auto_rule_version`` name the rule and the rule set version of an ``AUTO_APPROVE``.
@@ -255,7 +256,7 @@ def sources(
     if subject_types:
         where.append(approval_request.c.subject_type.in_([str(value) for value in subject_types]))
     statuses = params.parameters.get("status")
-    found = support.requests(session, cutoff=cutoff, where=where)
+    found = support.requests(session, cutoff=cutoff, where=where, committed=params.historical)
     if statuses:
         wanted = {str(value) for value in statuses}
         found = [item for item in found if item.status in wanted]

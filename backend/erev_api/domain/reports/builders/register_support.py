@@ -12,7 +12,8 @@ T-PLT-17, T-PLT-18, T-PLT-20; ENGINE_SPEC_B S15-R-24 strategy ``open``; BUILD_SP
 - ``requests``: T-PLT-17 approval requests as they stood at the record cutoff, each with its
   T-PLT-20 decisions by the cutoff in decision order. T-PLT-17 is IM-S and its two terminal
   transitions are timestamped (``decided_at``, ``voided_at``), so the status at a cutoff is derived
-  — ``PENDING`` before either instant — never refused and never the later value.
+  — ``PENDING`` before either instant. With committed=True the reader instead selects
+  committed source revisions and filters original decision commits before resolving status.
 - ``changed_after``: REGISTER-CUTOFF-1 (ENGINE_SPEC_B S15-R-20c) for a table without row history:
   on an explicit historical read a row whose last change follows the cutoff cannot be stated as of
   the cutoff; the builder refuses it by name. A live run never refuses.
@@ -31,7 +32,7 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, Uuid, and_, literal, or_, select, true
+from sqlalchemy import ColumnElement, Uuid, and_, func, literal, or_, select, true
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,7 @@ from erev_api.db.tables import (
     approval_request,
     approval_step,
     legal_entity,
+    report_source_revision,
 )
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.reports import tie_outs
@@ -316,7 +318,11 @@ def requests_in_scope(
 
 
 def requests(
-    session: Session, *, cutoff: datetime, where: Sequence[ColumnElement[bool]]
+    session: Session,
+    *,
+    cutoff: datetime,
+    where: Sequence[ColumnElement[bool]],
+    committed: bool = False,
 ) -> list[Request]:
     """The requests matching ``where`` submitted by ``cutoff``, in (submitted, request number)
     order, each as it stood at the cutoff with its decisions by the cutoff."""
@@ -331,6 +337,28 @@ def requests(
     if not rows:
         return []
     ids = [UUID(str(row["id"])) for row in rows]
+    if committed:
+        revision = report_source_revision
+        snapshots = session.execute(
+            select(revision.c.document)
+            .where(
+                revision.c.source_kind == "approval_request",
+                revision.c.source_id.in_(ids),
+                revision.c.recorded_at <= cutoff,
+                func.erev.source_commit_time("report_source_revision", revision.c.id) <= cutoff,
+            )
+            .distinct(revision.c.source_id)
+            .order_by(revision.c.source_id, revision.c.revision_no.desc())
+        ).scalars()
+        rows = [dict(document) for document in snapshots]
+        for restored in rows:
+            for key in ("submitted_at", "decided_at", "voided_at"):
+                if restored[key] is not None:
+                    restored[key] = datetime.fromisoformat(restored[key])
+        rows.sort(key=lambda row: (row["submitted_at"], row["request_no"]))
+        ids = [UUID(str(row["id"])) for row in rows]
+        if not ids:
+            return []
     decisions: dict[UUID, list[Decision]] = {}
     statement = (
         select(
@@ -350,6 +378,14 @@ def requests(
         .where(
             approval_decision.c.approval_request_id.in_(ids),
             approval_decision.c.decided_at <= cutoff,
+            *(
+                [
+                    func.erev.source_commit_time("approval_decision", approval_decision.c.id)
+                    <= cutoff
+                ]
+                if committed
+                else []
+            ),
         )
         .order_by(approval_decision.c.decided_at, approval_decision.c.id)
     )
@@ -373,7 +409,11 @@ def requests(
     found: list[Request] = []
     for stored in rows:
         request_id = UUID(str(stored["id"]))
-        status, decided_at = status_at(stored, cutoff)
+        status, decided_at = (
+            (str(text(stored["status"])), stored["decided_at"])
+            if committed
+            else status_at(stored, cutoff)
+        )
         currency = stored["amount_currency"]
         found.append(
             Request(

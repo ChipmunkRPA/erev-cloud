@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Approvals register committed request state — October 21, 2026
+
+- Migration 0286 captures source-owned approval-request revisions, including terminal state
+  transitions. Original commit evidence uses existing revision recovery. Upgrade requires an
+  empty request table instead of fabricated history; retained revisions prevent downgrade.
+- Historical Approvals Register selects committed request revisions and original decision
+  commits before applying status filters. Late submission stays outside the old population;
+  late approval preserves the preceding PENDING state and earlier decisions. Default record
+  basis retains its existing business-time behavior.
+- Necessary checks passed: real overlapping approval/decision commits, PENDING versus APPROVED
+  status filters at old/new cutoffs, exclusion before request creation commit, existing public
+  register flow, catalogue parity, database architecture and scoped lint/types. No deployment.
+- Remaining: register names/rule/step display inputs and same-source retention remain OPEN;
+  audit commit visibility must be completed before switching sample approval packs to the new
+  request reader, so this does not combine committed requests with an inconsistent audit slice.
+  Personnel names and other listed report inputs still need work; no completion claim is made.
+
 ## Contract sample attachment lifecycle history — October 21, 2026
 
 - Migration 0285 captures source-owned attachment revisions, including void transitions;

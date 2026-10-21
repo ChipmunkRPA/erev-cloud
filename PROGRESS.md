@@ -20,6 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Approvals register committed request state — October 21, 2026
+
+- Migration 0286 captures source-owned approval-request revisions, including terminal state
+  transitions. Original commit evidence uses existing revision recovery. Upgrade requires an
+  empty request table instead of fabricated history; retained revisions prevent downgrade.
+- Historical Approvals Register selects committed request revisions and original decision
+  commits before applying status filters. Late submission stays outside the old population;
+  late approval preserves the preceding PENDING state and earlier decisions. Default record
+  basis retains its existing business-time behavior.
+- Necessary checks passed: real overlapping approval/decision commits, PENDING versus APPROVED
+  status filters at old/new cutoffs, exclusion before request creation commit, existing public
+  register flow, catalogue parity, database architecture and scoped lint/types. No deployment.
+- Remaining: register names/rule/step display inputs and same-source retention remain OPEN;
+  audit commit visibility must be completed before switching sample approval packs to the new
+  request reader, so this does not combine committed requests with an inconsistent audit slice.
+  Personnel names and other listed report inputs still need work; no completion claim is made.
+
 ## Contract sample attachment lifecycle history — October 21, 2026
 
 - Migration 0285 captures source-owned attachment revisions, including void transitions;
@@ -207,23 +224,6 @@ review and publish changes without PR accumulation, and do not deploy.
   state). Commit evidence alone does not reconstruct prior values of mutable rows. The wider
   final-candidate verification list remains outstanding; independent accounting sign-off and
   migration-to-live work remain outside the owner's development scope.
-
-## Retained ledger source and incremental export windows — October 21, 2026
-
-- New subledger extracts and bookings/billings/revenue ledger contributions exclude postings
-  committed after known_at, even when their insertion and business record times precede it.
-  Original commit timestamps travel with retained input rows and are checked on rebuild.
-- New incremental subledger extracts use (known_since, known_at] in actual commit time.
-  A posting still uncommitted at the previous cutoff therefore appears in the next export,
-  including backdated business records. Existing export columns remain unchanged; old bound
-  extracts keep their recorded_at interpretation and original retained inputs.
-- Migration 0276 synchronizes both report definitions with this interpretation. Database
-  catalogue parity, a real late-commit/next-window journey, old/new bound extract rebuilds,
-  the public JSON/CSV extract controls and rerun, and retained BBR cutoff validation pass.
-  Six focused BBR unit cases plus scoped lint/types pass. No deployment.
-- B4-11 is still open for non-ledger inputs such as contract events, version availability,
-  journal state and other report-specific readers. This increment fixes the ledger source
-  populations above; it does not claim full cross-source historical snapshot reconstruction.
 
 ## Outstanding release verification
 

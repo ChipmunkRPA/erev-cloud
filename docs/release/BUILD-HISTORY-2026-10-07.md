@@ -11300,3 +11300,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This closes automatic retry of failed post-commit retention. PostgreSQL evidence already
   discarded before a worker can recover it remains unavailable and is explicitly refused;
   there is no invented fallback timestamp. Other B4-11 historical-source readers remain open.
+
+## Retained ledger source and incremental export windows — October 21, 2026
+
+- New subledger extracts and bookings/billings/revenue ledger contributions exclude postings
+  committed after known_at, even when their insertion and business record times precede it.
+  Original commit timestamps travel with retained input rows and are checked on rebuild.
+- New incremental subledger extracts use (known_since, known_at] in actual commit time.
+  A posting still uncommitted at the previous cutoff therefore appears in the next export,
+  including backdated business records. Existing export columns remain unchanged; old bound
+  extracts keep their recorded_at interpretation and original retained inputs.
+- Migration 0276 synchronizes both report definitions with this interpretation. Database
+  catalogue parity, a real late-commit/next-window journey, old/new bound extract rebuilds,
+  the public JSON/CSV extract controls and rerun, and retained BBR cutoff validation pass.
+  Six focused BBR unit cases plus scoped lint/types pass. No deployment.
+- B4-11 is still open for non-ledger inputs such as contract events, version availability,
+  journal state and other report-specific readers. This increment fixes the ledger source
+  populations above; it does not claim full cross-source historical snapshot reconstruction.

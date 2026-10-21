@@ -1953,6 +1953,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision",
             "app_user",
             "legal_entity",
+            "report_source_revision",
+            "historical_source_commit",
         ),
         joins=(
             "approval_step.approval_request_id = approval_request.id",
@@ -1965,6 +1967,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "of all entities when entity_codes names every entity",
             "submitted from from_date to to_date inclusive",
             "subject_types and status when given",
+            "historical basis selects committed request revisions and original decision commits "
+            "at known_at before status filtering; record basis preserves business-time behavior",
+            "display labels and ancillary rule/step references retain existing read semantics",
         ),
     ),
     _definition(

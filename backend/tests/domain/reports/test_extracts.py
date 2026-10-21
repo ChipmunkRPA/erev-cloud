@@ -830,7 +830,7 @@ def test_sample_journals_use_committed_lines_and_lifecycle(
 def test_journal_ancillary_sources_exclude_late_commits(
     app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
 ) -> None:
-    from erev_api.db import new_id
+    from erev_api.db import new_id, transitions
     from erev_api.db.tables import (
         approval_decision,
         approval_request,
@@ -871,6 +871,7 @@ def test_journal_ancillary_sources_exclude_late_commits(
         setup.session.execute(insert(approval_request).values(**request))
         setup.session.execute(insert(approval_step).values(**step))
         setup.session.execute(insert(approval_decision).values(**original))
+        before_request_commit = world.place.scalar(select(func.clock_timestamp()))
         setup.commit()
     changed_actor = world.maya.member.user_id
     stamp = world.place.scalar(select(func.clock_timestamp()))
@@ -890,6 +891,22 @@ def test_journal_ancillary_sources_exclude_late_commits(
             gl_document_id="GL-LATE-COMMIT",
         )
         writer.session.execute(insert(posting_ack).values(**ack))
+        transitions.apply(
+            writer.session,
+            "approval_step",
+            step["id"],
+            to_status="APPROVED",
+            set_values={"completed_at": stamp},
+            expected_status="ACTIVE",
+        )
+        transitions.apply(
+            writer.session,
+            "approval_request",
+            request_id,
+            to_status="APPROVED",
+            set_values={"decided_at": stamp},
+            expected_status="PENDING",
+        )
         cutoff = world.place.scalar(select(func.clock_timestamp()))
         writer.commit()
     now = world.place.scalar(select(func.clock_timestamp()))
@@ -908,6 +925,64 @@ def test_journal_ancillary_sources_exclude_late_commits(
         }
         assert je_population._gl_documents(reader.session, [batch_id], cutoff) == {
             batch_id: "GL-LATE-COMMIT"
+        }
+    from erev_api.domain.reports.builders import register_support
+
+    with world.place.uow() as reader:
+        old = register_support.requests(
+            reader.session,
+            cutoff=cutoff,
+            where=[approval_request.c.id == request_id],
+            committed=True,
+        )
+        latest = register_support.requests(
+            reader.session, cutoff=now, where=[approval_request.c.id == request_id], committed=True
+        )
+        assert old[0].status == "PENDING" and old[0].comment is None
+        assert len(old[0].decisions) == 1
+        assert latest[0].status == "APPROVED" and latest[0].decided_at == stamp
+        assert len(latest[0].decisions) == 2
+        assert (
+            register_support.requests(
+                reader.session,
+                cutoff=before_request_commit,
+                where=[approval_request.c.id == request_id],
+                committed=True,
+            )
+            == []
+        )
+        from dataclasses import replace
+
+        from erev_api.domain.reports.builders import ReportParams, approvals_register
+
+        entity_id = reader.session.scalar(
+            select(journal_batch.c.entity_id).where(journal_batch.c.id == batch_id)
+        )
+        params = ReportParams(
+            report_code="approvals_register",
+            report_version=1,
+            parameters={"status": ["PENDING"]},
+            entity_ids=(entity_id,),
+            known_at=cutoff,
+            historical=True,
+        )
+        bounds = (cutoff - timedelta(days=365), now + timedelta(days=1))
+        assert request_id in {
+            r.id for r in approvals_register.sources(reader, params, bounds=bounds)
+        }
+        assert request_id not in {
+            r.id
+            for r in approvals_register.sources(
+                reader, replace(params, parameters={"status": ["APPROVED"]}), bounds=bounds
+            )
+        }
+        assert request_id in {
+            r.id
+            for r in approvals_register.sources(
+                reader,
+                replace(params, known_at=now, parameters={"status": ["APPROVED"]}),
+                bounds=bounds,
+            )
         }
     commit_evidence.recover_pending_sources(world.place.tenant_id)
     for kind, identity in (("approval_decision", decision["id"]), ("posting_ack", ack["id"])):
