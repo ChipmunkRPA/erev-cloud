@@ -1,5 +1,18 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — RPO exemption endpoint details
+
+The RPO rollforward report and run pages now display obligation-level exemption details:
+contract/entity, opening and closing dates, applicable rules, excluded amounts and the signed
+movement. This includes full eligibility changes and partial POL-200 release. These are the
+original transaction-currency endpoint figures; functional/reporting views say so explicitly
+and do not present them as translated movement amounts. Existing report totals are unchanged.
+New retained bindings enable the details while legacy rebuilds preserve their earlier shape.
+
+Scoped policy/endpoint and viewer checks pass. Broader mixed-source functionality, public
+workflow acceptance and independent accounting sign-off remain open. No deployment.
+
+
 ### October 20 — mixed sources across recognition periods
 
 Mixed cumulative revenue inputs can now retain separate original owners/layers across periods

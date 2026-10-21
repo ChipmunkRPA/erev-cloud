@@ -628,6 +628,43 @@ describe("SF-08:report viewer", () => {
     ).toBeTruthy();
   });
 
+  it("shows RPO exemption endpoint rules and original currency amounts", async () => {
+    const definition = { ...RPO, code: "rpo_rollforward", name: "RPO rollforward" };
+    const run = reportRun({
+      report: { code: "rpo_rollforward", version: 1, name: "RPO rollforward" },
+      control_totals: {
+        currency_view: "reporting",
+        exemption_detail_basis: "transaction_currency_endpoints",
+        exemption_changes: [
+          {
+            contract: "CONTRACT-EXEMPT",
+            obligation: "SERVICE",
+            entity: "AVM-US",
+            currency: "USD",
+            opening_date: "2026-08-31",
+            closing_date: "2026-09-30",
+            opening_rule: "POL-198",
+            closing_rule: null,
+            opening_excluded: "100.00",
+            closing_excluded: "0.00",
+            movement: "100.00",
+          },
+        ],
+      },
+    });
+    serve(definition, { [RUN_ID]: run }, []);
+    renderApp(`/reports/rpo_rollforward?${CONTEXT}&run=${RUN_ID}`, {
+      me: MARCUS,
+      screenRoutes: SCREEN_ROUTES,
+    });
+    fireEvent.click(await screen.findByText("RPO exemption changes"));
+    expect(screen.getByText("CONTRACT-EXEMPT · SERVICE")).toBeTruthy();
+    expect(screen.getByText("Right to invoice")).toBeTruthy();
+    expect(screen.getByText("Not excluded")).toBeTruthy();
+    expect(screen.getByText(/Original transaction-currency amounts by obligation/)).toBeTruthy();
+    expect(screen.getAllByText("USD 100.00")).toHaveLength(2);
+  });
+
   it("shows GL role differences even when the aggregate difference is zero", async () => {
     const results: TieOutResult[] = [
       {

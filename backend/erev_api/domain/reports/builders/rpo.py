@@ -1016,6 +1016,7 @@ class ContractLines:
     entity_code: str
     currency: str
     lines: Mapping[str, Decimal]
+    exemption_changes: tuple[Mapping[str, Any], ...] = ()
 
 
 def rollforward_lines(
@@ -1059,6 +1060,7 @@ def rollforward_lines(
             entity_code=value["entity_code"],
             currency=key[1],
             lines={line: value["lines"][line] for line in ROLLFORWARD_LINES},
+            exemption_changes=tuple(value["exemption_changes"]),
         )
         for key, value in totals.items()
     ]
@@ -1325,8 +1327,31 @@ def _obligation_lines(
             "customer_name": described.customer_name,
             "entity_code": described.entity_code,
             "lines": dict.fromkeys(ROLLFORWARD_LINES, ZERO),
+            "exemption_changes": [],
         },
     )
+    if opening_excluded or closing_excluded:
+
+        def exemption_code(ob: _Ob | None, version: _Version | None, amount: Decimal) -> str | None:
+            if ob is None or version is None or not amount:
+                return None
+            return _exemption(ob, applied, store.durations(version)) or "POL-200"
+
+        into["exemption_changes"].append(
+            {
+                "contract": described.external_id,
+                "obligation": described.obligation_key,
+                "entity": described.entity_code,
+                "currency": described.currency,
+                "opening_date": before.isoformat(),
+                "closing_date": end.isoformat(),
+                "opening_rule": exemption_code(opening, opening_version, opening_excluded),
+                "closing_rule": exemption_code(closing, closing_version, closing_excluded),
+                "opening_excluded": str(opening_excluded),
+                "closing_excluded": str(closing_excluded),
+                "movement": str(lines["EXEMPTIONS"]),
+            }
+        )
     for code in ROLLFORWARD_LINES:
         into["lines"][code] += lines[code]
 

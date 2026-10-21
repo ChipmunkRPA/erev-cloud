@@ -561,6 +561,8 @@ def test_rpo_rollforward_currency_movements_and_retained_rates(
         "currency_view": "reporting",
     }
     run, rows = report_run(world, "rpo_rollforward", params)
+    assert run["control_totals"]["exemption_detail_basis"] == "transaction_currency_endpoints"
+    assert isinstance(run["control_totals"]["exemption_changes"], list)
     result = keyed(rows)
     assert all(check["result"] == "PASS" for check in run["tie_out_results"])
     assert result["UNEXPLAINED"]["rpo"]["amount"] == "0.00"
@@ -694,3 +696,15 @@ def test_rpo_rollforward_currency_movements_and_retained_rates(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == rows
+    retained = get(
+        world.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}", world.maya
+    )
+    assert retained.status_code == 200, retained.text
+    assert (
+        retained.json()["control_totals"]["exemption_changes"]
+        == run["control_totals"]["exemption_changes"]
+    )
+    assert (
+        retained.json()["control_totals"]["exemption_detail_basis"]
+        == "transaction_currency_endpoints"
+    )

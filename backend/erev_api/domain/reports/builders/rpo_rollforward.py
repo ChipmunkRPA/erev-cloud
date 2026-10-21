@@ -99,6 +99,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params=params,
     )
     items = rpo.rollforward_lines(store, ranges=ranges, applied=applied)
+    exemption_evidence = "rpo_exemption_details_v1"
+    include_exemptions = params.binding is None or exemption_evidence in params.binding.evidence
+    exemption_changes = [dict(detail) for item in items for detail in item.exemption_changes]
+    if include_exemptions and params.sources is not None:
+        params.sources.record_evidence(exemption_evidence, True)
     rates: list[dict[str, Any]] = []
     source_unexplained = False
     if converted:
@@ -178,6 +183,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         else COLUMNS,
         rows=tuple(rows),
         control_totals={
+            **(
+                {
+                    "exemption_changes": exemption_changes,
+                    "exemption_detail_basis": "transaction_currency_endpoints",
+                }
+                if include_exemptions
+                else {}
+            ),
             "currency_view": view,
             "translation_basis": "monthly_average_flows_closing_endpoints"
             if converted

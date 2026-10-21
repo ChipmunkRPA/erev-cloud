@@ -79,6 +79,7 @@ import {
   totalsRows,
   validateParameters,
 } from "./viewer/specs";
+import { RpoExemptionDetails } from "./viewer/RpoExemptionDetails";
 import { TieOutStrip } from "./viewer/TieOutStrip";
 import { JobReference } from "./viewer/JobReference";
 import { useReportRun } from "./viewer/useReportRun";
@@ -719,6 +720,7 @@ function ReportBody({ definition, access }: ReportBodyProps) {
           }
         />
         <div className="px-[var(--gutter)] pb-[var(--panel-pad)]">
+          {succeeded && data !== undefined ? <RpoExemptionDetails run={data} /> : null}
           {succeeded && data !== undefined && definition.code === "actual_vs_forecast" ? (
             <ComparisonBasis run={data} />
           ) : null}

@@ -872,6 +872,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fixed-only manual releases, deferrals and schedule overrides replay only events "
             "effective at the reporting cut; unsupported component mixtures or unreproducible "
             "snapshots retain explicit projection errors",
+            "exemption details retain obligation-level opening and closing exclusions, "
+            "policy codes and transaction-currency movement; translated views label this "
+            "original basis and legacy bindings retain their existing output shape",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

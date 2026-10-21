@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## RPO exemption change detail viewer — October 20, 2026
+
+- RPO rollforward now retains obligation-level opening/closing excluded amounts, dates, rule
+  codes and the signed exemption movement. Full eligibility transitions and partial POL-200
+  release use the same figures as the rollforward, without changing its accounting totals.
+- Both report and run pages show a collapsible detail table with readable exemption names.
+  Functional/reporting views explicitly label these original transaction-currency figures;
+  the browser formats backend amounts without recomputing the movement.
+- New source bindings opt into the details; legacy bindings retain their earlier output shape.
+  Migration 0221 records the metadata. Focused policy/endpoint tests, the viewer case, lint/types
+  and migrated catalogue checks pass. The DB multi-currency RPO journey also confirms retained
+  exemption details after a rate revision and rerun. Broader reporting and independent accounting acceptance
+  remain open. Direct main publication only; no deployment.
+
+
 ## Mixed revenue by retained recognition period — October 20, 2026
 
 - S14 now retains per-input period classes from original relief causes, bounded by each target

@@ -164,6 +164,11 @@ def test_partial_exemption_apportions_bands_and_releases_after_performance() -> 
     )
     assert movement.lines["OPENING"] == 50
     assert movement.lines["EXEMPTIONS"] == 100
+    (detail,) = movement.exemption_changes
+    assert detail["opening_rule"] == "POL-200"
+    assert detail["closing_rule"] is None
+    assert Decimal(detail["opening_excluded"]) == 100
+    assert Decimal(detail["closing_excluded"]) == 0
     assert movement.lines["REVENUE"] == -1
     assert movement.lines["CLOSING"] == 149
     assert movement.lines["UNEXPLAINED"] == 0
@@ -316,6 +321,15 @@ def test_rollforward_exemption_changes_preserve_both_endpoints(
     (movement,) = movements
     assert tuple(movement.lines[key] for key in ("OPENING", "EXEMPTIONS", "CLOSING")) == expected
     assert movement.lines["UNEXPLAINED"] == 0
+    if elected and opening_method != closing_method:
+        (detail,) = movement.exemption_changes
+        assert detail["obligation"] == "O"
+        assert detail["currency"] == "USD"
+        assert Decimal(detail["movement"]) == movement.lines["EXEMPTIONS"]
+        assert Decimal(detail["opening_excluded"]) - Decimal(detail["closing_excluded"]) == Decimal(
+            detail["movement"]
+        )
+        assert {detail["opening_rule"], detail["closing_rule"]} == {None, "POL-198"}
     for day, key in ((before, "OPENING"), (end, "CLOSING")):
         rows = rpo.rows_at(store, as_of={eid: day}, bands=(12, 24), applied=applied)
         assert sum(row.total for row in rows if row.exemption is None) == movement.lines[key]
