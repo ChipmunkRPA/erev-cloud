@@ -1,5 +1,28 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — single-computation cancellation can separate realized fees
+
+A first-entry computation containing one later cancellation, or an opening-to-closing
+cancellation within the same retained version, now uses dated realization evidence to separate
+realized-fee changes. The VC line includes the realized change; cancellation removes fixed plus
+realized allocation net of recognized revenue. Original fixed allocation changes still use the
+retained modification/estimate bridge. Missing realization evidence does not authorize the new
+path. New bindings retain rpo_cancelled_usage_v2; v1 runs retain their later-version-only rule
+and preserve v1 again on rerun.
+
+Eight new reader witnesses cover first entry versus monthly opening, positive/negative realized
+changes, partial recognition and full revenue reversal, plus legacy classification. All 66 scoped
+report cases pass, as do the existing public modification reports/reruns in three currency views,
+scoped lint/types and migration 0245 down/up IPE parity. These reader cases do not establish a
+new full-compute/public API usage-plus-cancellation journey.
+
+Multi-version usage/cancellation chains, multiple cancellations within one computation, versions
+intervening before termination, same-day entry/cancellation and combined-member aging ownership
+remain open. Independent accounting sign-off and final-candidate verification remain open.
+This supersedes the first-entry/same-version usage limitation only for the described single-
+computation path. No deployment and no claim of production readiness.
+
+
 ### October 20 — realized fees in a later terminal version are separately attributed
 
 With an opening obligation and one later terminating version, original dated realization on

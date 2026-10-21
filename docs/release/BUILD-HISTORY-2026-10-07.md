@@ -10335,3 +10335,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - A separate diagnostic exposed S04-R-02 failure after over-billing a right-to-invoice contract;
   it is recorded in LIMITS for follow-up. Locked aging datasets, combined-member allocation
   expansion, independent accounting acceptance and final candidate checks remain open.
+
+## Priced right-to-invoice advance billing — October 20, 2026
+
+- Fixed the shared RTI source selector: a booked unit price selects delivered quantity even
+  before the first delivery. Advance invoices therefore cannot become performance revenue,
+  and later delivery cannot switch from an invoice-based price to a performance-based price.
+- Stage 04 allocation and stage 09 recognition use the same corrected source. Rated usage
+  retains priority; invoice fallback remains available when no unit price/performance source
+  exists. Existing stored outputs are unchanged until a new computation is requested.
+- Whole-engine checks cover before delivery, after delivery and additional billing, asserting
+  price/allocation/revenue together. Related RTI/source/recognition checks pass (25 cases).
+  The previously failing EUR case now computes: EUR 20,000 billed, EUR 10,000 earned, with
+  USD 5,500 and 5,550 remaining in their original liability-age buckets. The public aging
+  report reconciles. Scoped lint/types pass. No deployment.
+- This closes the S04-R-02 diagnostic recorded in the functional-aging checkpoint. Broader
+  combined-member aging, locked aging datasets, accounting acceptance and final release
+  verification remain outstanding.

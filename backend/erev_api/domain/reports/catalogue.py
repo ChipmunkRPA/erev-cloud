@@ -999,6 +999,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "realization evidence; a single later termination uses its realized amount, while "
             "fixed modifications and estimates still require the original pre-termination "
             "bridge; legacy bindings keep prior classification",
+            "rpo_cancelled_usage_v2 also separates dated realized fees in a single first-entry "
+            "cancellation computation or an opening-to-closing cancellation within one retained "
+            "version; realized changes are VC movements and cancellation removes fixed plus "
+            "realized remainder net of recognized revenue; retained v1 keeps its "
+            "later-version-only behavior",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

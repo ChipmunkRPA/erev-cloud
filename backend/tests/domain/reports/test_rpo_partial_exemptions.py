@@ -1217,3 +1217,132 @@ def test_first_entry_separates_later_original_estimate_events(
             expected["NEW_CONTRACTS"] += 60
             expected["CLOSING"] = Decimal(60)
             assert reentered.lines == expected
+
+
+@pytest.mark.parametrize("first_entry", [False, True])
+@pytest.mark.parametrize("realized", [80, 150])
+@pytest.mark.parametrize("revenue", [0, 100])
+def test_one_computation_separates_realized_fees_from_cancellation(
+    first_entry: bool, realized: int, revenue: int
+) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+    from erev_api.domain.reports.rpo_boundary_changes import Change
+
+    vid, oid, cid, eid, gid = (uuid4() for _ in range(5))
+    entry, january, end = date(2026, 1, 1), date(2026, 1, 31), date(2026, 2, 28)
+    before = date(2025, 12, 31) if first_entry else january
+    version = rpo._Version(
+        vid,
+        gid,
+        1,
+        True,
+        entry,
+        frozenset(
+            {
+                "CONTRACT_ACTIVATED",
+                "CONTRACT_AMENDED",
+                "ESTIMATE_CHANGED",
+                "USAGE_REPORTED",
+                "CONTRACT_TERMINATED",
+            }
+        ),
+        entries=((cid, entry),),
+        modification_events=frozenset({"mod"}),
+        estimate_events=frozenset({"estimate"}),
+        estimate_dates=(("estimate", date(2026, 2, 10)),),
+        cancellation_events=frozenset({"cancel"}),
+    )
+    ob = rpo._Ob(
+        oid,
+        vid,
+        oid,
+        cid,
+        "C",
+        "O",
+        "Service",
+        None,
+        None,
+        None,
+        eid,
+        "E",
+        "USD",
+        "POINT_IN_TIME",
+        end,
+        entry,
+        Decimal(250 + realized),
+        True,
+    )
+    empty = ObligationAt(
+        *(Decimal(0) for _ in range(8)),
+        "CANCELLED",
+        None,
+        None,
+        realised_traced=True,
+        fixed_allocation=Decimal(200),
+    )
+    opening = replace(
+        empty,
+        revenue=Decimal(40),
+        awaiting=Decimal(260),
+        realised=Decimal(100),
+        realised_stored=Decimal(realized),
+    )
+    closing = replace(
+        empty,
+        revenue=Decimal(revenue),
+        fixed_allocation=Decimal(revenue),
+        realised=Decimal(realized),
+        realised_stored=Decimal(realized),
+    )
+    store = rpo.Store(
+        {gid: (version,)},
+        {vid: (ob,)},
+        {cid: (version,)},
+        {
+            (vid, date(2025, 12, 31)): {oid: empty},
+            (vid, entry): {oid: opening},
+            (vid, january): {oid: opening},
+            (vid, end): {oid: closing},
+        },
+        boundaries={
+            vid: {
+                "C/O": (
+                    Change(
+                        date(2026, 2, 1),
+                        "mod",
+                        "CONTRACT_AMENDED",
+                        Decimal(30),
+                        record_seq=2,
+                        before=Decimal(200),
+                        after=Decimal(230),
+                    ),
+                    Change(
+                        end,
+                        "cancel",
+                        "CONTRACT_TERMINATED",
+                        Decimal(-250),
+                        record_seq=4,
+                        before=Decimal(250),
+                        after=Decimal(0),
+                        cancelled_on=end,
+                    ),
+                )
+            }
+        },
+        estimate_allocations={vid: {"C/O": Decimal(20)}},
+        estimate_event_allocations={(vid, "estimate"): {"C/O": Decimal(20)}},
+    )
+    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert result.lines["OPENING"] == (0 if first_entry else 260)
+    assert result.lines["NEW_CONTRACTS"] == (200 if first_entry else 0)
+    assert result.lines["MODIFICATIONS"] == 30
+    assert result.lines["VC_ESTIMATE_CHANGES"] == 20 + realized - (0 if first_entry else 100)
+    assert result.lines["REVENUE"] == -revenue + (0 if first_entry else 40)
+    assert result.lines["CANCELLATIONS"] == -(250 + realized - revenue)
+    assert result.lines["CLOSING"] == result.lines["UNEXPLAINED"] == 0
+    (legacy,) = rpo.rollforward_lines(
+        replace(store, classify_batch_cancelled_usage=False),
+        ranges={eid: (before, end)},
+        applied={},
+    )
+    assert legacy.lines != result.lines

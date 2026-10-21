@@ -6,6 +6,23 @@
 
 
 
+## First-batch and same-version realized-fee cancellation — October 20, 2026
+
+- A single first-entry cancellation computation and an opening-to-closing cancellation within
+  one retained version now separate original realized fees. VC carries the realized change;
+  cancellation removes fixed plus realized allocation net of recognized revenue. Original
+  fixed modification/estimate bridges and dated realization evidence remain required.
+- New bindings use rpo_cancelled_usage_v2. Retained v1 keeps its later-version-only behavior
+  and retains v1 again on rerun. No event, accounting posting or stored amount changes.
+- The 66 scoped report cases pass, including eight new reader cases for first entry versus
+  monthly opening, realized increases/corrections, partial recognition and full reversal, plus
+  legacy behavior. Existing public modification reports/reruns in three currency views,
+  scoped lint/types and migration 0245 down/up IPE parity pass.
+- New cases are report-reader witnesses, not a full-compute/API usage-plus-cancellation journey.
+  Multi-version usage chains, multiple cancellations within a computation, intervening versions,
+  same-day entry/cancellation and combined-member aging ownership remain open. Independent
+  accounting sign-off and final-candidate verification remain open. Direct main; no deployment.
+
 ## Terminal realized usage stays out of fixed cancellation attribution — October 20, 2026
 
 - For an opening obligation and one later terminating version, the report now uses the
@@ -213,23 +230,6 @@
   owner layers do not reconcile still refuses. A new close now also requires its aging dataset
   to be reproducible; historical computations missing the required traces can require recompute.
   Independent accounting sign-off and final-candidate release checks remain open.
-
-## Priced right-to-invoice advance billing — October 20, 2026
-
-- Fixed the shared RTI source selector: a booked unit price selects delivered quantity even
-  before the first delivery. Advance invoices therefore cannot become performance revenue,
-  and later delivery cannot switch from an invoice-based price to a performance-based price.
-- Stage 04 allocation and stage 09 recognition use the same corrected source. Rated usage
-  retains priority; invoice fallback remains available when no unit price/performance source
-  exists. Existing stored outputs are unchanged until a new computation is requested.
-- Whole-engine checks cover before delivery, after delivery and additional billing, asserting
-  price/allocation/revenue together. Related RTI/source/recognition checks pass (25 cases).
-  The previously failing EUR case now computes: EUR 20,000 billed, EUR 10,000 earned, with
-  USD 5,500 and 5,550 remaining in their original liability-age buckets. The public aging
-  report reconciles. Scoped lint/types pass. No deployment.
-- This closes the S04-R-02 diagnostic recorded in the functional-aging checkpoint. Broader
-  combined-member aging, locked aging datasets, accounting acceptance and final release
-  verification remain outstanding.
 
 ## Outstanding release verification
 
