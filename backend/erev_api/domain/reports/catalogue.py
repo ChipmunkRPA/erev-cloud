@@ -594,6 +594,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "classes only when every source period is uniform TIME or EVENT and both currency "
             "TIME totals reconcile; mixed periods and unmatched functional allocation remain "
             "unavailable",
+            "agent gross control relief is reconciled to separately retained net revenue "
+            "and AP_SUPPLIER components in both currencies; split targets require unique "
+            "original source ownership and supplier history capability, otherwise "
+            "attribution is unavailable",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -683,6 +687,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "classes only when every source period is uniform TIME or EVENT and both currency "
             "TIME totals reconcile; mixed periods and unmatched functional allocation remain "
             "unavailable",
+            "agent gross control relief is reconciled to separately retained net revenue "
+            "and AP_SUPPLIER components in both currencies; split targets require unique "
+            "original source ownership and supplier history capability, otherwise "
+            "attribution is unavailable",
         ),
     ),
     _definition(

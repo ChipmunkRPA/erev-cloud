@@ -20,10 +20,11 @@ from erev_engine import upgrade
 from erev_engine.bundle import BookOutput, InputBundle
 from erev_engine.canonical import canonical_bytes, sha256_hex
 from erev_engine.trace import TraceNode
-from sqlalchemy import insert, select
+from sqlalchemy import and_, insert, or_, select
 
 from erev_api.db import new_id
 from erev_api.db.tables import close_pass_evidence, subledger_line, subledger_posting
+from erev_api.domain.reports import revenue_roles
 from erev_api.domain.reports.fx_paid_periods import paid_origins
 from erev_api.domain.reports.fx_subjects import retained_subject
 from erev_api.domain.reports.liability_fx_trace import LayerDelta, PostingDelta, from_pass
@@ -89,7 +90,7 @@ def capture(
     }
     if revenue_posted_lines is not None:
         document["revenue_posted_lines"] = list(revenue_posted_lines)
-        document["revenue_account_roles"] = ["REVENUE", "INTERCOMPANY_DUE_TO"]
+        document["revenue_account_roles"] = list(revenue_roles.HISTORY_ROLES)
     content = canonical_bytes(document)
     if len(content) > MAX_TRACE_BYTES:
         raise Problem(
@@ -146,12 +147,8 @@ def read_for_line(
     )
     if line is None:
         return None
-    if revenue and (
-        line["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
-        or line["account_role"] not in {"REVENUE", "INTERCOMPANY_DUE_TO"}
-        or (line["account_role"] == "INTERCOMPANY_DUE_TO" and line["entry_kind"] != "INTERCOMPANY")
-    ):
-        raise ValueError("Revenue evidence requires a revenue ledger line.")
+    if revenue and not revenue_roles.allowed(line):
+        raise ValueError("Revenue evidence requires an admitted revenue component ledger line.")
     records = session.execute(
         select(close_pass_evidence, subledger_posting.c.book_code, subledger_posting.c.posting_kind)
         .join(
@@ -217,6 +214,10 @@ def read_for_line(
                 raise ValueError(
                     "This historical close pass did not retain intercompany due-to history."
                 )
+            if revenue_roles.is_supplier(line) and revenue_roles.SUPPLIER_ROLE not in document.get(
+                "revenue_account_roles", []
+            ):
+                raise ValueError("This historical close pass did not retain supplier history.")
             document = {**document, "posted_lines": document["revenue_posted_lines"]}
         return document
     from erev_api.domain.reports import command_fx_evidence
@@ -338,8 +339,17 @@ def capture_posted_lines(
             subledger_line.c.entry_kind.in_(
                 ("REVENUE_RECOGNITION", "INTERCOMPANY") if revenue else ("FX_REMEASUREMENT",)
             ),
-            subledger_line.c.account_role.in_(
-                ("REVENUE", "INTERCOMPANY_DUE_TO") if revenue else ("CONTRACT_LIABILITY",)
+            (
+                or_(
+                    subledger_line.c.account_role.in_(("REVENUE", "INTERCOMPANY_DUE_TO")),
+                    and_(
+                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                        subledger_line.c.account_role == "BILLING_CLEARING",
+                        subledger_line.c.clearing_purpose == "AP_SUPPLIER",
+                    ),
+                )
+                if revenue
+                else subledger_line.c.account_role == "CONTRACT_LIABILITY"
             ),
             *(
                 (subledger_posting_seal.c.chain_seq <= ledger_cutoff,)
@@ -358,6 +368,7 @@ def capture_posted_lines(
             "origin_key": row["origin_key"],
             "reason_code": row["reason_code"],
             "posting_class": POSTING_CLASSES[str(row["posting_kind"])],
+            **({"clearing_purpose": row["clearing_purpose"]} if revenue else {}),
         }
         for row in rows
     ]

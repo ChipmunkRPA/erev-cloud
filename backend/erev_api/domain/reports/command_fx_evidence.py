@@ -25,7 +25,7 @@ from erev_api.db.tables import (
     subledger_posting,
     subledger_posting_seal,
 )
-from erev_api.domain.reports import computation_sources
+from erev_api.domain.reports import computation_sources, revenue_roles
 from erev_api.domain.reports.fx_subjects import retained_subject
 from erev_api.enums import PrincipalKind
 from erev_api.explain.store import load_trace, trace_document
@@ -44,12 +44,7 @@ def read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
 
 def read_revenue(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | None:
     """Retain a revenue line with its original functional amount and paid population."""
-    if (
-        line["contract_version_id"] is None
-        or line["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
-        or line["account_role"] not in {"REVENUE", "INTERCOMPANY_DUE_TO"}
-        or (line["account_role"] == "INTERCOMPANY_DUE_TO" and line["entry_kind"] != "INTERCOMPANY")
-    ):
+    if line["contract_version_id"] is None or not revenue_roles.allowed(line):
         return None
     return _read(uow, line)
 
@@ -128,6 +123,7 @@ def _read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any]:
             if (
                 candidate["trace_node_id"] == line["trace_node_id"]
                 and candidate["account_role"] == str(line["account_role"])
+                and candidate.get("clearing_purpose") == line.get("clearing_purpose")
                 and candidate["txn_currency"] == str(line["txn_currency"]).strip()
                 and candidate["functional_currency"] == str(line["functional_currency"]).strip()
                 and all(
@@ -178,7 +174,7 @@ def _read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any]:
             members,
             book_code,
             ledger_cutoff=source.ledger_cutoff[book_code],
-            revenue=line["account_role"] in {"REVENUE", "INTERCOMPANY_DUE_TO"},
+            revenue=revenue_roles.allowed(line),
         ),
     }
 

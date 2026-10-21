@@ -1449,3 +1449,172 @@ def test_intercompany_due_to_sources_support_progress_reversal(
             report.maya,
         )
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+
+
+def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld) -> None:  # noqa: F811
+    from erev_api.db.tables import account_mapping_rule, judgement_record
+    from erev_api.domain.reports.revenue_attribution import for_control, read
+    from sqlalchemy import insert
+    from support.reference import gl_account, mapping_published
+    from support.rows import judgement_record_values
+    from support.worlds import approved_manual_events
+
+    supplier_account = gl_account(
+        fx.app,
+        fx.maya,
+        code="2199",
+        name="Supplier payable",
+        account_type="LIABILITY",
+        normal_balance="C",
+    )
+    rules = [
+        {
+            "account_role": row["account_role"],
+            "gl_account_id": str(row["gl_account_id"]),
+            **({"clearing_purpose": row["clearing_purpose"]} if row["clearing_purpose"] else {}),
+        }
+        for row in fx.place.rows(select(account_mapping_rule))
+    ]
+    mapping_published(
+        fx.app,
+        fx.maya,
+        fx.marcus,
+        name="Agent supplier mapping",
+        effective_from="2026-08-01T00:00:00Z",
+        rules=[
+            *rules,
+            {
+                "account_role": "BILLING_CLEARING",
+                "clearing_purpose": "AP_SUPPLIER",
+                "gl_account_id": supplier_account,
+            },
+        ],
+    )
+    identity = _gateways(fx, "AGENT-SOURCES")
+    with fx.place.uow() as uow:
+        uow.session.execute(
+            insert(judgement_record).values(
+                **judgement_record_values(
+                    fx.place.tenant_id,
+                    contract_id=identity,
+                    subject_id=identity,
+                    subject_type="contract",
+                    topic="PRINCIPAL_AGENT",
+                    book_code="ASC606",
+                    status="REVIEWED",
+                    reviewer_id=fx.priya.member.user_id,
+                    reviewed_at=uow.now,
+                    questionnaire={
+                        "conclusion": "AGENT",
+                        "gross_to_net_basis": "FIXED_FEE",
+                        "amount": "18000.00",
+                        "obligation_key": "O1",
+                    },
+                )
+            )
+        )
+        uow.commit()
+    head = fx.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == identity))
+    _recorded(fx, identity, int(head), _invoice("AGENT-ADV", "2026-08-20", "90000.00"))
+    for quantity, day in (("120", "2026-08-21"), ("80", "2026-08-22")):
+        approved_manual_events(
+            fx.place,
+            fx.priya,
+            identity,
+            {
+                "event_type": "DELIVERY_RECORDED",
+                "effective_date": day,
+                "payload": {"obligation_key": "O1", "quantity": quantity, "trigger": "DELIVERY"},
+            },
+            evidence_file_ids=[],
+        )
+    with fx.place.uow() as uow:
+        rows = (
+            uow.session.execute(
+                select(subledger_line)
+                .where(
+                    subledger_line.c.contract_id == identity,
+                    subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                    subledger_line.c.book_code == "ASC606",
+                )
+                .order_by(subledger_line.c.recorded_at, subledger_line.c.entry_no)
+            )
+            .mappings()
+            .all()
+        )
+        controls = [row for row in rows if row["account_role"] == "CONTRACT_LIABILITY"]
+        suppliers = [row for row in rows if row["clearing_purpose"] == "AP_SUPPLIER"]
+        assert controls and len(suppliers) >= 2
+        for view in ("transaction", "functional"):
+            _, result = for_control(uow, controls[0]["id"], view=view)
+            amount = "amount_txn" if view == "transaction" else "amount_functional"
+            assert result.delta.amount == -controls[0][amount]
+            assert {item[1] for item in result.components} == {
+                "REVENUE",
+                "BILLING_CLEARING:AP_SUPPLIER",
+            }
+            later = read(uow, suppliers[-1]["id"], view=view)
+            assert later.delta.amount == suppliers[-1][amount]
+            assert suppliers[0]["id"] in later.paid_line_ids
+
+    from erev_api.db.tables import legal_entity
+    from erev_api.domain.reports.command_fx_evidence import read_revenue
+    from erev_api.jobs.context import JobRuntime
+    from support.reference import get
+
+    with fx.place.uow() as uow:
+        changed = {**suppliers[-1], "clearing_purpose": "TAX_PAYMENT"}
+        assert read_revenue(uow, changed) is None
+        changed = {**suppliers[-1], "amount_functional": suppliers[-1]["amount_functional"] + 1}
+        with pytest.raises(ValueError, match="retained computation intent"):
+            read_revenue(uow, changed)
+    reporting = worlds.ReportWorld(
+        place=fx.place,
+        priya=fx.priya,
+        marcus=fx.marcus,
+        runtime=JobRuntime(clock=fx.place.clock, keyring=fx.place.keyring, files=fx.place.files),
+        entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
+        contracts={},
+    )
+    for code in ("contract_balance_rollforward", "revenue_from_opening_liability"):
+        for view in ("transaction", "functional", "reporting"):
+            run, data = worlds.report_run(
+                reporting,
+                code,
+                {
+                    "entity_codes": [AVM_UK],
+                    "book": "ASC606",
+                    "currency_view": view,
+                    "from_period_key": AUGUST,
+                    "to_period_key": AUGUST,
+                },
+            )
+            detail = next(row for row in data if row.get("contract_external_id") == "AGENT-SOURCES")
+            if code == "contract_balance_rollforward":
+                assert Decimal(detail["other"]["amount"]) == 0, detail
+                assert (
+                    next(
+                        check
+                        for check in run["tie_out_results"]
+                        if check["code"] == "TO_ROLLFORWARD_BALANCES"
+                    )["result"]
+                    == "PASS"
+                )
+            else:
+                assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
+                if view == "transaction":
+                    # Existing disclosure policy reports the gross control-relief family.
+                    # Net revenue remains separately proven above, not substituted here.
+                    assert Decimal(detail["revenue_recognized"]["amount"]) == Decimal("90000"), (
+                        detail
+                    )
+            restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+            assert restarted.status_code == 202, restarted.text
+            complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+            assert complete["state"] == "SUCCEEDED", complete
+            repeated = get(
+                fx.app,
+                f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+                fx.maya,
+            )
+            assert repeated.status_code == 200 and repeated.json()["items"] == data, repeated.text

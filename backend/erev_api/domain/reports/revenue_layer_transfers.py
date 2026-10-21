@@ -281,8 +281,19 @@ def read(
                                     "source presentation.",
                                 )
                         posted_ids.update((revenue_id, *result.paid_line_ids))
+                        posted_ids.update(item[0] for item in result.components)
                         posted_evidence[str(entry.line_id)] = {
                             "revenue_line_id": str(revenue_id),
+                            **(
+                                {
+                                    "agent_components": [
+                                        [str(identity), role, txn, functional]
+                                        for identity, role, txn, functional in result.components
+                                    ]
+                                }
+                                if result.components
+                                else {}
+                            ),
                             **(
                                 {
                                     "counterpart_role": "INTERCOMPANY_DUE_TO"

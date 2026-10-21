@@ -328,9 +328,13 @@ def split_role_target(
     if node.formula_id != "post.role_target.v1" or len(node.inputs) != 1:
         raise InvalidRevenueTrace("Split revenue requires one original revenue input.")
     child = node.inputs[0]
-    if not isinstance(child, str) or not child.startswith("revenue_cum:") or child not in nodes:
+    if (
+        not isinstance(child, str)
+        or not child.startswith(("revenue_cum:", "agent_gross_billing_cum:"))
+        or child not in nodes
+    ):
         raise InvalidRevenueTrace("Split revenue requires its original cumulative input.")
-    functional = child.replace("revenue_cum:", "revenue_functional:", 1)
+    functional = "revenue_functional:" + child.split(":", 1)[1]
     sources = project(trace, functional, movements, currency=currency)
     if (
         len(

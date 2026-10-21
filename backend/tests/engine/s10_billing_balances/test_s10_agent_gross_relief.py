@@ -165,3 +165,42 @@ def test_l7_6_agent_keys_reproduce(key_id: str) -> None:
     January and 314,500.00 in March; WM-05 AP 100,800.00 in March and agency UR 8,000.00."""
     loaded = load(ANSWER_KEY_ROOT / "pob" / f"{key_id}.yaml")
     assert_checkpoints(loaded, run_engine(loaded))
+
+
+def test_agent_report_sources_replay_actual_gross_billing_targets() -> None:
+    from decimal import Decimal
+    from uuid import UUID
+
+    from erev_api.domain.reports.revenue_trace import split_role_target
+
+    period, output = _outputs(WM_05)["check-in-month"]
+    book = next(
+        book
+        for book in output.books
+        if any("WM-05-MERCHANT" in node.id for node in book.trace.nodes)
+    )
+    raw = [
+        {
+            **row.columns,
+            "id": UUID(int=index),
+            "contract_id": UUID(int=100),
+            "trace_node_id": row.trace_nodes["amount_functional"],
+            "amount_txn": Decimal(row.columns["amount_txn"]) / 100,
+            "amount_functional": Decimal(row.columns["amount_functional"]) / 100,
+        }
+        for index, row in enumerate(book.fx_layer_movements, 1)
+    ]
+    amounts = {}
+    for role in ("REVENUE", "BILLING_CLEARING%3AAP_SUPPLIER"):
+        node = f"posting_target:WM-05-MERCHANT/L1-STAYS/REVENUE_RECOGNITION/{role}:{period}"
+        for view in ("transaction", "functional"):
+            result = split_role_target(
+                book.trace, node, raw, currency="USD", txn_scale=2, functional_scale=2, view=view
+            )
+            expected = -19200 if role == "REVENUE" else -100800
+            assert result.amount == expected
+            assert sum(item.amount for item in result.movements) == expected
+            assert len({item.layer_key for item in result.movements}) == 1
+            assert {item.contract_id for item in result.movements} == {UUID(int=100)}
+        amounts[role] = result.amount
+    assert sum(amounts.values()) == -120000

@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Agent gross/net reporting attribution — October 20, 2026
+
+- Retained revenue histories now include only the AP_SUPPLIER purpose of revenue-recognition
+  clearing lines. Close-pass envelopes declare that capability; older envelopes without it
+  remain unavailable. Original intent, purpose and paid-history amounts are checked.
+- Agent control relief is reconciled against separate net revenue and supplier components in
+  both currencies. Original split formulas/rounding and unique source ownership are replayed;
+  report evidence retains both component IDs and amounts without relabelling gross relief as net revenue.
+- The actual merchant engine example reproduces 120,000 gross / 19,200 net / 100,800 supplier.
+  The DB workflow exercises two deliveries, supplier paid history and public balance-rollforward
+  and opening-liability reports in transaction, functional and reporting views with identical
+  retained reruns. Intercompany reversal, 36 scoped cases, lint/types and migration checks pass.
+- This supersedes the preceding entry's missing supplier-history/control matcher limitation.
+  Multiple-origin split inputs, zero-net agent paths, within-period mixed-source attribution,
+  and broad close-pass agent acceptance remain open; no overall production readiness is claimed.
+  Migration 0222 documents the two consumers. Direct main publication; no deployment.
+
+
 ## Split-role revenue source reader foundation — October 20, 2026
 
 - The retained revenue reader now replays the original split role formula for a single uniquely
@@ -239,19 +257,6 @@
   Migration 0209 records the segmented calculation. These history-level cases do not establish
   that every public contract lifecycle can create every tested history; public lifecycle
   acceptance and competing cause decomposition remain open. No deployment.
-
-
-## Terminal cancellation RPO attribution — October 20, 2026
-
-- Terminal cancellation now uses retained cancelled-version cumulative revenue to remove only
-  remaining RPO. Current-period recognition and prior-period restatement stay in REVENUE and
-  LATE_EVENTS. Subsequent cancelled versions retain the latest available revenue evidence.
-- Four focused cases cover retained revenue, new revenue, late restatement and reversal;
-  missing cancellation evidence is not replaced by a guessed recognized amount. This does not
-  complete multi-exit/re-entry histories or competing cause decomposition.
-- 21 focused exemption/cancellation/catalogue tests and the database multi-currency RPO
-  movement/retained-rate test pass; Ruff and targeted mypy pass. Migration 0208 aligns the
-  calculation description. No deployment or accounting sign-off.
 
 
 ## Outstanding release verification

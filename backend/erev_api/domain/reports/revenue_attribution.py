@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 from erev_api.db.tables import contract, legal_entity, period, subledger_line
 from erev_api.domain.close.pass_evidence import LINE_FIELDS, _line_values, read_for_line
-from erev_api.domain.reports import revenue_trace
+from erev_api.domain.reports import revenue_roles, revenue_trace
 from erev_api.domain.reports.fx_paid_periods import paid_origins
 from erev_api.explain.store import trace_from_row
 from erev_api.uow import UnitOfWork
@@ -29,6 +29,7 @@ class Attribution:
     evidence: tuple[tuple[UUID, str], ...]
     layer_dates: tuple[tuple[UUID, str, date], ...]
     view: str
+    components: tuple[tuple[UUID, str, str, str], ...] = ()
 
 
 def read(
@@ -71,6 +72,7 @@ def read(
         raise ValueError("Revenue line is not visible.")
     line = dict(row)
     role = str(line["account_role"])
+    trace_role = revenue_roles.trace_role(line)
     document = read_for_line(uow, line_id, revenue=True)
     if document is None:
         raise ValueError("Revenue line lacks original computation evidence.")
@@ -124,7 +126,7 @@ def read(
         raise ValueError("Revenue paid population differs from the original target period.")
     expected_ref = (
         f"posted/{line['book_code']}/{entity.code}/{line['subject_key']}/"
-        f"{line['entry_kind']}/{role}/{target_period}/{basis}"
+        f"{line['entry_kind']}/{trace_role}/{target_period}/{basis}"
     )
     if original.ref_id != expected_ref:
         raise ValueError("Revenue history does not name the original role and posting basis.")
@@ -162,7 +164,7 @@ def read(
         if not isinstance(key, str) or key not in nodes:
             raise ValueError("Revenue target is not retained.")
         node = nodes[key]
-        expected_prefix = f"posting_target:{line['subject_key']}/{line['entry_kind']}/{role}:"
+        expected_prefix = f"posting_target:{line['subject_key']}/{line['entry_kind']}/{trace_role}:"
         if (
             node.formula_id != "post.role_target.v1"
             or not key.startswith(expected_prefix)
@@ -349,6 +351,7 @@ def read(
             or saved["subject_key"] != line["subject_key"]
             or saved["entry_kind"] != line["entry_kind"]
             or saved["account_role"] != role
+            or saved.get("clearing_purpose") != line.get("clearing_purpose")
             or saved["txn_currency"] != str(line["txn_currency"]).strip()
             or saved["functional_currency"] != currency
             or (basis != "ALL" and saved["posting_class"] != basis)
@@ -362,8 +365,11 @@ def read(
             .mappings()
             .one_or_none()
         )
-        if actual is None or canonical_bytes(_line_values(dict(actual))) != canonical_bytes(
-            {field: saved[field] for field in LINE_FIELDS}
+        if (
+            actual is None
+            or actual.get("clearing_purpose") != saved.get("clearing_purpose")
+            or canonical_bytes(_line_values(dict(actual)))
+            != canonical_bytes({field: saved[field] for field in LINE_FIELDS})
         ):
             raise ValueError("Retained revenue history differs from the authorized ledger.")
         found = read(uow, identity, view=view, _active=_active | {line_id}, _cache=cache)
@@ -431,5 +437,85 @@ def for_control(
         raise ValueError("Revenue control has no unique retained revenue counterpart.")
     revenue = lines[0]
     if any(revenue[name] != -control[name] for name in ("amount_txn", "amount_functional")):
-        raise ValueError("Revenue and control amounts differ within the original entry.")
+        return _agent_control(uow, control, revenue, view=view, cache=cache)
     return revenue["id"], read(uow, revenue["id"], view=view, _cache=cache)
+
+
+def _agent_control(
+    uow: UnitOfWork,
+    control: Any,
+    revenue: Any,
+    *,
+    view: str,
+    cache: dict[UUID, Attribution] | None,
+) -> tuple[UUID, Attribution]:
+    """Reconcile gross control relief to separately retained net revenue and supplier legs."""
+    entries = (
+        uow.session.execute(
+            select(subledger_line).where(
+                subledger_line.c.subledger_posting_id == control["subledger_posting_id"],
+                subledger_line.c.entry_no == control["entry_no"],
+            )
+        )
+        .mappings()
+        .all()
+    )
+    suppliers = [row for row in entries if revenue_roles.is_supplier(row)]
+    if control["entry_kind"] != "REVENUE_RECOGNITION" or len(entries) != 3 or len(suppliers) != 1:
+        raise ValueError("Revenue and control amounts differ without one original supplier leg.")
+    supplier = suppliers[0]
+    if any(
+        supplier[key] != control[key]
+        for key in (
+            "book_code",
+            "entity_id",
+            "contract_id",
+            "subject_key",
+            "period_id",
+            "origin_period_id",
+            "txn_currency",
+            "functional_currency",
+        )
+    ) or any(
+        control[key] + revenue[key] + supplier[key] != 0
+        for key in (
+            "amount_txn",
+            "amount_functional",
+        )
+    ):
+        raise ValueError("Agent gross control, net revenue and supplier amounts do not reconcile.")
+    components = [read(uow, row["id"], view=view, _cache=cache) for row in (revenue, supplier)]
+    dates: dict[tuple[UUID, str], date] = {}
+    for component in components:
+        for owner, layer, created in component.layer_dates:
+            if (owner, layer) in dates and dates[owner, layer] != created:
+                raise ValueError("Agent components disagree on original layer dates.")
+            dates[owner, layer] = created
+    delta = revenue_trace.RevenuePostingDelta(
+        tuple(movement for component in components for movement in component.delta.movements),
+        tuple(
+            sorted(
+                {identity for component in components for identity in component.delta.source_ids},
+                key=str,
+            )
+        ),
+    )
+    amount_key = "amount_functional" if view == "functional" else "amount_txn"
+    if delta.amount != -Fraction(control[amount_key]):
+        raise ValueError("Agent source components differ from gross control relief.")
+    return revenue["id"], Attribution(
+        delta,
+        tuple(
+            sorted(
+                {identity for component in components for identity in component.paid_line_ids},
+                key=str,
+            )
+        ),
+        tuple(sorted({item for component in components for item in component.evidence}, key=str)),
+        tuple((owner, layer, created) for (owner, layer), created in sorted(dates.items())),
+        view,
+        tuple(
+            (row["id"], label, str(row["amount_txn"]), str(row["amount_functional"]))
+            for row, label in ((revenue, "REVENUE"), (supplier, revenue_roles.SUPPLIER_ROLE))
+        ),
+    )

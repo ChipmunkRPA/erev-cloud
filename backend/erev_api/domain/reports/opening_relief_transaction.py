@@ -179,8 +179,19 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                         )
                 attribution[index] = released
                 paid_members.update((revenue_id, *result.paid_line_ids))
+                paid_members.update(item[0] for item in result.components)
                 signed_evidence[str(entry.line_id)] = {
                     "revenue_line_id": str(revenue_id),
+                    **(
+                        {
+                            "agent_components": [
+                                [str(identity), role, txn, functional]
+                                for identity, role, txn, functional in result.components
+                            ]
+                        }
+                        if result.components
+                        else {}
+                    ),
                     "opening_relief": str(released),
                     "paid_line_ids": list(map(str, result.paid_line_ids)),
                     "source_ids": list(map(str, result.delta.source_ids)),

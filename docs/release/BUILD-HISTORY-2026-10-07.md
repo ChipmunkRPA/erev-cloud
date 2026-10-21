@@ -9856,3 +9856,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
   0207, which aligns the stored report calculation description.
 - This covers changes present in retained obligation versions, not historical policy-election
   changes or every public amendment workflow. Independent accounting acceptance remains open.
+
+## Terminal cancellation RPO attribution — October 20, 2026
+
+- Terminal cancellation now uses retained cancelled-version cumulative revenue to remove only
+  remaining RPO. Current-period recognition and prior-period restatement stay in REVENUE and
+  LATE_EVENTS. Subsequent cancelled versions retain the latest available revenue evidence.
+- Four focused cases cover retained revenue, new revenue, late restatement and reversal;
+  missing cancellation evidence is not replaced by a guessed recognized amount. This does not
+  complete multi-exit/re-entry histories or competing cause decomposition.
+- 21 focused exemption/cancellation/catalogue tests and the database multi-currency RPO
+  movement/retained-rate test pass; Ruff and targeted mypy pass. Migration 0208 aligns the
+  calculation description. No deployment or accounting sign-off.

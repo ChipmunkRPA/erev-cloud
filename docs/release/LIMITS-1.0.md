@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — agent supplier history and gross/net source attribution
+
+The supplier-history and gross/net matcher gaps in the preceding entry are now implemented.
+The reader includes only revenue-recognition BILLING_CLEARING/AP_SUPPLIER lines and verifies
+original clearing purpose, amounts and paid history. Agent gross control relief must reconcile
+to separately verified net revenue and supplier legs in transaction and functional currency.
+Both components remain explicit in retained report evidence. The existing opening-liability
+report's revenue_recognized column follows the gross control-relief family: this fixture shows
+90,000 there, while the separate net revenue component is 18,000. This patch does not change
+that disclosure policy; its agent presentation still requires independent accounting acceptance.
+Original split formulas and
+minor-unit rounding require a uniquely owned source; they do not infer ownership by weights.
+
+The two-delivery DB workflow exercises both public report consumers in transaction, functional
+and reporting views, including retained reruns; the actual merchant engine example separately
+reproduces 120,000 gross / 19,200 net / 100,800 supplier. Old close-pass envelopes lacking the
+supplier-history capability remain unavailable. This does not establish multi-origin split,
+zero-net agent or broad close-pass agent acceptance; within-period mixed-source cases and
+independent accounting sign-off remain outstanding. No deployment or production-ready claim.
+
+
 ### October 20 — split-role formula reader; agent integration still open
 
 The internal revenue reader can replay a split role target for a single uniquely owned revenue
