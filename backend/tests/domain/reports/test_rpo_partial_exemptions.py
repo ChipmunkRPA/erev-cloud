@@ -554,17 +554,44 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
     assert known.lines["UNEXPLAINED"] == 0
 
 
-@pytest.mark.parametrize("later_amount", ["200", "-50"])
-def test_first_entry_separates_later_original_estimate_events(later_amount: str) -> None:
+@pytest.mark.parametrize(
+    "with_modification,later_amount", [(False, "200"), (False, "-50"), (True, "200"), (True, "80")]
+)
+def test_first_entry_separates_later_original_estimate_events(
+    later_amount: str, with_modification: bool
+) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
     from erev_api.domain.reports.rpo_estimate_changes import allocations
 
     targeted = worlds.element("100", keys=["A"])
     base = worlds.targeted_world(estimates=[targeted])
     original = compute(base).books[0]
+    modification = Decimal(0)
+    if with_modification:
+        from support import cpc_worlds
+
+        concession = cpc_worlds.concession("-20", date(2026, 2, 1), key="A")
+        concession = replace(
+            concession,
+            modification_key="K-01/MOD-1",
+            status="APPLIED",
+            price_change_amount=None,
+            questionnaire={},
+            chosen_treatments={"A": "PROSPECTIVE", "B": "PROSPECTIVE"},
+            treatment_summary="PROSPECTIVE",
+            lines=tuple({**line, "product_code": "PROD-A"} for line in concession.lines),
+        )
+        base = replace(
+            base,
+            contracts=tuple(replace(c, modifications=(concession,)) for c in base.contracts),
+            events=tuple(
+                cpc_worlds.amended(list(base.events), concession, concession.chosen_treatments)
+            ),
+        )
+        modification = Decimal(-20)
     bundle = worlds.with_changes(
         base,
-        [worlds.later_version(targeted, 2, date(2026, 2, 1), later_amount)],
+        [worlds.later_version(targeted, 2, date(2026, 2, 15), later_amount)],
         memo_on=date(2026, 2, 28),
     )
     book = compute(bundle).books[0]
@@ -585,7 +612,12 @@ def test_first_entry_separates_later_original_estimate_events(later_amount: str)
         entries=((cid, entry),),
         estimate_events=frozenset(key for key, _ in estimates),
         estimate_dates=estimates,
+        modification_events=frozenset(
+            event.event_key for event in bundle.events if event.event_type == "CONTRACT_AMENDED"
+        ),
     )
+    if with_modification:
+        version = replace(version, causes=version.causes | {"CONTRACT_AMENDED"})
     obligations = []
     cuts = {}
     for output in book.obligation_versions:
@@ -617,6 +649,32 @@ def test_first_entry_separates_later_original_estimate_events(later_amount: str)
         for day in (before, entry, end):
             cuts.setdefault((vid, day), {})[oid] = at
     store = rpo.Store({gid: (version,)}, {vid: tuple(obligations)}, {cid: (version,)}, cuts)
+    from erev_api.domain.reports.rpo_boundary_changes import history
+
+    store.boundaries[vid] = history(book.trace)
+    if with_modification:
+        from erev_engine.trace import reevaluate
+
+        replayed = reevaluate(book.trace)
+        for node in book.trace.nodes:
+            if node.measure.startswith("fixed_boundary_"):
+                assert replayed[node.id] == node.value
+        boundary = next(
+            node for node in book.trace.nodes if node.measure.startswith("fixed_boundary_change@")
+        )
+        broken = replace(
+            book.trace,
+            nodes=tuple(
+                replace(node, value="999.00") if node.id == boundary.id else node
+                for node in book.trace.nodes
+            ),
+        )
+        with pytest.raises(Problem, match="boundary allocation evidence"):
+            history(broken)
+        assert (
+            sum(item.amount for items in store.boundaries[vid].values() for item in items)
+            == modification
+        )
     for event, day in estimates:
         if day > entry:
             shares = allocations(book.trace, frozenset({event}))
@@ -628,7 +686,8 @@ def test_first_entry_separates_later_original_estimate_events(later_amount: str)
     )
     final = sum(ob.allocated for ob in obligations)
     assert movement.lines["NEW_CONTRACTS"] == initial
-    assert movement.lines["VC_ESTIMATE_CHANGES"] == final - initial
+    assert movement.lines["VC_ESTIMATE_CHANGES"] == final - initial - modification
+    assert movement.lines["MODIFICATIONS"] == modification
     assert movement.lines["CLOSING"] == final
     assert movement.lines["UNEXPLAINED"] == 0
 
@@ -659,6 +718,7 @@ def test_first_entry_separates_later_original_estimate_events(later_amount: str)
     (february_row,) = rpo.rollforward_lines(store, ranges={eid: (january, end)}, applied={})
     assert february_row.lines["OPENING"] == initial
     assert february_row.lines["NEW_CONTRACTS"] == 0
-    assert february_row.lines["VC_ESTIMATE_CHANGES"] == final - initial
+    assert february_row.lines["VC_ESTIMATE_CHANGES"] == final - initial - modification
+    assert february_row.lines["MODIFICATIONS"] == modification
     assert february_row.lines["CLOSING"] == final
     assert february_row.lines["UNEXPLAINED"] == 0

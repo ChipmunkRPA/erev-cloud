@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — first-batch RPO modification and estimate attribution
+
+New computations retain original fixed-allocation amounts before and after each modification
+boundary, including zero changes for unaffected obligations. First-entry RPO batches can separate
+later modifications and estimate changes from new contracts when the obligation has complete
+boundary evidence. For movements within one retained version, the original modification deltas
+and estimate shares must jointly reconcile to the dated fixed-allocation difference. Earlier
+reporting periods exclude future movements. Invalid boundary arithmetic is rejected.
+
+This does not reconstruct missing historical evidence or infer amounts for an obligation without
+a complete boundary history (for example, some obligations added after an earlier modification).
+Cancellation mixtures retain the existing admission/removal rules and limitations. Previously
+retained traces remain unchanged. Native price-only modification with both increasing and
+decreasing estimates, original trace replay, historical/monthly cuts, the existing K01 public
+rollforward and migration 0236 catalogue parity were checked. Combined-member aging date ownership,
+independent accounting sign-off and final-candidate verification remain outstanding.
+
+
 ### October 20 — historical GL selection cannot fall back to stale reviewed evidence
 
 New GL comparison bindings (v4) choose the latest reconciliation identity eligible at the report

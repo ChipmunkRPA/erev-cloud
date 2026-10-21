@@ -10170,3 +10170,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   close-pass agent acceptance still need representative coverage; individual net/supplier
   source allocation remains unavailable without original owner evidence. Existing disclosure
   gross-relief policy and independent accounting acceptance remain open. No deployment.
+
+
+## Agent refund and full-return reversal — October 20, 2026
+
+- A real two-deposit refund/return journey exposed two engine defects: returned units did not
+  advance the agent's latest transfer date (so a preceding credit memo was ignored), and a
+  zero-weight role was omitted instead of clearing its old cumulative target. The original
+  return quarantined with an unbalanced revenue-recognition entry; both defects are fixed.
+- S10 now includes returned_cum changes as transfer boundaries. S14 retains zero-weight targets.
+  Split-source readers validate explicit zero baselines only before any original functional
+  source, using the retained calendar; missing later source history still refuses attribution.
+- The DB journey posts the full reversal: USD 90,000 gross / 18,000 net / 72,000 supplier, with
+  all three role balances zero in transaction and functional currency. September reports show
+  negative gross revenue and zero opening-liability relief, with retained reruns in all views.
+- Single-deposit and zero-net journeys, 63 scoped engine/source cases, lint and types pass.
+  Cross-contract agent groups and broader close-pass acceptance remain open; this supersedes
+  the prior unverified gross-refund/return case. Independent accounting acceptance and final
+  release checks remain outstanding. Direct main publication only; no deployment.

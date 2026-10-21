@@ -928,11 +928,14 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _as_locked("RPO_ROLLFORWARD"),
             "measurement-only estimate pins prove no allocation movement; inception estimates "
             "and legacy pins without an explicit effect are not assumed to have zero impact",
-            "first-entry batches separate later estimate-event shares from new contracts when all "
-            "changes fall within the range and no modification or cancellation competes",
-            "dated fixed-allocation evidence reconciles to version remainders and excludes future "
-            "estimate changes from earlier RPO; same-version estimate movements require complete "
-            "original shares matching the dated allocation difference",
+            "first-entry batches separate later original estimate shares and dated "
+            "fixed-boundary modification deltas from new contracts; modification "
+            "decomposition requires complete event evidence and cancellations retain "
+            "existing limits",
+            "dated fixed-allocation evidence reconciles to version remainders and "
+            "excludes future changes from earlier RPO; same-version estimate and "
+            "modification movements require original shares and boundary deltas matching "
+            "the dated allocation difference",
             "historical time-based schedules freeze the original allocation segment at the "
             "reporting cut; dated projections reconcile to the remainder and retain cut-specific "
             "drill-through",

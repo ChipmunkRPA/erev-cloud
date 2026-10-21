@@ -6,6 +6,23 @@
 
 
 
+## RPO first-batch modification attribution — October 20, 2026
+
+- Stage 06 now retains fixed-allocation before/after amounts and signed changes for every
+  obligation present at each modification boundary, including explicit zero changes. The new
+  nodes re-evaluate from the retained engine state; accounting postings are unchanged.
+- RPO first-entry batches separate later modifications and estimate changes from NEW_CONTRACTS
+  when original event evidence is complete. Within one retained version, monthly modification
+  and estimate movements must reconcile together to the dated fixed-allocation difference.
+  Earlier months exclude future changes. Invalid boundary evidence is rejected.
+- Targeted engine/report checks cover a native price-only modification followed by estimate
+  increases and decreases, first-entry and monthly views, original-node replay and invalid
+  evidence. Existing same-date/prospective modification checks and the public K01 period
+  rollforward pass. Lint/types and migration 0236 down/up catalogue parity pass. No deployment.
+- Old traces are not backfilled. Missing modification boundaries, newly introduced obligations
+  lacking a complete boundary history and cancellation mixtures retain existing limitations.
+  Combined-member aging date ownership and independent accounting sign-off remain open.
+
 ## Historical GL source identity — October 20, 2026
 
 - Fixed a historical comparison defect: filtering updated_at before selecting the latest GL
@@ -219,24 +236,6 @@
   metadata checked. Migration 0226 updates the report's IPE explanation. Broader close-pass acceptance, dated
   mixed manual-adjustment projection, independent accounting acceptance and final release
   verification remain open. No deployment.
-
-
-## Agent refund and full-return reversal — October 20, 2026
-
-- A real two-deposit refund/return journey exposed two engine defects: returned units did not
-  advance the agent's latest transfer date (so a preceding credit memo was ignored), and a
-  zero-weight role was omitted instead of clearing its old cumulative target. The original
-  return quarantined with an unbalanced revenue-recognition entry; both defects are fixed.
-- S10 now includes returned_cum changes as transfer boundaries. S14 retains zero-weight targets.
-  Split-source readers validate explicit zero baselines only before any original functional
-  source, using the retained calendar; missing later source history still refuses attribution.
-- The DB journey posts the full reversal: USD 90,000 gross / 18,000 net / 72,000 supplier, with
-  all three role balances zero in transaction and functional currency. September reports show
-  negative gross revenue and zero opening-liability relief, with retained reruns in all views.
-- Single-deposit and zero-net journeys, 63 scoped engine/source cases, lint and types pass.
-  Cross-contract agent groups and broader close-pass acceptance remain open; this supersedes
-  the prior unverified gross-refund/return case. Independent accounting acceptance and final
-  release checks remain outstanding. Direct main publication only; no deployment.
 
 
 ## Outstanding release verification

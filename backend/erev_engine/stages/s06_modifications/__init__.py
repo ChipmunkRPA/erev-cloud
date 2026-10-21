@@ -147,6 +147,8 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
     "mod.termination.v1",
     "mod.weights.d18.v1",
     "mod.weights.inception_all.v1",
+    "rec.activity_sum.v1",
+    "rec.allocation.v1",
 )
 # POL-100 USER_SELECTED_TEMPLATE: E-24 template mode -> E-23 treatment (ALG-04 §2.5.7).
 TEMPLATE_TREATMENTS: Final[Mapping[str, ModificationTreatment]] = MappingProxyType(

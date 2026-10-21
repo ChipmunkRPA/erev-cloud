@@ -57,6 +57,73 @@ def _previous_stated_node(
     return inception if tb.value(inception) is not None else None
 
 
+def _allocation_change(
+    ctx: BookContext,
+    tb: TraceBuilder,
+    old: ObligationState | None,
+    ob: ObligationState,
+    ev: EventView,
+) -> None:
+    """Retain the exact fixed allocation before/after this boundary, including zero changes.
+
+    These are engine states, not a report-side allocation of the contract price change.
+    Separate dated events remain distinguishable even in the first computation.
+    """
+    unit = ctx.currencies[ctx.txn_currency].minor_unit
+    amounts = []
+    inputs = []
+    for side, item in (("before", old), ("after", ob)):
+        segment = None if item is None else _fixed(item)
+        amount = 0 if segment is None else segment.a_posted
+        amounts.append(amount)
+        lineage = []
+        if segment is not None and item is not None:
+            if segment.event_key is not None:
+                candidate = f"allocated_amount@{segment.event_key}:{ob.subject_key}:-"
+                if tb.value(candidate) is not None:
+                    lineage.append(candidate)
+            else:
+                lineage.extend(
+                    key for key in item.original_allocation_nodes if tb.value(key) is not None
+                )
+        inputs.append(
+            tb.node(
+                measure=f"fixed_boundary_{side}@{ev.event_key}",
+                subject_key=ob.subject_key,
+                period_key=None,
+                value=amount,
+                currency=ctx.txn_currency,
+                minor_unit=unit,
+                formula_id="rec.allocation.v1",
+                inputs=lineage,
+                params={
+                    "allocated": str(amount),
+                    "as_of": ev.effective_date.isoformat(),
+                    "kind": "posted",
+                },
+                exact=Fraction(amount, 10**unit),
+                narrative_key="rec.allocation",
+            )
+        )
+    tb.node(
+        measure=f"fixed_boundary_change@{ev.event_key}",
+        subject_key=ob.subject_key,
+        period_key=None,
+        value=amounts[1] - amounts[0],
+        currency=ctx.txn_currency,
+        minor_unit=unit,
+        formula_id="rec.activity_sum.v1",
+        inputs=[inputs[1], inputs[0]],
+        params={
+            "signs": "+,-",
+            "as_of": ev.effective_date.isoformat(),
+            "event_type": ev.event_type,
+        },
+        exact=Fraction(amounts[1] - amounts[0], 10**unit),
+        narrative_key="rec.activity_sum",
+    )
+
+
 def emit(
     ctx: BookContext,
     tb: TraceBuilder,
@@ -69,6 +136,7 @@ def emit(
     prior = {ob.subject_key: ob for ob in before.obligations}
     for ob in after.obligations:
         old = prior.get(ob.subject_key)
+        _allocation_change(ctx, tb, old, ob, ev)
         fixed = _fixed(ob)
         old_fixed = None if old is None else _fixed(old)
         stated_changed = old is None or ob.stated_price != old.stated_price

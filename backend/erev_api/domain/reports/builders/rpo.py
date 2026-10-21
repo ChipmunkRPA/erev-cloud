@@ -126,6 +126,7 @@ from erev_api.domain.contracts import to_date
 from erev_api.domain.reports import (
     cuts,
     elections,
+    rpo_boundary_changes,
     rpo_currency,
     rpo_duration,
     rpo_estimate_changes,
@@ -286,6 +287,7 @@ class _Version:
     entries: tuple[tuple[UUID, date], ...] = ()
     estimate_events: frozenset[str] = frozenset()
     estimate_dates: tuple[tuple[str, date], ...] = ()
+    modification_events: frozenset[str] = frozenset()
 
 
 @dataclass(slots=True)
@@ -341,6 +343,9 @@ class Store:
     cuts: dict[tuple[UUID, date], Mapping[UUID, to_date.ObligationAt]] = field(default_factory=dict)
 
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
+    boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
+        default_factory=dict
+    )
     original_ends: dict[UUID, Mapping[str, date]] = field(default_factory=dict)
 
     estimate_allocations: dict[UUID, Mapping[str, Decimal]] = field(default_factory=dict)
@@ -414,6 +419,7 @@ def load(
     )
     events: dict[UUID, tuple[str, date]] = {}
     estimate_keys: dict[UUID, str] = {}
+    boundary_keys: dict[UUID, str] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -433,6 +439,11 @@ def load(
             events[UUID(str(found["id"]))] = (kind, found["effective_date"])
             if kind == "ESTIMATE_CHANGED":
                 estimate_keys[UUID(str(found["id"]))] = (
+                    f"{contract_subject_key(str(found['external_id']))}/"
+                    f"EV-{int(found['stream_version']):06d}"
+                )
+            if CAUSE_LINES.get(kind) == "MODIFICATIONS":
+                boundary_keys[UUID(str(found["id"]))] = (
                     f"{contract_subject_key(str(found['external_id']))}/"
                     f"EV-{int(found['stream_version']):06d}"
                 )
@@ -477,6 +488,11 @@ def load(
                     estimate_keys[UUID(str(item))]
                     for item in row["cause_event_ids"] or ()
                     if UUID(str(item)) in estimate_keys
+                ),
+                modification_events=frozenset(
+                    boundary_keys[UUID(str(item))]
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in boundary_keys
                 ),
                 estimate_dates=tuple(
                     (estimate_keys[UUID(str(item))], events[UUID(str(item))][1])
@@ -818,17 +834,14 @@ def measure(
     store.cuts.update(cuts.obligations_at(session, wanted))
     for chain in store.versions.values():
         for version in chain:
-            if (
-                version.id not in wanted
-                or not version.estimate_events
-                or not (
-                    version.entries
-                    or any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
-                )
+            if version.id not in wanted or not (
+                version.entries
+                or any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
             ):
                 continue
             trace = trace_store.load_trace(session, version.id)
             if trace is not None:
+                store.boundaries[version.id] = rpo_boundary_changes.history(trace)
                 changes = rpo_estimate_changes.allocations(trace, version.estimate_events)
                 if changes is not None:
                     store.estimate_allocations[version.id] = changes
@@ -1195,6 +1208,24 @@ def _obligation_lines(
             )
             lines["NEW_CONTRACTS"] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
+            subject = obligation_subject_key(current.external_id, current.obligation_key)
+            boundaries = store.boundaries.get(version.id, {}).get(subject, ())
+            complete_boundaries = bool(
+                version.modification_events
+            ) and version.modification_events <= {item.event for item in boundaries}
+            if complete_boundaries:
+                modified = sum(
+                    (
+                        item.amount
+                        for item in boundaries
+                        if item.event in version.modification_events
+                        and version.effective < item.day <= end
+                        and CAUSE_LINES.get(item.kind) == "MODIFICATIONS"
+                    ),
+                    ZERO,
+                )
+                lines["NEW_CONTRACTS"] -= modified
+                lines["MODIFICATIONS"] += modified
             later = [
                 (event, day)
                 for event, day in version.estimate_dates
@@ -1205,7 +1236,8 @@ def _obligation_lines(
                 later
                 and all(day <= end for _, day in later)
                 and not any(
-                    CAUSE_LINES.get(kind) in {"MODIFICATIONS", "CANCELLATIONS"}
+                    CAUSE_LINES.get(kind) == "CANCELLATIONS"
+                    or (CAUSE_LINES.get(kind) == "MODIFICATIONS" and not complete_boundaries)
                     for kind in version.causes
                 )
                 and all(
@@ -1281,7 +1313,7 @@ def _obligation_lines(
         close_fixed = store.at(closing, end).fixed_allocation
         if open_fixed is not None and close_fixed is not None and opening_version is not None:
             events = [event for event, day in opening_version.estimate_dates if before < day <= end]
-            if events and all(
+            if (events or store.boundaries.get(closing.version_id)) and all(
                 (closing.version_id, event) in store.estimate_event_allocations for event in events
             ):
                 subject = obligation_subject_key(closing.external_id, closing.obligation_key)
@@ -1294,8 +1326,18 @@ def _obligation_lines(
                     ),
                     ZERO,
                 )
-                if change == close_fixed - open_fixed:
+                modifications = sum(
+                    (
+                        item.amount
+                        for item in store.boundaries.get(closing.version_id, {}).get(subject, ())
+                        if before < item.day <= end
+                        and CAUSE_LINES.get(item.kind) == "MODIFICATIONS"
+                    ),
+                    ZERO,
+                )
+                if change + modifications == close_fixed - open_fixed:
                     lines["VC_ESTIMATE_CHANGES"] += change
+                    lines["MODIFICATIONS"] += modifications
     realised_closing = ZERO if closing is None else store.at(closing, end).realised
     lines["VC_ESTIMATE_CHANGES"] += realised_closing - realised_opening
     if closing is not None:
