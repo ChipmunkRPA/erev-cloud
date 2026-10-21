@@ -11522,3 +11522,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   audit commit visibility must be completed before switching sample approval packs to the new
   request reader, so this does not combine committed requests with an inconsistent audit slice.
   Personnel names and other listed report inputs still need work; no completion claim is made.
+
+## Contract sample approval and audit commit visibility — October 21, 2026
+
+- Migration 0287 queues original audit-event commits atomically. A fixed audit source kind
+  handles monthly partition triggers; an immutable occurred_at locator validates the original
+  event in its partition. Existing recovery archives timestamps. Upgrade requires an empty
+  audit table rather than fabricated history, and retained audit commits prevent downgrade.
+- Sample approvals/audit v2 now applies one committed cutoff to request revisions, decisions
+  and linked audit events. A late approval preserves the earlier request state and excludes
+  both the later decision and its audit event. Decision/audit commit timestamps are retained;
+  missing request history refuses explicitly. Original request comments remain in the snapshot.
+- Current whole-population permissions, linked-contract checks, redaction and subject-hash
+  verification remain enforced. Saved archives keep their original bytes and schema.
+- Necessary checks passed: overlapping request/decision/audit transaction at old/new cutoffs,
+  exclusion before request commit, commit recovery, immutable audit partition locator,
+  full ZIP/PDF/XLSX sample flow, catalogue parity, database architecture and scoped lint/types.
+  The full sample fixture advances its clock past real attachment commit before live capture.
+- Remaining: standalone audit-export cutoff/retention, first-generation actor/display names,
+  register rule/step display inputs and other OPEN report adapters. This completes the sample
+  pack's approval/audit commit cutoff, not all historical source reconstruction. No deployment.

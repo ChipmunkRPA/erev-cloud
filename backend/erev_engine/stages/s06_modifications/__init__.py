@@ -658,7 +658,8 @@ def _added_obligation(
     ``allocation_nodes``: the trace node(s) that produced the quota installed as the original
     allocation — the creation producer the original unit revenue rate cites (CV-47 (b); D-98
     candidate 117 F1). The caller emits the obligation's ``original_quantity`` node into the trace
-    (``emit_original_quantity``), the stage 03 drafts having been built in a scratch builder."""
+    (``emit_original_quantity``), the stage 03 drafts having been built in a scratch builder.
+    Keep the draft's recognition-start guard, including the book-specific licence renewal date."""
     product = identified.canonical.group.products.get(draft.product_code)
     cost = None if product is None else product.assurance_cost_per_unit
     return ObligationState(
@@ -675,7 +676,7 @@ def _added_obligation(
         scope_flag=draft.scope_flag,
         start_date=draft.start_date,
         end_date=draft.end_date,
-        recognition_start_date=None,
+        recognition_start_date=draft.recognition_start_date,
         contracting_entity=draft.contracting_entity,
         performing_entity=draft.performing_entity,
         quantity=draft.quantity,

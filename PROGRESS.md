@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Licence renewal recognition and advance-FX attribution — October 21, 2026
+
+- Fixed two connected engine gaps found through full book-bridge replay: stage 06 now tells
+  stage 03 when an added line belongs to RENEWAL/EARLY_RENEWAL, and the installed obligation
+  preserves the draft's recognition_start_date. Previously the boundary dropped that guard,
+  causing ASC606 to recognize a delivered future-term renewal immediately like IFRS15.
+- Full-engine evidence now shows the discounted USD 900 licence renewal agreed/delivered in
+  June 2026 recognized in January 2027 under ASC606 and June 2026 under IFRS15. Both renewal
+  kinds pass; June's -900 difference is quantified as LICENCE_RENEWALS with zero OTHER residual.
+- Advance consideration FX is verified with real monetary-vs-historical liability layers:
+  EUR 1,000 remains EUR 1,000 in both books, while USD functional liability is 1,120 vs 1,100.
+  The USD 20 effect is attributed to ADVANCE_CONSIDERATION_FX and transaction-currency effects
+  remain zero. The helper now supports reusable real computation inputs for these scenarios.
+- Necessary checks: seven focused real replay cases plus 34 relevant modification/licence
+  regression cases passed; scoped lint/types and diff checks passed. Existing stored outputs
+  remain unchanged; computations made before the correction may fail exact-original replay
+  and retain the explicit fallback rather than fabricate provenance. No deployment.
+- Remaining: book-context/non-policy residual cases and source gaps, Adoption Bridge currency
+  support, Intercompany Pairs retained replay, other documented adapters and final repository
+  validation. These verified renewal and historical-layer scenarios are no longer outstanding.
+
 ## Book Bridge verified phased attribution — October 21, 2026
 
 - Added an authorized worker read/compute/publish path: verify original retained computation
@@ -198,26 +219,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: first-generation actor/display-name histories, approval-register rule/step display
   inputs and other OPEN report adapters, followed by final repository validation. This audit
   export is a selected event listing, not a complete audit-chain verification. No deployment.
-
-## Contract sample approval and audit commit visibility — October 21, 2026
-
-- Migration 0287 queues original audit-event commits atomically. A fixed audit source kind
-  handles monthly partition triggers; an immutable occurred_at locator validates the original
-  event in its partition. Existing recovery archives timestamps. Upgrade requires an empty
-  audit table rather than fabricated history, and retained audit commits prevent downgrade.
-- Sample approvals/audit v2 now applies one committed cutoff to request revisions, decisions
-  and linked audit events. A late approval preserves the earlier request state and excludes
-  both the later decision and its audit event. Decision/audit commit timestamps are retained;
-  missing request history refuses explicitly. Original request comments remain in the snapshot.
-- Current whole-population permissions, linked-contract checks, redaction and subject-hash
-  verification remain enforced. Saved archives keep their original bytes and schema.
-- Necessary checks passed: overlapping request/decision/audit transaction at old/new cutoffs,
-  exclusion before request commit, commit recovery, immutable audit partition locator,
-  full ZIP/PDF/XLSX sample flow, catalogue parity, database architecture and scoped lint/types.
-  The full sample fixture advances its clock past real attachment commit before live capture.
-- Remaining: standalone audit-export cutoff/retention, first-generation actor/display names,
-  register rule/step display inputs and other OPEN report adapters. This completes the sample
-  pack's approval/audit commit cutoff, not all historical source reconstruction. No deployment.
 
 ## Outstanding release verification
 

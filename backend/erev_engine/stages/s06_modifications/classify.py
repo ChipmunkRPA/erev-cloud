@@ -265,6 +265,7 @@ def added_lines(
             scratch,
             contract_key=mod.contract_key,
             findings=findings,
+            renewal=mod.kind in {"RENEWAL", "EARLY_RENEWAL"},
         )
         answer = mod.answer(line.obligation_key, "added_goods_distinct")
         nondistinct = any(draft.distinctness == Distinctness.NONDISTINCT for draft in drafts)
