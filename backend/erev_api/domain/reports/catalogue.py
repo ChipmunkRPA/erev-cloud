@@ -1679,6 +1679,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "functional effects use posted functional amounts; reporting effects translate each "
             "posting period's functional activity at its approved average rate; original event "
             "amounts retain transaction currency; distinct effect currencies never aggregate",
+            "same-source runs retain authorized posted lines, original event/trigger cause "
+            "evidence, "
+            "selected late-event facts and currency effects; reruns rebuild attribution and totals "
+            "without live source, actor, approval or rate reads",
             _SCOPE,
             _BOOK,
             "posting period_key from from_period_key to to_period_key",

@@ -1029,6 +1029,7 @@ def test_imported_late_event_names_uploader_and_approval(
     assert (late["event_type"], late["origin"]) == ("PROGRESS_RECORDED|MEMO_UPDATED", "IMPORT|UI")
     assert late["revenue_effect"] == {"amount": "6480.00", "currency": "USD"}
     assert late["balance_effect"] == {"amount": "-6480.00", "currency": "USD"}
+    originals = [("transaction", february, rows)]
     for view in ("functional", "reporting"):
         viewed, viewed_rows = worlds.report_run(
             world,
@@ -1040,6 +1041,7 @@ def test_imported_late_event_names_uploader_and_approval(
                 "currency_view": view,
             },
         )
+        originals.append((view, viewed, viewed_rows))
         assert viewed_rows == rows
         assert viewed["control_totals"] == february["control_totals"]
     # both members name Maya — the uploader of the import and the author of the note — so the
@@ -1052,6 +1054,48 @@ def test_imported_late_event_names_uploader_and_approval(
         "revenue_effect_total": {"USD": "6480.00"},
         "balance_effect_total": {"USD": "-6480.00"},
     }
+
+    clock.advance(timedelta(minutes=1))
+    changed = worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        UUID(str(world.contracts[K01].contract["id"])),
+        {
+            "event_type": "PROGRESS_RECORDED",
+            "effective_date": "2026-01-31",
+            "payload": {
+                "obligation_key": "O2",
+                "cumulative_progress_ratio": "0.60",
+                "measure": "OUTPUT_PERCENT",
+            },
+        },
+    )
+    assert changed["computation"]["status"] == "SUCCEEDED", changed["computation"]
+    for view, original, original_rows in originals:
+        _, fresh = worlds.report_run(
+            world,
+            "out_of_period_register",
+            {
+                "entity_codes": [AVM_US],
+                "from_period_key": FEBRUARY_2026,
+                "to_period_key": FEBRUARY_2026,
+                "currency_view": view,
+            },
+        )
+        assert fresh != original_rows
+        started = post(app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        data = get(
+            app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert data.status_code == 200, data.text
+        assert data.json()["items"] == original_rows
 
 
 @pytest.mark.slow

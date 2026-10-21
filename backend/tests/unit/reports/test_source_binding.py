@@ -320,7 +320,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     assert len(framework.REGISTERED_REPORTS) == 59
     assert len(framework.BUILDERS) == 55
     for code in (
-        "out_of_period_register",
         "modification_register",
         "ai_call_log_export",
     ):
@@ -350,7 +349,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "legacy_latest_contract_export",
         "legacy_je_summary",
         "migration_reconciliation",
-        "out_of_period_register",
         "modification_register",  # F-CTR CTR-17 slice 1 (D-98 140-A1): reads live, no adapter yet
         "manual_adjustment_register",  # F-CLO RPS-8 RPT-18 (S15-R-20d): reads live, no adapter yet
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet

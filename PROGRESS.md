@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Out-of-period register retained reconstruction — October 21, 2026
+
+- New runs retain the authorized line population, original transaction and selected effect
+  amounts/currencies, ordered event sets, subject/group scope, trigger/cause proof, actor/approval
+  displays and selected late-event findings. Line and finding IDs are recorded as membership.
+- Bound reruns require matching tenant, entity set, requested book/period filters and currency
+  view. They restore input dates, rebuild attribution, suppress late events already represented
+  by postings, and recompute rows, line counts and currency totals without database reads.
+  Changing retained amounts changes totals; removing a retained posting restores its selected
+  zero-posting event row. This is input reconstruction, not a saved output-file return.
+- Migration 0303 describes the retained basis. Older OPEN runs keep their original new-evaluation
+  behavior; historical lock datasets keep their existing support.
+- Necessary verification passed: 24 focused currency/source-binding cases, public K01 all-view
+  reruns after an approved progress change from 40% to 60% (fresh rows change, original rows and
+  output hashes remain equal), K07 no-posting event flow, frozen catalogue parity and scoped
+  lint/types. The register's same-source adapter is now implemented. Other documented adapters
+  and final repository verification remain; no deployment.
+
 ## Out-of-period register currency effects — October 21, 2026
 
 - Live Functional view now uses the ledger's posted functional amounts and currencies, including
@@ -188,27 +206,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: Adoption Bridge currency support, non-policy/book-context difference residuals,
   other documented report adapters and final repository validation. Intercompany Pairs
   retained reconstruction is complete; this does not claim all Reporting work is finished.
-
-## Licence renewal recognition and advance-FX attribution — October 21, 2026
-
-- Fixed two connected engine gaps found through full book-bridge replay: stage 06 now tells
-  stage 03 when an added line belongs to RENEWAL/EARLY_RENEWAL, and the installed obligation
-  preserves the draft's recognition_start_date. Previously the boundary dropped that guard,
-  causing ASC606 to recognize a delivered future-term renewal immediately like IFRS15.
-- Full-engine evidence now shows the discounted USD 900 licence renewal agreed/delivered in
-  June 2026 recognized in January 2027 under ASC606 and June 2026 under IFRS15. Both renewal
-  kinds pass; June's -900 difference is quantified as LICENCE_RENEWALS with zero OTHER residual.
-- Advance consideration FX is verified with real monetary-vs-historical liability layers:
-  EUR 1,000 remains EUR 1,000 in both books, while USD functional liability is 1,120 vs 1,100.
-  The USD 20 effect is attributed to ADVANCE_CONSIDERATION_FX and transaction-currency effects
-  remain zero. The helper now supports reusable real computation inputs for these scenarios.
-- Necessary checks: seven focused real replay cases plus 34 relevant modification/licence
-  regression cases passed; scoped lint/types and diff checks passed. Existing stored outputs
-  remain unchanged; computations made before the correction may fail exact-original replay
-  and retain the explicit fallback rather than fabricate provenance. No deployment.
-- Remaining: book-context/non-policy residual cases and source gaps, Adoption Bridge currency
-  support, Intercompany Pairs retained replay, other documented adapters and final repository
-  validation. These verified renewal and historical-layer scenarios are no longer outstanding.
 
 ## Outstanding release verification
 

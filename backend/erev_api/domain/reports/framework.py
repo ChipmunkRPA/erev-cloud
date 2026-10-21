@@ -497,11 +497,6 @@ _LEGACY_JE_OPEN: Final = (
     "subledger-line population (GROSS / DELTA applicability; enabled LEGACY books) "
     "read live; frps3c"
 )
-_OOP_OPEN: Final = (
-    "subledger-line population and postings, ordered T-SL-12 event sets, computation / approval "
-    "references and whole-group per-book cause proof (missing evidence distinct from a proved "
-    "zero), and stored LATE_EVENT findings with event amounts read live; frps3c"
-)
 _LEGACY_EXPORT_OPEN: Final = (
     "contract / obligation rows incl. predecessor obligation rows of legacy conversions read live; "
     "frps3c"
@@ -856,7 +851,13 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             RETAINED,
             (_CUTOFF, "journal source records, resolved labels and independent run totals"),
         ),
-        out_of_period_register_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_OOP_OPEN,)),
+        out_of_period_register_builder.CODE: SourceContract(
+            RETAINED,
+            (
+                _CUTOFF,
+                "posted lines, event/trigger attribution, late-event facts and currency evidence",
+            ),
+        ),
         # F-CTR CTR-17 slice 1 (D-98 140-A1): the register reads live; no source adapter yet.
         modification_register_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_MODIFICATION_REGISTER_OPEN,)
@@ -2082,6 +2083,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "book_bridge",
             "intercompany_pairs",
             "adoption_bridge",
+            "out_of_period_register",
         }
     ):
         try:

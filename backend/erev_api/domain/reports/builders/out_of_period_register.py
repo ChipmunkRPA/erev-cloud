@@ -86,19 +86,23 @@ Sources (S15-R-18b; REQ-PLT-030; C6-RPT-R4): lines recorded by the run's ``known
 ``period_lock_id`` source is refused by name until the framework's lock-snapshot branch lands
 (CLO-8). ``aggregate`` / ``rows_from`` and ``control_totals`` are pure over flat line records so
 the shape, the attribution and the refusal are CPU-testable; ``build`` reads the lines and their
-event sets through the unit of work.
+event sets through the unit of work. New runs retain the selected line and late-event inputs,
+including attribution, display and currency evidence. Same-source reruns rebuild rows and totals
+without live reads; dates are restored from the canonical input representation before rendering.
 """
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import Text, and_, cast, select
 
 from erev_api.db.tables import (
@@ -124,6 +128,7 @@ from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "out_of_period_register"
+EVIDENCE: Final = "out_of_period_inputs_v1"
 ATTRIBUTION_MISSING: Final = "OUT_OF_PERIOD_ATTRIBUTION_MISSING"
 EVENT_SET: Final = "EVENT_SET"
 TRIGGER: Final = "TRIGGER"
@@ -548,12 +553,32 @@ def functional_amount(line: Mapping[str, Any], currency: str) -> Decimal:
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
-    session = uow.session
     view = str(params.parameters.get("currency_view") or "transaction")
     if view not in {"transaction", "functional", "reporting"}:
         raise tie_outs.invalid(
             "currency_view", "Choose Transaction, Functional or Reporting currency."
         )
+    selection = {
+        key: params.parameters.get(key)
+        for key in (
+            "book",
+            "from_period_key",
+            "to_period_key",
+            "origin_period_key",
+        )
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained out-of-period inputs exceed the report scope.")
+        if retained["currency_view"] != view or retained["selection"] != selection:
+            raise tie_outs.invalid(
+                "currency_view", "Retained inputs use another currency, book or period selection."
+            )
+        return data_from_inputs(retained)
+    session = uow.session
     book_code = tie_outs.book_of(session, params)
     found = tie_outs.entities(session, params.entity_ids)
     calendars = tie_outs.calendars(session, found)
@@ -757,8 +782,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 currency = translations[key].currency
             record["effect_amount"] = amount
             record["effect_currency"] = currency
-    found_rows = aggregate(records)
-    extra = late_rows(
+    late_facts: list[dict[str, Any]] = []
+    late_rows(
         uow,
         params,
         book_code,
@@ -767,12 +792,48 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         origin_ids,
         [entity.id for entity in found],
         effect_currencies=effect_currencies if view != "transaction" else None,
+        capture=late_facts,
     )
-    rows_out = tuple(sorted((*found_rows.rows, *extra), key=lambda row: row["row_key"]))
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "currency_view": view,
+                "selection": selection,
+                "book": book_code,
+                "records": records,
+                "late_facts": late_facts,
+            }
+        )
+    )
+    tie_outs.record_members(params, "oop_subledger_lines", (row["line_id"] for row in records))
+    tie_outs.record_members(params, "oop_late_findings", (row["finding_id"] for row in late_facts))
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def restore_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    restored = dict(record)
+    for key in ("recorded_at", "computation_created_at"):
+        if isinstance(restored.get(key), str):
+            restored[key] = datetime.fromisoformat(restored[key].replace("Z", "+00:00"))
+    if isinstance(restored.get("effective_date"), str):
+        restored["effective_date"] = date.fromisoformat(restored["effective_date"])
+    if "events" in restored:
+        restored["events"] = tuple(restore_record(event) for event in restored["events"])
+    return restored
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    records = [restore_record(record) for record in retained["records"]]
+    posted = aggregate(records)
+    extra = late_rows_from([restore_record(fact) for fact in retained["late_facts"]], records)
+    rows_out = tuple(sorted((*posted.rows, *extra), key=lambda row: row["row_key"]))
     return ReportData(
         columns=COLUMNS,
         rows=rows_out,
-        control_totals=control_totals(rows_out, line_count=found_rows.line_count),
+        control_totals=control_totals(rows_out, line_count=posted.line_count),
     )
 
 
@@ -794,6 +855,7 @@ def late_rows(
     entity_ids: Sequence[UUID],
     *,
     effect_currencies: Mapping[UUID, str] | None = None,
+    capture: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     """R-123(g)(2): stored LATE_EVENT facts without a selected posting attribution.
 
@@ -813,6 +875,8 @@ def late_rows(
     tenant = exception_item.c.tenant_id
     statement = (
         select(
+            exception_item.c.id.label("finding_id"),
+            contract_event.c.id.label("event_id"),
             exception_item.c.source_payload,
             exception_item.c.entity_id,
             exception_item.c.period_id,
@@ -874,21 +938,8 @@ def late_rows(
     facts = [dict(row) for row in session.execute(statement).mappings()]
     facts = event_provenance.resolved(facts, event_provenance.uploads(session, facts))
     names = approval_queries.display_names(session, [row["created_by"] for row in facts])
-    represented = set()
-    for record in records:
-        attributed = attribution(record)
-        if attributed is not None:
-            for event in attributed.events:
-                represented.add(
-                    (
-                        record["origin_period_key"],
-                        record["posting_period_key"],
-                        event["contract_external_id"],
-                        event["stream_version"],
-                    )
-                )
     primary = contract_queries.primary_book(session)
-    result: dict[str, dict[str, Any]] = {}
+    selected: list[dict[str, Any]] = []
     for fact in facts:
         source = fact["source_payload"] or {}
         if (source.get("book_code") or primary) != book_code:
@@ -904,15 +955,48 @@ def late_rows(
             or origin_key == posting_key
         ):
             continue
+        fact["recorded_by"] = _actor(fact, names)
+        fact["origin_period_key"] = origin_key
+        fact["posting_period_key"] = posting_key
+        fact["effect_currency"] = (
+            str(fact["txn_currency"]).strip()
+            if effect_currencies is None
+            else effect_currencies[UUID(str(fact["entity_id"]))]
+        )
+        selected.append(fact)
+    if capture is not None:
+        capture.extend(selected)
+    return late_rows_from(selected, records)
+
+
+def late_rows_from(
+    facts: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]]
+) -> tuple[dict[str, Any], ...]:
+    """Rebuild zero-posting events from selected facts, suppressing represented events."""
+    represented = set()
+    for record in records:
+        attributed = attribution(record)
+        if attributed is not None:
+            for event in attributed.events:
+                represented.add(
+                    (
+                        record["origin_period_key"],
+                        record["posting_period_key"],
+                        event["contract_external_id"],
+                        event["stream_version"],
+                    )
+                )
+    result: dict[str, dict[str, Any]] = {}
+    for fact in facts:
+        origin_key = str(fact["origin_period_key"])
+        posting_key = str(fact["posting_period_key"])
         identity = (origin_key, posting_key, fact["contract_external_id"], fact["stream_version"])
         if identity in represented:
             continue
-        fact["recorded_by"] = _actor(fact, names)
         attributed = Attribution(EVENT_SET, events=(fact,), scope=SUBJECT)
         row = _row(origin_key, posting_key, attributed.key, attributed, fact)
         row["reason_code"] = "LATE_EVENT"
-        if effect_currencies is not None:
-            row["currency"] = effect_currencies[UUID(str(fact["entity_id"]))]
+        row["currency"] = fact["effect_currency"]
         row["revenue_effect"] = tie_outs.money(ZERO, str(row["currency"]))
         row["balance_effect"] = tie_outs.money(ZERO, str(row["currency"]))
         result[row["row_key"]] = row

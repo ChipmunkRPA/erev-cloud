@@ -11721,3 +11721,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   gaps, non-policy/book-context residuals, Adoption Bridge multi-currency, Intercompany Pairs
   retained replay, other documented adapters and final repository verification. No deployment;
   this is a concrete attribution increment, not a claim that every book difference is explained.
+
+## Licence renewal recognition and advance-FX attribution — October 21, 2026
+
+- Fixed two connected engine gaps found through full book-bridge replay: stage 06 now tells
+  stage 03 when an added line belongs to RENEWAL/EARLY_RENEWAL, and the installed obligation
+  preserves the draft's recognition_start_date. Previously the boundary dropped that guard,
+  causing ASC606 to recognize a delivered future-term renewal immediately like IFRS15.
+- Full-engine evidence now shows the discounted USD 900 licence renewal agreed/delivered in
+  June 2026 recognized in January 2027 under ASC606 and June 2026 under IFRS15. Both renewal
+  kinds pass; June's -900 difference is quantified as LICENCE_RENEWALS with zero OTHER residual.
+- Advance consideration FX is verified with real monetary-vs-historical liability layers:
+  EUR 1,000 remains EUR 1,000 in both books, while USD functional liability is 1,120 vs 1,100.
+  The USD 20 effect is attributed to ADVANCE_CONSIDERATION_FX and transaction-currency effects
+  remain zero. The helper now supports reusable real computation inputs for these scenarios.
+- Necessary checks: seven focused real replay cases plus 34 relevant modification/licence
+  regression cases passed; scoped lint/types and diff checks passed. Existing stored outputs
+  remain unchanged; computations made before the correction may fail exact-original replay
+  and retain the explicit fallback rather than fabricate provenance. No deployment.
+- Remaining: book-context/non-policy residual cases and source gaps, Adoption Bridge currency
+  support, Intercompany Pairs retained replay, other documented adapters and final repository
+  validation. These verified renewal and historical-layer scenarios are no longer outstanding.
