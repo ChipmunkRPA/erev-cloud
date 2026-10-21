@@ -881,7 +881,7 @@ def test_first_entry_separates_later_original_estimate_events(
                     "action": "REMOVE",
                     "product_code": f"PROD-{key}",
                     "quantity_delta": Decimal(0),
-                    "consideration_delta": Decimal(0),
+                    "consideration_delta": Decimal(0 if same_day else -20),
                 }
                 for key in ("A", "B")
             ),
@@ -899,7 +899,7 @@ def test_first_entry_separates_later_original_estimate_events(
                     {
                         "modification_id": termination.modification_key,
                         "termination_kind": "FULL",
-                        "refund_amount": Decimal(0),
+                        "refund_amount": Decimal(0 if same_day else 40),
                     },
                     modification_key=termination.modification_key,
                 )
@@ -913,6 +913,44 @@ def test_first_entry_separates_later_original_estimate_events(
                     terminated.events,
                     key=lambda event: (event.effective_date, event.record_seq, event.event_key),
                 )
+            ),
+        )
+        from erev_engine.bundle import MappingRuleInput
+
+        terminated = replace(
+            terminated,
+            books=tuple(
+                replace(
+                    b,
+                    account_mapping=replace(
+                        b.account_mapping,
+                        rules=tuple(
+                            sorted(
+                                (
+                                    *b.account_mapping.rules,
+                                    MappingRuleInput(
+                                        "REFUND_LIABILITY",
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        "2110",
+                                        {},
+                                        0,
+                                        0,
+                                    ),
+                                ),
+                                key=lambda rule: (
+                                    rule.account_role,
+                                    rule.clearing_purpose or "",
+                                    rule.account_code,
+                                ),
+                            )
+                        ),
+                    ),
+                )
+                for b in terminated.books
             ),
         )
         terminated_book = compute(terminated).books[0]
@@ -979,3 +1017,88 @@ def test_first_entry_separates_later_original_estimate_events(
             )
         assert sum(item[0] for item in separated) == modification
         assert sum(item[1] for item in separated) == final - initial - modification
+
+        # A first retained computation may already contain its later termination.
+        # Historical cuts and monthly movements must still use the original dates.
+        from erev_api.domain.contracts import to_date
+
+        first_cancelled = replace(cancelled_version, entries=version.entries)
+        cancelled_obs = tuple(replace(ob, cancelled=True) for ob in obligations)
+        starts = {
+            (period.period_key, period.end_date): (period.start_date,)
+            for entity in terminated.entities
+            for period in entity.periods
+        }
+        dated_nodes = to_date.nodes_of(terminated_book.trace.nodes, starts=starts)
+        retained_rows = []
+        for ob, output in zip(cancelled_obs, terminated_book.obligation_versions, strict=True):
+            columns = output.columns
+            row = {
+                **columns,
+                "id": ob.row_id,
+                "contract_id": cid,
+                "trace_nodes": output.trace_nodes,
+            }
+            for name in (
+                "revenue_cum",
+                "billed_cum",
+                "scheduled_amount",
+                "awaiting_trigger_amount",
+            ):
+                row[name] = Decimal(str(columns[name])) / 100
+            row["progress_ratio"] = Decimal(columns["progress_ratio"].numerator) / Decimal(
+                columns["progress_ratio"].denominator
+            )
+            retained_rows.append(row)
+        cancelled_cuts = {
+            (vid, day): to_date.version_at(
+                {"version_no": "FIRST_CANCELLED"},
+                retained_rows,
+                nodes=dated_nodes,
+                external_ids={cid: "K-01"},
+                as_of=day,
+            ).obligations
+            for day in (before, entry, january, end)
+        }
+        cancelled_store = replace(
+            store,
+            versions={gid: (first_cancelled,)},
+            obligations={vid: cancelled_obs},
+            chains={cid: (first_cancelled,)},
+            cuts=cancelled_cuts,
+        )
+        historical = variance_rpo.project(
+            terminated,
+            terminated_book,
+            entity_code=terminated.entities[0].code,
+            period_key="FY2026-P01",
+            functional=False,
+        )
+        assert sum(historical.values()) == initial
+        historical_rows = rpo.rows_at(
+            cancelled_store, as_of={eid: january}, bands=rpo.DEFAULT_BANDS, applied={}
+        )
+        assert sum(row.total for row in historical_rows) == initial
+        assert not rpo.rows_at(
+            cancelled_store, as_of={eid: end}, bands=rpo.DEFAULT_BANDS, applied={}
+        )
+        for start, finish, opening, new, closing in (
+            (before, january, 0, initial, initial),
+            (before, end, 0, initial, 0),
+            (january, end, initial, 0, 0),
+        ):
+            (result,) = rpo.rollforward_lines(
+                cancelled_store, ranges={eid: (start, finish)}, applied={}
+            )
+            assert result.lines["OPENING"] == opening
+            assert result.lines["NEW_CONTRACTS"] == new
+            assert result.lines["CLOSING"] == closing
+            assert result.lines["MODIFICATIONS"] == (modification if finish == end else 0)
+            assert result.lines["VC_ESTIMATE_CHANGES"] == (
+                final - initial - modification if finish == end else 0
+            )
+            if finish == end:
+                refund = Decimal(0 if same_day else 40)
+                assert result.lines["CANCELLATIONS"] == -refund
+                assert result.lines["REVENUE"] == -(final - refund)
+            assert result.lines["UNEXPLAINED"] == 0

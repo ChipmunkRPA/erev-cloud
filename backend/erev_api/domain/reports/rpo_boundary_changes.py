@@ -20,6 +20,8 @@ class Change:
     record_seq: int | None = None
     before: Decimal | None = None
     after: Decimal | None = None
+    cancelled_on: date | None = None
+    prior_end: date | None = None
 
 
 def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
@@ -65,6 +67,12 @@ def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
                 record_seq,
                 values[1],
                 values[2],
+                date.fromisoformat(after.params["cancelled_on"])
+                if after.params.get("cancelled_on")
+                else None,
+                date.fromisoformat(before.params["end_date"])
+                if before.params.get("end_date")
+                else None,
             )
         except (KeyError, ValueError, InvalidOperation) as exc:
             raise Problem(
@@ -108,3 +116,12 @@ def complete(
                 raise Problem("validation-failed", "RPO boundary event order is inconsistent.")
             order[item.event] = key
     return all(event in order and order[event] < creation_order for event in missing)
+
+
+def cancellation(changes: tuple[Change, ...]) -> Change | None:
+    found = [
+        item
+        for item in changes
+        if item.kind == "CONTRACT_TERMINATED" and item.cancelled_on == item.day
+    ]
+    return found[0] if len(found) == 1 else None

@@ -26,7 +26,7 @@ from erev_engine.stages.s01_canonicalize.convert import (
 from erev_engine.stages.state import PolicyResolver
 
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import rpo_duration, rpo_quotas, tie_outs
+from erev_api.domain.reports import rpo_boundary_changes, rpo_duration, rpo_quotas, tie_outs
 from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
@@ -57,6 +57,7 @@ def project(
     if len(statuses) != len(book.status_in_book):
         raise _refuse("contract status identities are duplicated.")
     original_ends: dict[str, date] | None = None
+    boundaries = rpo_boundary_changes.history(book.trace)
     rows: list[dict[str, Any]] = []
     external_ids = {}
     ids = {}
@@ -78,7 +79,9 @@ def project(
         if statuses[contract] not in tie_outs.INCLUDED_STATUSES:
             continue
         if columns.get("satisfaction_status") == "CANCELLED":
-            continue
+            terminal = rpo_boundary_changes.cancellation(boundaries.get(item.subject_key, ()))
+            if terminal is None or at >= terminal.day:
+                continue
         entries = [
             event.effective_date
             for event in bundle.events
@@ -169,7 +172,10 @@ def project(
         excluded = Decimal(0)
         if (
             applied("rpo.exemption_vc_wholly_unsatisfied")
-            and point.satisfaction_status == "UNSATISFIED"
+            and (
+                point.satisfaction_status == "UNSATISFIED"
+                or (point.satisfaction_status == "CANCELLED" and point.progress_ratio == 0)
+            )
             and point.revenue == 0
         ):
             quota = rpo_quotas.cap(

@@ -1,5 +1,29 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — original cancellation dates restore earlier RPO cuts
+
+New computations retain per-obligation termination and pre-boundary end dates. Historical RPO
+and close-variance reads use those dates to preserve a pre-cancellation remainder, including
+its dated satisfaction status for partial exemptions. A fixed-only first retained computation
+with entry and one later cancellation can separate original modifications/estimates, revenue
+and the cancelled remainder. Same-version monthly cancellation uses the reconciled original
+pre-termination bridge. Missing dates in older traces preserve legacy behavior; no dates are
+backfilled. New metadata cannot appear in previously retained computations.
+
+Full engine witnesses cover both estimate directions, ordered same-day estimates/termination,
+refund and non-refund endings, standalone historical RPO, historical variance and full/monthly
+rollforwards. Fifty scoped cases and existing public modification reports/reruns in three views
+pass, with lint/types and migration 0242 down/up catalogue parity. The currency journey is an
+existing modification workflow, not a new public API first-entry cancellation witness.
+
+Multiple cancellations, first-entry cancellation followed by another retained version in the
+same range, same-day entry/cancellation, realized-usage mixtures and historical intermediate
+term changes remain outside this new path. Combined-member aging date ownership still needs a
+policy decision. Independent accounting sign-off and final-candidate verification remain open.
+This supersedes the blanket first-entry cancellation limitation only for the supported case.
+No deployment and no claim of production readiness.
+
+
 ### October 20 — same-day estimates can precede a cancellation
 
 The cancellation bridge now uses immutable contract-event record sequence to distinguish an

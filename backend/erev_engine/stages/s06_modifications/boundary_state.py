@@ -101,6 +101,12 @@ def _allocation_change(
                     "as_of": ev.effective_date.isoformat(),
                     "kind": "posted",
                     "present": "false" if item is None else "true",
+                    "cancelled_on": ""
+                    if item is None or item.terminated_on is None
+                    else item.terminated_on.isoformat(),
+                    "end_date": ""
+                    if item is None or item.end_date is None
+                    else item.end_date.isoformat(),
                 },
                 exact=Fraction(amount, 10**unit),
                 narrative_key="rec.allocation",

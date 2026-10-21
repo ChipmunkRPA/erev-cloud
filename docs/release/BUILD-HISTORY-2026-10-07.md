@@ -10275,3 +10275,31 @@ cleanup in the shared database session kernel was also repaired and regression-t
   draft/review/reopen, deterministic reruns and dated foreign functional balances. Migration
   0230 updates both IPE definitions. No deployment; broader lifecycle/accounting acceptance
   and final release-candidate verification remain outstanding.
+
+## Filterable GL bridge workpapers — October 20, 2026
+
+- Excel exports now render GL tie-out evidence as a filterable table, one row per retained
+  entity/role. GL, retained subledger, report closing and both bridge differences are numeric
+  cells with amount precision; review state, source ID, book/period and unavailability reasons
+  remain separate columns. No balances or differences are recalculated during export.
+- Missing evidence stays blank, distinct from zero. Equal/opposite bridge differences remain
+  visible with FAIL even when the net difference is zero. Text retains formula protection.
+- Single reports and disclosure workbooks share the renderer. Focused workbook and existing
+  export checks pass; production renderer lint/types pass. Independent accounting acceptance
+  and final candidate verification remain outstanding. Direct main publication; no deployment.
+
+## Dated revenue-waterfall population — October 20, 2026
+
+- New waterfall calculations exclude contracts entering after each performing entity's as-of
+  period end. Entry comes from the first included version along the contract's membership
+  chain and the book-specific activation/criteria/opening event, using the existing historical
+  entry rule (fallback: that version's effective date). Later measurements do not delay entry.
+- Entry dates and source-version identities are retained in versioned evidence. Bound reruns
+  do not read current entry events; old bindings and already-frozen datasets retain their
+  original population. Missing entry evidence is refused, not replaced by inception guesses.
+- Public API checks cover March exclusion/April entry, retained reruns, performing-entity
+  journal tie-out, restricted entity access and dated FX. Both regrouping computation orders
+  pass. A pure retained-binding check covers differing calendar endpoints and legacy behavior.
+  Migration 0231 updates the waterfall IPE and source list; scoped lint/types pass.
+- B4-1/C-3's population implementation gap is closed. Independent accounting acceptance,
+  broader lifecycle acceptance and final candidate verification remain open. No deployment.

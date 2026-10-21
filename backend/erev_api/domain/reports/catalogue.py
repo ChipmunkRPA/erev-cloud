@@ -867,6 +867,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "attributed shares; a separate dated reporting remainder excludes already-recognized "
             "deposit revenue while preserving contract measurement balances; projected future "
             "periods must reconcile to that net remainder",
+            "original cancellation dates preserve pre-termination historical RPO and variance "
+            "cuts; a single fixed-only first-entry or same-version cancellation separates "
+            "original modifications and estimate changes from recognized revenue and cancelled "
+            "remainder; traces without cancellation dates retain legacy behavior",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -982,6 +986,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract-event record sequence proves they precede the original termination "
             "boundary; later or missing order remains unexplained; retained v1 keeps its "
             "date-only classification",
+            "original cancellation dates preserve pre-termination historical RPO and variance "
+            "cuts; a single fixed-only first-entry or same-version cancellation separates "
+            "original modifications and estimate changes from recognized revenue and cancelled "
+            "remainder; traces without cancellation dates retain legacy behavior",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

@@ -6,6 +6,24 @@
 
 
 
+## Original cancellation dates preserve historical RPO — October 20, 2026
+
+- Stage 06 retains each obligation's original termination date and pre-boundary end date.
+  Historical RPO and close-variance reads now preserve the pre-cancellation remainder;
+  cancellation no longer removes that obligation from earlier months. New trace evidence
+  drives the change; old computations without those dates keep their former behavior.
+- A fixed-only first computation containing entry, modification, estimate change and one
+  later cancellation can separate those movements, recognized revenue and cancelled remainder.
+  Same-version subsequent-month rollforwards reconcile original deltas to the termination
+  boundary. Later/missing event order and realized-usage mixtures are not inferred.
+- Full engine witnesses cover positive/negative estimates, same-day ordered termination,
+  refund/non-refund cancellation, historical standalone RPO/variance and monthly rollforwards.
+  All 50 scoped cases and existing public modification reports/reruns in three currency views
+  pass. Scoped lint/types and migration 0242 down/up IPE parity pass. No deployment.
+- Multiple cancellations, first-entry cancellation followed by another retained version in the
+  same range, same-day entry/cancellation, realized-usage mixtures and combined-member aging
+  ownership remain open. Independent accounting sign-off and final-candidate checks remain open.
+
 ## Same-day estimate and cancellation ordering — October 20, 2026
 
 - RPO now loads the immutable contract-event record sequence for estimate causes, using the
@@ -207,34 +225,6 @@
 - Foreign transaction-to-functional aging still requires exact functional layer attribution;
   this path remains unavailable. Locked aging datasets, independent accounting acceptance and
   final candidate verification remain open. Direct main publication; no deployment.
-
-## Dated revenue-waterfall population — October 20, 2026
-
-- New waterfall calculations exclude contracts entering after each performing entity's as-of
-  period end. Entry comes from the first included version along the contract's membership
-  chain and the book-specific activation/criteria/opening event, using the existing historical
-  entry rule (fallback: that version's effective date). Later measurements do not delay entry.
-- Entry dates and source-version identities are retained in versioned evidence. Bound reruns
-  do not read current entry events; old bindings and already-frozen datasets retain their
-  original population. Missing entry evidence is refused, not replaced by inception guesses.
-- Public API checks cover March exclusion/April entry, retained reruns, performing-entity
-  journal tie-out, restricted entity access and dated FX. Both regrouping computation orders
-  pass. A pure retained-binding check covers differing calendar endpoints and legacy behavior.
-  Migration 0231 updates the waterfall IPE and source list; scoped lint/types pass.
-- B4-1/C-3's population implementation gap is closed. Independent accounting acceptance,
-  broader lifecycle acceptance and final candidate verification remain open. No deployment.
-
-## Filterable GL bridge workpapers — October 20, 2026
-
-- Excel exports now render GL tie-out evidence as a filterable table, one row per retained
-  entity/role. GL, retained subledger, report closing and both bridge differences are numeric
-  cells with amount precision; review state, source ID, book/period and unavailability reasons
-  remain separate columns. No balances or differences are recalculated during export.
-- Missing evidence stays blank, distinct from zero. Equal/opposite bridge differences remain
-  visible with FAIL even when the net difference is zero. Text retains formula protection.
-- Single reports and disclosure workbooks share the renderer. Focused workbook and existing
-  export checks pass; production renderer lint/types pass. Independent accounting acceptance
-  and final candidate verification remain outstanding. Direct main publication; no deployment.
 
 ## Outstanding release verification
 

@@ -369,7 +369,34 @@ class Store:
 
     def at(self, ob: _Ob, day: date) -> to_date.ObligationAt:
         """The obligation of a version at ``day``; a run measures the dates it states first."""
-        return self.cuts[ob.version_id, day][ob.row_id]
+        point = self.cuts[ob.version_id, day][ob.row_id]
+        terminal = self.cancellation(ob)
+        if ob.cancelled and terminal is not None and day < terminal.day:
+            status = (
+                "SATISFIED"
+                if point.progress_ratio == 1
+                else (
+                    "UNSATISFIED"
+                    if point.revenue == 0 and point.progress_ratio == 0
+                    else "PARTIALLY_SATISFIED"
+                )
+            )
+            return dataclasses.replace(point, satisfaction_status=status)
+        return point
+
+    def cancellation(self, ob: _Ob) -> rpo_boundary_changes.Change | None:
+        subject = obligation_subject_key(ob.external_id, ob.obligation_key)
+        return rpo_boundary_changes.cancellation(
+            self.boundaries.get(ob.version_id, {}).get(subject, ())
+        )
+
+    def visible(self, ob: _Ob, day: date) -> _Ob | None:
+        if not ob.cancelled:
+            return ob
+        terminal = self.cancellation(ob)
+        if terminal is None or day >= terminal.day:
+            return None
+        return dataclasses.replace(ob, end_date=terminal.prior_end)
 
     def durations(self, version: _Version) -> dict[UUID, date]:
         """Original inception-segment endpoints from verified retained computations."""
@@ -1012,8 +1039,12 @@ def rows_at(
                 continue
             ends = store.durations(version)
             for ob in store.obligations.get(version.id, ()):
-                if ob.contract_id != contract_id or as_of.get(ob.entity_id) != day or ob.cancelled:
+                if ob.contract_id != contract_id or as_of.get(ob.entity_id) != day:
                     continue
+                visible = store.visible(ob, day)
+                if visible is None:
+                    continue
+                ob = visible
                 total, placed, current, contributors = rpo_of(ob, day, bands, store.at(ob, day))
                 if total == 0:
                     continue
@@ -1107,12 +1138,14 @@ def rollforward_lines(
     return tuple(sorted(found, key=lambda item: (item.external_id, item.currency)))
 
 
-def _in_version(store: Store, version: _Version | None, obligation_id: UUID) -> _Ob | None:
+def _in_version(
+    store: Store, version: _Version | None, obligation_id: UUID, day: date | None = None
+) -> _Ob | None:
     if version is None or not version.included:
         return None
     for ob in store.obligations.get(version.id, ()):
-        if ob.obligation_id == obligation_id and not ob.cancelled:
-            return ob
+        if ob.obligation_id == obligation_id:
+            return store.visible(ob, version.effective if day is None else day)
     return None
 
 
@@ -1212,7 +1245,7 @@ def _obligation_lines(
     ):
         return
     lines = dict.fromkeys(ROLLFORWARD_LINES, ZERO)
-    opening = _in_version(store, opening_version, obligation_id)
+    opening = _in_version(store, opening_version, obligation_id, before)
     evidence = [
         store.at(ob, end).realised_traced
         for version in (opening_version, *moved)
@@ -1242,12 +1275,17 @@ def _obligation_lines(
     previous = ZERO if opening is None else fixed(opening, before)
     realised_opening = ZERO if opening is None else store.at(opening, before).realised
     terminal_cancellation: _Ob | None = None
+    pending_cancellation: _Ob | None = None
     segment_start = before
     segment_opening = ZERO if opening is None else store.at(opening, before).revenue
     segment_has_opening = opening is not None
-    was_cancelled = opening_version is not None and any(
-        ob.obligation_id == obligation_id and ob.cancelled
-        for ob in store.obligations.get(opening_version.id, ())
+    was_cancelled = (
+        opening is None
+        and opening_version is not None
+        and any(
+            ob.obligation_id == obligation_id and ob.cancelled
+            for ob in store.obligations.get(opening_version.id, ())
+        )
     )
 
     def recognition(ob: _Ob, until: date) -> Decimal:
@@ -1294,6 +1332,32 @@ def _obligation_lines(
                 terminal_cancellation,
             )
         allocated = ZERO if current is None else fixed(current, end)
+        if current is not None and current.cancelled and admission and len(moved) == 1:
+            terminal = store.cancellation(current)
+            if (
+                terminal is not None
+                and terminal.day <= end
+                and terminal.before is not None
+                and store.at(current, end).realised == 0
+                and "USAGE_REPORTED" not in version.causes
+                and all(
+                    (day, dict(version.estimate_order).get(event, 0), event)
+                    < (terminal.day, terminal.record_seq or 0, terminal.event)
+                    and (day != terminal.day or event in dict(version.estimate_order))
+                    for event, day in version.estimate_dates
+                    if day > version.effective
+                )
+                and all(
+                    (item.day, item.record_seq or 0, item.event)
+                    < (terminal.day, terminal.record_seq or 0, terminal.event)
+                    for item in store.boundaries.get(version.id, {}).get(
+                        obligation_subject_key(current.external_id, current.obligation_key), ()
+                    )
+                    if item.event in version.modification_events
+                )
+            ):
+                allocated = terminal.before
+                pending_cancellation = current
         if current is not None and admission:
             # Fees realized by completed periods before admission enter with the contract;
             # later realization is independently identified variable consideration.
@@ -1332,7 +1396,10 @@ def _obligation_lines(
                 later
                 and all(day <= end for _, day in later)
                 and not any(
-                    CAUSE_LINES.get(kind) == "CANCELLATIONS"
+                    (
+                        CAUSE_LINES.get(kind) == "CANCELLATIONS"
+                        and pending_cancellation is not current
+                    )
                     or (CAUSE_LINES.get(kind) == "MODIFICATIONS" and not complete_boundaries)
                     for kind in version.causes
                 )
@@ -1426,7 +1493,71 @@ def _obligation_lines(
         previous = allocated
         previous_obligation = current
         previous_version = version
-    closing = _in_version(store, closing_version, obligation_id)
+    closing = _in_version(store, closing_version, obligation_id, end)
+    if pending_cancellation is not None:
+        terminal = store.cancellation(pending_cancellation)
+        assert terminal is not None and terminal.before is not None
+        lines["CANCELLATIONS"] -= terminal.before
+        terminal_cancellation = pending_cancellation
+    elif opening is not None and closing is None and not moved:
+        terminal = store.cancellation(opening)
+        if (
+            terminal is not None
+            and before < terminal.day <= end
+            and terminal.before is not None
+            and store.at(opening, end).realised == 0
+            and realised_opening == 0
+            and opening_version is not None
+        ):
+            subject = obligation_subject_key(opening.external_id, opening.obligation_key)
+            mods = frozenset(
+                item.event
+                for item in store.boundaries.get(opening.version_id, {}).get(subject, ())
+                if before < item.day <= terminal.day
+                and CAUSE_LINES.get(item.kind) == "MODIFICATIONS"
+            )
+            estimates = frozenset(
+                event
+                for event, day in opening_version.estimate_dates
+                if before < day <= terminal.day
+            )
+            if all(
+                (opening.version_id, event) in store.estimate_event_allocations
+                for event in estimates
+            ):
+                estimate_amount = sum(
+                    (
+                        store.estimate_event_allocations[opening.version_id, event].get(
+                            subject, ZERO
+                        )
+                        for event in estimates
+                    ),
+                    ZERO,
+                )
+                scoped = dataclasses.replace(
+                    opening_version,
+                    modification_events=mods,
+                    estimate_events=estimates,
+                    cancellation_events=frozenset({terminal.event}),
+                    causes=frozenset(
+                        {"CONTRACT_TERMINATED"}
+                        | ({"CONTRACT_AMENDED"} if mods else set())
+                        | ({"ESTIMATE_CHANGED"} if estimates else set())
+                    ),
+                )
+                reader = dataclasses.replace(
+                    store,
+                    estimate_allocations={
+                        **store.estimate_allocations,
+                        opening.version_id: {subject: estimate_amount},
+                    },
+                )
+                separated = _cancelled_changes(reader, scoped, subject, previous)
+                if separated is not None:
+                    lines["MODIFICATIONS"] += separated[0]
+                    lines["VC_ESTIMATE_CHANGES"] += separated[1]
+                    lines["CANCELLATIONS"] -= terminal.before
+                    terminal_cancellation = opening
     if opening is not None and closing is not None and not moved:
         open_fixed = store.at(opening, before).fixed_allocation
         close_fixed = store.at(closing, end).fixed_allocation
