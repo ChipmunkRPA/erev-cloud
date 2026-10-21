@@ -135,3 +135,45 @@ export function RpoExemptionDetails({ run }: { readonly run: ReportRun }) {
     </details>
   );
 }
+
+export function RpoUnexplainedDetails({ run }: { readonly run: ReportRun }) {
+  if (run.report.code !== "rpo_rollforward") return null;
+  const raw = run.control_totals?.unexplained_details;
+  const rows = Array.isArray(raw) ? raw.filter(isTranslation) : [];
+  if (rows.length === 0) return null;
+  return (
+    <details open className="rounded border border-[var(--border-subtle)] p-3">
+      <summary className="cursor-pointer font-medium">{t("reports.rpoGaps.title")}</summary>
+      <p className="my-2 text-sm">{t("reports.rpoGaps.basis")}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className="p-2">{t("reports.exemptions.contractPeriod")}</th>
+              <th className="p-2">{t("reports.rpoGaps.original")}</th>
+              <th className="p-2">{t("reports.rpoGaps.translated")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={`${row.entity}/${row.contract}/${row.period}/${row.currency}/${row.translated_currency}`}
+              >
+                <th scope="row" className="p-2 font-normal">
+                  {row.contract}
+                  <div>
+                    {row.entity} · {row.period}
+                  </div>
+                </th>
+                <td className="num p-2">{money(row.movement, row.currency)}</td>
+                <td className="num p-2">
+                  {money(row.translated_movement, row.translated_currency)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}

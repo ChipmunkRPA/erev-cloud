@@ -177,14 +177,23 @@ def _exemption_details(sheet: Any, formats: _Formats, row: int, value: Any) -> i
     return row + 2
 
 
-def _exemption_translation(sheet: Any, formats: _Formats, row: int, value: Any) -> int:
+def _exemption_translation(
+    sheet: Any, formats: _Formats, row: int, value: Any, *, unexplained: bool = False
+) -> int:
     from . import rpo_exemptions as details
 
     records = details.translation_records(value)
     if not records:
         return row
-    sheet.write_string(row, 0, details.TRANSLATION_TITLE, formats.bold)
-    sheet.write_string(row + 1, 0, details.TRANSLATION_BASIS)
+    sheet.write_string(
+        row,
+        0,
+        details.UNEXPLAINED_TITLE if unexplained else details.TRANSLATION_TITLE,
+        formats.bold,
+    )
+    sheet.write_string(
+        row + 1, 0, details.UNEXPLAINED_BASIS if unexplained else details.TRANSLATION_BASIS
+    )
     row += 2
     for col, (_, label) in enumerate(details.TRANSLATION_COLUMNS):
         sheet.write_string(row, col, label, formats.wrapped_bold)
@@ -203,6 +212,8 @@ def _exemption_translation(sheet: Any, formats: _Formats, row: int, value: Any) 
 
 
 def _total(sheet: Any, formats: _Formats, row: int, key: str, value: Any) -> int:
+    if key == "unexplained_details":
+        return _exemption_translation(sheet, formats, row, value, unexplained=True)
     if key == "exemption_translation":
         return _exemption_translation(sheet, formats, row, value)
     if key == "exemption_changes":

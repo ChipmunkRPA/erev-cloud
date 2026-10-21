@@ -25,13 +25,20 @@ def project(
     periods: Mapping[UUID, tuple[tie_outs.PeriodRef, ...]],
     before: Mapping[UUID, tie_outs.PeriodRef | None],
     applied: Mapping[UUID, frozenset[str]],
-) -> tuple[tuple[rpo.ContractLines, ...], list[dict[str, Any]], bool, list[dict[str, str]]]:
+) -> tuple[
+    tuple[rpo.ContractLines, ...],
+    list[dict[str, Any]],
+    bool,
+    list[dict[str, str]],
+    list[dict[str, str]],
+]:
     session = uow.session
     cache: dict[tuple[UUID, str, UUID, str], tuple[reporting_currency.Translation, ...]] = {}
     evidence: dict[str, dict[str, Any]] = {}
     totals: dict[tuple[str, str, str], rpo.ContractLines] = {}
     source_unexplained = False
     exemption_translation: list[dict[str, str]] = []
+    unexplained_details: list[dict[str, str]] = []
     codes = (*rpo.ROLLFORWARD_LINES, "ROUNDING")
 
     def chain(
@@ -154,6 +161,18 @@ def project(
                     - sum((values[code] for code in rpo.MOVEMENTS), tie_outs.ZERO)
                     - values["UNEXPLAINED"]
                 )
+                if item.lines["UNEXPLAINED"] != 0:
+                    unexplained_details.append(
+                        {
+                            "contract": item.external_id,
+                            "entity": entity.code,
+                            "period": period.key,
+                            "currency": item.currency,
+                            "movement": str(item.lines["UNEXPLAINED"]),
+                            "translated_currency": target,
+                            "translated_movement": str(values["UNEXPLAINED"]),
+                        }
+                    )
                 source_unexplained |= item.lines["UNEXPLAINED"] != 0
                 total_key = (item.external_id, entity.code, target)
                 previous = totals.get(total_key)
@@ -175,4 +194,5 @@ def project(
         list(evidence.values()),
         source_unexplained,
         exemption_translation,
+        unexplained_details,
     )

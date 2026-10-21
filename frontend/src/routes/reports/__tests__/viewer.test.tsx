@@ -311,6 +311,7 @@ function serve(
       HttpResponse.json({
         items: [
           { code: "USD", name: "US dollar", minor_unit: 2, numeric_code: "840", is_active: true },
+          { code: "EUR", name: "Euro", minor_unit: 2, numeric_code: "978", is_active: true },
         ],
         next_cursor: null,
       }),
@@ -663,6 +664,47 @@ describe("SF-08:report viewer", () => {
     expect(screen.getByText("Not excluded")).toBeTruthy();
     expect(screen.getByText(/Original transaction-currency amounts by obligation/)).toBeTruthy();
     expect(screen.getAllByText("USD 100.00")).toHaveLength(2);
+  });
+
+  it("shows unexplained source months even when translated differences offset", async () => {
+    const definition = { ...RPO, code: "rpo_rollforward", name: "RPO rollforward" };
+    const run = reportRun({
+      report: { code: "rpo_rollforward", version: 1, name: "RPO rollforward" },
+      control_totals: {
+        source_unexplained: true,
+        unexplained_details: [
+          {
+            contract: "C-GAP",
+            entity: "AVM-US",
+            period: "FY2026-P02",
+            currency: "EUR",
+            movement: "7.00",
+            translated_currency: "USD",
+            translated_movement: "8.40",
+          },
+          {
+            contract: "C-GAP",
+            entity: "AVM-US",
+            period: "FY2026-P03",
+            currency: "EUR",
+            movement: "-6.00",
+            translated_currency: "USD",
+            translated_movement: "-8.40",
+          },
+        ],
+      },
+    });
+    serve(definition, { [RUN_ID]: run }, []);
+    renderApp(`/reports/rpo_rollforward?${CONTEXT}&run=${RUN_ID}`, {
+      me: MARCUS,
+      screenRoutes: SCREEN_ROUTES,
+    });
+    expect(await screen.findByText("Monthly unexplained RPO differences")).toBeTruthy();
+    expect(screen.getByText("AVM-US · FY2026-P02")).toBeTruthy();
+    expect(screen.getByText("AVM-US · FY2026-P03")).toBeTruthy();
+    expect(screen.getByText("EUR 7.00")).toBeTruthy();
+    expect(screen.getByText("USD 8.40")).toBeTruthy();
+    expect(screen.getByText(/A zero net total does not clear/)).toBeTruthy();
   });
 
   it("shows monthly exemption translation even when endpoint exclusions cancel", async () => {

@@ -69,3 +69,10 @@ def translation_records(value: Any) -> tuple[Mapping[str, Any], ...]:
         if not isinstance(row, Mapping) or any(key not in row for key, _ in TRANSLATION_COLUMNS):
             raise ValueError("RPO exemption translation is incomplete.")
     return tuple(value)
+
+
+UNEXPLAINED_TITLE = "Monthly unexplained RPO differences"
+UNEXPLAINED_BASIS = (
+    "Nonzero original contract-period differences remain listed even when translated amounts "
+    "offset or round to zero. A zero net total does not clear these source differences."
+)

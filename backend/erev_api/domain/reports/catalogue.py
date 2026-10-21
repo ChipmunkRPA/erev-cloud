@@ -1017,6 +1017,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "realized-fee cancellation at the next retained re-entry cut, including intervening "
             "cancelled corrections, before admitting the new remaining allocation; retained "
             "v1-v4 preserve their classification",
+            "new converted runs retain unexplained_details by source contract, entity, period "
+            "and currency with original and already-translated differences; nonzero source "
+            "differences remain reviewable even when they offset or round to zero; earlier "
+            "bindings keep their existing control totals",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

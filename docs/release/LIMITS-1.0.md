@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — converted RPO source differences are reviewable by month
+
+New functional/reporting RPO rollforwards retain unexplained_details containing each nonzero
+original contract/entity/period difference, original currency and the already-translated amount.
+Source differences remain visible when different months offset or conversion rounds a difference
+to zero. The existing source-unexplained tie-out still fails; the detail list neither clears it
+nor invents a cause. New bindings retain rpo_unexplained_details_v1; earlier bindings preserve
+their original controls. Transaction-view contract rows keep their existing behavior.
+
+The viewer and run record expose the details, XLSX/PDF render readable records, and CSV manifests
+retain the same facts. RPO/exemption currencies appearing only in controls now load before display.
+Scoped tests cover offsetting functional/reporting differences, viewer rendering and numeric,
+formula-safe export rows. Existing public three-view modification reports/reruns, lint/types and
+migration 0249 down/up IPE parity pass. The registry census also confirms all 59 definitions have
+execution paths; registration does not certify all workflows or accounting results.
+
+These details locate source gaps without resolving unsupported accounting combinations. Multiple
+cancellations in one computation, intervening pre-termination versions, same-day entry/cancellation,
+combined-member aging ownership, independent accounting sign-off and final-candidate checks remain
+open. No deployment and no claim of production readiness.
+
+
 ### October 20 — original first-batch usage cancellation can precede retained re-entry
 
 An original cancellation in the first or opening computation can now settle dated realized fees

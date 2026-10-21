@@ -61,7 +61,7 @@ import { JobReference } from "./viewer/JobReference";
 import { valueText } from "./viewer/RunDetailsDrawer";
 import { bookLabel, hashPrefix, runAsOf } from "./viewer/RunStamp";
 import { isMoney, PACK_CODES } from "./viewer/specs";
-import { RpoExemptionDetails } from "./viewer/RpoExemptionDetails";
+import { RpoExemptionDetails, RpoUnexplainedDetails } from "./viewer/RpoExemptionDetails";
 import { TieOutStrip } from "./viewer/TieOutStrip";
 
 /** The permission that downloads the output of a pack run (SCREENS_B §5.3). */
@@ -771,6 +771,7 @@ function RunBody({ run, me }: RunBodyProps) {
             empty={t("reports.run.table.noTotals")}
           />
           <RpoExemptionDetails run={run} />
+          <RpoUnexplainedDetails run={run} />
           <TieOutStrip results={run.tie_out_results} />
           <RecordTable
             title={t("reports.runDetails.output")}

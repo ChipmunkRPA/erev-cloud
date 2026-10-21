@@ -10402,3 +10402,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   pass, with lint/types and migration 0235 down/up catalogue parity. No deployment.
 - This does not reconstruct mutable reconciliation history that was never retained. Combined
   member-aging date ownership, independent accounting sign-off and final-candidate checks remain.
+
+## RPO first-batch modification attribution — October 20, 2026
+
+- Stage 06 now retains fixed-allocation before/after amounts and signed changes for every
+  obligation present at each modification boundary, including explicit zero changes. The new
+  nodes re-evaluate from the retained engine state; accounting postings are unchanged.
+- RPO first-entry batches separate later modifications and estimate changes from NEW_CONTRACTS
+  when original event evidence is complete. Within one retained version, monthly modification
+  and estimate movements must reconcile together to the dated fixed-allocation difference.
+  Earlier months exclude future changes. Invalid boundary evidence is rejected.
+- Targeted engine/report checks cover a native price-only modification followed by estimate
+  increases and decreases, first-entry and monthly views, original-node replay and invalid
+  evidence. Existing same-date/prospective modification checks and the public K01 period
+  rollforward pass. Lint/types and migration 0236 down/up catalogue parity pass. No deployment.
+- Old traces are not backfilled. Missing modification boundaries, newly introduced obligations
+  lacking a complete boundary history and cancellation mixtures retain existing limitations.
+  Combined-member aging date ownership and independent accounting sign-off remain open.

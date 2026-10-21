@@ -6,6 +6,23 @@
 
 
 
+## Reviewable monthly unexplained RPO differences — October 20, 2026
+
+- Confirmed all 59 catalogue definitions have registered execution paths. Converted RPO
+  rollforwards now retain every nonzero source contract/entity/period difference with its
+  original amount and the exact translated amount already used by the report. Offsetting
+  months or rounding to zero no longer hide why the existing source tie-out failed.
+- The report viewer and run record show an open detail table; XLSX/PDF render readable rows
+  and the CSV manifest retains the same facts. Currency registration now includes currencies
+  present only in retained RPO/exemption details. No UI allocation, FX or root-cause inference.
+- New bindings retain rpo_unexplained_details_v1; older runs keep their original control totals.
+  Functional/reporting offset cases, viewer display, formula-safe numeric XLSX/PDF/manifest
+  exports, existing public three-view reports/reruns, lint/types and migration 0249 parity pass.
+- This identifies source differences; it does not repair unsupported attribution combinations.
+  Multiple cancellations within one computation, intervening pre-termination versions, same-day
+  entry/cancellation and combined-member aging ownership remain open. Independent accounting
+  sign-off and final-candidate checks remain open. Direct main publication; no deployment.
+
 ## First-batch realized-fee cancellation settles before re-entry — October 20, 2026
 
 - An original cancellation embedded in the first/opening computation can now settle its dated
@@ -218,23 +235,6 @@
   0237 down/up catalogue parity pass. No deployment; publish directly to main.
 - This does not supply missing first-batch boundary history, resolve combined-member aging date
   ownership or provide independent accounting sign-off. Those remain outstanding.
-
-## RPO first-batch modification attribution — October 20, 2026
-
-- Stage 06 now retains fixed-allocation before/after amounts and signed changes for every
-  obligation present at each modification boundary, including explicit zero changes. The new
-  nodes re-evaluate from the retained engine state; accounting postings are unchanged.
-- RPO first-entry batches separate later modifications and estimate changes from NEW_CONTRACTS
-  when original event evidence is complete. Within one retained version, monthly modification
-  and estimate movements must reconcile together to the dated fixed-allocation difference.
-  Earlier months exclude future changes. Invalid boundary evidence is rejected.
-- Targeted engine/report checks cover a native price-only modification followed by estimate
-  increases and decreases, first-entry and monthly views, original-node replay and invalid
-  evidence. Existing same-date/prospective modification checks and the public K01 period
-  rollforward pass. Lint/types and migration 0236 down/up catalogue parity pass. No deployment.
-- Old traces are not backfilled. Missing modification boundaries, newly introduced obligations
-  lacking a complete boundary history and cancellation mixtures retain existing limitations.
-  Combined-member aging date ownership and independent accounting sign-off remain open.
 
 ## Outstanding release verification
 

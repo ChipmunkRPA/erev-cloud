@@ -78,11 +78,12 @@ def test_exemption_round_trip_keeps_both_months_and_their_original_rates(monkeyp
         return reporting_currency.Translation("USD", {eid: {"rate": value, "base_currency": "EUR"}})
 
     monkeypatch.setattr(reporting_currency, "rates_for_period", rates)
-    items, _, unexplained, details = rpo_rollforward_currency.project(
+    items, _, unexplained, details, gaps = rpo_rollforward_currency.project(
         uow, params, store, (entity,), {eid: periods[1:]}, {eid: periods[0]}, applied
     )
     (shown,) = items
     assert not unexplained
+    assert gaps == []
     reporting = view == "reporting"
     assert shown.lines["OPENING"] == (77 if reporting else 110)
     assert shown.lines["CLOSING"] == (Decimal("101.50") if reporting else 145)
@@ -100,3 +101,25 @@ def test_exemption_round_trip_keeps_both_months_and_their_original_rates(monkeyp
         for d in details
     )
     assert sum(Decimal(d["translated_movement"]) for d in details) == shown.lines["EXEMPTIONS"]
+
+    # Opposite source gaps must remain reviewable even when translated totals net to zero.
+    actual_rollforward = rpo.rollforward_lines
+
+    def with_gaps(*args, **kwargs):
+        from dataclasses import replace
+
+        (item,) = actual_rollforward(*args, **kwargs)
+        at = kwargs["ranges"][eid][1]
+        gap = Decimal(7 if at == days[1] else -6)
+        return (replace(item, lines={**item.lines, "UNEXPLAINED": gap}),)
+
+    monkeypatch.setattr(rpo, "rollforward_lines", with_gaps)
+    items, _, unexplained, _, gaps = rpo_rollforward_currency.project(
+        uow, params, store, (entity,), {eid: periods[1:]}, {eid: periods[0]}, applied
+    )
+    assert unexplained
+    assert items[0].lines["UNEXPLAINED"] == 0
+    assert [Decimal(d["movement"]) for d in gaps] == [7, -6]
+    amount = Decimal("6.72" if reporting else "8.40")
+    assert [Decimal(d["translated_movement"]) for d in gaps] == [amount, -amount]
+    assert [d["period"] for d in gaps] == ["FY2026-P02", "FY2026-P03"]

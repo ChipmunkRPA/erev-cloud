@@ -197,6 +197,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     rates: list[dict[str, Any]] = []
     source_unexplained = False
     exemption_translation: list[dict[str, str]] = []
+    unexplained_details: list[dict[str, str]] = []
+    gap_evidence = "rpo_unexplained_details_v1"
+    include_gaps = converted and (params.binding is None or gap_evidence in params.binding.evidence)
+    if include_gaps and params.sources is not None:
+        params.sources.record_evidence(gap_evidence, True)
     translation_evidence = "rpo_exemption_translation_v1"
     include_translation = converted and (
         params.binding is None or translation_evidence in params.binding.evidence
@@ -204,8 +209,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     if include_translation and params.sources is not None:
         params.sources.record_evidence(translation_evidence, True)
     if converted:
-        items, rates, source_unexplained, exemption_translation = rpo_rollforward_currency.project(
-            uow, params, store, found, periods, before, applied
+        (items, rates, source_unexplained, exemption_translation, unexplained_details) = (
+            rpo_rollforward_currency.project(uow, params, store, found, periods, before, applied)
         )
     totals: dict[str, dict[str, Decimal]] = {}
     for item in items:
@@ -289,6 +294,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 else {}
             ),
             **({"exemption_translation": exemption_translation} if include_translation else {}),
+            **({"unexplained_details": unexplained_details} if include_gaps else {}),
             "currency_view": view,
             "translation_basis": "monthly_average_flows_closing_endpoints"
             if converted

@@ -139,7 +139,19 @@ export function moneyCurrencies(value: unknown, found: Set<string> = new Set()):
 
 export async function fetchReportRun(runId: string): Promise<ReportRun> {
   const run = await read<ReportRun>(`${REPORT_RUNS_PATH}/${runId}`);
-  await ensureCurrencyCodes(moneyCurrencies(run.tie_out_results));
+  const currencies = moneyCurrencies([run.tie_out_results, run.control_totals]);
+  for (const key of ["exemption_changes", "exemption_translation", "unexplained_details"]) {
+    const rows = run.control_totals?.[key];
+    if (!Array.isArray(rows)) continue;
+    for (const row of rows) {
+      if (typeof row !== "object" || row === null) continue;
+      for (const field of ["currency", "translated_currency"]) {
+        const code = (row as Record<string, unknown>)[field];
+        if (typeof code === "string") currencies.add(code);
+      }
+    }
+  }
+  await ensureCurrencyCodes(currencies);
   return run;
 }
 
@@ -155,7 +167,10 @@ export interface ReportRunRows {
  * `columns`. The data response is API-S-List plus `columns` (04 §16.9; D-88 L7-1-Q-5), so it has its own
  * page reader rather than `fetchListPage`.
  */
-export async function fetchReportRows(runId: string, sectionTable?: string): Promise<ReportRunRows> {
+export async function fetchReportRows(
+  runId: string,
+  sectionTable?: string,
+): Promise<ReportRunRows> {
   const rows: ReportRow[] = [];
   let columns: readonly ReportRunColumn[] | null = null;
   let cursor: string | null = null;
@@ -253,7 +268,9 @@ export async function fetchReportOutput(runId: string): Promise<Blob> {
 export type DisclosureSection = components["schemas"]["DisclosureSectionOut"];
 export type DisclosureTable = components["schemas"]["DisclosureTableOut"];
 
-export async function fetchDisclosureSections(runId: string): Promise<readonly DisclosureSection[]> {
+export async function fetchDisclosureSections(
+  runId: string,
+): Promise<readonly DisclosureSection[]> {
   const page = await read<ReportRunData>(`${REPORT_RUNS_PATH}/${runId}/data?limit=1`);
   return page.sections ?? [];
 }

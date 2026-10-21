@@ -699,6 +699,21 @@ def test_exemption_exports_keep_large_detail_populations_readable() -> None:
         control_totals={
             "exemption_changes": details,
             "exemption_translation": translations,
+            "unexplained_details": [
+                {
+                    **translations[0],
+                    "contract": "=GAP",
+                    "movement": "7.00",
+                    "translated_movement": "8.40",
+                },
+                {
+                    **translations[0],
+                    "contract": "=GAP",
+                    "period": "FY2026-P10",
+                    "movement": "-6.00",
+                    "translated_movement": "-8.40",
+                },
+            ],
             "exemption_detail_basis": "transaction_currency_endpoints",
         },
     )
@@ -749,3 +764,15 @@ def test_exemption_exports_keep_large_detail_populations_readable() -> None:
     assert sheet.cell(header + 1, 7).data_type == "n"
     assert "Monthly exemption translation" in texts
     assert "Translated movement: USD (30.60)" in texts
+    assert "Monthly unexplained RPO differences" in texts
+    assert "Translated movement: USD 8.40" in texts
+    assert "Translated movement: USD (8.40)" in texts
+    assert len(manifest["control_totals"]["unexplained_details"]) == 2
+    gap_title = next(
+        row
+        for row in range(1, sheet.max_row + 1)
+        if sheet.cell(row, 1).value == "Monthly unexplained RPO differences"
+    )
+    assert sheet.cell(gap_title + 3, 1).value == "'=GAP"
+    assert sheet.cell(gap_title + 3, 7).value == 8.4
+    assert sheet.cell(gap_title + 4, 7).value == -8.4
