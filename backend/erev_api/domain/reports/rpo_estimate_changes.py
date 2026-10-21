@@ -68,3 +68,22 @@ def allocations(trace: Trace, events: frozenset[str]) -> Mapping[str, Decimal] |
         if total != amount:
             return None
     return result
+
+
+def at_inception(trace: Trace, event: str) -> bool:
+    """Require an original inception pin; missing routed deltas alone prove nothing."""
+    pins = [node for node in trace.nodes if node.measure == f"estimate_pin@{event}"]
+    if len(pins) != 1:
+        return False
+    pin = pins[0]
+    return (
+        pin.formula_id == "estimate.pin.v1"
+        and pin.params.get("allocation_effect") == "INCEPTION"
+        and len(pin.inputs) == 1
+        and isinstance(pin.inputs[0], SourceRef)
+        and pin.inputs[0].ref_type == "estimate_version"
+        and pin.inputs[0].ref_id == pin.params.get("v_new")
+        and not any(
+            node.measure in {f"tp_delta@{event}", f"tp_share@{event}"} for node in trace.nodes
+        )
+    )

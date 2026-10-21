@@ -1089,6 +1089,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "admission and amendment record order, complete boundaries and continuity through "
             "the termination before-state are required; later re-entry does not repeat the "
             "amendment; older bindings retain their previous eligibility",
+            "rpo_same_day_entry_estimates_v1 retains original inception estimates in new- "
+            "contract amounts when activation and termination share a day; every estimate "
+            "requires an original INCEPTION pin and an admission-date event; amendments "
+            "remain separately classified from original boundaries; missing evidence and "
+            "older bindings retain their previous eligibility",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

@@ -1904,8 +1904,9 @@ def test_one_computation_separates_realized_fees_from_cancellation(
 
 @pytest.mark.parametrize("refund", [0, 40])
 @pytest.mark.parametrize("amended", [False, True])
+@pytest.mark.parametrize("estimated", [False, True])
 def test_original_same_day_activation_and_cancellation_keeps_movements(
-    refund: int, amended: bool
+    refund: int, amended: bool, estimated: bool
 ) -> None:
     from erev_api.domain.contracts import to_date
     from erev_api.domain.reports.rpo_boundary_changes import history
@@ -1913,7 +1914,9 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(
     from support import cpc_worlds
 
     entry, before, end = date(2026, 1, 1), date(2025, 12, 31), date(2026, 1, 31)
-    base = worlds.targeted_world(estimates=[])
+    initial_estimate = worlds.element("100", keys=["A"])
+    base = worlds.targeted_world(estimates=[initial_estimate] if estimated else [])
+    initial = 300 if estimated else 100
     if amended:
         modification = replace(
             cpc_worlds.concession("-20", entry, key="A"),
@@ -1940,6 +1943,8 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(
                 cpc_worlds.amended(list(base.events), modification, modification.chosen_treatments)
             ),
         )
+    if estimated:
+        base = worlds.with_changes(base, [worlds.later_version(initial_estimate, 2, entry, "200")])
     termination = replace(
         cpc_worlds.concession("0", entry, key="A"),
         modification_key="K-01/TERM",
@@ -2028,6 +2033,17 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(
                 next(e.record_seq for e in bundle.events if e.event_type == "CONTRACT_ACTIVATED"),
             ),
         ),
+        estimate_events=frozenset(
+            e.event_key for e in bundle.events if e.event_type == "ESTIMATE_CHANGED"
+        ),
+        estimate_dates=tuple(
+            (e.event_key, e.effective_date)
+            for e in bundle.events
+            if e.event_type == "ESTIMATE_CHANGED"
+        ),
+        estimate_order=tuple(
+            (e.event_key, e.record_seq) for e in bundle.events if e.event_type == "ESTIMATE_CHANGED"
+        ),
         modification_events=frozenset(
             e.event_key for e in bundle.events if e.event_type == "CONTRACT_AMENDED"
         ),
@@ -2083,10 +2099,25 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(
         },
         boundaries={vid: history(book.trace)},
     )
+    from erev_api.domain.reports.rpo_estimate_changes import at_inception
+
+    for event in version.estimate_events:
+        assert at_inception(book.trace, event)
+        store.inception_estimate_events.add((vid, event))
     (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
-    assert result.lines["NEW_CONTRACTS"] == 100
-    assert result.lines["REVENUE"] == -(100 - (20 if amended else 0) - refund)
+    assert result.lines["NEW_CONTRACTS"] == initial
+    assert result.lines["REVENUE"] == -(initial - (20 if amended else 0) - refund)
     assert result.lines["MODIFICATIONS"] == (-20 if amended else 0)
+    assert result.lines["VC_ESTIMATE_CHANGES"] == 0
+    if estimated:
+        for unsupported in (
+            replace(store, classify_same_day_entry_estimates=False),
+            replace(store, inception_estimate_events=set()),
+        ):
+            (old_estimate,) = rpo.rollforward_lines(
+                unsupported, ranges={eid: (before, end)}, applied={}
+            )
+            assert old_estimate.lines["NEW_CONTRACTS"] == 0
     if amended:
         for unsupported in (
             replace(store, classify_same_day_entry_modifications=False),

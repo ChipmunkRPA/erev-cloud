@@ -10723,3 +10723,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   versions, repeated cancellation/reentry and complex same-day entry still require completion.
   Combined-member aging ownership, independent sign-off and final-candidate checks remain open.
   No deployment; direct-main publication only.
+
+## Mixed retained-version causes separate while obligations remain active — October 20, 2026
+
+- A later retained version that combines modification, estimate and partial-termination causes
+  now separates their original fixed amounts even when the affected obligation remains in RPO.
+  Complete original modification/termination coverage and estimate shares/dates are required;
+  their sum must equal the actual version movement. Missing evidence or mismatches remain
+  unexplained. New bindings retain rpo_mixed_continuing_changes_v1; legacy attribution remains.
+- The engine-generated cross-month partial-cancellation case now also feeds a prior January
+  version and a later February version into reporting. The surviving obligation's modification
+  and cancellation amounts complete the contract's separate February movement lines without
+  waiting for its March cancellation. This is an adapted retained-version read-layer witness,
+  not a new public API partial-termination lifecycle journey.
+- All 74 scoped RPO cases, original close-pass witness, legacy/missing-source/mismatched-delta
+  checks, existing public three-view reports/reruns, lint/types and migration 0254 down/up exact
+  IPE parity pass. No deployment; commit directly to main.
+- Intervening versions before original termination, repeated cancellation/reentry, complex
+  same-day entry mixtures, combined-member aging ownership, independent accounting sign-off
+  and final-candidate checks remain open. This is not a production-readiness claim.

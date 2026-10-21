@@ -362,6 +362,8 @@ class Store:
     classify_same_day_entry_chains: bool = field(default=True, kw_only=True)
     classify_pretermination_versions: bool = field(default=True, kw_only=True)
     classify_same_day_entry_modifications: bool = field(default=True, kw_only=True)
+    classify_same_day_entry_estimates: bool = field(default=True, kw_only=True)
+    inception_estimate_events: set[tuple[UUID, str]] = field(default_factory=set, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -925,6 +927,8 @@ def measure(
                     store.estimate_allocations[version.id] = changes
                 if version.entries:
                     for event in version.estimate_events:
+                        if rpo_estimate_changes.at_inception(trace, event):
+                            store.inception_estimate_events.add((version.id, event))
                         shares = rpo_estimate_changes.allocations(trace, frozenset({event}))
                         if shares is not None:
                             store.estimate_event_allocations[version.id, event] = shares
@@ -1403,6 +1407,7 @@ def _obligation_lines(
         <= (
             {"CONTRACT_BOOKED", "CONTRACT_ACTIVATED", "CONTRACT_TERMINATED", "MEMO_ADDED"}
             | ({"CONTRACT_AMENDED"} if store.classify_same_day_entry_modifications else set())
+            | ({"ESTIMATE_CHANGED"} if store.classify_same_day_entry_estimates else set())
         )
     ):
         version = moved[0]
@@ -1417,13 +1422,25 @@ def _obligation_lines(
         if candidate is not None:
             terminal = store.cancellation(candidate)
             amendments = _same_day_entry_modifications(store, version, candidate)
-            if ("CONTRACT_AMENDED" not in version.causes or amendments is not None) and (
-                terminal is not None
-                and terminal.before is not None
-                and terminal.day == version.effective
-                and dict(version.entries).get(candidate.contract_id) == terminal.day
-                and store.at(candidate, end).realised_traced
-                and store.at(candidate, end).realised == 0
+            inception_estimates_valid = "ESTIMATE_CHANGED" not in version.causes or (
+                bool(version.estimate_events)
+                and all(
+                    (version.id, event) in store.inception_estimate_events
+                    and dict(version.estimate_dates).get(event) == version.effective
+                    for event in version.estimate_events
+                )
+            )
+            if (
+                inception_estimates_valid
+                and ("CONTRACT_AMENDED" not in version.causes or amendments is not None)
+                and (
+                    terminal is not None
+                    and terminal.before is not None
+                    and terminal.day == version.effective
+                    and dict(version.entries).get(candidate.contract_id) == terminal.day
+                    and store.at(candidate, end).realised_traced
+                    and store.at(candidate, end).realised == 0
+                )
             ):
                 same_day_entry = candidate
                 same_day_modifications = amendments or frozenset()

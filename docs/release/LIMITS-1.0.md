@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Original inception estimates in same-day RPO entry — October 21, 2026
+
+- Same-day activation/termination now retains initial variable consideration in NEW_CONTRACTS
+  when every original estimate has an INCEPTION pin and an admission-date event. The engine
+  treats inception-date versions as initial price regardless of same-day record order; the report
+  follows that rule rather than inventing a routed estimate delta. Amendments and refunds remain
+  separately attributed, including through later retained memo/re-entry versions.
+- Missing original pins preserve prior eligibility. New bindings retain
+  rpo_same_day_entry_estimates_v1; legacy bindings retain their old behavior. Migration 0262
+  adds the matching IPE note. The reader loads the pins from original retained engine traces.
+- All 80 related cases, public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass. Original-engine scenarios cover estimates before and after activation,
+  optional amendments, refunds, later versions and missing evidence. These use supplied report
+  versions; no new public same-day contract-command journey is claimed.
+- Same-day usage mixtures, broader repeated cancellation/re-entry and concurrent commit visibility
+  remain open. The October 21 repository-only scope continues; no deployment.
+
+
 ### October 21 — original amendments between same-day entry and termination
 
 - RPO now separates original amendments after same-day activation and before termination:

@@ -9,8 +9,8 @@ prioritize feature completion with necessary targeted validation. Continue direc
 review and publish changes without PR accumulation, and do not deploy.
 
 - Reporting priorities remain difference attribution, multi-currency, RPO exemptions and GL
-  reconciliation. Next: retain original receiving-contract aging and separately show member
-  allocation adjustments for combined contracts.
+  reconciliation. Combined contracts now retain original receiving-contract aging and separately
+  show member allocation adjustments; continue the remaining evidenced Reporting gaps.
 - Migration-to-live promotion/replay completion is outside scope; no actual business launch.
 - Keep key financial permissions, segregation of duties and audit evidence; full approval
   coverage is not required. Implementation is not a SOX certification.
@@ -19,6 +19,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Independent accounting review belongs to the owner and is not a development completion gate.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
+
+## Original inception estimates in same-day RPO entry — October 21, 2026
+
+- Same-day activation/termination now retains initial variable consideration in NEW_CONTRACTS
+  when every original estimate has an INCEPTION pin and an admission-date event. The engine
+  treats inception-date versions as initial price regardless of same-day record order; the report
+  follows that rule rather than inventing a routed estimate delta. Amendments and refunds remain
+  separately attributed, including through later retained memo/re-entry versions.
+- Missing original pins preserve prior eligibility. New bindings retain
+  rpo_same_day_entry_estimates_v1; legacy bindings retain their old behavior. Migration 0262
+  adds the matching IPE note. The reader loads the pins from original retained engine traces.
+- All 80 related cases, public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass. Original-engine scenarios cover estimates before and after activation,
+  optional amendments, refunds, later versions and missing evidence. These use supplied report
+  versions; no new public same-day contract-command journey is claimed.
+- Same-day usage mixtures, broader repeated cancellation/re-entry and concurrent commit visibility
+  remain open. The October 21 repository-only scope continues; no deployment.
 
 ## Original same-day RPO entry amendments — October 21, 2026
 
@@ -206,25 +223,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Complex cancellation/reentry and intervening pre-termination versions, same-day entry
   mixtures, combined-member aging ownership, independent accounting sign-off and final-candidate
   checks remain open. No deployment and no production-readiness claim; direct main only.
-
-## Mixed retained-version causes separate while obligations remain active — October 20, 2026
-
-- A later retained version that combines modification, estimate and partial-termination causes
-  now separates their original fixed amounts even when the affected obligation remains in RPO.
-  Complete original modification/termination coverage and estimate shares/dates are required;
-  their sum must equal the actual version movement. Missing evidence or mismatches remain
-  unexplained. New bindings retain rpo_mixed_continuing_changes_v1; legacy attribution remains.
-- The engine-generated cross-month partial-cancellation case now also feeds a prior January
-  version and a later February version into reporting. The surviving obligation's modification
-  and cancellation amounts complete the contract's separate February movement lines without
-  waiting for its March cancellation. This is an adapted retained-version read-layer witness,
-  not a new public API partial-termination lifecycle journey.
-- All 74 scoped RPO cases, original close-pass witness, legacy/missing-source/mismatched-delta
-  checks, existing public three-view reports/reruns, lint/types and migration 0254 down/up exact
-  IPE parity pass. No deployment; commit directly to main.
-- Intervening versions before original termination, repeated cancellation/reentry, complex
-  same-day entry mixtures, combined-member aging ownership, independent accounting sign-off
-  and final-candidate checks remain open. This is not a production-readiness claim.
 
 ## Outstanding release verification
 
