@@ -427,6 +427,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "at the reporting cut; minimum guarantees and recognized royalty sources must remain "
             "stable over the frozen horizon; schedule overrides retain anchor royalties and "
             "subsequent signed royalty changes separately",
+            "Step-1 netted forecasts freeze original deposit recognitions and cite their "
+            "attributed shares; a separate dated reporting remainder excludes already-recognized "
+            "deposit revenue while preserving contract measurement balances; projected future "
+            "periods must reconcile to that net remainder",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -842,6 +846,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "at the reporting cut; minimum guarantees and recognized royalty sources must remain "
             "stable over the frozen horizon; schedule overrides retain anchor royalties and "
             "subsequent signed royalty changes separately",
+            "Step-1 netted forecasts freeze original deposit recognitions and cite their "
+            "attributed shares; a separate dated reporting remainder excludes already-recognized "
+            "deposit revenue while preserving contract measurement balances; projected future "
+            "periods must reconcile to that net remainder",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -930,6 +938,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "at the reporting cut; minimum guarantees and recognized royalty sources must remain "
             "stable over the frozen horizon; schedule overrides retain anchor royalties and "
             "subsequent signed royalty changes separately",
+            "Step-1 netted forecasts freeze original deposit recognitions and cite their "
+            "attributed shares; a separate dated reporting remainder excludes already-recognized "
+            "deposit revenue while preserving contract measurement balances; projected future "
+            "periods must reconcile to that net remainder",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

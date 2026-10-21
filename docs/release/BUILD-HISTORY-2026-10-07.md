@@ -10008,3 +10008,33 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Mixed multiple-provenance sources, legacy traces without exact input amounts, split-role
   inputs and non-revenue components remain open. This is not acceptance of every public mixed
   workflow; independent accounting sign-off remains outstanding. No deployment.
+
+## Retained subledger / GL / report bridge — October 20, 2026
+
+- Balance and rollforward GL controls now expose retained subledger balances, subledger-minus-GL
+  and report-minus-subledger per entity/role in functional currency. Either nonzero leg fails,
+  even if the report and GL agree. Missing subledger evidence remains explicitly unavailable.
+- The viewer shows both backend-calculated legs alongside the original GL source link. New v2
+  bindings retain three-way semantics; v1 reruns preserve the original two-way control without
+  live GL reads. Migration 0219 documents both consumers and repairs stale balance FX sources.
+- Three focused backend cases, the viewer case and uploaded-trial-balance DB journey pass;
+  lint/types and migrated catalogue checks pass. The foreign-balance DB journey fails during
+  close DATASET_FREEZE before report comparison, including with the original GL implementation.
+  That existing failure remains open; this is not full multicurrency acceptance.
+- Multi-provenance TIME/EVENT attribution, broader lifecycle coverage and independent accounting
+  sign-off remain open. Direct main publication only; no deployment.
+
+## Foreign-currency close freeze restored — October 20, 2026
+
+- FX source attribution now accepts S14's descriptive TIME/EVENT and per-input TIME annotations.
+  Those annotations were incorrectly rejected as split-role parameters, blocking functional
+  rollforward snapshot generation during close DATASET_FREEZE.
+- Attribution still derives owner, signed amount and TIME/EVENT class from original S12 source
+  layers; target/prior/paid reconciliation and genuine split-parameter refusal remain enforced.
+- Seven focused source cases and the previously failing two-month foreign-receivable DB journey
+  pass. The journey closes both periods and checks dated functional balances, FX movement,
+  transaction-currency balances and GL controls. Two locked-endpoint functional/reporting
+  rerun cases also pass with identical data, as do scoped lint and type checks. Broader
+  split/mixed-source work is still open.
+- The DATASET_FREEZE failure recorded in the preceding entry is resolved by this change.
+  No deployment; independent accounting sign-off remains outstanding.

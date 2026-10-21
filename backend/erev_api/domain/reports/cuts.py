@@ -211,7 +211,8 @@ def scheduled_after(
     ``ScheduleUnreadable`` when a projection is missing or the projected lines do not add up
     to the scheduled part; no proportional allocation or unexplained-difference plug is used.
     """
-    if at.scheduled == 0:
+    scheduled = at.scheduled if at.report_scheduled is None else at.report_scheduled
+    if scheduled == 0:
         return ()
     cut = day if at.measured is None else at.measured.end_date
     later = tuple(line for line in lines if line[1] > cut)
@@ -228,9 +229,9 @@ def scheduled_after(
             projected.append((line_id, end, at.fixed_schedule[source]))
         later = tuple(projected)
     placed = sum((amount for _, _, amount in later), ZERO)
-    if placed != at.scheduled:
+    if placed != scheduled:
         message = SCHEDULE_DIFFERS.format(
-            contract=contract, obligation=obligation, day=cut, scheduled=at.scheduled, lines=placed
+            contract=contract, obligation=obligation, day=cut, scheduled=scheduled, lines=placed
         )
         raise ScheduleUnreadable(f"obligations[{obligation}].scheduled_amount", message)
     return later
@@ -243,8 +244,13 @@ def projected_after(
     contract: str,
     obligation: str,
 ) -> tuple[tuple[str, date, Decimal], ...] | None:
-    """Original period projections, independent of later surviving schedule lines."""
-    if at.projection_error is not None and at.scheduled != ZERO:
+    """Original period projections, independent of later surviving schedule lines.
+
+    New netted traces supply a separate reporting remainder excluding deposit revenue
+    already recognized under 25-7; the contract measurement balance remains unchanged.
+    """
+    scheduled = at.scheduled if at.report_scheduled is None else at.report_scheduled
+    if at.projection_error is not None and scheduled != ZERO:
         raise ScheduleUnreadable(
             f"obligations[{obligation}].scheduled_amount",
             f"Contract {contract}, obligation {obligation}: {at.projection_error}",
@@ -258,7 +264,7 @@ def projected_after(
         at.fixed_schedule_cut != cut
         or any(end <= cut for _, end, _ in rows)
         or len({key for key, _, _ in rows}) != len(rows)
-        or placed != at.scheduled
+        or placed != scheduled
     ):
         raise ScheduleUnreadable(
             f"obligations[{obligation}].scheduled_amount",
@@ -266,7 +272,7 @@ def projected_after(
                 contract=contract,
                 obligation=obligation,
                 day=cut,
-                scheduled=at.scheduled,
+                scheduled=scheduled,
                 lines=placed,
             ),
         )

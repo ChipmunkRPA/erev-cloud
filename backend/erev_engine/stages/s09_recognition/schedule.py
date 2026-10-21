@@ -1287,34 +1287,28 @@ def _emit_dated_schedule(
             and event.event_type in ("HOLD_APPLIED", "HOLD_RELEASED")
             for event in st.measure_events
         )
-        if seg is None or not (later_allocation or later_hold or evaluator.adjustments):
+        if seg is None or not (
+            later_allocation or later_hold or evaluator.adjustments or evaluator.attribution
+        ):
             continue
         ev = evaluator.posted(cut)
-        if (
-            _pattern(ob, ev, cut) != DETERMINISTIC
-            or ev.hold is not None
-            or ev.netting is not None
-            or ev.fixed is None
-        ):
+        if _pattern(ob, ev, cut) != DETERMINISTIC or ev.hold is not None or ev.fixed is None:
             continue
         # Explicit original terms are required; do not fall back to a later obligation term.
         if seg.totals.start_date is None or seg.totals.end_date is None:
             continue
         adjusted: dict[date, components.Evaluation] = {}
-        if ev.adjustments:
+        if ev.adjustments or evaluator.attribution is not None:
             # Freeze already-realized usage at the cut and replay the original manual
             # rules on the complete target. Future deltas need no ratio-based split.
-            if (
-                any(item.component not in {"FIXED", "PERIOD_VC", "ROYALTY"} for item in ob.segments)
-                or evaluator.attribution is not None
-            ):
+            if any(item.component not in {"FIXED", "PERIOD_VC", "ROYALTY"} for item in ob.segments):
                 _unavailable_projection(
                     ctx,
                     tb,
                     evaluator,
                     target.period_key,
                     cut,
-                    "Manual adjustments require unsupported or netted component attribution.",
+                    "Manual adjustments contain unsupported component attribution.",
                 )
                 continue
             snapshot_contract = replace(
@@ -1331,6 +1325,14 @@ def _emit_dated_schedule(
                 st,
                 measure_events=tuple(
                     event for event in st.measure_events if event.effective_date <= cut
+                ),
+                specialist_targets=replace(
+                    st.specialist_targets,
+                    deposit_releases=tuple(
+                        release
+                        for release in st.specialist_targets.deposit_releases
+                        if release.effective_date <= cut and release.order_key[0] <= cut
+                    ),
                 ),
                 estimates=replace(
                     st.estimates,
@@ -1511,6 +1513,24 @@ def _emit_dated_schedule(
                         params=applied.params,
                         narrative_key=_narrative(applied.formula_id),
                     )
+            if end in adjusted and adjusted[end].netting is not None:
+                assert snapshot.attribution is not None
+                step1.emit(tb, ctx, snapshot.attribution, ob, slot, end)
+                netting = adjusted[end].netting
+                assert netting is not None
+                _, recognized = netting
+                posted = tb.node(
+                    measure="scheduled_netted_target",
+                    subject_key=ob.subject_key,
+                    period_key=slot,
+                    value=projected_value,
+                    currency=ctx.txn_currency,
+                    minor_unit=evaluator.mu,
+                    formula_id=step1.NET_FORMULA,
+                    inputs=[posted, step1.share_node_id(ob.subject_key, slot)],
+                    params={"as_of": end.isoformat(), "r25": str(recognized), "rule": "S02-R-04"},
+                    narrative_key=_narrative(step1.NET_FORMULA),
+                )
             if end == cut:
                 previous_node = posted
                 continue
@@ -1586,7 +1606,7 @@ def _emit_dated_remainder(
         )
         pattern, held = _pattern(ob, ev, day), ev.hold is not None
         value = allocated - (ev.value - in_target) if pattern == DETERMINISTIC and not held else 0
-        tb.node(
+        remainder_node = tb.node(
             measure="scheduled_remainder",
             subject_key=ob.subject_key,
             period_key=period_key,
@@ -1604,6 +1624,21 @@ def _emit_dated_remainder(
             },
             narrative_key=_narrative(SCHEDULED_FORMULA),
         )
+
+        if evaluator.attribution is not None:
+            recognized, _ = step1.share(evaluator.attribution, ob.subject_key, day, evaluator.mu)
+            tb.node(
+                measure="scheduled_reporting_remainder",
+                subject_key=ob.subject_key,
+                period_key=period_key,
+                value=max(value - recognized, 0),
+                currency=ctx.txn_currency,
+                minor_unit=evaluator.mu,
+                formula_id=step1.NET_FORMULA,
+                inputs=[remainder_node, step1.share_node_id(ob.subject_key, period_key)],
+                params={"as_of": day.isoformat(), "r25": str(recognized), "rule": "S02-R-04"},
+                narrative_key=_narrative(step1.NET_FORMULA),
+            )
 
 
 def _emit_fixed_allocation(

@@ -1447,3 +1447,31 @@ def test_unavailable_manual_projection_does_not_fall_back_to_latest_schedule() -
     assert at.projection_error == "Mixed components require original attribution."
     with pytest.raises(cuts.ScheduleUnreadable, match="1 field needs attention"):
         cuts.projected_after(at, JANUARY, contract="C-1", obligation="O1")
+
+
+def test_reporting_net_remainder_preserves_contract_measurement_balance() -> None:
+    from erev_api.domain.reports import cuts
+
+    nodes = trace(
+        node("scheduled_reporting_remainder", "C-1/O1", "-", "750.00"),
+        *series(
+            "scheduled_reporting_remainder",
+            "C-1/O1",
+            {"P01": "700.00", "P02": "600.00", "P03": "500.00"},
+        ),
+    )
+    (at,) = read(JANUARY, nodes).obligations.values()
+    assert at.scheduled == Decimal("900")
+    assert at.report_scheduled == Decimal("700")
+    lines = [(UUID(int=1), MARCH, Decimal("700"))]
+    assert cuts.scheduled_after(lines, at, JANUARY, contract="C-1", obligation="O1") == tuple(lines)
+
+
+@pytest.mark.parametrize("bad", ["-1", "901"])
+def test_reporting_net_remainder_refuses_values_outside_original_balance(bad: str) -> None:
+    nodes = trace(
+        node("scheduled_reporting_remainder", "C-1/O1", "-", "750.00"),
+        *series("scheduled_reporting_remainder", "C-1/O1", {"P01": bad}),
+    )
+    with pytest.raises(to_date.Unreadable):
+        read(JANUARY, nodes)

@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — deterministic Step-1 netted forecasts
+
+Historical time-based forecasts now freeze original 25-7 deposit releases and cite each
+obligation's attributed deposit share when netting manual-adjusted targets. A separate dated
+reporting remainder removes already-recognized deposits from forecast reconciliation without
+changing the contract's stored revenue/scheduled/awaiting measurement identity. Later manual
+adjustments cannot rewrite the earlier projection; a fully recognized deposit leaves zero
+future forecast. Old traces receive no inferred deduction.
+
+Six engine journeys cover all three manual schedule kinds and partial/full prior recognition,
+with trace replay and original period comparisons. Contract/report readers preserve the two
+bases and reject negative or excessive reporting remainders. Migration 0229 describes the
+source chain. Arbitrary source-changing/event-driven forecasts, broader public API lifecycle
+and close-pass acceptance, independent accounting sign-off and final release checks remain
+outside this verification. No deployment.
+
+
 ### October 20 — royalty manual projection from original sources
 
 Fixed-guarantee plus royalty manual releases, deferrals and overrides now retain original-cut

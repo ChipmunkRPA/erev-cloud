@@ -217,3 +217,131 @@ def test_step1_met_netting_after_criteria_met() -> None:
     assert targets[(service, "FY2026-P12")] == 40000 - 20000
     assert targets[(service, "FY2026-P07")] == max(23333 - 20000, 0)
     assert targets[(goods, "FY2026-P12")] == 0
+
+
+@pytest.mark.parametrize("kind", ["MANUAL_RELEASE", "MANUAL_DEFER", "SCHEDULE_OVERRIDE"])
+@pytest.mark.parametrize("deposit", ["600", "1200"])
+def test_netted_manual_forecast_excludes_already_recognized_deposits(
+    kind: str, deposit: str
+) -> None:
+    from decimal import Decimal
+
+    from erev_api.domain.contracts import to_date
+    from erev_api.domain.reports import cuts
+    from erev_engine.trace import SourceRef, reevaluate
+    from support.recognition import period_amounts, targets_by_period
+
+    cut = date(2026, 7, 31)
+    st = _state(
+        (_release(deposit),),
+        statuses=(
+            (INCEPTION, "NOT_A_CONTRACT"),
+            (date(2026, 7, 1), "ACTIVE"),
+        ),
+    )
+    extra = (
+        {
+            "periods": [
+                {"period_key": "FY2026-P07", "amount": Decimal(20)},
+                {"period_key": "FY2026-P08", "amount": Decimal(40)},
+            ]
+        }
+        if kind == "SCHEDULE_OVERRIDE"
+        else {"amount": Decimal(30)}
+    )
+    manual = event_view(
+        CONTRACT_KEY,
+        6,
+        "MANUAL_ADJUSTMENT_APPLIED",
+        date(2026, 7, 1),
+        {
+            "manual_adjustment_id": "MA-NET",
+            "obligation_key": "S",
+            "kind": kind,
+            "period_key": "FY2026-P07",
+            **extra,
+        },
+        obligation_keys=["S"],
+    )
+    later = event_view(
+        CONTRACT_KEY,
+        8,
+        "MANUAL_ADJUSTMENT_APPLIED",
+        date(2026, 10, 1),
+        {
+            "manual_adjustment_id": "MA-LATER",
+            "obligation_key": "S",
+            "kind": "MANUAL_RELEASE",
+            "period_key": "FY2026-P10",
+            "remaining": True,
+        },
+        obligation_keys=["S"],
+    )
+    ctx = book_context(bundles.entity(months=12))
+
+    def run(events):
+        state = dataclasses.replace(
+            st, events=(*st.events, *events), measure_events=(*st.measure_events, *events)
+        )
+        tb = TraceBuilder(engine_version=ENGINE_VERSION)
+        for release in st.specialist_targets.deposit_releases:
+            tb.node(
+                measure=release.node_id.split(":")[0],
+                subject_key=f"{CONTRACT_KEY}@{ENTITY}",
+                period_key=None,
+                value=int(release.amount * 100),
+                currency="USD",
+                minor_unit=2,
+                formula_id="input.echo.v1",
+                inputs=[
+                    SourceRef(
+                        "contract_event", release.order_key[2], {"value": str(release.amount)}
+                    )
+                ],
+                params={},
+                narrative_key="input.echo",
+            )
+        output = s09_recognition.run(ctx, state, tb)
+        trace = tb.build(root_measures={})
+        assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+        return output, trace
+
+    original, _ = run([manual])
+    _, trace = run([manual, later])
+    subject = f"{CONTRACT_KEY}/S"
+    nodes = to_date.nodes_of(to_date.nodes_at(trace.nodes, [cut]))
+    assert nodes.period_schedule is not None
+    projected = nodes.period_schedule[subject][cut]
+    expected = period_amounts(targets_by_period(original, subject))
+    assert {key: amount for key, _, amount in projected} == {
+        key: Decimal(value).scaleb(-2) for key, value in expected.items() if key > "FY2026-P07"
+    }
+    gross = next(
+        Decimal(node.value)
+        for node in trace.nodes
+        if node.id == f"scheduled_remainder:{subject}:FY2026-P07"
+    )
+    net = next(
+        Decimal(node.value)
+        for node in trace.nodes
+        if node.id == f"scheduled_reporting_remainder:{subject}:FY2026-P07"
+    )
+    assert net == max(gross - Decimal(deposit) / 3, 0)
+    assert sum(amount for _, _, amount in projected) == net
+    at = to_date.ObligationAt(
+        revenue=Decimal(0),
+        billed=Decimal(0),
+        progress_ratio=Decimal(0),
+        delta=Decimal(0),
+        billed_delta=Decimal(0),
+        shift=Decimal(0),
+        scheduled=gross,
+        awaiting=Decimal(0),
+        satisfaction_status="PARTIALLY_SATISFIED",
+        measured=None,
+        billed_measured=None,
+        fixed_schedule_cut=cut,
+        period_schedule=projected,
+        report_scheduled=net,
+    )
+    assert cuts.projected_after(at, cut, contract=CONTRACT_KEY, obligation="S") == projected

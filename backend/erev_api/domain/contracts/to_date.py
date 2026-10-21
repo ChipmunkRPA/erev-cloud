@@ -114,6 +114,7 @@ PROGRESS: Final = "progress_ratio"
 REALISED: Final = "realised_allocation"
 FIXED_ALLOCATION: Final = "fixed_allocation"
 SCHEDULED_REMAINDER: Final = "scheduled_remainder"
+REPORT_SCHEDULED: Final = "scheduled_reporting_remainder"
 FIXED_SCHEDULE: Final = "scheduled_fixed_amount"
 DATED_SCHEDULE: Final = "scheduled_fixed_at_cut"
 PERIOD_SCHEDULE: Final = "scheduled_period_at_cut"
@@ -125,7 +126,15 @@ FIXED: Final = "#FIXED"  # the component of the returns reduction (ENGINE_SPEC_B
 REDUCE: Final = "REDUCE_CONTRACT_QUANTITY"  # POL-053
 STATE: Final = "-"  # the period slot of a version-state node (ENGINE_SPEC CV-50)
 # The obligation measures read by date: each of their period nodes carries its period's end.
-DATED: Final = (REVENUE, BILLED, PROGRESS, REALISED, FIXED_ALLOCATION, SCHEDULED_REMAINDER)
+DATED: Final = (
+    REVENUE,
+    BILLED,
+    PROGRESS,
+    REALISED,
+    FIXED_ALLOCATION,
+    SCHEDULED_REMAINDER,
+    REPORT_SCHEDULED,
+)
 # The ``<contract>@<entity>`` measures read by the period key of that subject's cut.
 KEYED: Final = (RELEASE,)
 # The two parts of an obligation's remainder (04 T-CON-11). ``SCHEDULED`` is also the measure of
@@ -972,6 +981,7 @@ class ObligationAt:
     fixed_schedule_cut: date | None = None
     period_schedule: tuple[tuple[str, date, Decimal], ...] | None = None
     projection_error: str | None = None
+    report_scheduled: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1208,6 +1218,27 @@ def version_at(
             )
         else:
             scheduled, awaiting = remainder_at(row, delta + shift, named, day, pattern)
+        report_scheduled = None
+        report_state = nodes.states.get(f"{REPORT_SCHEDULED}:{subject}")
+        if report_state is not None:
+            if not _measures(nodes, REPORT_SCHEDULED, subject):
+                raise Unreadable(
+                    f"obligations[{subject}].{REPORT_SCHEDULED}",
+                    "Reporting remainder lacks its original dated series.",
+                )
+            report_scheduled, _ = _read(
+                nodes, REPORT_SCHEDULED, subject, day, named, stored=Decimal(report_state[0])
+            )
+            if not ZERO <= report_scheduled <= scheduled:
+                raise Unreadable(
+                    f"obligations[{subject}].{REPORT_SCHEDULED}",
+                    "Reporting remainder is outside the retained scheduled balance.",
+                )
+        elif _measures(nodes, REPORT_SCHEDULED, subject):
+            raise Unreadable(
+                f"obligations[{subject}].{REPORT_SCHEDULED}",
+                "Reporting remainder lacks its retained version state.",
+            )
         schedule_cut = None if revenue_at is None else revenue_at.end
         dated_schedule = (
             None
@@ -1240,6 +1271,7 @@ def version_at(
             period_schedule=None
             if schedule_cut is None
             else (nodes.period_schedule or {}).get(subject, {}).get(schedule_cut),
+            report_scheduled=report_scheduled,
             projection_error=None
             if schedule_cut is None
             else (nodes.projection_errors or {}).get(subject, {}).get(schedule_cut),
