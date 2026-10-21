@@ -188,6 +188,7 @@ KEY_COLUMNS: Final[Mapping[str, KeySpec]] = {
             "modifications",
             "vc_estimate_changes",
             "exemptions",
+            "eligibility_changes",
             "late_events",  # ENGINE_SPEC_B S15-R-12 rev 1.161 (item RPT-RPO-ROLLFWD-1)
             "revenue",
             "cancellations",

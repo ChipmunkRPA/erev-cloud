@@ -81,6 +81,9 @@ def test_transaction_report_retains_offsetting_monthly_gaps_and_legacy_binding(m
     assert all(g["currency"] == g["translated_currency"] == "EUR" for g in gaps)
     assert all(g["movement"] == g["translated_movement"] for g in gaps)
     assert days[1] in measured[-1][eid]
+    assert sources.evidence["rpo_eligibility_changes_v1"] is True
+    assert "eligibility_changes" in {column.key for column in result.columns}
+    assert any(row.get("line_code") == "ELIGIBILITY_CHANGES" for row in result.rows)
     assert sources.evidence["rpo_transaction_monthly_gaps_v1"] is True
     binding = SourceBinding(now, {}, {}, frozenset(), evidence=sources.evidence)
     rerun = report.build(
@@ -91,6 +94,8 @@ def test_transaction_report_retains_offsetting_monthly_gaps_and_legacy_binding(m
         SimpleNamespace(session=object()),
         replace(params, binding=replace(binding, evidence={}), sources=None),
     )
+    assert "eligibility_changes" not in {column.key for column in legacy.columns}
+    assert not any(row.get("line_code") == "ELIGIBILITY_CHANGES" for row in legacy.rows)
     assert legacy.tie_out_results[0]["result"] == tie_outs.PASS
     assert "unexplained_details" not in legacy.control_totals
     assert measured[-1][eid] == (days[0], days[2])

@@ -1109,6 +1109,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "before-state and traced realized amounts are required; original amendments "
             "remain separate and retained fee corrections use the cancelled chain; "
             "missing evidence and older bindings retain their previous eligibility",
+            "rpo_eligibility_changes_v1 separately reports retained collectibility exits and "
+            "criteria-met re-entry as contract eligibility changes; unchanged fixed "
+            "allocation and dated realized evidence are required at exit; re-entry includes "
+            "only the remaining balance and excludes prior-segment revenue; old bindings "
+            "retain their original classification and report columns",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

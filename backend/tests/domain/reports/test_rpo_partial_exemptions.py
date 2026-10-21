@@ -520,11 +520,12 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
         assert updated.lines == expected
 
 
+@pytest.mark.parametrize("eligibility", [False, True])
 @pytest.mark.parametrize("realized_fees", [False, True])
 @pytest.mark.parametrize("repeated", [False, True])
 @pytest.mark.parametrize("start_after_cancellation", [False, True])
 def test_reentry_uses_remaining_balance_and_segment_revenue(
-    repeated: bool, start_after_cancellation: bool, realized_fees: bool
+    repeated: bool, start_after_cancellation: bool, realized_fees: bool, eligibility: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
 
@@ -551,9 +552,15 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
             vid,
             gid,
             index + 1,
-            True,
+            not cancelled if eligibility else True,
             effective,
-            frozenset({"CONTRACT_TERMINATED" if cancelled else "CONTRACT_ACTIVATED"}),
+            frozenset(
+                {"COLLECTIBILITY_ASSESSED" if cancelled else "CONTRACT_CRITERIA_MET"}
+                if eligibility
+                else {"CONTRACT_TERMINATED" if cancelled else "CONTRACT_ACTIVATED"}
+            ),
+            entries=((cid, effective),) if eligibility and not cancelled else (),
+            eligibility_exits=((cid, effective),) if eligibility and cancelled else (),
         )
         versions.append(version)
         ob = rpo._Ob(
@@ -574,7 +581,7 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
             date(2028, 12, 31),
             date(2026, 1, 1),
             Decimal(100),
-            cancelled,
+            cancelled and not eligibility,
         )
         obligations[vid] = (ob,)
         for day in days:
@@ -619,18 +626,25 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
                         realised_traced=True,
                     )
                 }
+    if eligibility and not realized_fees:
+        cuts = {
+            key: {oid: replace(point[oid], fixed_allocation=Decimal(100), realised_traced=True)}
+            for key, point in cuts.items()
+        }
     chain = tuple(versions)
     store = rpo.Store({gid: chain}, obligations, {cid: chain}, cuts)
     (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
     assert result.lines["OPENING"] == (
         0 if start_after_cancellation else 60 + (20 if realized_fees else 0)
     )
-    assert result.lines["CANCELLATIONS"] == (
-        (0 if start_after_cancellation else -55 - (25 if realized_fees else 0))
-        + (-40 - (35 if realized_fees else 0) if repeated else 0)
+    expected_exits = (0 if start_after_cancellation else -55 - (25 if realized_fees else 0)) + (
+        -40 - (35 if realized_fees else 0) if repeated else 0
     )
-    assert result.lines["NEW_CONTRACTS"] == (80 if repeated else 50) + (
-        (70 if repeated else 30) if realized_fees else 0
+    expected_entries = (80 if repeated else 50) + ((70 if repeated else 30) if realized_fees else 0)
+    assert result.lines["CANCELLATIONS"] == (0 if eligibility else expected_exits)
+    assert result.lines["NEW_CONTRACTS"] == (0 if eligibility else expected_entries)
+    assert result.lines["ELIGIBILITY_CHANGES"] == (
+        expected_entries + expected_exits if eligibility else 0
     )
     assert result.lines["REVENUE"] == (
         (0 if start_after_cancellation else -5) + (-20 if repeated else -10)
@@ -642,7 +656,26 @@ def test_reentry_uses_remaining_balance_and_segment_revenue(
     )
     assert result.lines["UNEXPLAINED"] == 0
 
-    if realized_fees:
+    if eligibility and start_after_cancellation and not repeated:
+        # A first-ever criteria admission has no earlier included segment and is
+        # still a new contract, even if a not-a-contract version already exists.
+        first_chain = chain[1:]
+        (first_admission,) = rpo.rollforward_lines(
+            replace(store, versions={gid: first_chain}, chains={cid: first_chain}),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert first_admission.lines["ELIGIBILITY_CHANGES"] == 0
+        assert first_admission.lines["NEW_CONTRACTS"] > 0
+    if eligibility:
+        (legacy,) = rpo.rollforward_lines(
+            replace(store, classify_eligibility_changes=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert legacy.lines["ELIGIBILITY_CHANGES"] == 0
+        assert legacy.lines != result.lines
+    elif realized_fees:
         (legacy,) = rpo.rollforward_lines(
             replace(store, classify_usage_reentry=False),
             ranges={eid: (before, end)},

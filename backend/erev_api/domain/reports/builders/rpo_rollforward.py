@@ -40,6 +40,7 @@ LABELS: Final[Mapping[str, str]] = {
     "MODIFICATIONS": "Modifications",
     "VC_ESTIMATE_CHANGES": "Variable consideration estimate changes",
     "EXEMPTIONS": "Disclosure exemption changes",
+    "ELIGIBILITY_CHANGES": "Contract eligibility changes",
     "LATE_EVENTS": "Late events",
     "REVENUE": "Revenue recognized",
     "CANCELLATIONS": "Cancellations and terminations",
@@ -67,12 +68,21 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     found, periods, before = balances.ranges(session, params)
     view = str(params.parameters.get("currency_view") or "transaction")
     converted = view != "transaction"
-    codes = (
+    codes: tuple[str, ...] = (
         ("OPENING", *rpo.MOVEMENTS, "ROUNDING", "UNEXPLAINED", "CLOSING")
         if converted
         else rpo.ROLLFORWARD_LINES
     )
-    movements = (*rpo.MOVEMENTS, "ROUNDING") if converted else rpo.MOVEMENTS
+    movements: tuple[str, ...] = (*rpo.MOVEMENTS, "ROUNDING") if converted else rpo.MOVEMENTS
+    eligibility_key = "rpo_eligibility_changes_v1"
+    eligibility = params.binding is None or eligibility_key in params.binding.evidence
+    columns = COLUMNS
+    if not eligibility:
+        codes = tuple(code for code in codes if code != "ELIGIBILITY_CHANGES")
+        movements = tuple(code for code in movements if code != "ELIGIBILITY_CHANGES")
+        columns = tuple(column for column in columns if column.key != "eligibility_changes")
+    elif params.sources is not None:
+        params.sources.record_evidence(eligibility_key, True)
     ranges: dict[UUID, tuple[date, date]] = {
         entity.id: (periods[entity.id][0].start - timedelta(days=1), periods[entity.id][-1].end)
         for entity in found
@@ -82,6 +92,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     store = rpo.load(
         session, entity_ids=params.entity_ids, book_code=book_code, cutoff=cutoff, params=params
     )
+    store = replace(store, classify_eligibility_changes=eligibility)
     addition_evidence = "rpo_added_obligations_v1"
     store = replace(
         store,
@@ -423,9 +434,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         if found_item.exemption is None:
             add(report_total, found_item.ob.currency, found_item.total)
     return ReportData(
-        columns=(*COLUMNS[:-2], Column("rounding", LABELS["ROUNDING"], "money"), *COLUMNS[-2:])
+        columns=(*columns[:-2], Column("rounding", LABELS["ROUNDING"], "money"), *columns[-2:])
         if converted
-        else COLUMNS,
+        else columns,
         rows=tuple(rows),
         control_totals={
             **(

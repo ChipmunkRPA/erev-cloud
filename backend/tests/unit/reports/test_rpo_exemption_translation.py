@@ -11,8 +11,11 @@ from erev_api.domain.reports import reporting_currency, rpo_rollforward_currency
 from erev_api.domain.reports.builders import ReportParams, rpo
 
 
+@pytest.mark.parametrize("eligibility", [False, True])
 @pytest.mark.parametrize("view", ["functional", "reporting"])
-def test_exemption_round_trip_keeps_both_months_and_their_original_rates(monkeypatch, view) -> None:
+def test_exemption_round_trip_keeps_both_months_and_their_original_rates(
+    monkeypatch, view, eligibility
+) -> None:
     eid, cid, oid, gid, tenant_id = (uuid4() for _ in range(5))
     days = (date(2026, 1, 31), date(2026, 2, 28), date(2026, 3, 31))
     periods = tuple(
@@ -20,7 +23,20 @@ def test_exemption_round_trip_keeps_both_months_and_their_original_rates(monkeyp
         for n, day in enumerate(days, 1)
     )
     versions = tuple(
-        rpo._Version(uuid4(), gid, n, True, day.replace(day=1), frozenset({"CONTRACT_AMENDED"}))
+        rpo._Version(
+            uuid4(),
+            gid,
+            n,
+            n != 2 if eligibility else True,
+            day.replace(day=1),
+            frozenset(
+                {"COLLECTIBILITY_ASSESSED" if n == 2 else "CONTRACT_CRITERIA_MET"}
+                if eligibility
+                else {"CONTRACT_AMENDED"}
+            ),
+            entries=((cid, day.replace(day=1)),) if eligibility and n != 2 else (),
+            eligibility_exits=((cid, day.replace(day=1)),) if eligibility and n == 2 else (),
+        )
         for n, day in enumerate(days, 1)
     )
     obligations = {}
@@ -40,14 +56,22 @@ def test_exemption_round_trip_keeps_both_months_and_their_original_rates(monkeyp
             eid,
             "E",
             "EUR",
-            "RIGHT_TO_INVOICE" if n == 1 else "POINT_IN_TIME",
+            "RIGHT_TO_INVOICE" if n == 1 and not eligibility else "POINT_IN_TIME",
             date(2028, 12, 31),
             date(2026, 1, 1),
             Decimal(100),
             False,
         )
         obligations[version.id] = (ob,)
-        at = ObligationAt(*(Decimal(0) for _ in range(7)), Decimal(100), "UNSATISFIED", None, None)
+        at = ObligationAt(
+            *(Decimal(0) for _ in range(7)),
+            Decimal(100),
+            "UNSATISFIED",
+            None,
+            None,
+            fixed_allocation=Decimal(100),
+            realised_traced=True,
+        )
         for day in (*days, *(v.effective for v in versions)):
             cuts[version.id, day] = {oid: at}
     store = rpo.Store({gid: versions}, obligations, {cid: versions}, cuts)
@@ -87,9 +111,14 @@ def test_exemption_round_trip_keeps_both_months_and_their_original_rates(monkeyp
     reporting = view == "reporting"
     assert shown.lines["OPENING"] == (77 if reporting else 110)
     assert shown.lines["CLOSING"] == (Decimal("101.50") if reporting else 145)
-    assert shown.lines["EXEMPTIONS"] == (16 if reporting else 20)
+    movement = "ELIGIBILITY_CHANGES" if eligibility else "EXEMPTIONS"
+    assert shown.lines[movement] == (16 if reporting else 20)
     assert shown.lines["FX"] == (Decimal("8.50") if reporting else 15)
     assert shown.lines["ROUNDING"] == 0
+    if eligibility:
+        assert shown.lines["EXEMPTIONS"] == 0
+        assert details == []
+        return
     assert [
         (d["period"], Decimal(d["movement"]), Decimal(d["translated_movement"])) for d in details
     ] == [

@@ -20,6 +20,28 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## RPO contract eligibility changes — October 21, 2026
+
+- New RPO runs show ELIGIBILITY_CHANGES separately from new contracts, legal termination and
+  disclosure exemptions. A retained collectibility exit requires an original not-probable event
+  in the selected book at the version date, unchanged fixed allocation and dated realization.
+  Criteria-met re-entry carries the remaining balance, excluding already recognized revenue
+  and fees from earlier excluded segments. Repeated supported exits/re-entry are handled; a
+  first-ever criteria admission remains NEW_CONTRACTS.
+- The original Step 1 engine journey exits with opening RPO 1,100 and re-enters with 900: the
+  net eligibility movement is -200, with no new-contract or termination amount and no unexplained
+  difference. Repeated segments, start-after-exit and realized fees have targeted witnesses;
+  monthly functional/reporting translation uses each month's retained average rates.
+- New bindings retain rpo_eligibility_changes_v1. Older bindings keep their original calculation
+  and columns. Generic output rows/columns and re-lock comparison include the new monetary line;
+  migration 0266 updates IPE. Targeted RPO checks, the public rollforward path, lint/types and
+  reversible migration/catalogue parity pass.
+- Fully terminated contracts cannot be reactivated by the product. Earlier supplied re-entry
+  fixtures did not prove that workflow. Mixed eligibility exits with price/estimate changes,
+  multiple transitions inside one initial computation and B4-11 commit visibility remain open.
+  The new eligibility journey uses original engine outputs; a public reassessment-to-report
+  journey is still unverified. No deployment.
+
 ## Public same-day usage, estimate and price-change sequence — October 21, 2026
 
 - Extended the public termination journey with an approved 200 bonus estimate and 100 price
@@ -196,41 +218,6 @@ review and publish changes without PR accumulation, and do not deploy.
   contract's aging and show member allocation adjustments separately. The policy question is
   resolved; implementation remains outstanding. After this current RPO fix is published,
   pause development as requested; do not start the aging implementation until resumed.
-
-## Same-day RPO entry/cancellation survives later versions — October 20, 2026
-
-- RPO rollforward now preserves the original gross entry, revenue and cancellation when a
-  fixed contract activates and terminates on the same day and later retained versions exist.
-  Previously the single-version gate could silently omit all three movements despite a zero
-  closing balance. Later memo versions retain the original movements; later disclosure re-entry
-  adds only the remaining balance and does not recognize the earlier revenue twice.
-- New bindings retain rpo_same_day_entry_chains_v1; legacy bindings keep the single-version
-  eligibility. Original dated termination/realization requirements and competing-cause guards
-  remain in force. Migration 0258 records the rule in the report IPE catalogue.
-- Original engine termination witnesses with zero/40 refunds cover later memo and re-entry
-  read-layer versions, legacy behavior and absent boundary evidence. The 74-case related suite
-  had 73 passes and one overly broad legacy assertion; corrected scoped cases pass. Public
-  currency report/retained-rate rerun, lint/types and migration down/up exact catalogue parity
-  pass. Later versions are supplied read-layer witnesses, not new public lifecycle commands.
-- Intervening versions before termination, mixed same-day entry causes, broader repeated
-  cancellation/re-entry, B4-11 concurrent commit visibility, combined-member aging ownership,
-  independent accounting sign-off and final-candidate checks remain open. No deployment.
-
-## Retained RPO FX evidence is readable in viewers and exports — October 20, 2026
-
-- RPO and RPO rollforward viewers now expose retained exchange-rate legs by entity,
-  period, source/target currency and average/closing basis, with original rate IDs,
-  rate-set versions and knowledge cutoffs. Exact rate strings are not money-rounded.
-- Standalone and packed XLSX exports present the same retained legs as structured tables;
-  PDF includes labeled rate details. Excel stores rates as text to preserve decimal precision.
-  Unknown legacy export shapes retain their generic control presentation. No new FX reads,
-  accounting calculations, binding changes or database migration are introduced.
-- Two viewer cases and two export cases pass, including 18-decimal precision, original
-  version identity, same-currency legs and spreadsheet formula escaping. Scoped lint and
-  backend/frontend type checks pass.
-- Complex RPO lifecycle attribution, B4-11 concurrent commit visibility, combined-member
-  aging ownership, independent accounting sign-off and final-candidate checks remain open.
-  This presentation improvement does not close those gaps. Direct main; no deployment.
 
 ## Outstanding release verification
 

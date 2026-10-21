@@ -197,6 +197,7 @@ ROLLFORWARD_LINES: Final = (
     "MODIFICATIONS",
     "VC_ESTIMATE_CHANGES",
     "EXEMPTIONS",
+    "ELIGIBILITY_CHANGES",
     "LATE_EVENTS",
     "REVENUE",
     "CANCELLATIONS",
@@ -209,6 +210,7 @@ MOVEMENTS: Final = (
     "MODIFICATIONS",
     "VC_ESTIMATE_CHANGES",
     "EXEMPTIONS",
+    "ELIGIBILITY_CHANGES",
     "LATE_EVENTS",
     "REVENUE",
     "CANCELLATIONS",
@@ -291,6 +293,7 @@ class _Version:
     cancellation_events: frozenset[str] = frozenset()
     estimate_order: tuple[tuple[str, int], ...] = ()
     entry_order: tuple[tuple[UUID, int], ...] = ()
+    eligibility_exits: tuple[tuple[UUID, date], ...] = ()
 
 
 @dataclass(slots=True)
@@ -364,6 +367,7 @@ class Store:
     classify_same_day_entry_modifications: bool = field(default=True, kw_only=True)
     classify_same_day_entry_estimates: bool = field(default=True, kw_only=True)
     classify_same_day_entry_usage: bool = field(default=True, kw_only=True)
+    classify_eligibility_changes: bool = field(default=True, kw_only=True)
     inception_estimate_events: set[tuple[UUID, str]] = field(default_factory=set, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
@@ -473,6 +477,7 @@ def load(
     boundary_keys: dict[UUID, str] = {}
     cancellation_keys: dict[UUID, str] = {}
     entry_sequences: dict[UUID, int] = {}
+    eligibility_exits: dict[UUID, tuple[UUID, date]] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -485,12 +490,22 @@ def load(
                 contract_event.c.record_seq,
                 contract.c.external_id,
                 contract_event.c.payload["book"].as_string().label("admitted_book"),
+                contract_event.c.payload["is_probable"].as_boolean().label("is_probable"),
             )
             .join(contract, contract.c.id == contract_event.c.contract_id)
             .where(contract_event.c.id.in_(event_ids))
         ).mappings():
             kind = str(getattr(found["event_type"], "value", found["event_type"]))
             events[UUID(str(found["id"]))] = (kind, found["effective_date"])
+            if (
+                kind == "COLLECTIBILITY_ASSESSED"
+                and found["admitted_book"] == book_code
+                and found["is_probable"] is False
+            ):
+                eligibility_exits[UUID(str(found["id"]))] = (
+                    UUID(str(found["contract_id"])),
+                    found["effective_date"],
+                )
             if kind == "ESTIMATE_CHANGED":
                 estimate_order[UUID(str(found["id"]))] = int(found["record_seq"])
                 estimate_keys[UUID(str(found["id"]))] = (
@@ -551,6 +566,11 @@ def load(
                 entry_order=tuple(
                     (cid, value[1])
                     for cid, value in sorted(orders.items(), key=lambda pair: str(pair[0]))
+                ),
+                eligibility_exits=tuple(
+                    eligibility_exits[UUID(str(item))]
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in eligibility_exits
                 ),
                 estimate_events=frozenset(
                     estimate_keys[UUID(str(item))]
@@ -1506,6 +1526,21 @@ def _obligation_lines(
     segment_start = before
     segment_opening = ZERO if opening is None else store.at(opening, before).revenue
     segment_has_opening = opening is not None
+    previously_included = False
+    if opening_version is not None:
+        for retained in store.chains.get(described.contract_id, ()):
+            if retained.id == opening_version.id:
+                break
+            if retained.included and any(
+                ob.obligation_id == obligation_id for ob in store.obligations.get(retained.id, ())
+            ):
+                previously_included = True
+    outside_scope = bool(
+        previously_included
+        and store.classify_eligibility_changes
+        and opening_version is not None
+        and not opening_version.included
+    )
     was_cancelled = (
         opening is None
         and opening_version is not None
@@ -1724,6 +1759,50 @@ def _obligation_lines(
         current = _in_version(store, version, obligation_id)
         if same_day_entry is not None and same_day_entry.version_id == version.id:
             current = same_day_entry
+        if (
+            store.classify_eligibility_changes
+            and previous_obligation is not None
+            and not version.included
+            and version.eligibility_exits.count(
+                (previous_obligation.contract_id, version.effective)
+            )
+            == 1
+            and "COLLECTIBILITY_ASSESSED" in version.causes
+            and version.causes
+            <= {"COLLECTIBILITY_ASSESSED", "SIGNIFICANT_CHANGE_FLAGGED", "MEMO_ADDED"}
+        ):
+            # The retained excluded computation still carries recognition through
+            # the exit. Do not present loss of eligibility as a legal termination.
+            exiting = next(
+                (
+                    ob
+                    for ob in store.obligations.get(version.id, ())
+                    if ob.obligation_id == obligation_id
+                ),
+                None,
+            )
+            if (
+                exiting is not None
+                and not exiting.cancelled
+                and fixed(exiting, version.effective) == previous
+                and store.at(exiting, end).realised_traced
+            ):
+                revenue = recognition(exiting, version.effective)
+                realized = store.at(exiting, version.effective).realised
+                lines["ELIGIBILITY_CHANGES"] -= previous + realized - revenue
+                lines["VC_ESTIMATE_CHANGES"] += realized
+                outside_scope = True
+                previous = ZERO
+                previous_obligation = None
+                previous_version = version
+                continue
+        eligibility_entry = bool(
+            outside_scope
+            and current is not None
+            and "CONTRACT_CRITERIA_MET" in version.causes
+            and any(cid == current.contract_id for cid, _ in version.entries)
+        )
+        entry_line = "ELIGIBILITY_CHANGES" if eligibility_entry else "NEW_CONTRACTS"
         # A new obligation in an already disclosed contract is a movement of that
         # contract. Its absent opening obligation does not make it a new contract.
         admission = previous_obligation is None and (
@@ -1736,20 +1815,25 @@ def _obligation_lines(
                 and any(contract_id == current.contract_id for contract_id, _ in version.entries)
             )
         )
-        reentry = current is not None and previous_obligation is None and was_cancelled
+        reentry = (
+            current is not None
+            and previous_obligation is None
+            and (was_cancelled or eligibility_entry)
+        )
         if current is not None:
             if terminal_cancellation is not None:
                 settle_batch_usage()
                 lines["CANCELLATIONS"] += recognition(terminal_cancellation, version.effective)
                 terminal_cancellation = None
-            if previous_obligation is None and was_cancelled:
+            if previous_obligation is None and (was_cancelled or eligibility_entry):
                 # Re-entry admits the remaining balance, not revenue recognized
                 # before this new disclosure segment (including while excluded).
                 segment_start = version.effective
                 segment_opening = store.at(current, segment_start).revenue
                 segment_has_opening = True
-                lines["NEW_CONTRACTS"] -= segment_opening
+                lines[entry_line] -= segment_opening
                 was_cancelled = False
+                outside_scope = False
         elif terminal_cancellation is not None:
             terminal_cancellation = next(
                 (
@@ -1819,7 +1903,7 @@ def _obligation_lines(
             )
             if reentry and store.classify_usage_reentry and store.at(current, end).realised_traced:
                 entry_realised = store.at(current, version.effective).realised
-            lines["NEW_CONTRACTS"] += entry_realised
+            lines[entry_line] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)
             boundaries = store.boundaries.get(version.id, {}).get(subject, ())
@@ -1941,7 +2025,7 @@ def _obligation_lines(
             lines["VC_ESTIMATE_CHANGES"] += removed
         delta = allocated - previous
         if admission:
-            line: str | None = "NEW_CONTRACTS"
+            line: str | None = entry_line
         else:
             realised_is_separate = current is not None and store.at(current, end).realised_traced
             causes = {
