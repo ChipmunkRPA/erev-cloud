@@ -1769,6 +1769,7 @@ def _emit_rpo_event_positions(
     if not any(event.event_type == "COLLECTIBILITY_ASSESSED" for event in events):
         return
     kinds = {
+        "CONTRACT_ACTIVATED",
         "CONTRACT_CRITERIA_MET",
         "COLLECTIBILITY_ASSESSED",
         "CONTRACT_AMENDED",

@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Ordered initial-batch RPO attribution — October 21, 2026
+
+- Reporting now consumes original event-position amounts for initial computations containing
+  eligibility transitions and monetary events. It orders actual transitions, amendments,
+  estimates and usage by original date/sequence/key, preserving one computation identity.
+  Changes before exit are modification/VC movements; changes while excluded enter through
+  the remaining re-entry balance. Multiple transitions on one date no longer require a
+  date-end proxy. Revenue after re-entry uses its original event-position opening amount.
+- Original position metadata is checked against immutable events. Required missing
+  obligation positions refuse rather than use day-end amounts. Later retained computations
+  load positional evidence for restated segment openings. Old traces retain supported older
+  timeline behavior; old bound runs do not enable the new ordered-evidence feature.
+- Migration 0272 records this interpretation for RPO and rollforward. Both catalogue
+  definitions match migration upgrade/downgrade. Thirty scoped original-engine/report checks
+  pass, including 12 same-day usage/estimate/amendment cases before/after exit, with/without
+  re-entry. The public sequential collectibility/re-entry and bound rerun check passes;
+  scoped lint/types pass. Changes publish directly to main; no deployment.
+- Remaining: public initial mixed-batch end-to-end coverage, return-path positional
+  rates/estimates (not substituted), full royalty eligibility lifecycle coverage, and B4-11
+  arbitrary historical commit visibility. This increment does not claim repository completion.
+
 ## Original event-position amounts for RPO — October 21, 2026
 
 - Stage 09 retains before/after fixed allocation, realized consideration and cumulative

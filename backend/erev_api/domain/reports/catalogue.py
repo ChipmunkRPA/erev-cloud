@@ -918,6 +918,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "re-entry balance; original date evidence is required and missing values are not "
             "replaced by month-end amounts; same-day ordered limitations remain; older "
             "bindings keep their prior timeline",
+            "rpo_initial_ordered_timeline_v1 attributes initial eligibility and monetary events "
+            "in original date, record sequence and event-key order; original before/after "
+            "allocation, realization and revenue evidence separates same-day exits and "
+            "re-entries; changes while excluded enter with the remaining re-entry balance; "
+            "missing required positions are not replaced with day-end amounts; historical "
+            "bindings preserve their original timeline",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -1167,6 +1173,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "re-entry balance; original date evidence is required and missing values are not "
             "replaced by month-end amounts; same-day ordered limitations remain; older "
             "bindings keep their prior timeline",
+            "rpo_initial_ordered_timeline_v1 attributes initial eligibility and monetary events "
+            "in original date, record sequence and event-key order; original before/after "
+            "allocation, realization and revenue evidence separates same-day exits and "
+            "re-entries; changes while excluded enter with the remaining re-entry balance; "
+            "missing required positions are not replaced with day-end amounts; historical "
+            "bindings preserve their original timeline",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

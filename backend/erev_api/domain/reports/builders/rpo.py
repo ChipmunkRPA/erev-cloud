@@ -132,6 +132,7 @@ from erev_api.domain.reports import (
     rpo_currency,
     rpo_duration,
     rpo_estimate_changes,
+    rpo_positions,
     rpo_quotas,
     rpo_realised_dates,
     tie_outs,
@@ -300,6 +301,7 @@ class _Version:
     cause_events: frozenset[str] = frozenset()
     dated_slice: bool = False
     usage_slice: bool = False
+    position_event: str | None = None
 
 
 @dataclass(slots=True)
@@ -389,7 +391,23 @@ class Store:
 
     realised_dates: dict[UUID, Mapping[str, Mapping[date, Decimal]]] = field(default_factory=dict)
 
-    def realised_boundary(self, ob: _Ob, day: date) -> Decimal:
+    positions: dict[UUID, Mapping[str, Mapping[tuple[str, str], rpo_positions.Point]]] = field(
+        default_factory=dict
+    )
+
+    def position(self, ob: _Ob, event: str) -> rpo_positions.Point:
+        subject = obligation_subject_key(ob.external_id, ob.obligation_key)
+        point = self.positions.get(ob.version_id, {}).get(subject, {}).get((event, "after"))
+        if point is None:
+            raise to_date.Unreadable(
+                f"obligations[{ob.obligation_key}].event_position",
+                "Original event-position evidence is required for ordered eligibility attribution.",
+            )
+        return point
+
+    def realised_boundary(self, ob: _Ob, day: date, version: _Version | None = None) -> Decimal:
+        if version is not None and version.position_event is not None:
+            return self.position(ob, version.position_event).realised
         if not any(v.id == ob.version_id and v.usage_slice for v in self.chains[ob.contract_id]):
             return self.at(ob, day).realised
         subject = obligation_subject_key(ob.external_id, ob.obligation_key)
@@ -795,7 +813,13 @@ def load(
     usage_timeline = (
         params is None or params.binding is None or usage_key in params.binding.evidence
     )
+    ordered_key = "rpo_initial_ordered_timeline_v1"
+    ordered_timeline = (
+        params is None or params.binding is None or ordered_key in params.binding.evidence
+    )
     if timelines:
+        if ordered_timeline and params is not None and params.sources is not None:
+            params.sources.record_evidence(ordered_key, True)
         if usage_timeline and params is not None and params.sources is not None:
             params.sources.record_evidence(usage_key, True)
         if mixed_timeline and params is not None and params.sources is not None:
@@ -813,7 +837,13 @@ def load(
             if trace is None:
                 continue
             expanded = initial_eligibility_timeline(
-                first, cid, trace, status_events, mixed=mixed_timeline, usage=usage_timeline
+                first,
+                cid,
+                trace,
+                status_events,
+                mixed=mixed_timeline,
+                usage=usage_timeline,
+                ordered=ordered_timeline,
             )
             if expanded is not None:
                 chains[cid] = (*expanded, *chain[1:])
@@ -832,6 +862,7 @@ def initial_eligibility_timeline(
     *,
     mixed: bool = False,
     usage: bool = False,
+    ordered: bool = False,
 ) -> tuple[_Version, ...] | None:
     """Read status slices of one original computation without inventing new computations."""
     money_kinds = {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"} | (
@@ -896,15 +927,92 @@ def initial_eligibility_timeline(
                 entries=((contract_id, day),) if now else (),
                 entry_order=((contract_id, sequence),) if now else (),
                 eligibility_exits=() if now else ((contract_id, day),),
+                position_event=key if ordered else None,
             )
         )
         included = now
     # One admission already has the ordinary first-entry behavior.
     if len(result) < 2:
         return None
+    if ordered:
+        expanded = _ordered_timeline(version, contract_id, trace, events, result, money_kinds)
+        if expanded is not None:
+            return expanded
+        result = [dataclasses.replace(item, position_event=None) for item in result]
     if not version.causes & money_kinds:
         return tuple(result)
     return _monetary_timeline(version, contract_id, trace, events, result, usage=usage)
+
+
+def _ordered_timeline(
+    version: _Version,
+    contract_id: UUID,
+    trace: Trace,
+    events: Mapping[str, tuple[UUID, str, date, int]],
+    statuses: Sequence[_Version],
+    money_kinds: set[str],
+) -> tuple[_Version, ...] | None:
+    """Merge actual eligibility transitions and monetary events in original engine order."""
+    if not version.cause_events or not version.cause_events <= events.keys():
+        return None
+    transitions = {v.position_event: v for v in statuses}
+    candidates = {
+        key: event
+        for key, event in events.items()
+        if event[0] == contract_id
+        and (key in transitions or (key in version.cause_events and event[1] in money_kinds))
+    }
+    evidence = rpo_positions.history(trace)
+    included = False
+    admitted = False
+    result: list[_Version] = []
+    for key, (_, kind, day, seq) in sorted(
+        candidates.items(), key=lambda item: (item[1][2], item[1][3], item[0])
+    ):
+        transition = transitions.get(key)
+        if transition is not None:
+            included = transition.included
+            admitted = True
+        if not admitted or (
+            kind == "ESTIMATE_CHANGED" and rpo_estimate_changes.at_inception(trace, key)
+        ):
+            continue
+        # Only original evidence may unlock ordered reporting. Validate its event
+        # metadata against the immutable event table; per-obligation completeness
+        # is enforced when the report consumes a point.
+        found = False
+        for points in evidence.values():
+            for side in ("before", "after"):
+                point = points.get((key, side))
+                if point is not None:
+                    found = True
+                    if (point.day, point.record_seq, point.event_type) != (day, seq, kind):
+                        raise Problem(
+                            "validation-failed", "Original RPO position does not match its event."
+                        )
+        if not found:
+            return None
+        estimates = frozenset({key}) if kind == "ESTIMATE_CHANGED" else frozenset()
+        result.append(
+            dataclasses.replace(
+                version,
+                effective=day,
+                included=included,
+                causes=frozenset({kind}),
+                entries=transition.entries if transition else (),
+                entry_order=transition.entry_order if transition else (),
+                eligibility_exits=transition.eligibility_exits if transition else (),
+                estimate_events=estimates,
+                estimate_dates=((key, day),) if estimates else (),
+                estimate_order=((key, seq),) if estimates else (),
+                modification_events=frozenset({key}) if kind == "CONTRACT_AMENDED" else frozenset(),
+                cause_events=frozenset({key}),
+                dated_slice=True,
+                usage_slice="USAGE_REPORTED" in version.causes,
+                position_event=key,
+            )
+        )
+    return tuple(result)
 
 
 def _monetary_timeline(
@@ -1185,10 +1293,17 @@ def measure(
             if version is not None:
                 wanted.setdefault(version.id, set()).update(measured_days)
     store.cuts.update(cuts.obligations_at(session, wanted))
+    ordered_versions = {
+        version.id
+        for chain in store.chains.values()
+        if any(item.position_event is not None for item in chain)
+        for version in chain
+    }
     for chain in store.versions.values():
         for version in chain:
             if version.id not in wanted or not (
                 version.entries
+                or version.id in ordered_versions
                 or (store.classify_mixed_eligibility and version.eligibility_exits)
                 or any(
                     CAUSE_LINES.get(kind) in {"MODIFICATIONS", "CANCELLATIONS"}
@@ -1200,6 +1315,7 @@ def measure(
             if trace is not None:
                 store.boundaries[version.id] = rpo_boundary_changes.history(trace)
                 store.realised_dates[version.id] = rpo_realised_dates.history(trace)
+                store.positions[version.id] = rpo_positions.history(trace)
                 changes = rpo_estimate_changes.allocations(trace, version.estimate_events)
                 if changes is not None:
                     store.estimate_allocations[version.id] = changes
@@ -1805,7 +1921,9 @@ def _obligation_lines(
     if opening is not None:
         lines["OPENING"] = rpo_of(opening, before, DEFAULT_BANDS, store.at(opening, before))[0]
 
-    def fixed(ob: _Ob, day: date) -> Decimal:
+    def fixed(ob: _Ob, day: date, version: _Version | None = None) -> Decimal:
+        if version is not None and version.position_event is not None:
+            return store.position(ob, version.position_event).fixed
         at = store.at(ob, day)
         value = (
             ob.allocated - at.realised_stored
@@ -1856,6 +1974,7 @@ def _obligation_lines(
     batch_cancelled_usage: _Ob | None = None
     batch_usage_cut = end
     segment_start = before
+    segment_start_event: str | None = None
     segment_opening = ZERO if opening is None else store.at(opening, before).revenue
     segment_has_opening = opening is not None
     previously_included = False
@@ -1882,9 +2001,17 @@ def _obligation_lines(
         )
     )
 
-    def recognition(ob: _Ob, until: date) -> Decimal:
-        cumulative = store.at(ob, until).revenue
-        restated = store.at(ob, segment_start).revenue
+    def recognition(ob: _Ob, until: date, version: _Version | None = None) -> Decimal:
+        cumulative = (
+            store.position(ob, version.position_event).revenue
+            if version is not None and version.position_event is not None
+            else store.at(ob, until).revenue
+        )
+        restated = (
+            store.position(ob, segment_start_event).revenue
+            if segment_start_event is not None
+            else store.at(ob, segment_start).revenue
+        )
         lines["REVENUE"] -= cumulative - restated
         if segment_has_opening:
             lines["LATE_EVENTS"] -= restated - segment_opening
@@ -2120,18 +2247,18 @@ def _obligation_lines(
                         store,
                         version,
                         obligation_subject_key(exiting.external_id, exiting.obligation_key),
-                        fixed(exiting, version.effective) - previous,
+                        fixed(exiting, version.effective, version) - previous,
                     )
                 )
                 is not None
             ):
-                revenue = recognition(exiting, version.effective)
-                realized = store.realised_boundary(exiting, version.effective)
+                revenue = recognition(exiting, version.effective, version)
+                realized = store.realised_boundary(exiting, version.effective, version)
                 modified, estimate = separated
                 lines["MODIFICATIONS"] += modified
                 lines["VC_ESTIMATE_CHANGES"] += estimate
                 lines["ELIGIBILITY_CHANGES"] -= (
-                    fixed(exiting, version.effective) + realized - revenue
+                    fixed(exiting, version.effective, version) + realized - revenue
                 )
                 lines["VC_ESTIMATE_CHANGES"] += realized
                 outside_scope = True
@@ -2172,7 +2299,12 @@ def _obligation_lines(
                 # Re-entry admits the remaining balance, not revenue recognized
                 # before this new disclosure segment (including while excluded).
                 segment_start = version.effective
-                segment_opening = store.at(current, segment_start).revenue
+                segment_start_event = version.position_event
+                segment_opening = (
+                    store.position(current, segment_start_event).revenue
+                    if segment_start_event is not None
+                    else store.at(current, segment_start).revenue
+                )
                 segment_has_opening = True
                 lines[entry_line] -= segment_opening
                 was_cancelled = False
@@ -2189,7 +2321,7 @@ def _obligation_lines(
         allocated = (
             ZERO
             if current is None
-            else fixed(current, version.effective if version.dated_slice else end)
+            else fixed(current, version.effective if version.dated_slice else end, version)
         )
         if (
             current is not None
@@ -2248,10 +2380,16 @@ def _obligation_lines(
                 if store.at(current, end).realised_traced
                 else ZERO
             )
-            if version.usage_slice or (
-                reentry and store.classify_usage_reentry and store.at(current, end).realised_traced
+            if (
+                version.position_event is not None
+                or version.usage_slice
+                or (
+                    reentry
+                    and store.classify_usage_reentry
+                    and store.at(current, end).realised_traced
+                )
             ):
-                entry_realised = store.realised_boundary(current, version.effective)
+                entry_realised = store.realised_boundary(current, version.effective, version)
             lines[entry_line] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)
