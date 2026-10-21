@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Ordered Step 1 recognition freezes — October 21, 2026
+
+- The engine now preserves each actual Step 1 transition's original event order in its
+  internal contract state, alongside the existing date history. Recognition at an event
+  position observes only preceding status transitions. Once eligibility is lost, fixed,
+  usage and royalty recognition freeze immediately before that status event, excluding
+  later changes even when they share its date.
+- Same-day post-exit estimates retain a zero catch-up with explicit frozen evidence; a later
+  same-day criteria re-entry cannot retrospectively change that earlier estimate position.
+  The newer allocation remains available when recognition resumes. Date-only legacy
+  internal states preserve their earlier behavior. Book memo rebinding and original-cut
+  manual projection snapshots retain/filter the corresponding ordered history.
+- Four original-engine witnesses distinguish pre/post-exit usage, amendments and estimates
+  and a later same-day re-entry. The 91 scoped recognition, eligibility, estimate and book
+  checks pass, including existing memo reuse. Scoped lint/types pass. Public sequential
+  eligibility/rerun regression also passes.
+- This fixes the engine's frozen recognition semantics; Reporting still needs original
+  event-position monetary evidence before enabling the currently refused same-day batches.
+  Public mixed-batch and full royalty eligibility witnesses and B4-11 historical commit
+  visibility remain open. No deployment, schema or expanded approval requirement.
+
 ## Original-date usage across initial eligibility batches — October 21, 2026
 
 - Stage 09 now retains realized allocation at original contract-event dates for usage/royalty
@@ -198,22 +219,6 @@ review and publish changes without PR accumulation, and do not deploy.
   scoped lint/types, generated API parity, and migration round-trip/data-retention guard.
   Broader repeated cancellation/re-entry, combined same-day amendment/estimate/usage journeys
   and concurrent commit visibility remain open. No deployment.
-
-## Same-day RPO entry with realized usage — October 21, 2026
-
-- Same-day activation/termination can now retain gross new-contract amounts when usage is
-  present. Original termination before-state and traced realized fees are required; fixed entry,
-  original amendments, usage changes, recognition and cancellation remain distinct movements.
-  Later retained usage corrections adjust VC and cancellation without repeating entry/amendments.
-- New bindings retain rpo_same_day_entry_usage_v1 and require the existing batch cancelled-usage
-  decomposition. Missing realized evidence and older bindings preserve previous eligibility.
-  Migration 0263 records the matching IPE rule.
-- All 88 related cases, public currency/rate rerun, scoped lint/types and reversible migration
-  catalogue parity pass. The new same-day usage/mixed-amendment and retained-correction witnesses
-  use supplied boundary/cut evidence, not a new original-engine/public-command usage journey.
-- Original-engine/public-command coverage for these same-day usage mixtures remains outstanding,
-  along with broader repeated cancellation/re-entry and concurrent commit visibility. Continue
-  the October 21 repository-only scope; no deployment or independent accounting review gate.
 
 ## Outstanding release verification
 

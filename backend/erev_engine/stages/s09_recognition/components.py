@@ -81,6 +81,7 @@ __all__ = [
     "revenue_targets",
     "segment_target",
     "status_guard",
+    "status_boundary",
     "target_at",
     "validate",
 ]
@@ -245,6 +246,17 @@ def status_guard(ctx: BookContext, contract: ContractView, d: date) -> tuple[str
     After a recognising status turns ``NOT_A_CONTRACT``, the target stays frozen at C of the
     transition date (S02-R-05). Every other interval gives 0.
     """
+    guard, as_of, _ = status_boundary(ctx, contract, d)
+    return guard, as_of
+
+
+def status_boundary(
+    ctx: BookContext,
+    contract: ContractView,
+    d: date,
+    position: Position | None = None,
+) -> tuple[str | None, date, Position | None]:
+    """Status and the exact recognition-freeze position, when original ordering is retained."""
     history = contract.status_in_book.get(str(ctx.book_code))
     if history is None:
         raise EngineError(
@@ -253,21 +265,38 @@ def status_guard(ctx: BookContext, contract: ContractView, d: date) -> tuple[str
             subject_key=contract.header.external_id,
             detail={"rule": "S02-R-03", "book_code": str(ctx.book_code)},
         )
+    ordered = contract.status_positions.get(str(ctx.book_code))
+    if ordered is not None and tuple((key[0], status) for key, status in ordered) != history:
+        raise EngineError(
+            "ENGINE_INVARIANT_VIOLATED",
+            "ordered status history disagrees with its dates",
+            subject_key=contract.header.external_id,
+            detail={"rule": "S02-R-03"},
+        )
+    entries = (
+        ordered if ordered is not None else tuple(((day, 0, ""), status) for day, status in history)
+    )
     current: str | None = None
     frozen_at: date | None = None
-    for when, status in history:
+    frozen_position: Position | None = None
+    for key, status in entries:
+        when = key[0]
+        if ordered is not None and position is not None and not position.admits(key):
+            break
         if when > d:
             break
         if status == "NOT_A_CONTRACT" and current in RECOGNISING_STATUSES:
             frozen_at = when
+            frozen_position = Position(key, inclusive=False) if ordered is not None else None
         elif status != "NOT_A_CONTRACT":
             frozen_at = None
+            frozen_position = None
         current = status
     if current in RECOGNISING_STATUSES:
-        return None, d
+        return None, d, None
     if current == "NOT_A_CONTRACT" and frozen_at is not None:
-        return None, frozen_at
-    return f"V4:{current or 'NONE'}", d
+        return None, frozen_at, frozen_position
+    return f"V4:{current or 'NONE'}", d, None
 
 
 def segment_target(
@@ -671,7 +700,9 @@ class Evaluator:
 
     def _evaluate_segments(self, d: date, position: Position | None) -> Evaluation:
         ctx, st, contract, ob = self.ctx, self.st, self.contract, self.ob
-        guard, as_of = status_guard(ctx, contract, d)
+        guard, as_of, frozen_position = status_boundary(ctx, contract, d, position)
+        if frozen_position is not None:
+            position = frozen_position
         if (
             guard is None
             and ob.recognition_start_date is not None

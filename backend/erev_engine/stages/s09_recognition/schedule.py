@@ -1324,6 +1324,10 @@ def _emit_dated_schedule(
                     book: tuple((day, status) for day, status in history if day <= cut)
                     for book, history in evaluator.contract.status_in_book.items()
                 },
+                status_positions={
+                    book: tuple((key, status) for key, status in history if key[0] <= cut)
+                    for book, history in evaluator.contract.status_positions.items()
+                },
             )
             snapshot_ob = replace(
                 ob, segments=tuple(item for item in ob.segments if item.effective_date <= cut)

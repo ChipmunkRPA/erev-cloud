@@ -184,6 +184,7 @@ class PositionTarget:
     fixed_exact: Fraction  # E of the FIXED component, currency units
     fixed_posted: int  # C of the FIXED component, minor units
     complete: bool  # φ = 1 for the FIXED component
+    frozen: bool = False
 
 
 def target_at_position(
@@ -215,6 +216,7 @@ def target_at_position(
         fixed_exact=Fraction(0) if fixed is None else fixed.exact,
         fixed_posted=0 if fixed is None else fixed.posted,
         complete=fixed is not None and fixed.complete,
+        frozen=components.status_boundary(ctx, evaluator.contract, d, position)[2] is not None,
     )
 
 

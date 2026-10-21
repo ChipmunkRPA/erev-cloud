@@ -530,6 +530,7 @@ class ContractView:
     header: ContractInput  # judgements, material rights and modifications included
     booking: Mapping[str, object]  # CONTRACT_BOOKED payload, decimals as Fraction (CV-30)
     status_in_book: Mapping[str, tuple[tuple[date, str], ...]]  # book -> ascending (date, E-17)
+    status_positions: Mapping[str, tuple[tuple[OrderKey, str], ...]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

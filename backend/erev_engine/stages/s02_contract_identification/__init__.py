@@ -195,11 +195,22 @@ def run(
         else:
             points[contract_key] = ()
         segments = tuple((segment.from_date, segment.status) for segment in machine.segments)
+        event_orders = {event.event_key: event.order_key for event in cb.events}
+        positions = tuple(
+            (
+                event_orders[segment.from_event_key]
+                if segment.from_event_key is not None
+                else (segment.from_date, 0, ""),
+                segment.status,
+            )
+            for segment in machine.segments
+        )
         views.append(
             ContractView(
                 header=view.header,
                 booking=view.booking,
                 status_in_book=MappingProxyType({ctx.book_code: segments}),
+                status_positions=MappingProxyType({ctx.book_code: positions}),
             )
         )
     return IdentifiedState(

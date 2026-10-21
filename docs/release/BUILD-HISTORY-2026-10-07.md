@@ -10946,3 +10946,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   versions; no new public same-day contract-command journey is claimed.
 - Same-day usage mixtures, broader repeated cancellation/re-entry and concurrent commit visibility
   remain open. The October 21 repository-only scope continues; no deployment.
+
+## Same-day RPO entry with realized usage — October 21, 2026
+
+- Same-day activation/termination can now retain gross new-contract amounts when usage is
+  present. Original termination before-state and traced realized fees are required; fixed entry,
+  original amendments, usage changes, recognition and cancellation remain distinct movements.
+  Later retained usage corrections adjust VC and cancellation without repeating entry/amendments.
+- New bindings retain rpo_same_day_entry_usage_v1 and require the existing batch cancelled-usage
+  decomposition. Missing realized evidence and older bindings preserve previous eligibility.
+  Migration 0263 records the matching IPE rule.
+- All 88 related cases, public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass. The new same-day usage/mixed-amendment and retained-correction witnesses
+  use supplied boundary/cut evidence, not a new original-engine/public-command usage journey.
+- Original-engine/public-command coverage for these same-day usage mixtures remains outstanding,
+  along with broader repeated cancellation/re-entry and concurrent commit visibility. Continue
+  the October 21 repository-only scope; no deployment or independent accounting review gate.

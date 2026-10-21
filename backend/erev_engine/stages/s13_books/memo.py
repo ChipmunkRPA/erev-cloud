@@ -476,7 +476,15 @@ class _Relabel:
                 (self.target if book == self.source else book): segments
                 for book, segments in value.status_in_book.items()
             }
-            return dataclasses.replace(value, status_in_book=MappingProxyType(status))
+            positions = {
+                (self.target if book == self.source else book): segments
+                for book, segments in value.status_positions.items()
+            }
+            return dataclasses.replace(
+                value,
+                status_in_book=MappingProxyType(status),
+                status_positions=MappingProxyType(positions),
+            )
         if dataclasses.is_dataclass(value) and not isinstance(value, type):
             changes: dict[str, object] = {}
             for member in dataclasses.fields(value):

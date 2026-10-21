@@ -457,7 +457,7 @@ def _emit_catch_up(
     # preserves that same target until re-entry, so it has no immediate catch-up.
     frozen = (
         before.as_of == after.as_of
-        and before.as_of < d
+        and (before.as_of < d or (before.frozen and after.frozen))
         and before.segment == after.segment
         and before.value == after.value
         and before.fixed_exact == after.fixed_exact
