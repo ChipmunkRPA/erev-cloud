@@ -20,6 +20,19 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Combined aging public command/report/rerun path — October 21, 2026
+
+- The combined aging feature now has a real command-to-report witness: two seat contracts
+  are activated and combined through the approved public route, each receives a distinct billing
+  event, and the combined group is computed by the production engine. Both original owners
+  remain in the liability aging output with nonzero offsetting allocation adjustments.
+- The report reconciles every member, and original buckets plus adjustment equal each presented
+  balance. Public report creation and the worker return exactly the builder rows; the public
+  retained rerun reproduces those rows and the Member allocation adjustment column header.
+- The targeted database journey and lint pass. This closes the missing transaction-currency
+  command-to-report witness; earlier scoped functional/reporting evidence remains as recorded.
+  No deployment or additional production-readiness gate is introduced.
+
 ## Member aging adjustments agree with original engine amounts — October 21, 2026
 
 - Combined-member aging adjustments now require each presented member amount to equal its

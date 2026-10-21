@@ -1214,3 +1214,95 @@ def test_jdg_discard_1_the_proposal_of_a_combination_group_is_decided_with_its_g
     assert get(seats.app, record_path, author).json()["status"] == "DRAFT"
     submitted = post(seats.app, f"{GROUPS}/{proposed.json()['id']}/submit", author, {})
     assert (submitted.status_code, submitted.json()["status"]) == (200, "SUBMITTED"), submitted.text
+
+
+def test_combined_aging_retains_billing_owner_and_member_adjustments(seats: SeatWorld) -> None:
+    from erev_api.domain.reports.builders import ReportParams, balance_aging
+
+    first, second, group_id = _combine(seats)
+    for index, contract_id in enumerate((first, second), 1):
+        head = int(
+            seats.place.scalar(
+                select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+            )
+        )
+        day = f"2026-09-{index:02d}"
+        event = {
+            "event_type": "BILLING_RECORDED",
+            "effective_date": day,
+            "payload": {
+                "invoice_number": f"AGING-{index}",
+                "line_external_id": f"AGING-{index}-1",
+                "amount": {"amount": "10000.00", "currency": "USD"},
+                "issue_date": day,
+            },
+        }
+        added = post(
+            seats.app,
+            EVENTS.format(contract_id=contract_id),
+            seats.place.author,
+            {"events": [event]},
+            if_match=f'"s{head}"',
+        )
+        assert added.status_code in (201, 202), added.text
+    computed(seats.place, group_id)
+    with seats.place.uow() as uow:
+        params = ReportParams(
+            "balance_aging",
+            1,
+            {
+                "entity_codes": ["AVM-US"],
+                "book": "ASC606",
+                "period_key": "FY2026-P09",
+                "currency_view": "transaction",
+            },
+            (seats.entity_id,),
+            uow.now,
+            book_code="ASC606",
+        )
+        data = balance_aging.build(uow, params)
+    assert data.tie_out_results[0]["result"] == "PASS"
+    rows = [
+        row
+        for row in data.rows
+        if not row["row_key"].startswith("TOTAL:") and row["balance_role"] == "Contract liability"
+    ]
+    assert len(rows) == 2
+    amounts = {row["contract_external_id"]: row for row in rows}
+    assert sum(Decimal(row["allocation_adjustment"]["amount"]) for row in rows) == 0
+    assert any(Decimal(row["allocation_adjustment"]["amount"]) != 0 for row in rows)
+    for row in rows:
+        aged = sum(Decimal(row[key]["amount"]) for key in balance_aging.BUCKET_FIELDS)
+        assert aged + Decimal(row["allocation_adjustment"]["amount"]) == Decimal(
+            row["total"]["amount"]
+        )
+    assert set(amounts) == {"SF-ORD-10417", "SF-ORD-10418"}
+
+    from erev_api.jobs.context import JobRuntime
+    from support.worlds import ReportWorld, report_run, run_now
+
+    world = ReportWorld(
+        seats.place,
+        seats.priya,
+        seats.marcus,
+        JobRuntime(clock=seats.place.clock, keyring=seats.place.keyring, files=seats.place.files),
+        seats.entity_id,
+        {},
+    )
+    run, published = report_run(world, "balance_aging", params.parameters)
+    assert published == list(data.rows)
+    assert run["tie_out_results"][0]["result"] == "PASS"
+    rerun = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    repeated = get(
+        world.app,
+        f"/api/v1/report-runs/{rerun.headers['x-erev-report-run-id']}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == published
+    assert "Member allocation adjustment" in [
+        column["header"] for column in repeated.json()["columns"]
+    ]
