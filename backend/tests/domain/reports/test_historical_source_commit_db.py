@@ -77,6 +77,45 @@ def test_late_event_and_version_commit_keeps_previous_historical_version(world: 
         sources=SourceCollector(),
     )
     end = world.place.scalar(select(func.clock_timestamp()))
+    # The same overlapping event/version transaction must also stay out of the sample pack.
+    import json
+
+    from erev_api.domain.reports import evidence_sample_computations, evidence_sample_events
+    from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.schemas.evidence_packs import ContractSamplePackCreateIn
+
+    world.place.clock.set(end)
+    principal = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions | PERMISSIONS,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            **{permission: "*" for permission in PERMISSIONS},
+        },
+    )
+    external_id = world.place.scalar(select(contract.c.external_id).where(contract.c.id == cid))
+    request = ContractSamplePackCreateIn(
+        kind="CONTRACT_SAMPLE", contract_external_ids=[external_id], as_of=date(2026, 9, 30)
+    )
+    with world.place.uow(principal) as reader:
+        old_events = evidence_sample_events.collect(reader, request, known_at=cutoff)
+        new_events = evidence_sample_events.collect(reader, request, known_at=end)
+        assert appended[0]["id"] not in old_events.event_ids
+        assert appended[0]["id"] in new_events.event_ids
+        old_computations = evidence_sample_computations.collect(
+            reader, old_events.selection, as_of=request.as_of
+        )
+        new_computations = evidence_sample_computations.collect(
+            reader, new_events.selection, as_of=request.as_of
+        )
+        assert first in old_computations.version_ids
+        assert later not in old_computations.version_ids
+        assert later in new_computations.version_ids
+        old_index = json.loads(old_computations.files[0].content)
+        new_index = json.loads(new_computations.files[0].content)
+        assert {row["version_id"] for row in old_index["selected_versions"]} == {str(first)}
+        assert {row["version_id"] for row in new_index["selected_versions"]} == {str(later)}
+        assert all(row["committed_server_at"] for row in new_index["versions"])
     with world.place.uow() as uow:
         assert tie_outs.versions_for(uow.session, params, book_code="ASC606", cutoff=cutoff) == (
             first,
@@ -171,8 +210,9 @@ def test_late_event_and_version_commit_keeps_previous_historical_version(world: 
     assert [
         (row.source_kind, row.event_type)
         for row in pending
-        if row.source_kind != "report_source_revision"
+        if row.source_kind in {"contract_event", "contract_version"}
     ] == [("contract_event", "CONTRACT_ACTIVATED")]
+    assert any(row.source_kind == "approval_decision" for row in pending)
     assert commit_evidence.recover_pending_sources(world.place.tenant_id, batch_size=1) == (
         len(pending),
         0,

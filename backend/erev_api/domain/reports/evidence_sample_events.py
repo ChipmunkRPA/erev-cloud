@@ -14,7 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.tables import contract, contract_event, source_record
@@ -93,8 +93,14 @@ def event_records(
             or sha256_hex(row["payload"]) != row["payload_sha256"]
         ):
             raise Problem("validation-failed", "The sample event evidence is inconsistent.")
+        if "committed_server_at" in row and (
+            row["committed_server_at"] is None or row["committed_server_at"] > known_at
+        ):
+            raise Problem("validation-failed", "The sample event exceeds its committed cutoff.")
         seen.add(row["id"])
         record = {key: row[key] for key in EVENT_KEYS}
+        if "committed_server_at" in row:
+            record["committed_server_at"] = row["committed_server_at"]
         # The source digest authenticates pre-redaction bytes, not the exported payload.
         record["source_payload_sha256"] = record.pop("payload_sha256")
         record["payload"] = redact_contacts(record["payload"])
@@ -142,11 +148,17 @@ def collect(
         raise Problem("not-found")
     rows = (
         uow.session.execute(
-            select(*(contract_event.c[key] for key in EVENT_KEYS)).where(
+            select(
+                *(contract_event.c[key] for key in EVENT_KEYS),
+                func.erev.source_commit_time("contract_event", contract_event.c.id).label(
+                    "committed_server_at"
+                ),
+            ).where(
                 contract_event.c.tenant_id == tenant_id,
                 contract_event.c.contract_id.in_(selected.contract_ids),
                 contract_event.c.contracting_entity_id.in_(selected.entity_ids),
                 contract_event.c.recorded_at <= cutoff,
+                func.erev.source_commit_time("contract_event", contract_event.c.id) <= cutoff,
                 contract_event.c.effective_date <= request.as_of,
             )
         )
@@ -209,6 +221,7 @@ def collect(
                 f"contracts/{contract_id}/events.json",
                 canonical_bytes(
                     {
+                        "schema_version": 2,
                         "contract_id": contract_id,
                         "as_of": request.as_of,
                         "known_at": cutoff,

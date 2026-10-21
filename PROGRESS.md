@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Contract sample event and version commits — October 21, 2026
+
+- Event sample files v2 filter original event commits by known_at and retain the timestamp
+  alongside original/redacted payload digests. Effective-date scope and provenance checks stay
+  intact; an event recorded before cutoff but committed later is excluded from that sample.
+- Computations index v2 and version evidence retain original version commits. Filtering happens
+  before ranking selected versions, keeping the preceding committed version when a newer
+  calculation commits late. Full allocation, trace and future planned schedule evidence remains.
+- Migration 0283 updates the sample catalogue description. Existing archives remain original
+  bytes. The pending-source check now includes approval decisions added by 0282 and verifies
+  recovery of all pending kinds, rather than assuming only event/version/revision sources.
+- Necessary checks passed: actual overlapping event+computation transaction with old/new sample
+  reads and selected versions, complete sample archive/PDF/XLSX flow, commit/redaction validation,
+  worker recovery, catalogue parity and scoped lint/types. No deployment.
+- Remaining: actor/display-name history, sample contract identity labels, approval-request/audit
+  and document histories. These readers now cover immutable event/version commit availability;
+  this does not claim complete historical reconstruction of every source in a sample pack.
+
 ## JE Population approval and acknowledgement commits — October 21, 2026
 
 - Migration 0282 queues original approval-decision and posting-acknowledgement commits
@@ -210,24 +228,6 @@ review and publish changes without PR accumulation, and do not deploy.
   automatic retry/monitoring before PostgreSQL discards old transaction evidence remains
   to implement. Expired evidence is refused, never replaced with an estimated timestamp.
   This increment does not close all historical-source gaps. No deployment.
-
-## Royalty lifecycle and supported public workflow — October 21, 2026
-
-- Four original-engine Reporting journeys verify minimum-guarantee netting, downward
-  statement corrections, licence satisfaction before/after the eligibility boundary and
-  same-day statements before/after exit. All movement lines reconcile; the fixture now reads
-  the actual recognition method instead of labelling every obligation USAGE.
-- The public workflow intentionally rejects a batch mixing Step 1 reassessments with manual
-  usage (API-R-30). Verified rejection leaves computation count unchanged. The supported
-  separate-review sequence accepts usage while excluded, restores eligibility and preserves
-  the earlier bound report on rerun. Both existing and usage-bearing public variants pass.
-- A single public manual batch is therefore not a missing UI feature to enable by weakening
-  controls. Ordered initial historical computations remain covered at the original-engine
-  and report-builder boundary; no claim is made about every history-import route.
-- This increment closes the stated royalty guarantee/statement/satisfaction witness and
-  clarifies the public mixed-batch limitation without changing production logic. Scoped lint
-  passes. Next implementation focus is B4-11 arbitrary historical commit visibility;
-  final-candidate checks below remain outstanding. No deployment.
 
 ## Outstanding release verification
 

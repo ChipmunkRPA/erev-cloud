@@ -55,3 +55,11 @@ def test_corrupt_out_of_scope_duplicate_and_late_facts_are_refused():
             records([source | change])
     with pytest.raises(Problem):
         records([source, source])
+
+
+def test_event_commit_evidence_is_retained_and_validated():
+    source = {**event(), "committed_server_at": NOW}
+    assert records([source])[0]["committed_server_at"] == NOW
+    for stamp in (None, NOW + timedelta(microseconds=1)):
+        with pytest.raises(Problem):
+            records([{**source, "committed_server_at": stamp}])

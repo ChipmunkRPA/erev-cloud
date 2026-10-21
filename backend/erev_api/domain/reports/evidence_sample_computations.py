@@ -14,7 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.session import system_entity_scope
@@ -77,6 +77,9 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
             select(
                 *(contract_version.c[key] for key in VERSION_KEYS),
                 contract_computation.c.stream_heads,
+                func.erev.source_commit_time("contract_version", contract_version.c.id).label(
+                    "committed_server_at"
+                ),
             )
             .join(
                 contract_computation,
@@ -87,6 +90,7 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
                 contract_version.c.tenant_id == tenant,
                 contract_version.c.known_at <= cutoff,
                 contract_version.c.created_at <= cutoff,
+                func.erev.source_commit_time("contract_version", contract_version.c.id) <= cutoff,
                 contract_computation.c.created_at <= cutoff,
                 contract_computation.c.status == "SUCCEEDED",
                 or_(
@@ -300,7 +304,12 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
         contracts.update(members)
         entities.update(group_entities)
         index.append(
-            {"version_id": version_id, "book": version["book_code"], "effective_date": effective}
+            {
+                "version_id": version_id,
+                "book": version["book_code"],
+                "effective_date": effective,
+                "committed_server_at": version["committed_server_at"],
+            }
         )
         for member in members.intersection(selected.contract_ids):
             key = (member, version["book_code"])
@@ -313,7 +322,7 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
             "sample/computations.json",
             canonical_bytes(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "as_of": as_of,
                     "known_at": cutoff,
                     "versions": index,
@@ -322,7 +331,7 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
                         for key, value in sorted(latest.items())
                     ],
                     "basis": (
-                        "Versions effective by the sample date; "
+                        "Versions effective by the sample date and committed by the source cutoff; "
                         "schedules include future planned periods."
                     ),
                 }

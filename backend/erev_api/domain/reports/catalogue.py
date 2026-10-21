@@ -2780,6 +2780,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "figures as of as_of and known at known_at",
             "sample/journals.json v2 uses original journal/underlying posting commits and "
             "committed run/batch revisions; cancelled lines remain explicitly labelled at cutoff",
+            "sample event files and computations index v2 require original event/version commits "
+            "by known_at before latest-version selection; retain commit timestamps "
+            "and full schedules",
             "journal sample totals retain whole aggregated lines and separate sampled "
             "contributions; old archives remain unchanged",
             _SCOPE,
