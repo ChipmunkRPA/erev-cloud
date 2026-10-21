@@ -506,7 +506,8 @@ _MIGRATION_OPEN: Final = (
 )
 _MODIFICATION_REGISTER_OPEN: Final = (
     "modification rows with their contracts, approvals, judgement numbers, applied events, the "
-    "run book's contract / obligation versions and the stored impact previews read live "
+    "run book's contract / obligation versions, stored impact previews and reporting average "
+    "rates read live "
     "(CTR-17 slice 1; S15-R-20c)"
 )
 # BUILD_SPEC RPS-9 to RPS-12 (lane F-RPS-REG): the registers and listings read live; no source

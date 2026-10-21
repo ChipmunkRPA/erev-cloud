@@ -1560,6 +1560,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "judgement_record",
             "contract_version",
             "lock_snapshot",
+            "legal_entity",
+            "period",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "modification.contract_id = contract.id",
@@ -1568,6 +1574,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "functional/reporting require contract currency to equal entity functional currency; "
+            "reporting preserves original amounts and adds equivalents using the approved average "
+            "of the modification effective period; these are analytical equivalents, not posted FX "
+            "amounts; unknown measures stay empty and TP totals count each modification once",
             _SCOPE,
             _BOOK,
             "modification.effective_date from from_date to to_date inclusive",

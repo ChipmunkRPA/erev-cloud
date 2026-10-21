@@ -26,8 +26,11 @@ or a substituted zero (D-98 140-A10 / A11); ``APPROVED`` / ``SUBMITTED`` read th
 preview (``impact_preview_sha256`` is the provenance); ``DRAFT``, ``REJECTED`` and ``VOIDED`` carry
 empty measures. ``currency_view``
 ``transaction`` is served; ``functional`` only when every row's currency is its entity's functional
-currency, else the run refuses by name (RPT-07 pattern) — no FX conversion here. A row whose key
-column cannot be supplied, or two rows of one key, refuse by name (``ModificationRegisterRefusal``).
+currency, else the run refuses by name (RPT-07 pattern). Reporting view uses that same
+admission and adds separately labelled equivalents at the modification effective-period average,
+retaining original values and empty measures. These equivalents are not posted FX amounts.
+A row whose key column cannot be supplied, or two rows of one key, refuse by name
+(``ModificationRegisterRefusal``).
 The as-locked surface (``period_lock_id``) is CLO-8b's; a lock source here refuses by name.
 
 F-RPS's registry entry ``SNAPSHOT_DATASETS["MODIFICATION_REGISTER"]`` wraps ``dataset_rows`` /
@@ -57,10 +60,11 @@ from erev_api.db.tables import (
     legal_entity,
     modification,
     obligation_version,
+    tenant,
 )
 from erev_api.domain.contracts import modifications
 from erev_api.domain.platform import approval_queries
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_history import date_range
 from erev_api.domain.reports.builders.out_of_period_register import event_key, refuse_locked_source
@@ -79,7 +83,7 @@ QUESTIONS: Final = (
     "remaining_goods_distinct_from_transferred",
 )
 FUNCTIONAL_ONLY: Final = (
-    "The functional currency view is available when every modification is in its entity's "
+    "Functional and reporting views are available when every modification is in its entity's "
     "functional currency; choose the transaction view."
 )
 # D-98 140-A8 REGISTER-CUTOFF-1: T-CON-06 keeps no row history — status, effective date or any
@@ -386,7 +390,11 @@ def control_totals(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 def check_view(view: str, sources: Sequence[Source]) -> None:
     """``transaction`` (the served default) always; ``functional`` only when every modification
-    is in its entity's functional currency, else refused by name (RPT-07 pattern)."""
+    is in its entity's functional currency; reporting uses the same admission before translation."""
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid(
+            "currency_view", "Choose Transaction, Functional or Reporting currency."
+        )
     if view != DEFAULT_CURRENCY_VIEW and any(
         item.currency != item.functional_currency for item in sources
     ):
@@ -857,6 +865,47 @@ def sources(
     return out
 
 
+def reporting_rows(
+    found: Sequence[Source],
+    target: str,
+    translations: Mapping[str, tuple[UUID, reporting_currency.Translation]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Add analytical reporting equivalents; retain the original amounts and nulls."""
+    check_view("reporting", found)
+    rows = dataset_rows(found)
+    converted: list[dict[str, Any]] = []
+    for row in rows:
+        translated = {**row, "currency": target}
+        for field in ("tp_change", "catch_up_amount"):
+            value = row[field]
+            if value is None:
+                translated[field] = None
+            else:
+                entity_id, rate = translations[str(row["modification_no"])]
+                if (
+                    rate.currency != target
+                    or rate.rates[entity_id]["base_currency"] != row["currency"]
+                ):
+                    raise tie_outs.invalid(
+                        "currency_view", "Reporting translation requires functional amounts."
+                    )
+                translated[field] = tie_outs.money(
+                    rate.amount(entity_id, Decimal(value["amount"])), target
+                )
+        row["reporting_currency"] = target
+        row["tp_change_reporting"] = translated["tp_change"]
+        row["catch_up_reporting"] = translated["catch_up_amount"]
+        row["reporting_basis"] = "Equivalent at modification effective-period average"
+        converted.append(translated)
+    totals = control_totals(rows)
+    equivalents = control_totals(converted)
+    totals["tp_change_reporting_total"] = equivalents["tp_change_total"]
+    totals["catch_up_reporting_total"] = equivalents["catch_up_total"]
+    totals["reporting_currency"] = target
+    totals["translation_basis"] = "modification_effective_period_average"
+    return rows, totals
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     session = uow.session
@@ -870,10 +919,53 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         to_date=to_date,
         statuses=_statuses(params),
     )
-    check_view(str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW), found)
-    rows = dataset_rows(found)
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    check_view(view, found)
+    columns: tuple[Column, ...] = COLUMNS
+    if view == "reporting":
+        target = str(
+            session.execute(
+                select(tenant.c.reporting_currency).where(tenant.c.id == uow.principal.tenant_id)
+            ).scalar_one()
+        ).strip()
+        entities = tie_outs.entities(session, params.entity_ids)
+        by_code = {entity.code: entity for entity in entities}
+        calendars = tie_outs.calendars(session, entities)
+        rates: dict[tuple[UUID, str], reporting_currency.Translation] = {}
+        translations = {}
+        for item in found:
+            if item.tp_change is None and not item.catch_up:
+                continue
+            entity = by_code[item.entity_code]
+            at = calendars[entity.id].holding(item.effective_date)
+            if at is None:
+                raise tie_outs.invalid(
+                    "currency_view", "The modification effective date has no calendar period."
+                )
+            key = (entity.id, at.key)
+            if key not in rates:
+                rates[key] = reporting_currency.rates_for_period(
+                    session,
+                    params,
+                    tenant_id=uow.principal.tenant_id,
+                    entities=(entity,),
+                    periods={entity.id: at},
+                    rate_type="average",
+                    target_currency=target,
+                    evidence_key=f"modification_average_v1:{entity.id}:{at.key}",
+                )
+            translations[item.modification_no] = (entity.id, rates[key])
+        rows, totals = reporting_rows(found, target, translations)
+        columns = COLUMNS + (
+            Column("reporting_currency", "Reporting currency", "code"),
+            Column("tp_change_reporting", "TP change, reporting equivalent", "money"),
+            Column("catch_up_reporting", "Catch-up, reporting equivalent", "money"),
+            Column("reporting_basis", "Reporting conversion basis", "text"),
+        )
+    else:
+        rows = dataset_rows(found)
+        totals = control_totals(rows)
     check_key_columns(rows)
-    totals = control_totals(rows)
     totals["from_date"] = from_date.isoformat()
     totals["to_date"] = to_date.isoformat()
-    return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
+    return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)

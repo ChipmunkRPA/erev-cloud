@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Modification register reporting equivalents — October 21, 2026
+
+- Fixed Reporting view returning unchanged transaction figures when contract and functional
+  currencies match. It now preserves original TP-change/catch-up values and adds separately
+  labelled reporting equivalents using approved averages for the modification effective period.
+  Each row states that analytical conversion basis; these columns are not posted FX amounts.
+- Empty measures remain empty. Catch-up signs are preserved and TP-change totals count each
+  modification once even when several obligation rows repeat its price change. Empty-measure
+  modifications do not require an FX rate. Unsupported currency-view values are refused even for
+  empty populations. Rate evidence is captured; the register still declares live-source behavior.
+- Necessary checks passed: 15 focused modification cases, actual K02 applied upgrade with reporting
+  build, frozen IPE parity and scoped lint/types. The pure USD/EUR-to-GBP case verifies separate
+  rates, multi-line TP deduplication, positive/negative catch-ups and draft nulls. The database
+  case uses USD/USD. Migration 0306 documents the analytical basis and source tables.
+- Remaining: foreign-contract functional TP/catch-up evidence is not supplied by this feature;
+  Functional/Reporting continue to refuse when contract currency differs from functional currency.
+  Retained same-source reconstruction, other documented adapters and final repository verification
+  also remain. Historical lock support is unchanged. No deployment.
+
 ## Manual adjustment retained reconstruction — October 21, 2026
 
 - Functional and reporting runs now retain adjustment source records, preparer/approver names,

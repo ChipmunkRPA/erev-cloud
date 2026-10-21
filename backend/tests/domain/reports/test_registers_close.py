@@ -134,6 +134,11 @@ def test_modification_register_k02(k02: K02World, runtime: JobRuntime, clock: Fr
     assert row["contract_external_id"] == head["external_id"]
     assert data.control_totals["modification_count"] == 1
     assert data.control_totals["tp_change_total"] == {"USD": "60000.00"}
+    reporting = _run(k02, known_at=clock.now(), currency_view="reporting")
+    assert reporting.rows[0]["tp_change_reporting"] == row["tp_change"]
+    assert reporting.rows[0]["catch_up_reporting"] == row["catch_up_amount"]
+    assert reporting.control_totals["tp_change_reporting_total"] == {"USD": "60000.00"}
+    assert reporting.control_totals["translation_basis"] == "modification_effective_period_average"
     shown = get(k02.app, f"{MODIFICATIONS}/{modification_id}", k02.place.author).json()
     assert shown["status"] == "APPLIED"
 

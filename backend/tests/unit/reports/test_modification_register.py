@@ -233,7 +233,7 @@ def test_refusals_by_name() -> None:
         check_view("functional", [foreign])
     (error,) = refused.value.errors
     assert error.field == "parameters.currency_view"
-    assert "functional currency view" in error.message
+    assert "functional currency" in error.message
     check_view("functional", [_source()])
 
 
@@ -442,3 +442,51 @@ def test_a13_historical_population_is_inspected_before_the_mutable_date_exclusio
     # the refusal sees MOD-1 (moved to August after the cutoff) BEFORE the July filter drops it
     assert historical_status_refusal(rows, cutoff=changed - timedelta(minutes=1), historical=True)
     assert historical_status_refusal(rows, cutoff=changed, historical=True) is None
+
+
+def test_reporting_equivalents_keep_originals_nulls_and_count_price_once():
+    from uuid import UUID
+
+    from erev_api.domain.reports.builders.modification_register import reporting_rows
+    from erev_api.domain.reports.reporting_currency import Translation
+
+    entity = UUID(int=1)
+    found = [
+        _source(
+            obligation_keys=("O1", "O2"), catch_up={"O1": Decimal("100"), "O2": Decimal("-50")}
+        ),
+        _source(
+            modification_no="MOD-2",
+            entity_code="EU",
+            currency="EUR",
+            functional_currency="EUR",
+            tp_change=Decimal("2000"),
+            catch_up={"O2": Decimal("100")},
+        ),
+        _source(modification_no="MOD-3", status="DRAFT", tp_change=None, catch_up=None),
+    ]
+    rows, totals = reporting_rows(
+        found,
+        "GBP",
+        {
+            "MOD-000001": (
+                entity,
+                Translation("GBP", {entity: {"base_currency": "USD", "rate": "0.8"}}),
+            ),
+            "MOD-2": (
+                entity,
+                Translation("GBP", {entity: {"base_currency": "EUR", "rate": "0.7"}}),
+            ),
+        },
+    )
+    assert totals["tp_change_reporting_total"] == {"GBP": "49400.00"}
+    assert totals["catch_up_reporting_total"] == {"GBP": "110.00"}
+    assert totals["tp_change_total"] == {"EUR": "2000.00", "USD": "60000.00"}
+    assert rows[0]["tp_change"] == {"amount": "60000.00", "currency": "USD"}
+    draft = next(row for row in rows if row["modification_no"] == "MOD-3")
+    assert draft["tp_change_reporting"] is draft["catch_up_reporting"] is None
+    assert draft["reporting_currency"] == "GBP"
+    with pytest.raises(Problem):
+        check_view("reporting", [_source(currency="EUR", functional_currency="USD")])
+    with pytest.raises(Problem):
+        check_view("invalid", [])
