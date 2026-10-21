@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — priced RTI advance-billing source defect resolved
+
+The shared right-to-invoice selector now uses delivered quantity times the booked unit price
+when that price exists, including zero performance before any delivery. Previously an advance
+invoice was treated as the fallback performance source until the first delivery; the switch
+could change the measured consideration and break the S04-R-02 allocation identity. Rated
+usage retains priority, and invoice fallback for unpriced lines remains unchanged. This does
+not introduce a new over-billing admission rule or rewrite stored computations.
+
+Whole-engine regression checks assert price, allocation and revenue before performance, after
+performance and after additional invoices. The recorded EUR case now recomputes successfully:
+20,000 billed versus 10,000 performance revenue leaves 10,000 transaction liability, whose
+historical USD carrying is 11,050 (5,500 from August plus 5,550 from September). Public functional
+aging preserves both original dates and reconciles. Related RTI checks, lint and types pass.
+This resolves that specific diagnostic; independent accounting acceptance, broader lifecycle
+verification and final release-candidate checks remain open. No deployment.
+
+
 ### October 20 — original functional aging attribution
 
 Foreign asset/unbilled aging now reads original functional S12 reclass shares with S10 revenue
@@ -18,12 +36,11 @@ Migration 0233 roundtrips and matches the IPE catalogue. Combined-member functio
 allocation beyond reconciling original owner layers, locked aging datasets, broader lifecycle
 acceptance, independent accounting acceptance and final candidate checks remain open.
 
-Separate unresolved engine finding: starting with `close_run_worlds.eur_receivable` (EUR 100/hour,
+Earlier engine finding, resolved by the priced RTI source fix above: starting with `close_run_worlds.eur_receivable` (EUR 100/hour,
 100 hours delivered August 31, no invoices), append EUR 15,000 billing dated August 1 and EUR
 5,000 dated September 1, then recompute. The engine raises S04-R-02 (`sum a_posted =
-allocation_basis`). This over-billed right-to-invoice scenario needs investigation of billing
-admission and allocation identity; the successful fixed-price liability journeys do not cover
-or resolve it. No production-readiness claim and no deployment.
+allocation_basis`). That scenario is now covered by its own engine and report regression; fixed-price liability
+journeys alone did not establish its correctness. No production-readiness claim and no deployment.
 
 
 ### October 20 — reporting-currency aging view

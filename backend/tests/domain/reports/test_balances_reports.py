@@ -873,3 +873,64 @@ def test_foreign_aging_uses_remeasured_functional_shares_and_retains_dates(
             )
             assert rebuilt.status_code == 200, rebuilt.text
             assert rebuilt.json()["control_totals"] == run["control_totals"]
+
+
+@pytest.mark.slow
+def test_priced_right_to_invoice_advance_billing_keeps_performance_and_aging(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, app_settings: Settings
+) -> None:
+    from datetime import date
+
+    from erev_api.db.tables import contract, subledger_line
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn
+    from sqlalchemy import func, select
+    from support import close_run_worlds
+    from support.factories import appended, computed
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root)
+    )
+    booked = world.contracts[close_run_worlds.EUR_CONTRACT]
+    contract_id = UUID(str(booked.contract["id"]))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+    )
+    appended(
+        world.place,
+        contract_id,
+        int(head),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=day,
+                payload=BillingRecordedV1.model_validate(
+                    {
+                        "invoice_number": f"RTI-ADV-{day}",
+                        "line_external_id": f"RTI-ADV-{day}-1",
+                        "obligation_key": "O1",
+                        "amount": {"amount": amount, "currency": "EUR"},
+                        "issue_date": day.isoformat(),
+                    }
+                ),
+            )
+            for day, amount in ((date(2026, 8, 1), "15000.00"), (date(2026, 9, 1), "5000.00"))
+        ],
+    )
+    computed(world.place, UUID(str(booked.combination_group["id"])))
+    assert world.place.scalar(
+        select(func.sum(subledger_line.c.amount_txn)).where(
+            subledger_line.c.contract_id == contract_id,
+            subledger_line.c.book_code == "ASC606",
+            subledger_line.c.account_role == "REVENUE",
+        )
+    ) == D("-10000.00")
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "period_key": "FY2026-P09"}
+    run, rows = report_run(world, "balance_aging", {**params, "currency_view": "functional"})
+    (row,) = [item for item in rows if item["row_key"].startswith("contract:")]
+    assert row["balance_role"] == "Contract liability"
+    assert row["bucket_31_90"] == {"currency": "USD", "amount": "5500.00"}
+    assert row["bucket_0_30"] == {"currency": "USD", "amount": "5550.00"}
+    assert row["total"] == {"currency": "USD", "amount": "11050.00"}
+    assert run["tie_out_results"][0]["result"] == "PASS"

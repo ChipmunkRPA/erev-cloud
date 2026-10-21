@@ -6,6 +6,23 @@
 
 
 
+## Priced right-to-invoice advance billing — October 20, 2026
+
+- Fixed the shared RTI source selector: a booked unit price selects delivered quantity even
+  before the first delivery. Advance invoices therefore cannot become performance revenue,
+  and later delivery cannot switch from an invoice-based price to a performance-based price.
+- Stage 04 allocation and stage 09 recognition use the same corrected source. Rated usage
+  retains priority; invoice fallback remains available when no unit price/performance source
+  exists. Existing stored outputs are unchanged until a new computation is requested.
+- Whole-engine checks cover before delivery, after delivery and additional billing, asserting
+  price/allocation/revenue together. Related RTI/source/recognition checks pass (25 cases).
+  The previously failing EUR case now computes: EUR 20,000 billed, EUR 10,000 earned, with
+  USD 5,500 and 5,550 remaining in their original liability-age buckets. The public aging
+  report reconciles. Scoped lint/types pass. No deployment.
+- This closes the S04-R-02 diagnostic recorded in the functional-aging checkpoint. Broader
+  combined-member aging, locked aging datasets, accounting acceptance and final release
+  verification remain outstanding.
+
 ## Original functional aging layers — October 20, 2026
 
 - Foreign asset/unbilled aging now reads original S12 reclass shares in functional currency,
@@ -221,21 +238,6 @@
   and migrated catalogue checks pass. Migration 0224 documents the two consumers. A dedicated
   public mixed-period workflow, multi-origin split and independent accounting sign-off remain
   open. No deployment; direct main publication.
-
-
-## Zero-net agent reporting — October 20, 2026
-
-- A zero-net agent entry can now use its sole AP_SUPPLIER counterpart. No zero revenue line is
-  invented. The entry must contain exactly the control and supplier lines; scope, currencies,
-  original source amounts and both-currency balancing remain mandatory.
-- Unsplit gross-billing targets now resolve original functional revenue sources. Retained report
-  evidence identifies the supplier counterpart explicitly, preserving earlier nonzero shapes.
-- The DB journey covers zero and nonzero fees, net posted amounts, original supplier history,
-  both source currencies, and both public reports in all three views with identical reruns.
-  No unexplained OTHER remains and balance tie-outs pass. Scoped lint/types pass.
-- Migration 0223 describes this path. Multi-origin split and within-period mixed attribution,
-  broader agent close/reversal acceptance and independent accounting sign-off remain open.
-  The disclosure's existing gross-control-relief column policy is unchanged. No deployment.
 
 
 ## Outstanding release verification

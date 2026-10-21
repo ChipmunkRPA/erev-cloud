@@ -86,3 +86,58 @@ def test_d98_29_realised_right_to_invoice_is_priced_once_and_stays_with_its_line
         for row in book.obligation_versions
     }
     assert revenue["P1-TM"] == 300_000  # 120 h × 25.00, the right to invoice (S09-R-18)
+
+
+def test_priced_rti_advance_invoices_do_not_create_or_reprice_performance() -> None:
+    line = _line("O1", "TM-HOURS", "0.00", quantity="100", unit_price=Decimal("100.00"))
+    events = [
+        event(1, "CONTRACT_BOOKED", INCEPTION, {"lines": [line]}, ["O1"]),
+        event(2, "CONTRACT_ACTIVATED", INCEPTION, {"checklist": {}}),
+        event(
+            3,
+            "BILLING_RECORDED",
+            INCEPTION,
+            {
+                "obligation_key": "O1",
+                "invoice_number": "ADV-1",
+                "line_external_id": "ADV-1-1",
+                "amount": Decimal("15000.00"),
+                "issue_date": INCEPTION,
+            },
+            ["O1"],
+        ),
+        event(
+            4,
+            "DELIVERY_RECORDED",
+            date(2026, 1, 15),
+            {"obligation_key": "O1", "quantity": Decimal("100"), "trigger": "DELIVERY"},
+            ["O1"],
+        ),
+        event(
+            5,
+            "BILLING_RECORDED",
+            date(2026, 2, 1),
+            {
+                "obligation_key": "O1",
+                "invoice_number": "ADV-2",
+                "line_external_id": "ADV-2-1",
+                "amount": Decimal("5000.00"),
+                "issue_date": date(2026, 2, 1),
+            },
+            ["O1"],
+        ),
+    ]
+    for count, expected in ((3, 0), (4, 1_000_000), (5, 1_000_000)):
+        output = compute(
+            world(
+                events[:count],
+                products=[("TM-HOURS", "TPL-RTI", "PRINCIPAL")],
+                entries=[entry("TM-HOURS", point="100")],
+                templates=(RTI_TEMPLATE,),
+            )
+        )
+        for book in output.books:
+            assert book.contract_version is not None
+            assert book.contract_version.columns["transaction_price"] == expected
+            assert book.obligation_versions[0].columns["allocated_amount"] == expected
+            assert book.obligation_versions[0].columns["revenue_cum"] == expected

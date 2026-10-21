@@ -10108,3 +10108,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Multiple-origin split inputs, zero-net agent paths, within-period mixed-source attribution,
   and broad close-pass agent acceptance remain open; no overall production readiness is claimed.
   Migration 0222 documents the two consumers. Direct main publication; no deployment.
+
+## Zero-net agent reporting — October 20, 2026
+
+- A zero-net agent entry can now use its sole AP_SUPPLIER counterpart. No zero revenue line is
+  invented. The entry must contain exactly the control and supplier lines; scope, currencies,
+  original source amounts and both-currency balancing remain mandatory.
+- Unsplit gross-billing targets now resolve original functional revenue sources. Retained report
+  evidence identifies the supplier counterpart explicitly, preserving earlier nonzero shapes.
+- The DB journey covers zero and nonzero fees, net posted amounts, original supplier history,
+  both source currencies, and both public reports in all three views with identical reruns.
+  No unexplained OTHER remains and balance tie-outs pass. Scoped lint/types pass.
+- Migration 0223 describes this path. Multi-origin split and within-period mixed attribution,
+  broader agent close/reversal acceptance and independent accounting sign-off remain open.
+  The disclosure's existing gross-control-relief column policy is unchanged. No deployment.

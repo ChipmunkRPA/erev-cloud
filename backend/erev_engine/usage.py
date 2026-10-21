@@ -262,7 +262,9 @@ def right_to_invoice(
     own = [ev for ev in own if ev.effective_date <= at]
     unit_price = unit_price_of(booking, obligation_key)
     movements = [ev for ev in own if ev.event_type in ("DELIVERY_RECORDED", "RETURN_RECORDED")]
-    if movements and unit_price is not None:
+    # A priced performance source exists even before its first delivery. Falling back to
+    # invoices here would recognize an advance and switch price bases when delivery arrives.
+    if unit_price is not None:
         items = []
         for ev in movements:
             quantity = _fraction(ev.payload, "quantity") or ZERO
