@@ -1258,6 +1258,79 @@ def test_explained_then_signed(
     late = recon.explain(app, maya, explained.json(), "A later explanation of the difference.")
     assert (late.status_code, slug(late)) == (409, "invalid-transition"), late.text
 
+    # A later reopen must not erase the reviewed source used by a historical report.
+    from erev_api.db.tables import report_source_revision
+    from erev_api.domain.reports import rollforward_gl
+    from erev_api.domain.reports.builders import ReportParams, SourceCollector
+    from sqlalchemy import func
+
+    revisions = _rows(
+        tenant_id,
+        select(report_source_revision)
+        .where(
+            report_source_revision.c.source_kind == "gl_reconciliation",
+            report_source_revision.c.source_id == UUID(draft["id"]),
+        )
+        .order_by(report_source_revision.c.revision_no),
+    )
+    reviewed_revision = revisions[-1]
+    assert reviewed_revision["document"]["status"] == "REVIEWED"
+    assert not reviewed_revision["is_baseline"]
+    assert {r["document"]["status"] for r in revisions} >= {"DRAFT", "PREPARED", "REVIEWED"}
+    entity_id = UUID(reviewed_revision["document"]["entity_id"])
+    period_id = UUID(reviewed_revision["document"]["period_id"])
+    entity = tie_outs.EntityRef(entity_id, "AVM-US", entity_id, "USD", "UTC")
+    at = tie_outs.PeriodRef(
+        period_id, JANUARY, "January", 2026, 1, 1, date(2026, 1, 1), date(2026, 1, 31)
+    )
+    sources = SourceCollector()
+    params = ReportParams(
+        "contract_balance_rollforward",
+        1,
+        {},
+        (entity_id,),
+        reviewed_revision["recorded_at"],
+        historical=True,
+        sources=sources,
+    )
+    context = DbContext(tenant_id=tenant_id, user_id=None, entity_scope="*")
+
+    def comparison(parameters):
+        with tenant_session(context, read_only=True) as session:
+            return rollforward_gl.build(
+                session,
+                parameters,
+                entities=(entity,),
+                periods={entity_id: (at,)},
+                items=(),
+                book_code="ASC606",
+                contract_id=None,
+            )
+
+    original = comparison(params)
+    assert original["result"] == "FAIL"  # nonzero GL balances versus the empty report population
+    assert original["details"][0]["source_status"] == "REVIEWED"
+    assert original["details"][0]["source_revision_id"] == str(reviewed_revision["id"])
+    bound = sources.binding(row_keys=())
+    reopened = recon.reopen(app, priya, draft["id"], "Review the attached trial balance again.")
+    assert reopened.status_code == 200, reopened.text
+    assert comparison(params) == original
+    assert comparison(replace(params, binding=bound, sources=None)) == original
+    now = _rows(tenant_id, select(func.clock_timestamp().label("now")))[0]["now"]
+    latest = comparison(replace(params, known_at=now, sources=None))
+    assert latest["result"] == "NOT_APPLICABLE"
+    assert latest["details"][0]["source_status"] == "REOPENED"
+    assert latest["details"][0]["source_revision_id"] != str(reviewed_revision["id"])
+    uncovered = comparison(replace(params, known_at=revisions[0]["recorded_at"], sources=None))
+    assert uncovered["result"] == "NOT_APPLICABLE"  # the source had no attached trial balance yet
+    # Even a verbatim source document cannot be forged by an application-side insert.
+    from sqlalchemy.exc import IntegrityError
+
+    forged = {**dict(reviewed_revision), "id": new_id(), "revision_no": 1000}
+    with pytest.raises(IntegrityError, match="written only by source triggers"):
+        with tenant_session(context) as session:
+            session.execute(insert(report_source_revision).values(**forged))
+
 
 # --- the role basis (supervisor rulings R-69 (a), R-74) -------------------------------------------
 

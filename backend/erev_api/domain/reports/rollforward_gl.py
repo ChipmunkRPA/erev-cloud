@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import reconciliation
+from erev_api.db.tables import reconciliation, report_source_revision
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
@@ -18,7 +18,8 @@ from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 if TYPE_CHECKING:
     from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
 
-EVIDENCE = "rollforward_gl_inputs_v4"
+EVIDENCE = "rollforward_gl_inputs_v5"
+HISTORICAL_EVIDENCE = "rollforward_gl_inputs_v4"
 REVIEW_EVIDENCE = "rollforward_gl_inputs_v3"
 BRIDGE_EVIDENCE = "rollforward_gl_inputs_v2"
 REVIEWED = frozenset({"REVIEWED", "AUTO_CERTIFIED", "CERTIFIED"})
@@ -54,7 +55,11 @@ def compare(
             continue
         reference = {
             "reconciliation_id": source["id"],
-            **{key: source[key] for key in ("book_code", "period_key") if source.get(key)},
+            **{
+                key: source[key]
+                for key in ("book_code", "period_key", "source_revision_id", "source_recorded_at")
+                if source.get(key)
+            },
             **({"source_status": source["status"]} if "status" in source else {}),
         }
         if source.get("unavailable_reason"):
@@ -235,7 +240,13 @@ def build(
         evidence_key = next(
             (
                 key
-                for key in (EVIDENCE, REVIEW_EVIDENCE, BRIDGE_EVIDENCE, LEGACY_EVIDENCE)
+                for key in (
+                    EVIDENCE,
+                    HISTORICAL_EVIDENCE,
+                    REVIEW_EVIDENCE,
+                    BRIDGE_EVIDENCE,
+                    LEGACY_EVIDENCE,
+                )
                 if key in params.binding.evidence
             ),
             LEGACY_EVIDENCE,
@@ -261,6 +272,20 @@ def build(
                         or_(
                             reconciliation.c.source_file_id.is_not(None),
                             reconciliation.c.sync_run_id.is_not(None),
+                            reconciliation.c.id.in_(
+                                select(report_source_revision.c.source_id).where(
+                                    report_source_revision.c.source_kind == "gl_reconciliation",
+                                    report_source_revision.c.recorded_at <= cutoff,
+                                    or_(
+                                        report_source_revision.c.document[
+                                            "source_file_id"
+                                        ].astext.is_not(None),
+                                        report_source_revision.c.document[
+                                            "sync_run_id"
+                                        ].astext.is_not(None),
+                                    ),
+                                )
+                            ),
                         ),
                     )
                     .order_by(
@@ -273,30 +298,52 @@ def build(
                 .mappings()
                 .one_or_none()
             )
-            if row is not None and row["updated_at"] > cutoff:
-                # The identity existed at the cutoff but its current review/totals did not.
-                # Never skip it and fall back to a superseded older reviewed source.
+            if row is None:
+                continue
+            identity = {
+                "id": str(row["id"]),
+                "period_key": selected[-1].key,
+                "book_code": book_code,
+            }
+            revision = (
+                session.execute(
+                    select(report_source_revision)
+                    .where(
+                        report_source_revision.c.source_kind == "gl_reconciliation",
+                        report_source_revision.c.source_id == row["id"],
+                        report_source_revision.c.recorded_at <= cutoff,
+                    )
+                    .order_by(report_source_revision.c.revision_no.desc())
+                    .limit(1)
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if revision is None:
                 sources[str(entity.id)] = {
-                    "id": str(row["id"]),
-                    "period_key": selected[-1].key,
-                    "book_code": book_code,
+                    **identity,
                     "unavailable_reason": (
-                        "The latest GL reconciliation changed after the report cutoff; "
-                        "its historical review state and totals are unavailable."
+                        "No captured GL reconciliation state covers the report cutoff."
                     ),
                 }
-            elif row is not None:
-                sources[str(entity.id)] = {
-                    "id": str(row["id"]),
-                    "status": str(getattr(row["status"], "value", row["status"])),
-                    "period_id": str(row["period_id"]),
-                    "period_key": selected[-1].key,
-                    "book_code": book_code,
-                    "as_of_known_at": row["as_of_known_at"].isoformat(),
-                    "source_file_id": str(row["source_file_id"]) if row["source_file_id"] else None,
-                    "sync_run_id": str(row["sync_run_id"]) if row["sync_run_id"] else None,
-                    "totals": row["totals"],
-                }
+                continue
+            original = revision["document"]
+            source = {
+                **identity,
+                "source_revision_id": str(revision["id"]),
+                "source_recorded_at": revision["recorded_at"].isoformat(),
+                "status": original["status"],
+                "period_id": original["period_id"],
+                "as_of_known_at": original["as_of_known_at"],
+                "source_file_id": original["source_file_id"],
+                "sync_run_id": original["sync_run_id"],
+                "totals": original["totals"],
+            }
+            if not original["source_file_id"] and not original["sync_run_id"]:
+                source["unavailable_reason"] = (
+                    "The GL trial balance was not attached at the report cutoff."
+                )
+            sources[str(entity.id)] = source
     if params.sources is not None:
         params.sources.record_evidence(evidence_key, sources)
     return compare(
@@ -304,5 +351,5 @@ def build(
         items,
         sources,
         bridge=evidence_key != LEGACY_EVIDENCE,
-        require_review=evidence_key in {EVIDENCE, REVIEW_EVIDENCE},
+        require_review=evidence_key in {EVIDENCE, HISTORICAL_EVIDENCE, REVIEW_EVIDENCE},
     )

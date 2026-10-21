@@ -2,6 +2,30 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Historical GL reports retain original review state and amounts — October 20, 2026
+
+- GL bridge v5 reads database-captured immutable GL reconciliation revisions at the report
+  cutoff, retaining the chosen source's original status, totals, attachment and revision ID.
+  A later reopen or update no longer erases covered historical comparison evidence. The current
+  reopened source remains unavailable; older v1-v4 report bindings keep their original rules.
+- Migration 0257 extends the existing tenant/entity-scoped report_source_revision mechanism.
+  Source triggers capture inserts/updates, validate the original row and assign the revision
+  time/sequence. Baselines attest only to migration-time state; absent older coverage remains
+  unavailable. Downgrade refuses to discard captured GL history. No permission scope is widened.
+- The real GL command journey generates/attaches a trial balance, explains and signs it,
+  then reopens it. Historical comparison and retained rerun preserve the reviewed amounts;
+  current comparison is unavailable. Original unattached state remains unavailable, and a direct
+  application insert of an otherwise identical revision is rejected by the database guard.
+- Viewer shows captured-state time; XLSX standalone/workbook exports retain revision identity
+  and time, with PDF/manifest carrying the same detail fields. Thirteen GL control cases, the
+  public review/reopen journey, two workbook cases, viewer/types/lint and exact IPE catalogue
+  parity pass. Evidence-preserving downgrade refusal was checked in a rolled-back transaction.
+- This supersedes v4's changed-after-cutoff limitation only where captured history exists.
+  Concurrent commit-time visibility remains the separate B4-11 gap; this sequential workflow
+  does not prove that guarantee. RPO complex lifecycle gaps, combined-member aging ownership,
+  independent accounting sign-off and final-candidate checks remain open. No deployment;
+  direct-main publication and no production-readiness claim.
+
 ## Transaction-currency reports show intermediate monthly exemption movements — October 20, 2026
 
 - Transaction-view RPO now retains nonzero contract/entity/period exemption movements even
@@ -189,41 +213,6 @@
   computation, versions intervening before termination, same-day entry/cancellation and combined-
   member aging ownership remain open. Independent sign-off/final-candidate checks remain open.
   Direct main publication; no deployment.
-
-## Realized-fee cancellation follows continuously cancelled version chains — October 20, 2026
-
-- A retained cancelled tail now supplies the final realized-fee amount only when every
-  subsequent version remains included/cancelled and retains dated realization evidence.
-  First-batch, same-version opening and later-version cancellation bridges can use that final
-  source; recognized revenue also follows the retained final version. Original fixed changes
-  remain tied to their termination boundary, with no new source amounts invented.
-- New bindings use rpo_cancelled_usage_v3. Existing v1/v2 runs retain their prior feature scope
-  and marker on rerun. Chains with re-entry, missing obligations, excluded versions or missing
-  realization evidence are not admitted by the new tail reader.
-- All 66 scoped cases pass, now including signed later fee corrections against first-entry,
-  monthly opening and later-version cancellations, legacy classification and absent evidence.
-  Existing public modification reports/reruns in three views, lint/types and migration 0246
-  down/up IPE parity pass. New chain witnesses adapt retained report data, not public API events.
-- Usage chains with re-entry, multiple cancellations within one computation, intervening
-  pre-termination versions, same-day entry/cancellation and combined-member aging ownership
-  remain open. Independent sign-off and final-candidate verification remain open. No deployment.
-
-## First-batch and same-version realized-fee cancellation — October 20, 2026
-
-- A single first-entry cancellation computation and an opening-to-closing cancellation within
-  one retained version now separate original realized fees. VC carries the realized change;
-  cancellation removes fixed plus realized allocation net of recognized revenue. Original
-  fixed modification/estimate bridges and dated realization evidence remain required.
-- New bindings use rpo_cancelled_usage_v2. Retained v1 keeps its later-version-only behavior
-  and retains v1 again on rerun. No event, accounting posting or stored amount changes.
-- The 66 scoped report cases pass, including eight new reader cases for first entry versus
-  monthly opening, realized increases/corrections, partial recognition and full reversal, plus
-  legacy behavior. Existing public modification reports/reruns in three currency views,
-  scoped lint/types and migration 0245 down/up IPE parity pass.
-- New cases are report-reader witnesses, not a full-compute/API usage-plus-cancellation journey.
-  Multi-version usage chains, multiple cancellations within a computation, intervening versions,
-  same-day entry/cancellation and combined-member aging ownership remain open. Independent
-  accounting sign-off and final-candidate verification remain open. Direct main; no deployment.
 
 ## Outstanding release verification
 

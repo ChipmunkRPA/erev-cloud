@@ -781,6 +781,8 @@ describe("SF-08:report viewer", () => {
             result: "FAIL",
             bridge_result: "FAIL",
             source_status: "REVIEWED",
+            source_revision_id: "original-review-state",
+            source_recorded_at: "2026-10-20T12:00:00Z",
             source_subledger: "90.00",
             subledger_gl_difference: "-20.00",
             report_subledger_difference: "10.00",
@@ -825,6 +827,7 @@ describe("SF-08:report viewer", () => {
     expect(within(liability).getByText("USD 10.00")).toBeTruthy();
     expect(within(liability).getByText("USD 110.00")).toBeTruthy();
     expect(within(liability).getByText("GL source: REVIEWED")).toBeTruthy();
+    expect(within(liability).getByText(/GL state captured:/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open GL reconciliation" }).getAttribute("href")).toBe(
       "/close/AVM-US/ASC606/FY2026-P08/reconciliations/retained-source",
     );

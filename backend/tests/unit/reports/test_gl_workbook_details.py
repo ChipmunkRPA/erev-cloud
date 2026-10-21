@@ -28,6 +28,8 @@ def test_gl_bridge_has_filterable_numeric_evidence_and_blank_unavailable_values(
             "bridge_result": "FAIL",
             "source_status": "REVIEWED",
             "reconciliation_id": "reviewed-source",
+            "source_revision_id": "original-review-state",
+            "source_recorded_at": "2026-10-20T12:00:00+00:00",
             "book_code": "ASC606",
             "period_key": "FY2026-P09",
         },
@@ -78,6 +80,8 @@ def test_gl_bridge_has_filterable_numeric_evidence_and_blank_unavailable_values(
     assert first["Report minus GL"].value == 0
     assert first["Bridge result"].value == "FAIL"
     assert first["Reconciliation ID"].value == "reviewed-source"
+    assert first["Captured source revision"].value == "original-review-state"
+    assert first["Source state captured at"].value == "2026-10-20T12:00:00+00:00"
     assert first["Subledger minus GL"].data_type == "n"
     assert "0.00" in first["Subledger minus GL"].number_format
     assert pending["Source review status"].value == "REOPENED"

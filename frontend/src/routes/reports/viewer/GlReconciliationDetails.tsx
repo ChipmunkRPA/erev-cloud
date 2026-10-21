@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { chipFor, StatusChip } from "../../../components/ui/StatusChip";
 import { currencyRegistered } from "../../../lib/api/queries/approvals";
 import type { TieOutResult } from "../../../lib/api/queries/reports";
-import { formatMoney, NO_VALUE } from "../../../lib/format";
+import { formatMoney, formatTimestamp, NO_VALUE } from "../../../lib/format";
 import { t } from "../../../lib/i18n/t";
 
 type Detail = NonNullable<TieOutResult["details"]>[number];
@@ -111,6 +111,13 @@ export function GlReconciliationDetails({ details }: { readonly details: readonl
                 <td className="min-w-48 p-2">
                   {detail.source_status ? (
                     <div>{t("reports.glDetails.review", { status: detail.source_status })}</div>
+                  ) : null}
+                  {detail.source_recorded_at ? (
+                    <div>
+                      {t("reports.glDetails.captured", {
+                        at: formatTimestamp(detail.source_recorded_at),
+                      })}
+                    </div>
                   ) : null}
                   {detail.reason ? <div>{detail.reason}</div> : null}
                   {detail.bridge_reason ? <div>{detail.bridge_reason}</div> : null}

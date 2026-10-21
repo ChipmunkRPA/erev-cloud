@@ -272,6 +272,8 @@ _GL_COLUMNS = (
     ("period_key", "Period"),
     ("reason", "Unavailable reason"),
     ("bridge_reason", "Bridge unavailable reason"),
+    ("source_revision_id", "Captured source revision"),
+    ("source_recorded_at", "Source state captured at"),
 )
 _GL_MONEY = frozenset(key for key, _ in _GL_COLUMNS[3:9])
 

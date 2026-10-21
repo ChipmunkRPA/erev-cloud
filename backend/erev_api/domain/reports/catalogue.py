@@ -469,6 +469,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fx_rate",
             "fx_rate_set",
             "fx_rate_set_version",
+            "reconciliation",
+            "report_source_revision",
         ),
         joins=(
             "contract_version_balance.contract_version_id = contract_version.id",
@@ -498,6 +500,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "GL bridge v4 selects the latest source identity before checking mutable state; "
             "a source changed after the report cutoff is unavailable and never replaced "
             "by an older reviewed source; retained v1-v3 bindings remain unchanged",
+            "GL bridge v5 reads the latest database-captured reconciliation revision at the "
+            "report cutoff for the latest source identity, preserving original review state and "
+            "totals after later changes; migration baselines attest only to capture-time state "
+            "and uncovered history is unavailable; original revision identity and amounts are "
+            "bound for reruns; retained v1-v4 comparisons keep their prior rules",
         ),
         tie_outs=("TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -542,6 +549,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fx_rate",
             "fx_rate_set",
             "fx_rate_set_version",
+            "report_source_revision",
         ),
         joins=(
             "subledger_line.subledger_posting_id = subledger_posting.id",
@@ -640,6 +648,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "GL bridge v4 selects the latest source identity before checking mutable state; "
             "a source changed after the report cutoff is unavailable and never replaced "
             "by an older reviewed source; retained v1-v3 bindings remain unchanged",
+            "GL bridge v5 reads the latest database-captured reconciliation revision at the "
+            "report cutoff for the latest source identity, preserving original review state and "
+            "totals after later changes; migration baselines attest only to capture-time state "
+            "and uncovered history is unavailable; original revision identity and amounts are "
+            "bound for reruns; retained v1-v4 comparisons keep their prior rules",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),

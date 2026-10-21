@@ -110,6 +110,7 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
         rollforward_gl.BRIDGE_EVIDENCE,
         rollforward_gl.REVIEW_EVIDENCE,
         rollforward_gl.EVIDENCE,
+        rollforward_gl.HISTORICAL_EVIDENCE,
     ],
 )
 def test_retained_gl_rebuild_never_reads_current_reconciliation(evidence_key: str) -> None:
@@ -124,7 +125,12 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation(evidence_key: st
         str(entity.id): {
             "id": str(uuid4()),
             "status": "REVIEWED"
-            if evidence_key in {rollforward_gl.EVIDENCE, rollforward_gl.REVIEW_EVIDENCE}
+            if evidence_key
+            in {
+                rollforward_gl.EVIDENCE,
+                rollforward_gl.HISTORICAL_EVIDENCE,
+                rollforward_gl.REVIEW_EVIDENCE,
+            }
             else "DRAFT",
             "totals": [
                 {
