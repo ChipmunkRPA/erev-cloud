@@ -17,12 +17,12 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.stages.s01_canonicalize.convert import contract_entity_subject_key
-from erev_engine.trace import Trace
+from erev_engine.trace import Trace, TraceNode
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -209,7 +209,7 @@ def member_adjustments(
             continue
         # Engine member_cl nodes identify the allocation population, not merely a
         # convenient group whose unrelated discrepancies happen to cancel out.
-        latest: dict[str, tuple[date, frozenset[str]]] = {}
+        latest: dict[str, tuple[date, frozenset[str], TraceNode]] = {}
         for node in trace.nodes:
             if (
                 node.measure != "contract_liability"
@@ -230,13 +230,40 @@ def member_adjustments(
             except (KeyError, ValueError) as exc:
                 raise tie_outs.invalid("period_key", "Invalid member allocation evidence.") from exc
             if day <= ends[entity] and (member_name not in latest or latest[member_name][0] < day):
-                latest[member_name] = (day, population)
+                latest[member_name] = (day, population, node)
         if (
             set(latest) != names
-            or any(keys != names for _, keys in latest.values())
-            or len({day for day, _ in latest.values()}) != 1
+            or any(keys != names for _, keys, _ in latest.values())
+            or len({day for day, _, _ in latest.values()}) != 1
         ):
             continue
+        # A zero group delta alone cannot authorize arbitrary member transfers.
+        # Each destination must agree with its actual original engine target.
+        for member in members:
+            original = latest[member.external_id][2]
+            target = original
+            if original.currency != currency:
+                target_id = original.id.replace(
+                    "contract_liability:", "contract_liability_functional:", 1
+                )
+                candidates = [node for node in trace.nodes if node.id == target_id]
+                if len(candidates) != 1:
+                    raise tie_outs.invalid(
+                        "currency_view", "Member allocation has no unique functional target."
+                    )
+                target = candidates[0]
+            try:
+                value = Decimal(target.value)
+                if (
+                    not value.is_finite()
+                    or target.currency != currency
+                    or value != member.value("contract_liability")
+                ):
+                    raise ValueError("Mismatched target")
+            except (InvalidOperation, ValueError) as exc:
+                raise tie_outs.invalid(
+                    "period_key", "Member allocation disagrees with its retained engine target."
+                ) from exc
         originals = {}
         for member in members:
             key = (member.contract_id, entity, "CONTRACT_LIABILITY", currency)

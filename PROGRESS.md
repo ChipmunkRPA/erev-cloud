@@ -20,6 +20,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Member aging adjustments agree with original engine amounts — October 21, 2026
+
+- Combined-member aging adjustments now require each presented member amount to equal its
+  retained original engine target, beyond complete membership and conserving the group total.
+  Functional amounts require the exact member/period functional target in the requested currency.
+  Missing, ambiguous, non-finite, wrong-currency or mismatched targets are refused, rather than
+  treating a zero aggregate difference as evidence for an arbitrary member transfer.
+- Original-owner age buckets and the separate adjustment column remain unchanged for valid
+  sources. Focused cases cover offsetting member drift, a fully transferred zero-net owner,
+  original functional targets and reporting translation; ten aging cases plus lint/types pass.
+  No migration/schema change; no new full combined-contract command-to-lock claim.
+- Continue the October 21 public-repository scope. No deployment, no independent accounting
+  sign-off gate, no migration-to-live or sandbox lock-chain requirement.
+
 ## Original-owner aging and separate member allocations — October 21, 2026
 
 - Implemented aging_member_adjustments_v1: original liability buckets retain their receiving
@@ -202,23 +216,6 @@ review and publish changes without PR accumulation, and do not deploy.
   versions, repeated cancellation/reentry and complex same-day entry still require completion.
   Combined-member aging ownership, independent sign-off and final-candidate checks remain open.
   No deployment; direct-main publication only.
-
-## Partial cancellations attribute allocation effects on other obligations — October 20, 2026
-
-- Original nonzero fixed-allocation changes from earlier partial terminations now enter
-  CANCELLATIONS, including first-entry/monthly cuts and mixed later-version bridges. They no
-  longer inflate NEW_CONTRACTS or prevent the original modification/estimate split. Explicit
-  per-event state and unique actual cancellation are required; nonzero effects after that
-  cancellation remain unsupported. Same-day cross-effects require original sequence evidence.
-- New rpo_cancellation_cross_changes_v1 bindings preserve the expanded rule; older report runs
-  retain their classification. Migration 0252 and catalogue describe the same evidence rule.
-- A full engine witness pools B prospectively when cancelling A, then cancels B. Original dated
-  trace reads verify full/monthly and later-version attribution, with legacy/refusal checks.
-  73 scoped cases, existing public three-view report/rerun journey, lint/types and migration
-  down/up exact IPE parity pass. The new lifecycle witness is not a new public API journey.
-- Repeated cancellation/reentry mixtures, intervening pre-termination versions, complex same-day
-  entry mixtures and combined-member aging ownership still need work. Independent accounting
-  sign-off/final-candidate checks remain open. No deployment; publish directly to main.
 
 ## Outstanding release verification
 

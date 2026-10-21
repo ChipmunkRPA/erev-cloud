@@ -312,13 +312,59 @@ def test_combined_liability_keeps_source_age_and_separate_member_adjustment() ->
         replace(balances[0], values={"contract_liability": D(0)}),
         replace(balances[1], values={"contract_liability": D(100)}),
     )
-    fully = aging.member_adjustments(source, transferred, traces, {ENTITY: MARCH_END})
+    # Equal group totals cannot justify transferring amounts absent engine evidence.
+    with pytest.raises(Problem):
+        aging.member_adjustments(source, transferred, traces, {ENTITY: MARCH_END})
+    transferred_trace = {
+        VERSION: Trace(
+            1,
+            "test",
+            tuple(
+                replace(node, value=str(balance.value("contract_liability")))
+                for node, balance in zip(nodes, transferred, strict=True)
+            ),
+            {},
+        )
+    }
+    fully = aging.member_adjustments(source, transferred, transferred_trace, {ENTITY: MARCH_END})
     assert fully[0].total == 0 and fully[0].buckets["bucket_over_365"] == 100
 
     from erev_api.domain.reports.reporting_currency import Translation
+
     translation = Translation("GBP", {ENTITY: {"rate": "0.8125"}})
     converted = aging._translated(rows, translation)
     assert converted[0].buckets["bucket_over_365"] == D("81.25")
     assert converted[0].allocation_adjustment == D("-48.75")
     assert converted[0].total == D("32.50")
     assert converted[1].total == D("48.75")
+
+    # Functional allocations must name the exact period/currency engine target.
+    functional = tuple(
+        replace(
+            b,
+            currency="GBP",
+            values={"contract_liability": b.value("contract_liability") * D("0.8")},
+        )
+        for b in balances
+    )
+    fn_source = tuple(
+        replace(r, currency="GBP", buckets={k: v * D("0.8") for k, v in r.buckets.items()})
+        for r in source
+    )
+    with pytest.raises(Problem):
+        aging.member_adjustments(fn_source, functional, traces, {ENTITY: MARCH_END})
+    fn_nodes = tuple(
+        replace(
+            node,
+            id=node.id.replace("contract_liability:", "contract_liability_functional:"),
+            measure="contract_liability_functional",
+            currency="GBP",
+            value=str(b.value("contract_liability")),
+        )
+        for node, b in zip(nodes, functional, strict=True)
+    )
+    fn_trace = {VERSION: Trace(1, "test", (*nodes, *fn_nodes), {})}
+    fn_rows = aging.member_adjustments(fn_source, functional, fn_trace, {ENTITY: MARCH_END})
+    assert fn_rows[0].buckets["bucket_over_365"] == 80
+    assert fn_rows[0].allocation_adjustment == -48 and fn_rows[1].allocation_adjustment == 48
+    assert aging_tie(fn_rows, functional)["result"] == "PASS"
