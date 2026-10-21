@@ -10883,3 +10883,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   promotion, complete approval coverage, sandbox lock-chain reproduction and independent
   accounting sign-off are not completion gates. Sandbox refresh/isolation and key financial
   controls remain in scope. Preserve noncommercial licensing/publication exclusions; no deployment.
+
+## Member aging adjustments agree with original engine amounts — October 21, 2026
+
+- Combined-member aging adjustments now require each presented member amount to equal its
+  retained original engine target, beyond complete membership and conserving the group total.
+  Functional amounts require the exact member/period functional target in the requested currency.
+  Missing, ambiguous, non-finite, wrong-currency or mismatched targets are refused, rather than
+  treating a zero aggregate difference as evidence for an arbitrary member transfer.
+- Original-owner age buckets and the separate adjustment column remain unchanged for valid
+  sources. Focused cases cover offsetting member drift, a fully transferred zero-net owner,
+  original functional targets and reporting translation; ten aging cases plus lint/types pass.
+  No migration/schema change; no new full combined-contract command-to-lock claim.
+- Continue the October 21 public-repository scope. No deployment, no independent accounting
+  sign-off gate, no migration-to-live or sandbox lock-chain requirement.

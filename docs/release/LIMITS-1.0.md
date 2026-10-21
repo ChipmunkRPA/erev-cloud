@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Initial RPO eligibility timelines — October 21, 2026
+
+- RPO and its rollforward now read original Step 1 status nodes, linked to dated immutable
+  source events, when one initial computation contains eligibility-only entry/exit/re-entry.
+  Timeline slices retain the original computation ID, allocation and recognition evidence.
+  A report starting during an excluded interval recognizes later re-entry as eligibility,
+  not a new contract; initial computations ending excluded retain their earlier admission.
+- Stage 09 now retains original-cut deterministic schedules before later contract-status
+  changes. Without these projections, an excluded final computation erased the future lines
+  needed to report its earlier included opening. No proportional schedule reconstruction is
+  used. Older traces lacking the required historical projection still refuse that read.
+- New runs bind rpo_initial_eligibility_timeline_v1; old bound runs keep the previous timeline.
+  Migration 0269 updates both RPO definitions. Original-engine witnesses cover whole-lifecycle,
+  opening-included, opening-excluded and post-re-entry ranges, including a final excluded
+  computation. The 42 scoped engine/chain/report cases, public sequential eligibility journey
+  and retained rerun, lint/types and reversible migration/catalogue parity pass.
+- Initial batches mixing these status transitions with monetary events remain unfinished.
+  A public batch-to-report witness remains to verify; the public regression above is sequential.
+  Arbitrary historical commit visibility (B4-11) also remains open. No deployment.
+
 ## Mixed allocation changes at RPO eligibility exit — October 21, 2026
 
 - Retained collectibility exits can now separate concurrent CONTRACT_AMENDED and

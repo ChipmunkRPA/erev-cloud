@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Initial RPO eligibility timelines — October 21, 2026
+
+- RPO and its rollforward now read original Step 1 status nodes, linked to dated immutable
+  source events, when one initial computation contains eligibility-only entry/exit/re-entry.
+  Timeline slices retain the original computation ID, allocation and recognition evidence.
+  A report starting during an excluded interval recognizes later re-entry as eligibility,
+  not a new contract; initial computations ending excluded retain their earlier admission.
+- Stage 09 now retains original-cut deterministic schedules before later contract-status
+  changes. Without these projections, an excluded final computation erased the future lines
+  needed to report its earlier included opening. No proportional schedule reconstruction is
+  used. Older traces lacking the required historical projection still refuse that read.
+- New runs bind rpo_initial_eligibility_timeline_v1; old bound runs keep the previous timeline.
+  Migration 0269 updates both RPO definitions. Original-engine witnesses cover whole-lifecycle,
+  opening-included, opening-excluded and post-re-entry ranges, including a final excluded
+  computation. The 42 scoped engine/chain/report cases, public sequential eligibility journey
+  and retained rerun, lint/types and reversible migration/catalogue parity pass.
+- Initial batches mixing these status transitions with monetary events remain unfinished.
+  A public batch-to-report witness remains to verify; the public regression above is sequential.
+  Arbitrary historical commit visibility (B4-11) also remains open. No deployment.
+
 ## Mixed allocation changes at RPO eligibility exit — October 21, 2026
 
 - Retained collectibility exits can now separate concurrent CONTRACT_AMENDED and
@@ -201,20 +221,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - The targeted database journey and lint pass. This closes the missing transaction-currency
   command-to-report witness; earlier scoped functional/reporting evidence remains as recorded.
   No deployment or additional production-readiness gate is introduced.
-
-## Member aging adjustments agree with original engine amounts — October 21, 2026
-
-- Combined-member aging adjustments now require each presented member amount to equal its
-  retained original engine target, beyond complete membership and conserving the group total.
-  Functional amounts require the exact member/period functional target in the requested currency.
-  Missing, ambiguous, non-finite, wrong-currency or mismatched targets are refused, rather than
-  treating a zero aggregate difference as evidence for an arbitrary member transfer.
-- Original-owner age buckets and the separate adjustment column remain unchanged for valid
-  sources. Focused cases cover offsetting member drift, a fully transferred zero-net owner,
-  original functional targets and reporting translation; ten aging cases plus lint/types pass.
-  No migration/schema change; no new full combined-contract command-to-lock claim.
-- Continue the October 21 public-repository scope. No deployment, no independent accounting
-  sign-off gate, no migration-to-live or sandbox lock-chain requirement.
 
 ## Outstanding release verification
 

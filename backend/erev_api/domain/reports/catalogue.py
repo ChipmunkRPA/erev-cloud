@@ -900,6 +900,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and original dated projection evidence; older bindings retain their original "
             "version dates; database trace reads preserve projection cut, period_key and "
             "refusal reason",
+            "rpo_initial_eligibility_timeline_v1 reads original Step 1 status nodes and their "
+            "dated source events for eligibility-only initial computations; retained source "
+            "identity and amounts are preserved across entry, exit and re-entry slices; "
+            "pre-exit deterministic schedules retain original-cut projections; monetary event "
+            "batches and unavailable original evidence retain their previous behavior; older "
+            "bindings retain their original version timeline",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -1131,6 +1137,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "the exit must reconcile the fixed change; dated realized fees remain VC movements "
             "and the resulting remaining balance leaves through eligibility changes; older "
             "bindings retain their previous classification",
+            "rpo_initial_eligibility_timeline_v1 reads original Step 1 status nodes and their "
+            "dated source events for eligibility-only initial computations; retained source "
+            "identity and amounts are preserved across entry, exit and re-entry slices; "
+            "pre-exit deterministic schedules retain original-cut projections; monetary event "
+            "batches and unavailable original evidence retain their previous behavior; older "
+            "bindings retain their original version timeline",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

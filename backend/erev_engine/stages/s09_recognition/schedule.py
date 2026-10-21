@@ -1287,8 +1287,16 @@ def _emit_dated_schedule(
             and event.event_type in ("HOLD_APPLIED", "HOLD_RELEASED")
             for event in st.measure_events
         )
+        later_status = any(
+            day > cut
+            for day, _ in evaluator.contract.status_in_book.get(str(ctx.book_code), ())
+        )
         if seg is None or not (
-            later_allocation or later_hold or evaluator.adjustments or evaluator.attribution
+            later_allocation
+            or later_hold
+            or later_status
+            or evaluator.adjustments
+            or evaluator.attribution
         ):
             continue
         ev = evaluator.posted(cut)

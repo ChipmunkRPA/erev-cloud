@@ -28,6 +28,8 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
     versions, obligations, cuts, boundaries = [], {}, {}, {}
     estimates_by_version = {}
     schedules_by_version = {}
+    retained_bundles = {}
+    retained_books = {}
     previous_events: set[str] = set()
     for index, (count, effective) in enumerate(((1, admitted), (3, exited), (4, returned))):
         bundle = step1_worlds.time_world(paid=None, steps=steps[:count])
@@ -72,6 +74,8 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
             )
         book = compute(bundle).books[0]
         vid = uuid4()
+        retained_bundles[vid] = bundle
+        retained_books[vid] = book
         causes = [event for event in bundle.events if event.event_key not in previous_events]
         previous_events = {event.event_key for event in bundle.events}
         included = book.contract_version.columns["status_in_book"] in {"ACTIVE", "TERMINATED"}
@@ -148,7 +152,7 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
                 for p in entity.periods
             },
         )
-        for day in (before, end, admitted, exited, returned):
+        for day in (before, end, admitted, exited, returned, date(2025, 12, 31)):
             cuts[vid, day] = to_date.version_at(
                 {"version_no": index + 1},
                 [row],
@@ -219,3 +223,75 @@ def test_original_collectibility_exit_and_reentry(modified: bool, estimated: boo
         applied={},
     )
     assert unsupported.lines["ELIGIBILITY_CHANGES"] == 0
+
+    # A single initial computation contains all three status transitions.
+    # Retain its actual version ID, trace and dated recognition for every slice.
+    initial = replace(
+        versions[-1],
+        version_no=1,
+        causes=frozenset(event.event_type for event in bundle.events),
+    )
+    event_map = {
+        event.event_key: (cid, event.event_type, event.effective_date, event.record_seq)
+        for event in bundle.events
+    }
+    timeline = rpo.initial_eligibility_timeline(initial, cid, book.trace, event_map)
+    assert timeline is not None
+    assert [(v.effective, v.included) for v in timeline] == [
+        (admitted, True),
+        (exited, False),
+        (returned, True),
+    ]
+    assert {v.id for v in timeline} == {initial.id}
+    batched = replace(store, versions={gid: (initial,)}, chains={cid: timeline})
+    for cut, opening, new, eligibility, revenue in (
+        (date(2025, 12, 31), 0, 1200, -200, -100),
+        (before, 1100, 0, -200, 0),
+        (exited, 0, 0, 900, 0),
+        (returned, 900, 0, 0, 0),
+    ):
+        (batch,) = rpo.rollforward_lines(
+            batched,
+            ranges={eid: (cut, end)},
+            applied={},
+        )
+        assert batch.lines["OPENING"] == opening, batch.lines
+        assert batch.lines["NEW_CONTRACTS"] == new, batch.lines
+        assert batch.lines["ELIGIBILITY_CHANGES"] == eligibility, batch.lines
+        assert batch.lines["REVENUE"] == revenue, batch.lines
+        assert batch.lines["CLOSING"] == 900, batch.lines
+        assert batch.lines["CANCELLATIONS"] == batch.lines["UNEXPLAINED"] == 0, batch.lines
+    assert rpo.initial_eligibility_timeline(initial, cid, book.trace, {}) is None
+
+    # An initial computation that ends outside scope must still disclose its earlier entry.
+    initial_exit = replace(
+        versions[1],
+        version_no=1,
+        causes=frozenset(e.event_type for e in retained_bundles[versions[1].id].events),
+    )
+    exit_timeline = rpo.initial_eligibility_timeline(
+        initial_exit,
+        cid,
+        retained_books[versions[1].id].trace,
+        event_map,
+    )
+    assert exit_timeline is not None
+    exited_store = replace(
+        store,
+        versions={gid: (initial_exit,)},
+        chains={cid: exit_timeline},
+    )
+    for cut, opening, new, eligibility, revenue in (
+        (date(2025, 12, 31), 0, 1200, -1100, -100),
+        (before, 1100, 0, -1100, 0),
+    ):
+        (batch,) = rpo.rollforward_lines(
+            exited_store,
+            ranges={eid: (cut, end)},
+            applied={},
+        )
+        assert batch.lines["OPENING"] == opening, batch.lines
+        assert batch.lines["NEW_CONTRACTS"] == new, batch.lines
+        assert batch.lines["ELIGIBILITY_CHANGES"] == eligibility, batch.lines
+        assert batch.lines["REVENUE"] == revenue, batch.lines
+        assert batch.lines["CLOSING"] == batch.lines["UNEXPLAINED"] == 0, batch.lines

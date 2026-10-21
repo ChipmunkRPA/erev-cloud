@@ -107,6 +107,8 @@ from uuid import UUID
 from erev_engine.dates import add_months, month_ends_between
 from erev_engine.formulas import rpo_bands
 from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
+from erev_engine.stages.s02_contract_identification.status import STATUS_ORDINAL
+from erev_engine.trace import SourceRef, Trace
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -488,6 +490,7 @@ def load(
     cancellation_keys: dict[UUID, str] = {}
     entry_sequences: dict[UUID, int] = {}
     eligibility_exits: dict[UUID, tuple[UUID, date]] = {}
+    status_events: dict[str, tuple[UUID, str, date, int]] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -507,6 +510,16 @@ def load(
         ).mappings():
             kind = str(getattr(found["event_type"], "value", found["event_type"]))
             events[UUID(str(found["id"]))] = (kind, found["effective_date"])
+            natural_key = (
+                f"{contract_subject_key(str(found['external_id']))}/"
+                f"EV-{int(found['stream_version']):06d}"
+            )
+            status_events[natural_key] = (
+                UUID(str(found["contract_id"])),
+                kind,
+                found["effective_date"],
+                int(found["record_seq"]),
+            )
             if (
                 kind == "COLLECTIBILITY_ASSESSED"
                 and found["admitted_book"] == book_code
@@ -746,11 +759,100 @@ def load(
                 ob_found.lines.append(
                     (UUID(str(found["id"])), found["period_end_date"], Decimal(found["amount"]))
                 )
+    chains = chains_of(versions, obligations, _memberships(session, obligations, cutoff))
+    timeline_key = "rpo_initial_eligibility_timeline_v1"
+    timelines = params is None or params.binding is None or timeline_key in params.binding.evidence
+    if timelines:
+        if params is not None and params.sources is not None:
+            params.sources.record_evidence(timeline_key, True)
+        retained_traces: dict[UUID, Trace | None] = {}
+        for cid, chain in chains.items():
+            first = chain[0]
+            if not {"CONTRACT_CRITERIA_MET", "COLLECTIBILITY_ASSESSED"} <= first.causes:
+                continue
+            if first.id not in retained_traces:
+                retained_traces[first.id] = trace_store.load_trace(session, first.id)
+            trace = retained_traces[first.id]
+            if trace is None:
+                continue
+            expanded = initial_eligibility_timeline(first, cid, trace, status_events)
+            if expanded is not None:
+                chains[cid] = (*expanded, *chain[1:])
     return Store(
         versions={key: tuple(value) for key, value in versions.items()},
         obligations={key: tuple(value) for key, value in obligations.items()},
-        chains=chains_of(versions, obligations, _memberships(session, obligations, cutoff)),
+        chains=chains,
     )
+
+
+def initial_eligibility_timeline(
+    version: _Version,
+    contract_id: UUID,
+    trace: Trace,
+    events: Mapping[str, tuple[UUID, str, date, int]],
+) -> tuple[_Version, ...] | None:
+    """Read status slices of one original computation without inventing new computations."""
+    if version.version_no != 1 or not version.causes <= {
+        "CONTRACT_BOOKED",
+        "CONTRACT_ACTIVATED",
+        "CONTRACT_CRITERIA_MET",
+        "COLLECTIBILITY_ASSESSED",
+        "SIGNIFICANT_CHANGE_FLAGGED",
+        "MEMO_ADDED",
+    }:
+        return None
+    points: list[tuple[date, int, str, str]] = []
+    seen: set[str] = set()
+    for node in trace.nodes:
+        if not node.measure.startswith("status@"):
+            continue
+        key = node.measure.removeprefix("status@")
+        event = events.get(key)
+        if event is None:
+            return None
+        cid, kind, day, sequence = event
+        if cid != contract_id:
+            continue
+        status = node.params.get("status")
+        if (
+            key in seen
+            or node.formula_id != "step1.status.v1"
+            or status not in {"DRAFT", "NOT_A_CONTRACT", "ACTIVE"}
+            or node.value != str(STATUS_ORDINAL[status])
+            or len(node.inputs) != 1
+            or not isinstance(node.inputs[0], SourceRef)
+            or node.inputs[0].ref_type != "contract_event"
+            or node.inputs[0].ref_id != key
+        ):
+            return None
+        seen.add(key)
+        points.append((day, sequence, key, status))
+    points.sort()
+    if not points or (points[-1][3] == "ACTIVE") != version.included:
+        return None
+    result: list[_Version] = []
+    included = False
+    for day, sequence, key, status in points:
+        now = status == "ACTIVE"
+        if now == included:
+            continue
+        kind = events[key][1]
+        if (now and kind not in ENTRY_EVENTS) or (not now and kind != "COLLECTIBILITY_ASSESSED"):
+            return None
+        result.append(
+            dataclasses.replace(
+                version,
+                effective=day,
+                included=now,
+                causes=frozenset({kind}),
+                entries=((contract_id, day),) if now else (),
+                entry_order=((contract_id, sequence),) if now else (),
+                eligibility_exits=() if now else ((contract_id, day),),
+            )
+        )
+        included = now
+    # One admission already has the ordinary first-entry behavior.
+    return tuple(result) if len(result) > 1 else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1584,7 +1686,7 @@ def _obligation_lines(
     previously_included = False
     if opening_version is not None:
         for retained in store.chains.get(described.contract_id, ()):
-            if retained.id == opening_version.id:
+            if retained == opening_version:
                 break
             if retained.included and any(
                 ob.obligation_id == obligation_id for ob in store.obligations.get(retained.id, ())
