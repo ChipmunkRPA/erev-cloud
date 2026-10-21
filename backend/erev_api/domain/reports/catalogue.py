@@ -419,6 +419,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fixed-only manual releases, deferrals and schedule overrides replay only events "
             "effective at the reporting cut; unsupported component mixtures or unreproducible "
             "snapshots retain explicit projection errors",
+            "manual projection freezes realized usage at the reporting cut and replays fixed "
+            "plus PERIOD_VC targets without proportional allocation; schedule overrides retain "
+            "anchor-period realized consideration and recognize subsequent usage immediately; "
+            "royalty and netted projections remain unavailable",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -826,6 +830,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fixed-only manual releases, deferrals and schedule overrides replay only events "
             "effective at the reporting cut; unsupported component mixtures or unreproducible "
             "snapshots retain explicit projection errors",
+            "manual projection freezes realized usage at the reporting cut and replays fixed "
+            "plus PERIOD_VC targets without proportional allocation; schedule overrides retain "
+            "anchor-period realized consideration and recognize subsequent usage immediately; "
+            "royalty and netted projections remain unavailable",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -906,6 +914,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "exemption details retain obligation-level opening and closing exclusions, "
             "policy codes and transaction-currency movement; translated views label this "
             "original basis and legacy bindings retain their existing output shape",
+            "manual projection freezes realized usage at the reporting cut and replays fixed "
+            "plus PERIOD_VC targets without proportional allocation; schedule overrides retain "
+            "anchor-period realized consideration and recognize subsequent usage immediately; "
+            "royalty and netted projections remain unavailable",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

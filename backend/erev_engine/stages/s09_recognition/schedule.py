@@ -1302,10 +1302,10 @@ def _emit_dated_schedule(
             continue
         adjusted: dict[date, components.Evaluation] = {}
         if ev.adjustments:
-            # A fixed-only snapshot can replay the original manual rules without assigning
-            # combined fixed/realized amounts to components by ratio.
+            # Freeze already-realized usage at the cut and replay the original manual
+            # rules on the complete target. Future deltas need no ratio-based split.
             if (
-                any(item.component != "FIXED" for item in ob.segments)
+                any(item.component not in {"FIXED", "PERIOD_VC"} for item in ob.segments)
                 or evaluator.attribution is not None
             ):
                 _unavailable_projection(
@@ -1314,7 +1314,8 @@ def _emit_dated_schedule(
                     evaluator,
                     target.period_key,
                     cut,
-                    "Manual adjustments combine fixed and realized or netted components.",
+                    "Manual adjustments require unsupported royalty or netted "
+                    "component attribution.",
                 )
                 continue
             snapshot_contract = replace(
@@ -1352,6 +1353,16 @@ def _emit_dated_schedule(
                     target.period_key,
                     cut,
                     "The original-cut manual adjustment snapshot cannot be projected.",
+                )
+                continue
+            if any(value.realised != ev.realised for value in adjusted.values()):
+                _unavailable_projection(
+                    ctx,
+                    tb,
+                    evaluator,
+                    target.period_key,
+                    cut,
+                    "Realized usage changes within the original-cut projection horizon.",
                 )
                 continue
             if cut not in adjusted or adjusted[cut].value != ev.value:
@@ -1421,15 +1432,29 @@ def _emit_dated_schedule(
             }
             if part.complete:
                 posted_params["complete"] = "true"
+            realized = adjusted[end].realised if end in adjusted else ()
             posted = tb.node(
                 measure="scheduled_target",
                 subject_key=ob.subject_key,
                 period_key=slot,
-                value=part.posted,
+                value=part.posted + sum(item.amount for item in realized),
                 currency=ctx.txn_currency,
                 minor_unit=evaluator.mu,
                 formula_id=components.REVENUE_CUM_FORMULA,
-                inputs=[exact],
+                inputs=[
+                    exact,
+                    *(
+                        SourceRef(
+                            "contract_event",
+                            item.event_key,
+                            {
+                                "member": "rated_amount",
+                                "value": format_money(item.amount, evaluator.mu),
+                            },
+                        )
+                        for item in realized
+                    ),
+                ],
                 params=posted_params,
                 narrative_key=_narrative(components.REVENUE_CUM_FORMULA),
             )

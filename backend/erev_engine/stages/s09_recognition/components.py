@@ -813,18 +813,22 @@ class Evaluator:
             return None
         period, t_k = latest
         fixed = seg_ev.fixed
-        at_k = self.segments(period.end_date).fixed
+        anchor = self.segments(period.end_date)
+        at_k = anchor.fixed
         if fixed is None or at_k is None:
             raise _invariant("a schedule override needs a FIXED component", ob, rule="S09-R-40")
+        realized_anchor = sum(item.amount for item in anchor.realised)
+        realized_now = sum(item.amount for item in seg_ev.realised)
         params = manual.override_params(
             adj,
             as_of=d,
-            allocation=fixed.segment.a_posted,
+            allocation=fixed.segment.a_posted + realized_anchor,
             mu=mu,
             t_k=t_k,
-            x_exact=fixed.segment.x_exact,
+            x_exact=fixed.segment.x_exact + Fraction(realized_anchor, 10**mu),
             f_t=fixed.progress.value,
             f_k=at_k.progress.value,
+            realized_delta=realized_now - realized_anchor,
         )
         return formula_id, params
 

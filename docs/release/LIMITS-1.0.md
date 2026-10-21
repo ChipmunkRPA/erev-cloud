@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — fixed plus realized usage manual projections
+
+Manual releases, deferrals and overrides now project fixed plus PERIOD_VC targets from the
+original reporting cut. Realized usage is frozen and separately retained as trace inputs;
+subsequent events do not become historical forecast amounts. Every projected period must
+reconcile with the original schedule and dated remainder. Snapshots whose realized amounts
+change over the future horizon still refuse rather than inventing fixed component allocation.
+
+The override engine also now retains already-realized consideration in its respread anchor,
+while later realized usage is recognized immediately through an explicit formula parameter.
+Without that correction a 1,200 fixed fee plus 100 realized usage finished at only 1,200 after
+a schedule override. Legacy formula traces retain their original behavior with a zero default.
+
+Royalty/netted mixtures and broad public API lifecycle/close-pass acceptance are not established
+by this change. Independent accounting acceptance and release verification remain outstanding.
+Migration 0227 describes the report capability. No deployment.
+
+
 ### October 20 — combined-member agent refunds now source-attributed
 
 A two-contract USD/GBP journey exposed GBP 75,600 of unexplained rollforward OTHER after

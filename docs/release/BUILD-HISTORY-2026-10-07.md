@@ -9977,3 +9977,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This does not complete arbitrary manual adjustment projection or combined hold/modification
   lifecycle acceptance. Legacy evidence gaps, missing original calendar/terms, broader mixed
   attribution and independent accounting sign-off remain open. No deployment.
+
+## Original-cut manual schedule projection — October 20, 2026
+
+- Fixed-only deterministic schedules now replay manual release, manual defer and schedule
+  override formulas against original allocation segments and events effective by the report
+  cut. Future manual changes and later estimate allocations do not backfill that projection.
+  Every applied adjustment retains its formula, parameters and input chain for trace replay.
+- Six real engine cases compare each adjustment kind with a later release or estimate change;
+  projected future periods match the original pre-change calculation. Frozen contract-status
+  cuts are excluded from time-based projection. 99 scoped tests pass, including hold/manual
+  ordering and rejection of explicit unavailable evidence. Two DB report journeys, lint/types
+  and all three migrated IPE definitions also pass verification.
+- Mixed fixed/realized or netted adjustments and snapshots that cannot reproduce original
+  revenue retain an explicit projection error; reports do not silently use the latest schedule.
+  Missing calendar/terms, legacy evidence gaps, compound lifecycle/API acceptance and independent
+  accounting sign-off remain open. Migration 0217 records scope. No deployment.

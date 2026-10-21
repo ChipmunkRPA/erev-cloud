@@ -407,3 +407,69 @@ def test_d98_37_allow_bypasses_the_guard_and_records_the_policy_reason() -> None
     # The bypass leaves the recognition itself untouched: the right to invoice is recognised.
     by_period = period_amounts(targets_by_period(state, ob.subject_key))
     assert sum(by_period.values()) == usd("3000.00")
+
+
+def test_manual_projection_freezes_realized_usage_before_later_changes() -> None:
+    from test_s09_causes_manual_holds import _adjustment
+
+    ob = _realised_obligation("POB-01", USAGE, JAN_1, DEC_END, fixed="1200")
+    usage = _usage(2, "POB-01", JAN_31, (JAN_1, JAN_31), "10", "100.00")
+    later_usage = _usage(
+        4, "POB-01", date(2026, 4, 30), (date(2026, 4, 1), date(2026, 4, 30)), "40", "400.00"
+    )
+    later_release = _adjustment(5, date(2026, 5, 1), "MANUAL_RELEASE", "FY2026-P05", remaining=True)
+    cases = (
+        ("MANUAL_RELEASE", {"amount": Decimal("50")}),
+        ("MANUAL_DEFER", {"amount": Decimal("30")}),
+        (
+            "SCHEDULE_OVERRIDE",
+            {
+                "periods": [
+                    {"period_key": "FY2026-P02", "amount": Decimal("20")},
+                    {"period_key": "FY2026-P03", "amount": Decimal("40")},
+                ]
+            },
+        ),
+    )
+    for kind, extra in cases:
+        manual = _adjustment(3, date(2026, 2, 1), kind, "FY2026-P02", **extra)
+        original, _ = _run(CTX, allocated_state([ob], events=[usage, manual]))
+        changed, trace = _run(
+            CTX, allocated_state([ob], events=[usage, manual, later_usage, later_release])
+        )
+        original_targets = targets_by_period(original, ob.subject_key)
+        changed_targets = targets_by_period(changed, ob.subject_key)
+        assert original_targets["FY2026-P12"] == usd("1300.00")
+        assert changed_targets["FY2026-P12"] == usd("1700.00")
+        assert changed_targets["FY2026-P04"] - original_targets["FY2026-P04"] == usd("400.00")
+        expected = period_amounts(original_targets)
+        projected = {
+            node.params["period_key"]: Decimal(node.value)
+            for node in trace.nodes
+            if node.measure == "scheduled_period_at_cut" and node.params["cut"] == "2026-02-28"
+        }
+        assert projected == {
+            key: Decimal(value).scaleb(-2)
+            for key, value in expected.items()
+            if "FY2026-P02" < key <= "FY2026-P12"
+        }, kind
+        from erev_api.domain.contracts import to_date
+
+        retained = to_date.nodes_of(to_date.nodes_at(trace.nodes, [FEB_28]))
+        assert retained.period_schedule is not None
+        assert {
+            key: amount for key, _, amount in retained.period_schedule[ob.subject_key][FEB_28]
+        } == projected
+        remainder = next(
+            node
+            for node in trace.nodes
+            if node.measure == "scheduled_remainder"
+            and node.id.startswith(f"scheduled_remainder:{ob.subject_key}:")
+            and node.params.get("as_of") == "2026-02-28"
+        )
+        assert sum(projected.values()) == Decimal(remainder.value)
+        assert not any(
+            node.measure == "scheduled_projection_unavailable"
+            and node.params["as_of"] == "2026-02-28"
+            for node in trace.nodes
+        )

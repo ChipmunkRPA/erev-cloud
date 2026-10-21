@@ -226,6 +226,7 @@ def override_params(
     x_exact: Fraction | None = None,
     f_t: Fraction | None = None,
     f_k: Fraction | None = None,
+    realized_delta: int = 0,
 ) -> Mapping[str, str]:
     """Params of ``sched.override_respread.v1``: a listed target, or the S09-R-40 respread."""
     params = _common(adj, as_of=as_of, allocation=allocation, mu=mu)
@@ -243,6 +244,8 @@ def override_params(
                 "x_exact": rational_param(x_exact),
             }
         )
+    if realized_delta:
+        params["realized_delta"] = str(realized_delta)
     return MappingProxyType(dict(sorted(params.items())))
 
 

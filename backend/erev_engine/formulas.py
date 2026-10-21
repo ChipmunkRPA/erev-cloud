@@ -804,7 +804,9 @@ def _override_respread(inputs: Sequence[Fraction], params: Mapping[str, str]) ->
     target T_j (param ``target``). ``respread`` after the latest listed period t_k:
     ``cumulative_posted``(X, A, (T_k + (X − T_k) × g) ÷ X) with g = (f(t) − f(t_k)) ÷ (1 − f(t_k)),
     and g = 1 when f(t_k) = 1; params ``t_k``, ``allocation`` (minor units), ``x_exact``, ``f_t``
-    and ``f_k``.
+    and ``f_k``. Mixed usage includes already-realized consideration in X and A at the
+    last listed period. Optional ``realized_delta`` (minor units, default zero) adds usage
+    realized since that anchor immediately; it is not spread over future periods.
     """
     formula_id = "sched.override_respread.v1"
     minor_unit = minor_unit_of(params)
@@ -818,11 +820,14 @@ def _override_respread(inputs: Sequence[Fraction], params: Mapping[str, str]) ->
     t_k = Fraction(_minor(params, "t_k"), scale)
     x_exact, allocation = _rational(params, "x_exact"), _minor(params, "allocation")
     f_t, f_k = _rational(params, "f_t"), _rational(params, "f_k")
+    realized_delta = Fraction(int(params.get("realized_delta", "0")), scale)
     if x_exact == 0:
-        return t_k
+        return t_k + realized_delta
     g = Fraction(1) if f_k == 1 else min(Fraction(1), max(Fraction(0), (f_t - f_k) / (1 - f_k)))
     ratio = min(Fraction(1), max(Fraction(0), (t_k + (x_exact - t_k) * g) / x_exact))
-    return Fraction(cumulative_posted(x_exact, allocation, ratio, minor_unit), scale)
+    return (
+        Fraction(cumulative_posted(x_exact, allocation, ratio, minor_unit), scale) + realized_delta
+    )
 
 
 def _hold_freeze(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:

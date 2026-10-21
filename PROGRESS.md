@@ -3,6 +3,26 @@
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
 
+
+## Mixed usage manual projection — October 20, 2026
+
+- Historical projections now freeze already-realized PERIOD_VC amounts and replay manual
+  release, deferral and schedule override against the complete original-cut target. Later usage
+  and later adjustments are excluded; changing realized amounts within the frozen horizon
+  retain an explicit refusal rather than becoming a fixed forecast.
+- Fixed-plus-usage overrides exposed an engine defect: after the last listed period, respread
+  discarded the realized consideration and completed at only the fixed allocation. The anchor
+  now includes already-realized consideration; usage realized after that anchor enters revenue
+  immediately through a retained realized_delta parameter (legacy traces default to zero).
+- Three adjustment journeys compare every historical future period with the original schedule,
+  replay every trace node, pass through the contract trace reader, and reconcile to the dated
+  scheduled remainder. Explicit checks preserve 1,200 fixed + 100 original usage at completion
+  and recognize later 400 usage in its own month. Existing dated/fixed/manual paths also pass.
+- 113 scoped engine/reader cases and 7 catalogue cases pass; migration 0227 was applied locally
+  and all three IPE definitions match the catalogue. Lint/types pass. Royalty/netted mixed projections, broader
+  public API lifecycle and close-pass acceptance, independent accounting acceptance and final
+  release checks remain open. Direct main publication; no deployment.
+
 ## Combined-member agent refund reporting — October 20, 2026
 
 - Fixed a real GBP 75,600 unexplained rollforward difference after a combined agent contract
@@ -228,23 +248,6 @@
 - Mixed multiple-provenance sources, legacy traces without exact input amounts, split-role
   inputs and non-revenue components remain open. This is not acceptance of every public mixed
   workflow; independent accounting sign-off remains outstanding. No deployment.
-
-
-## Original-cut manual schedule projection — October 20, 2026
-
-- Fixed-only deterministic schedules now replay manual release, manual defer and schedule
-  override formulas against original allocation segments and events effective by the report
-  cut. Future manual changes and later estimate allocations do not backfill that projection.
-  Every applied adjustment retains its formula, parameters and input chain for trace replay.
-- Six real engine cases compare each adjustment kind with a later release or estimate change;
-  projected future periods match the original pre-change calculation. Frozen contract-status
-  cuts are excluded from time-based projection. 99 scoped tests pass, including hold/manual
-  ordering and rejection of explicit unavailable evidence. Two DB report journeys, lint/types
-  and all three migrated IPE definitions also pass verification.
-- Mixed fixed/realized or netted adjustments and snapshots that cannot reproduce original
-  revenue retain an explicit projection error; reports do not silently use the latest schedule.
-  Missing calendar/terms, legacy evidence gaps, compound lifecycle/API acceptance and independent
-  accounting sign-off remain open. Migration 0217 records scope. No deployment.
 
 
 
