@@ -73,6 +73,7 @@ def translation_records(value: Any) -> tuple[Mapping[str, Any], ...]:
 
 UNEXPLAINED_TITLE = "Monthly unexplained RPO differences"
 UNEXPLAINED_BASIS = (
-    "Nonzero original contract-period differences remain listed even when translated amounts "
-    "offset or round to zero. A zero net total does not clear these source differences."
+    "Nonzero original contract-period differences remain listed even when amounts offset or "
+    "currency translation rounds them to zero. A zero net total does not clear these source "
+    "differences."
 )

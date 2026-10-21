@@ -2,6 +2,27 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Transaction-currency RPO retains monthly unexplained differences — October 20, 2026
+
+- Transaction-view RPO rollforwards now measure every selected period boundary and inspect
+  original contract/entity/currency monthly differences. Opposite monthly gaps can no longer
+  disappear behind a zero range total: any nonzero source gap fails the rollforward tie-out.
+  Existing range rows stay intact and unexplained_details exposes each problem month in the
+  viewer, XLSX/PDF and manifest, with unchanged original/report-currency amounts.
+- New rpo_transaction_monthly_gaps_v1 bindings preserve the monthly rule and dated inputs on
+  rerun; older transaction bindings retain prior range-only checks. Converted views retain
+  their existing monthly checks. UI/export explanation now describes both source netting and
+  currency rounding, and the viewer labels the second value as Report difference.
+- A real builder/read-layer case has unsupported +10/-10 monthly changes and a zero net range:
+  it fails with both details, reruns identically, and preserves the legacy pass. Supported
+  modification movements still pass with no gaps. Scoped converted/exemption checks, existing
+  viewer/export cases, the public three-view report/rerun journey, lint/types and migration
+  0255 down/up exact catalogue parity pass. The gap case uses supplied retained version rows,
+  not a new public API contract lifecycle journey.
+- Complex cancellation/reentry and intervening pre-termination versions, same-day entry
+  mixtures, combined-member aging ownership, independent accounting sign-off and final-candidate
+  checks remain open. No deployment and no production-readiness claim; direct main only.
+
 ## Mixed retained-version causes separate while obligations remain active — October 20, 2026
 
 - A later retained version that combines modification, estimate and partial-termination causes
@@ -201,24 +222,6 @@
 - First-entry/same-version usage cancellation, multi-version usage chains, multiple cancellations
   inside one computation, intervening pre-termination versions and combined-member aging policy
   remain open, alongside independent accounting sign-off and final-candidate verification.
-  Direct main publication; no deployment.
-
-## RPO cancellations survive later retained versions — October 20, 2026
-
-- A first-batch cancellation is settled before a later retained version supersedes its
-  revenue evidence. The same bridge now handles an opening obligation cancelled before the
-  next retained version. Later cancelled versions carry retained revenue; re-entry admits
-  only its remaining allocation, preserving the earlier cancellation and revenue lines.
-- New report bindings retain rpo_cancelled_chains_v1; existing bindings keep the prior
-  classification on rerun. The change also reaches monthly converted rollforwards through
-  the shared Store. Accounting computations and original events are unchanged.
-- The 50 scoped cases pass, including real-engine cancellation traces adapted into later
-  retained/memo and re-entry chains, both estimate directions, refunds/non-refunds, full-range
-  and monthly balances, and legacy behavior. Existing public modification reports/reruns in
-  three views, scoped lint/types and migration 0243 down/up catalogue parity pass.
-- Multiple cancellations within one computation, versions intervening before the original
-  termination, same-day entry/cancellation, usage mixtures and combined-member aging ownership
-  remain open. Independent accounting sign-off and final-candidate checks remain open.
   Direct main publication; no deployment.
 
 ## Outstanding release verification

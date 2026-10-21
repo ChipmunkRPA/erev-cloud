@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — transaction-currency monthly source differences cannot offset away
+
+- Transaction-view RPO rollforwards now measure every selected period boundary and inspect
+  original contract/entity/currency monthly differences. Opposite monthly gaps can no longer
+  disappear behind a zero range total: any nonzero source gap fails the rollforward tie-out.
+  Existing range rows stay intact and unexplained_details exposes each problem month in the
+  viewer, XLSX/PDF and manifest, with unchanged original/report-currency amounts.
+- New rpo_transaction_monthly_gaps_v1 bindings preserve the monthly rule and dated inputs on
+  rerun; older transaction bindings retain prior range-only checks. Converted views retain
+  their existing monthly checks. UI/export explanation now describes both source netting and
+  currency rounding, and the viewer labels the second value as Report difference.
+- A real builder/read-layer case has unsupported +10/-10 monthly changes and a zero net range:
+  it fails with both details, reruns identically, and preserves the legacy pass. Supported
+  modification movements still pass with no gaps. Scoped converted/exemption checks, existing
+  viewer/export cases, the public three-view report/rerun journey, lint/types and migration
+  0255 down/up exact catalogue parity pass. The gap case uses supplied retained version rows,
+  not a new public API contract lifecycle journey.
+- Complex cancellation/reentry and intervening pre-termination versions, same-day entry
+  mixtures, combined-member aging ownership, independent accounting sign-off and final-candidate
+  checks remain open. No deployment and no production-readiness claim; direct main only.
+
 ### October 20 — mixed causes in later retained versions for continuing obligations
 
 - A later retained version that combines modification, estimate and partial-termination causes

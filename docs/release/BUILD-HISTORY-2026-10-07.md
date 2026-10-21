@@ -10523,3 +10523,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Multiple cancellations, first-entry cancellation followed by another retained version in the
   same range, same-day entry/cancellation, realized-usage mixtures and combined-member aging
   ownership remain open. Independent accounting sign-off and final-candidate checks remain open.
+
+## RPO cancellations survive later retained versions — October 20, 2026
+
+- A first-batch cancellation is settled before a later retained version supersedes its
+  revenue evidence. The same bridge now handles an opening obligation cancelled before the
+  next retained version. Later cancelled versions carry retained revenue; re-entry admits
+  only its remaining allocation, preserving the earlier cancellation and revenue lines.
+- New report bindings retain rpo_cancelled_chains_v1; existing bindings keep the prior
+  classification on rerun. The change also reaches monthly converted rollforwards through
+  the shared Store. Accounting computations and original events are unchanged.
+- The 50 scoped cases pass, including real-engine cancellation traces adapted into later
+  retained/memo and re-entry chains, both estimate directions, refunds/non-refunds, full-range
+  and monthly balances, and legacy behavior. Existing public modification reports/reruns in
+  three views, scoped lint/types and migration 0243 down/up catalogue parity pass.
+- Multiple cancellations within one computation, versions intervening before the original
+  termination, same-day entry/cancellation, usage mixtures and combined-member aging ownership
+  remain open. Independent accounting sign-off and final-candidate checks remain open.
+  Direct main publication; no deployment.

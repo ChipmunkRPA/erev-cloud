@@ -1048,6 +1048,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "disclosed; original event coverage and dates are required and their fixed amounts "
             "must sum to the actual version change; missing evidence or mismatched amounts remain "
             "unexplained; older bindings retain prior attribution",
+            "rpo_transaction_monthly_gaps_v1 checks each original contract/entity/period in "
+            "transaction currency before range-level netting; any nonzero source difference fails "
+            "the rollforward tie-out even when months offset, and unexplained_details retains the "
+            "original amount unchanged in report currency for viewer and exports; period cuts and "
+            "the rule are retained for reruns; older transaction bindings keep their previous "
+            "range-level checks",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),
