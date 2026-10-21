@@ -26,6 +26,7 @@ from erev_api.domain.reports.outputs import (
     layout,
     parameter_text,
     rpo_exemptions,
+    rpo_rates,
     total_text,
 )
 from erev_api.domain.reports.outputs.xlsx import WorkbookChapter, validate_chapters
@@ -63,6 +64,11 @@ def _fit(text: str, width: float) -> str:
 
 def _stamp_lines(data: ReportData, stamp: RunStamp, *, wrapped: bool = False) -> list[_Line]:
     style = stamp.negative_number_style
+    rates = (
+        rpo_rates.records(data.control_totals.get("translation_rates"))
+        if stamp.report_code in rpo_rates.REPORTS
+        else None
+    )
     texts: list[tuple[str, bool]] = [
         (f"{stamp.report_name} v{stamp.report_version}", True),
         (f"Run {stamp.report_run_no}", False),
@@ -85,8 +91,18 @@ def _stamp_lines(data: ReportData, stamp: RunStamp, *, wrapped: bool = False) ->
             (f"{key}: {total_text(value, style)}", False)
             for key, value in sorted(data.control_totals.items())
             if key not in {"exemption_changes", "exemption_translation", "unexplained_details"}
+            and not (key == "translation_rates" and rates is not None)
         ),
     ]
+    if rates:
+        texts.extend(((rpo_rates.TITLE, True), (rpo_rates.BASIS, False)))
+        for rate in rates:
+            texts.append(
+                (f"{rate['entity_id']} / {rate['period_key']} / {rate['rate_type']}", True)
+            )
+            texts.extend(
+                (f"{label}: {rate.get(key) or ''}", False) for key, label in rpo_rates.COLUMNS
+            )
     transaction = data.control_totals.get("currency_view") == "transaction"
     for detail_key, title, basis in (
         (

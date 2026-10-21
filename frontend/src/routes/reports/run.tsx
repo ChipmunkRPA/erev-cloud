@@ -62,6 +62,7 @@ import { valueText } from "./viewer/RunDetailsDrawer";
 import { bookLabel, hashPrefix, runAsOf } from "./viewer/RunStamp";
 import { isMoney, PACK_CODES } from "./viewer/specs";
 import { RpoExemptionDetails, RpoUnexplainedDetails } from "./viewer/RpoExemptionDetails";
+import { RpoCurrencyDetails } from "./viewer/RpoCurrencyDetails";
 import { TieOutStrip } from "./viewer/TieOutStrip";
 
 /** The permission that downloads the output of a pack run (SCREENS_B §5.3). */
@@ -772,6 +773,7 @@ function RunBody({ run, me }: RunBodyProps) {
           />
           <RpoExemptionDetails run={run} />
           <RpoUnexplainedDetails run={run} />
+          <RpoCurrencyDetails run={run} />
           <TieOutStrip results={run.tie_out_results} />
           <RecordTable
             title={t("reports.runDetails.output")}

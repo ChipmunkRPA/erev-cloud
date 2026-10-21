@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained RPO FX evidence is readable in viewers and exports — October 20, 2026
+
+- RPO and RPO rollforward viewers now expose retained exchange-rate legs by entity,
+  period, source/target currency and average/closing basis, with original rate IDs,
+  rate-set versions and knowledge cutoffs. Exact rate strings are not money-rounded.
+- Standalone and packed XLSX exports present the same retained legs as structured tables;
+  PDF includes labeled rate details. Excel stores rates as text to preserve decimal precision.
+  Unknown legacy export shapes retain their generic control presentation. No new FX reads,
+  accounting calculations, binding changes or database migration are introduced.
+- Two viewer cases and two export cases pass, including 18-decimal precision, original
+  version identity, same-currency legs and spreadsheet formula escaping. Scoped lint and
+  backend/frontend type checks pass.
+- Complex RPO lifecycle attribution, B4-11 concurrent commit visibility, combined-member
+  aging ownership, independent accounting sign-off and final-candidate checks remain open.
+  This presentation improvement does not close those gaps. Direct main; no deployment.
+
 ## Historical GL reports retain original review state and amounts — October 20, 2026
 
 - GL bridge v5 reads database-captured immutable GL reconciliation revisions at the report
@@ -194,25 +210,6 @@
 - Multiple cancellations within one computation, intervening pre-termination versions, same-day
   entry/cancellation and combined-member aging ownership remain open. Independent accounting
   sign-off and final-candidate verification remain open. Direct main; no deployment.
-
-## Realized fees follow cancellation and re-entry segments — October 20, 2026
-
-- For separately retained cancellation/re-entry versions, realized fees now use the final
-  cancellation evidence up to the next re-entry cut. Re-entry admits fixed plus realized
-  allocation net of pre-entry revenue, and pre-entry realized fees are removed from in-scope
-  VC changes. This repairs misclassification that could previously balance in total while
-  understating NEW_CONTRACTS and overstating VC_ESTIMATE_CHANGES.
-- New bindings use rpo_cancelled_usage_v4; retained v1-v3 keep their feature scope and markers.
-  Excluded/missing obligations or absent realization evidence do not authorize the segment read.
-  Original fixed allocation and revenue traces remain unchanged.
-- All 70 scoped cases pass, including usage fees through one/repeated cancellation and re-entry,
-  reports beginning before/after cancellation, line-level expected amounts and legacy behavior.
-  Existing public modification reports/reruns in three views, lint/types and migration 0247
-  down/up IPE parity pass. New re-entry cases are retained-reader witnesses, not API journeys.
-- First-batch/same-version usage cancellation followed by re-entry, multiple cancellations in one
-  computation, versions intervening before termination, same-day entry/cancellation and combined-
-  member aging ownership remain open. Independent sign-off/final-candidate checks remain open.
-  Direct main publication; no deployment.
 
 ## Outstanding release verification
 

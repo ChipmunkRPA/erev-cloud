@@ -232,6 +232,28 @@ def _exemption_translation(
     return row + 2
 
 
+def _rpo_rates(sheet: Any, formats: _Formats, row: int, value: Any) -> int | None:
+    from . import rpo_rates
+
+    records = rpo_rates.records(value)
+    if records is None:
+        return None
+    if not records:
+        return row
+    sheet.write_string(row, 0, rpo_rates.TITLE, formats.bold)
+    sheet.write_string(row + 1, 0, rpo_rates.BASIS, formats.wrapped)
+    row += 2
+    for col, (_, label) in enumerate(rpo_rates.COLUMNS):
+        sheet.write_string(row, col, label, formats.wrapped_bold)
+    for record in records:
+        row += 1
+        for col, (key, _) in enumerate(rpo_rates.COLUMNS):
+            # Exact rate strings must not lose decimal precision in Excel's numeric cells.
+            sheet.write_string(row, col, guard(str(record.get(key) or "")), formats.wrapped)
+    sheet.set_column(0, len(rpo_rates.COLUMNS) - 1, 22)
+    return row + 2
+
+
 def _total(
     sheet: Any, formats: _Formats, row: int, key: str, value: Any, *, transaction: bool = False
 ) -> int:
@@ -335,6 +357,11 @@ def _header_block(
     sheet.write_string(row, 0, LABEL_CONTROL_TOTALS, formats.bold)
     row += 1
     for key, value in sorted(data.control_totals.items()):
+        if key == "translation_rates" and stamp.report_code in {"rpo", "rpo_rollforward"}:
+            rendered = _rpo_rates(sheet, formats, row, value)
+            if rendered is not None:
+                row = rendered
+                continue
         row = _total(
             sheet,
             formats,

@@ -762,6 +762,67 @@ describe("SF-08:report viewer", () => {
     },
   );
 
+  it.each(["rpo", "rpo_rollforward"])(
+    "shows retained RPO currency legs without rounding rates (%s)",
+    async (code) => {
+      const definition = { ...RPO, code, name: "RPO currency review" };
+      const base = {
+        entity_id: AVM_US.id,
+        period_key: "FY2026-P02",
+        period_end: "2026-02-28",
+        rate_cutoff: "2026-03-01T12:00:00Z",
+      };
+      const run = reportRun({
+        report: { code, version: 1, name: "RPO currency review" },
+        control_totals: {
+          translation_rates: [
+            {
+              ...base,
+              base_currency: "EUR",
+              quote_currency: "USD",
+              rate_type: "average",
+              rate: "1.234567890123456789",
+              rate_id: "average-rate",
+              version_id: "approved-rates",
+            },
+            {
+              ...base,
+              base_currency: "USD",
+              quote_currency: "GBP",
+              rate_type: "closing",
+              rate: "0.8123456789",
+              rate_id: "closing-rate",
+              version_id: "reporting-rates",
+            },
+            {
+              ...base,
+              base_currency: "USD",
+              quote_currency: "USD",
+              rate_type: "closing",
+              rate: "1",
+              rate_id: null,
+              version_id: null,
+            },
+          ],
+        },
+      });
+      serve(definition, { [RUN_ID]: run }, []);
+      renderApp(`/reports/${code}?${CONTEXT}&run=${RUN_ID}`, {
+        me: MARCUS,
+        screenRoutes: SCREEN_ROUTES,
+      });
+      fireEvent.click(await screen.findByText("Retained RPO exchange rates"));
+      expect(screen.getByText("EUR → USD")).toBeTruthy();
+      expect(screen.getByText("USD → GBP")).toBeTruthy();
+      expect(screen.getByText("1.234567890123456789")).toBeTruthy();
+      expect(screen.getByText("Period average")).toBeTruthy();
+      expect(screen.getAllByText("Period closing")).toHaveLength(2);
+      expect(screen.getByText("Rate-set version: approved-rates")).toBeTruthy();
+      expect(screen.getByText("Same currency")).toBeTruthy();
+      expect(screen.getByText(/Each currency-conversion leg is listed separately/)).toBeTruthy();
+    },
+  );
+
   it("shows GL role differences even when the aggregate difference is zero", async () => {
     const results: TieOutResult[] = [
       {

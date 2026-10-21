@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — readable retained RPO exchange-rate evidence
+
+- RPO and RPO rollforward viewers now expose retained exchange-rate legs by entity,
+  period, source/target currency and average/closing basis, with original rate IDs,
+  rate-set versions and knowledge cutoffs. Exact rate strings are not money-rounded.
+- Standalone and packed XLSX exports present the same retained legs as structured tables;
+  PDF includes labeled rate details. Excel stores rates as text to preserve decimal precision.
+  Unknown legacy export shapes retain their generic control presentation. No new FX reads,
+  accounting calculations, binding changes or database migration are introduced.
+- Two viewer cases and two export cases pass, including 18-decimal precision, original
+  version identity, same-currency legs and spreadsheet formula escaping. Scoped lint and
+  backend/frontend type checks pass.
+- Complex RPO lifecycle attribution, B4-11 concurrent commit visibility, combined-member
+  aging ownership, independent accounting sign-off and final-candidate checks remain open.
+  This presentation improvement does not close those gaps. Direct main; no deployment.
+
+
 ### October 20 — historical GL comparison from captured reconciliation revisions
 
 - GL bridge v5 reads database-captured immutable GL reconciliation revisions at the report

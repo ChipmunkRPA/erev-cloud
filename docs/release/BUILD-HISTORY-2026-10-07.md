@@ -10595,3 +10595,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Usage chains with re-entry, multiple cancellations within one computation, intervening
   pre-termination versions, same-day entry/cancellation and combined-member aging ownership
   remain open. Independent sign-off and final-candidate verification remain open. No deployment.
+
+## Realized fees follow cancellation and re-entry segments — October 20, 2026
+
+- For separately retained cancellation/re-entry versions, realized fees now use the final
+  cancellation evidence up to the next re-entry cut. Re-entry admits fixed plus realized
+  allocation net of pre-entry revenue, and pre-entry realized fees are removed from in-scope
+  VC changes. This repairs misclassification that could previously balance in total while
+  understating NEW_CONTRACTS and overstating VC_ESTIMATE_CHANGES.
+- New bindings use rpo_cancelled_usage_v4; retained v1-v3 keep their feature scope and markers.
+  Excluded/missing obligations or absent realization evidence do not authorize the segment read.
+  Original fixed allocation and revenue traces remain unchanged.
+- All 70 scoped cases pass, including usage fees through one/repeated cancellation and re-entry,
+  reports beginning before/after cancellation, line-level expected amounts and legacy behavior.
+  Existing public modification reports/reruns in three views, lint/types and migration 0247
+  down/up IPE parity pass. New re-entry cases are retained-reader witnesses, not API journeys.
+- First-batch/same-version usage cancellation followed by re-entry, multiple cancellations in one
+  computation, versions intervening before termination, same-day entry/cancellation and combined-
+  member aging ownership remain open. Independent sign-off/final-candidate checks remain open.
+  Direct main publication; no deployment.
