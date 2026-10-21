@@ -1094,6 +1094,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "requires an original INCEPTION pin and an admission-date event; amendments "
             "remain separately classified from original boundaries; missing evidence and "
             "older bindings retain their previous eligibility",
+            "rpo_same_day_entry_usage_v1 separates dated realized fees from new-contract "
+            "amounts for same-day activation and termination; original termination "
+            "before-state and traced realized amounts are required; original amendments "
+            "remain separate and retained fee corrections use the cancelled chain; "
+            "missing evidence and older bindings retain their previous eligibility",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

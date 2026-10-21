@@ -216,6 +216,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if store.classify_same_day_entry_estimates and params.sources is not None:
         params.sources.record_evidence(entry_estimate_evidence, True)
+    entry_usage_evidence = "rpo_same_day_entry_usage_v1"
+    store = replace(
+        store,
+        classify_same_day_entry_usage=(
+            params.binding is None or entry_usage_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_same_day_entry_usage and params.sources is not None:
+        params.sources.record_evidence(entry_usage_evidence, True)
     separate_cancel_evidence = "rpo_separate_cancellations_v1"
     store = replace(
         store,

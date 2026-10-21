@@ -363,6 +363,7 @@ class Store:
     classify_pretermination_versions: bool = field(default=True, kw_only=True)
     classify_same_day_entry_modifications: bool = field(default=True, kw_only=True)
     classify_same_day_entry_estimates: bool = field(default=True, kw_only=True)
+    classify_same_day_entry_usage: bool = field(default=True, kw_only=True)
     inception_estimate_events: set[tuple[UUID, str]] = field(default_factory=set, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
@@ -1408,6 +1409,11 @@ def _obligation_lines(
             {"CONTRACT_BOOKED", "CONTRACT_ACTIVATED", "CONTRACT_TERMINATED", "MEMO_ADDED"}
             | ({"CONTRACT_AMENDED"} if store.classify_same_day_entry_modifications else set())
             | ({"ESTIMATE_CHANGED"} if store.classify_same_day_entry_estimates else set())
+            | (
+                {"USAGE_REPORTED"}
+                if store.classify_same_day_entry_usage and store.classify_batch_cancelled_usage
+                else set()
+            )
         )
     ):
         version = moved[0]
@@ -1439,7 +1445,13 @@ def _obligation_lines(
                     and terminal.day == version.effective
                     and dict(version.entries).get(candidate.contract_id) == terminal.day
                     and store.at(candidate, end).realised_traced
-                    and store.at(candidate, end).realised == 0
+                    and (
+                        store.at(candidate, end).realised == 0
+                        or (
+                            store.classify_same_day_entry_usage
+                            and store.classify_batch_cancelled_usage
+                        )
+                    )
                 )
             ):
                 same_day_entry = candidate

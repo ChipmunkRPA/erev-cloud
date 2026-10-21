@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Same-day RPO entry with realized usage — October 21, 2026
+
+- Same-day activation/termination can now retain gross new-contract amounts when usage is
+  present. Original termination before-state and traced realized fees are required; fixed entry,
+  original amendments, usage changes, recognition and cancellation remain distinct movements.
+  Later retained usage corrections adjust VC and cancellation without repeating entry/amendments.
+- New bindings retain rpo_same_day_entry_usage_v1 and require the existing batch cancelled-usage
+  decomposition. Missing realized evidence and older bindings preserve previous eligibility.
+  Migration 0263 records the matching IPE rule.
+- All 88 related cases, public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass. The new same-day usage/mixed-amendment and retained-correction witnesses
+  use supplied boundary/cut evidence, not a new original-engine/public-command usage journey.
+- Original-engine/public-command coverage for these same-day usage mixtures remains outstanding,
+  along with broader repeated cancellation/re-entry and concurrent commit visibility. Continue
+  the October 21 repository-only scope; no deployment or independent accounting review gate.
+
 ## Original inception estimates in same-day RPO entry — October 21, 2026
 
 - Same-day activation/termination now retains initial variable consideration in NEW_CONTRACTS
@@ -202,27 +218,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Complex cancellation/reentry, intervening pre-termination versions and same-day entry mixtures,
   combined-member aging ownership, independent accounting sign-off and final-candidate checks
   remain open. No deployment; direct-main publication; no production-readiness claim.
-
-## Transaction-currency RPO retains monthly unexplained differences — October 20, 2026
-
-- Transaction-view RPO rollforwards now measure every selected period boundary and inspect
-  original contract/entity/currency monthly differences. Opposite monthly gaps can no longer
-  disappear behind a zero range total: any nonzero source gap fails the rollforward tie-out.
-  Existing range rows stay intact and unexplained_details exposes each problem month in the
-  viewer, XLSX/PDF and manifest, with unchanged original/report-currency amounts.
-- New rpo_transaction_monthly_gaps_v1 bindings preserve the monthly rule and dated inputs on
-  rerun; older transaction bindings retain prior range-only checks. Converted views retain
-  their existing monthly checks. UI/export explanation now describes both source netting and
-  currency rounding, and the viewer labels the second value as Report difference.
-- A real builder/read-layer case has unsupported +10/-10 monthly changes and a zero net range:
-  it fails with both details, reruns identically, and preserves the legacy pass. Supported
-  modification movements still pass with no gaps. Scoped converted/exemption checks, existing
-  viewer/export cases, the public three-view report/rerun journey, lint/types and migration
-  0255 down/up exact catalogue parity pass. The gap case uses supplied retained version rows,
-  not a new public API contract lifecycle journey.
-- Complex cancellation/reentry and intervening pre-termination versions, same-day entry
-  mixtures, combined-member aging ownership, independent accounting sign-off and final-candidate
-  checks remain open. No deployment and no production-readiness claim; direct main only.
 
 ## Outstanding release verification
 

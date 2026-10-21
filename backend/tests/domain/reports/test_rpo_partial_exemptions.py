@@ -2218,3 +2218,163 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(
     assert not rpo.rollforward_lines(
         exempt, ranges={eid: (before, end)}, applied={eid: frozenset({"POL-198"})}
     )
+
+
+@pytest.mark.parametrize("realized", [80, 150])
+@pytest.mark.parametrize("revenue", [0, 100])
+@pytest.mark.parametrize("amended", [False, True])
+def test_same_day_entry_usage_and_termination_preserve_gross_movements(
+    realized: int, revenue: int, amended: bool
+) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+    from erev_api.domain.reports.rpo_boundary_changes import Change
+
+    vid, oid, cid, eid, gid = (uuid4() for _ in range(5))
+    entry, before, end = date(2026, 1, 1), date(2025, 12, 31), date(2026, 1, 31)
+    version = rpo._Version(
+        vid,
+        gid,
+        1,
+        True,
+        entry,
+        frozenset({"CONTRACT_ACTIVATED", "USAGE_REPORTED", "CONTRACT_TERMINATED"}),
+        entries=((cid, entry),),
+        entry_order=((cid, 1),),
+        cancellation_events=frozenset({"cancel"}),
+    )
+    ob = rpo._Ob(
+        oid,
+        vid,
+        oid,
+        cid,
+        "C",
+        "O",
+        "Service",
+        None,
+        None,
+        None,
+        eid,
+        "E",
+        "USD",
+        "POINT_IN_TIME",
+        end,
+        entry,
+        Decimal(100 + realized),
+        True,
+    )
+    empty = ObligationAt(
+        *(Decimal(0) for _ in range(8)),
+        "CANCELLED",
+        None,
+        None,
+        realised_traced=True,
+        fixed_allocation=Decimal(100),
+    )
+    closing = replace(
+        empty,
+        revenue=Decimal(revenue),
+        realised=Decimal(realized),
+        realised_stored=Decimal(realized),
+        fixed_allocation=Decimal(revenue),
+    )
+    store = rpo.Store(
+        {gid: (version,)},
+        {vid: (ob,)},
+        {cid: (version,)},
+        {(vid, before): {oid: empty}, (vid, entry): {oid: closing}, (vid, end): {oid: closing}},
+        boundaries={
+            vid: {
+                "C/O": (
+                    Change(
+                        entry,
+                        "cancel",
+                        "CONTRACT_TERMINATED",
+                        Decimal(-100),
+                        record_seq=3,
+                        before=Decimal(100),
+                        after=Decimal(0),
+                        cancelled_on=entry,
+                    ),
+                )
+            }
+        },
+    )
+    if amended:
+        version = replace(
+            version,
+            causes=version.causes | {"CONTRACT_AMENDED"},
+            modification_events=frozenset({"mod"}),
+        )
+        store.versions[gid] = store.chains[cid] = (version,)
+        terminal = store.boundaries[vid]["C/O"][0]
+        store.boundaries[vid] = {
+            "C/O": (
+                Change(
+                    entry,
+                    "mod",
+                    "CONTRACT_AMENDED",
+                    Decimal(30),
+                    record_seq=2,
+                    before=Decimal(100),
+                    after=Decimal(130),
+                ),
+                replace(terminal, before=Decimal(130), amount=Decimal(-130)),
+            )
+        }
+    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    assert result.lines["NEW_CONTRACTS"] == 100
+    assert result.lines["VC_ESTIMATE_CHANGES"] == realized
+    assert result.lines["CANCELLATIONS"] == -(100 + (30 if amended else 0) + realized - revenue)
+    assert result.lines["REVENUE"] == -revenue
+    assert result.lines["MODIFICATIONS"] == (30 if amended else 0)
+    assert result.lines["OPENING"] == result.lines["CLOSING"] == result.lines["UNEXPLAINED"] == 0
+    for unsupported in (
+        replace(store, classify_same_day_entry_usage=False),
+        replace(store, classify_batch_cancelled_usage=False),
+        replace(
+            store,
+            cuts={
+                **store.cuts,
+                (vid, end): {
+                    oid: replace(closing, realised_traced=False),
+                },
+            },
+        ),
+    ):
+        (legacy,) = rpo.rollforward_lines(unsupported, ranges={eid: (before, end)}, applied={})
+        assert legacy.lines["NEW_CONTRACTS"] == 0
+
+    # A later retained usage correction changes VC and cancellation equally,
+    # without erasing or repeating the first admission or amendment.
+    later_id = uuid4()
+    later = replace(
+        version,
+        id=later_id,
+        version_no=2,
+        effective=end,
+        causes=frozenset({"USAGE_REPORTED"}),
+        entries=(),
+        modification_events=frozenset(),
+    )
+    correction = replace(
+        closing, realised=Decimal(realized + 10), realised_stored=Decimal(realized + 10)
+    )
+    retained = replace(
+        store,
+        versions={gid: (version, later)},
+        chains={cid: (version, later)},
+        obligations={vid: (ob,), later_id: (replace(ob, version_id=later_id),)},
+        boundaries={**store.boundaries, later_id: store.boundaries[vid]},
+        cuts={
+            **store.cuts,
+            **{
+                (later_id, day): {oid: empty if day == before else correction}
+                for day in (before, entry, end)
+            },
+        },
+    )
+    (corrected,) = rpo.rollforward_lines(retained, ranges={eid: (before, end)}, applied={})
+    expected = dict(result.lines)
+    expected["VC_ESTIMATE_CHANGES"] += 10
+    expected["CANCELLATIONS"] -= 10
+    assert corrected.lines == expected
