@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Approval entity-code history and display semantics — October 21, 2026
+
+- Historical Approvals Register now resolves entity codes from the latest source revision whose
+  original transaction committed by known_at. A rename committed after cutoff cannot rewrite
+  the old display. Missing entity-code history refuses explicitly; source revision IDs and
+  commit timestamps are retained alongside the already retained approval inputs.
+- Record-basis reads keep current codes, and existing retained reports rebuild from their
+  original inputs. Migration 0290 synchronizes the catalogue description.
+- Necessary verification covers an actual entity rename held across cutoff, old/new report
+  codes, source revision evidence, retained rebuild, existing public register flow, catalogue
+  parity and scoped lint/types.
+- Scope correction from implementation evidence: personnel names are intentionally current
+  identity labels, including anonymization (`domain/platform/actors.py`, `approval_queries.py`).
+  Reconstructing erased/past names is not a missing feature. Approval step names/numbers are
+  immutable after insertion (0013 permits only status/activation/completion updates); a separate
+  name-change history is unnecessary. These findings supersede earlier broad display-history
+  TODOs. Retained reports still preserve their consumed inputs under existing artifact controls.
+- Remaining: confirm first-step availability and rule-reference validity at historical cutoffs,
+  finish other OPEN report adapters and final repository validation. No deployment.
+
 ## Approval register retained display and decision inputs — October 21, 2026
 
 - Approvals Register now retains the consumed requests and decisions, resolved personnel and

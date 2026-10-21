@@ -11372,3 +11372,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining historical work includes journal-run state and other mutable memberships,
   configuration and report-specific inputs. These changes cover retained GL and contract
   revisions; they do not claim arbitrary reconstruction for every mutable source.
+
+## Committed journal lifecycle and line availability — October 21, 2026
+
+- Migration 0279 captures immutable journal-run/batch revisions and original journal-line
+  transaction evidence. Ordinary generation archives line commits after commit; the existing
+  recovery worker also covers pending evidence. No invented history: upgrade requires empty
+  journal tables, and retained new evidence prevents downgrade.
+- Journal exports resolve lifecycle revisions by actual commit cutoff, so a cancellation
+  inserted before cutoff but committed afterward cannot remove lines from the old report.
+  Incremental exports use line commits in (known_since, known_at]; public columns stay fixed
+  and older retained bindings preserve their original interpretation.
+- Historical revenue waterfall/disaggregation journal comparisons use committed line
+  populations and run state. BBR journal comparison inherits the export behavior. Production
+  actuals captures consume resolved committed states without reinterpreting application clocks.
+- Necessary checks passed: public JSON/CSV exports and retained reruns, real overlapping
+  cancellation commits, incremental lines, historical/current journal totals, archive guards,
+  catalogue parity, database architecture, focused actuals/catalogue/BBR units, lint/types.
+- Remaining: JE Population complete retained inputs, sample journal evidence and other mutable
+  report inputs/configuration still need work. This does not claim all historical sources are
+  complete. No deployment or actual-business migration is required or performed.

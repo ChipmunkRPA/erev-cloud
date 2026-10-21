@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Approval entity-code history and display semantics — October 21, 2026
+
+- Historical Approvals Register now resolves entity codes from the latest source revision whose
+  original transaction committed by known_at. A rename committed after cutoff cannot rewrite
+  the old display. Missing entity-code history refuses explicitly; source revision IDs and
+  commit timestamps are retained alongside the already retained approval inputs.
+- Record-basis reads keep current codes, and existing retained reports rebuild from their
+  original inputs. Migration 0290 synchronizes the catalogue description.
+- Necessary verification covers an actual entity rename held across cutoff, old/new report
+  codes, source revision evidence, retained rebuild, existing public register flow, catalogue
+  parity and scoped lint/types.
+- Scope correction from implementation evidence: personnel names are intentionally current
+  identity labels, including anonymization (`domain/platform/actors.py`, `approval_queries.py`).
+  Reconstructing erased/past names is not a missing feature. Approval step names/numbers are
+  immutable after insertion (0013 permits only status/activation/completion updates); a separate
+  name-change history is unnecessary. These findings supersede earlier broad display-history
+  TODOs. Retained reports still preserve their consumed inputs under existing artifact controls.
+- Remaining: confirm first-step availability and rule-reference validity at historical cutoffs,
+  finish other OPEN report adapters and final repository validation. No deployment.
+
 ## Approval register retained display and decision inputs — October 21, 2026
 
 - Approvals Register now retains the consumed requests and decisions, resolved personnel and
@@ -204,26 +224,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining historical-source gaps include first-generation approval/ack/name inputs and sample
   journal evidence. Retention guarantees repeatability of consumed inputs; it does not assert
   arbitrary historical reconstruction of these ancillary sources. No deployment.
-
-## Committed journal lifecycle and line availability — October 21, 2026
-
-- Migration 0279 captures immutable journal-run/batch revisions and original journal-line
-  transaction evidence. Ordinary generation archives line commits after commit; the existing
-  recovery worker also covers pending evidence. No invented history: upgrade requires empty
-  journal tables, and retained new evidence prevents downgrade.
-- Journal exports resolve lifecycle revisions by actual commit cutoff, so a cancellation
-  inserted before cutoff but committed afterward cannot remove lines from the old report.
-  Incremental exports use line commits in (known_since, known_at]; public columns stay fixed
-  and older retained bindings preserve their original interpretation.
-- Historical revenue waterfall/disaggregation journal comparisons use committed line
-  populations and run state. BBR journal comparison inherits the export behavior. Production
-  actuals captures consume resolved committed states without reinterpreting application clocks.
-- Necessary checks passed: public JSON/CSV exports and retained reruns, real overlapping
-  cancellation commits, incremental lines, historical/current journal totals, archive guards,
-  catalogue parity, database architecture, focused actuals/catalogue/BBR units, lint/types.
-- Remaining: JE Population complete retained inputs, sample journal evidence and other mutable
-  report inputs/configuration still need work. This does not claim all historical sources are
-  complete. No deployment or actual-business migration is required or performed.
 
 ## Outstanding release verification
 

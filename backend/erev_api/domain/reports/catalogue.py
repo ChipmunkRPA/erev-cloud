@@ -1969,8 +1969,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "subject_types and status when given",
             "historical basis selects committed request revisions and original decision commits "
             "at known_at before status filtering; record basis preserves business-time behavior",
-            "first-generation display labels and rule/step references retain "
-            "existing read semantics",
+            "historical entity codes use committed revisions at known_at; personnel names use "
+            "current identity visibility including anonymization; step names are immutable; "
+            "rule references retain existing read semantics",
             "approvals_register_inputs_v1 retains requests, decisions, names, rules, entity codes "
             "and first steps; same-source reruns rebuild rows and totals without live source reads",
         ),

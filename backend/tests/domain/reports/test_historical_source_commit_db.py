@@ -357,3 +357,57 @@ def test_contract_incremental_export_includes_committed_label_changes(world: K11
             ).rows
             == original.rows
         )
+
+
+def test_approval_register_uses_committed_entity_codes(world: K11World) -> None:
+    from erev_api.db.tables import approval_request, legal_entity
+    from erev_api.domain.reports.builders import RETAINED, approvals_register
+    from sqlalchemy import insert
+    from support.rows import approval_request_values
+
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    request = approval_request_values(
+        world.place.tenant_id,
+        entity_id=world.entity_id,
+        submitted_at=stamp,
+    )
+    with world.place.uow() as uow:
+        uow.session.execute(insert(approval_request).values(**request))
+        uow.commit()
+    original_code = world.place.scalar(
+        select(legal_entity.c.code).where(legal_entity.c.id == world.entity_id)
+    )
+    with world.place.uow() as writer:
+        writer.session.execute(
+            update(legal_entity)
+            .where(legal_entity.c.id == world.entity_id)
+            .values(code="RENAMED-COMMIT")
+        )
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    now = world.place.scalar(select(func.clock_timestamp()))
+    params = ReportParams(
+        report_code="approvals_register",
+        report_version=1,
+        parameters={"from_date": stamp.date().isoformat(), "to_date": stamp.date().isoformat()},
+        entity_ids=(world.entity_id,),
+        known_at=cutoff,
+        historical=True,
+        sources=SourceCollector(),
+    )
+    with world.place.uow() as reader:
+        old = approvals_register.build(reader, params)
+        latest = approvals_register.build(reader, replace(params, known_at=now, sources=None))
+        assert old.rows and latest.rows
+        assert {row["entity_code"] for row in old.rows} == {original_code}
+        assert {row["entity_code"] for row in latest.rows} == {"RENAMED-COMMIT"}
+        assert params.sources is not None
+        proof = params.sources.evidence["approval_entity_code_revisions_v1"]
+        assert len(proof) == 1 and proof[0]["source_revision_id"]
+        bound = params.sources.binding(
+            row_keys=[row["row_key"] for row in old.rows], strategy=RETAINED
+        )
+        assert (
+            approvals_register.build(reader, replace(params, sources=None, binding=bound)).rows
+            == old.rows
+        )

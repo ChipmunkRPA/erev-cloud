@@ -26,7 +26,8 @@ a request of all entities only in a run that names every entity), narrowed by ``
   (``amount_currency``); the served view is ``functional`` and any other view is refused by name.
 
 Same-source reruns rebuild from retained requests, decisions and resolved display inputs;
-first-generation historical display-name reconstruction remains a separate source concern.
+historical entity codes use committed revisions. Personnel names follow current identity
+visibility (including anonymization); step names are immutable request-time definitions.
 
 Control totals ``request_count``, ``decision_count``, ``auto_approval_count`` and the date range
 applied.
@@ -43,10 +44,17 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import approval_request, approval_step, legal_entity, rule, rule_set_version
+from erev_api.db.tables import (
+    approval_request,
+    approval_step,
+    legal_entity,
+    report_source_revision,
+    rule,
+    rule_set_version,
+)
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
@@ -197,10 +205,57 @@ def dataset_rows(
     }
 
 
-def _entity_codes(session: Session, found: Sequence[support.Request]) -> dict[UUID, str]:
+def _entity_codes(
+    session: Session, found: Sequence[support.Request], *, params: ReportParams
+) -> dict[UUID, str]:
     ids = sorted({item.entity_id for item in found if item.entity_id is not None}, key=str)
     if not ids:
         return {}
+    if params.historical:
+        revision = report_source_revision
+        committed = func.erev.source_commit_time("report_source_revision", revision.c.id)
+        rows = (
+            session.execute(
+                select(
+                    revision.c.source_id,
+                    revision.c.id,
+                    revision.c.document,
+                    committed.label("committed_server_at"),
+                )
+                .where(
+                    revision.c.source_kind == "entity_code",
+                    revision.c.source_id.in_(ids),
+                    revision.c.recorded_at <= params.known_at,
+                    committed <= params.known_at,
+                )
+                .distinct(revision.c.source_id)
+                .order_by(revision.c.source_id, revision.c.revision_no.desc())
+            )
+            .mappings()
+            .all()
+        )
+        if {row["source_id"] for row in rows} != set(ids):
+            raise Problem(
+                "historical-evidence-unavailable",
+                "Approval entity codes are unavailable at cutoff.",
+            )
+        tie_outs.record_evidence(
+            params,
+            "approval_entity_code_revisions_v1",
+            json.loads(
+                canonical_bytes(
+                    [
+                        {
+                            "entity_id": row["source_id"],
+                            "source_revision_id": row["id"],
+                            "committed_server_at": row["committed_server_at"],
+                        }
+                        for row in rows
+                    ]
+                )
+            ),
+        )
+        return {row["source_id"]: str(row["document"]["code"]) for row in rows}
     statement = select(legal_entity.c.id, legal_entity.c.code).where(legal_entity.c.id.in_(ids))
     return {UUID(str(entity_id)): str(code) for entity_id, code in session.execute(statement)}
 
@@ -320,7 +375,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         session = uow.session
         first, last = support.date_range(session, params, year=False, today=True)
         found = sources(uow, params, bounds=support.instants(first, last))
-        codes = _entity_codes(session, found)
+        codes = _entity_codes(session, found, params=params)
         steps = _first_steps(session, found)
         rule_keys, rule_versions = _rules(session, found)
         retained = json.loads(
