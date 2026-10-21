@@ -20,6 +20,28 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Adoption currency groundwork: dated billing evidence — October 21, 2026
+
+- Stage 12 now retains cumulative billed-control functional activity by contract/entity and
+  period, with the signed transaction quantity/currency/minor unit alongside it. Each movement
+  records the admitted billing date, pinned spot-rate inputs and exact conversion; cumulative
+  nodes replay from signed movements and prior periods. These are disclosure trace nodes,
+  not new posting targets or replacement liability balances.
+- Credit memos use their own dated spot rather than the carrying amount of the historical
+  liability layer consumed. Verified example: EUR 1,000 at 1.10 plus EUR 500 at 1.20 less
+  EUR 200 credit at 1.30 gives USD 1,440 cumulative activity, while the old layer relief is
+  USD 220. Later closing rates do not rewrite the historical activity. Contract members
+  remain separate and POL-160 receipt/due-date selection is preserved.
+- Necessary verification: 12 layer cases, 40 related functional/remeasurement/real book-replay
+  cases, and a full-engine trace-boundary assertion passed, plus scoped lint/types. No database
+  or posting schema changes; no deployment. New trace evidence changes computation content;
+  older computations are not backfilled and exact-original replay retains its mismatch guard.
+- Adoption Bridge multi-currency remains incomplete. The new control-flow population must
+  reconcile to stage 10 billed totals before use. LEGACY is a revenue-only fold with no stage
+  12 balances; its historical functional revenue/position basis and reporting-period translation
+  still need implementation. Do not derive a legacy liability merely by subtracting converted
+  activity where FX settlement/carrying differences exist, or substitute a current closing rate.
+
 ## Intercompany Pairs retained reconstruction — October 21, 2026
 
 - Transaction, functional and reporting runs now retain consumed ledger IDs, per-line amounts,
@@ -201,22 +223,6 @@ review and publish changes without PR accumulation, and do not deploy.
   TODOs. Retained reports still preserve their consumed inputs under existing artifact controls.
 - Remaining: confirm first-step availability and rule-reference validity at historical cutoffs,
   finish other OPEN report adapters and final repository validation. No deployment.
-
-## Approval register retained display and decision inputs — October 21, 2026
-
-- Approvals Register now retains the consumed requests and decisions, resolved personnel and
-  entity labels, first-step names, automatic rule keys/versions and applied date range. Both
-  initial builds and same-source reruns feed the same row/control calculation; reruns make no
-  live approval or display-name reads. Decimal amounts, UUIDs and timestamps round-trip exactly.
-- Retained inputs are bound to the workspace and complete report entity scope. Existing
-  functional-view restriction, request population permissions and historical commit filtering
-  remain in place. Old OPEN runs keep their source classification and reevaluate on rerun.
-- Migration 0289 synchronizes catalogue metadata. Necessary checks cover multi-step/pending/
-  automatic decisions, resolved names/rules, exact money, recomputed control totals without a
-  database, scope isolation, public rerun after a later approval, catalogue parity and types/lint.
-- Remaining: first-generation historical actor/entity/step/rule display resolution and other
-  OPEN report adapters. Retention freezes the inputs actually consumed; it does not claim that
-  current labels were historically correct on a report's first generation. No deployment.
 
 ## Outstanding release verification
 

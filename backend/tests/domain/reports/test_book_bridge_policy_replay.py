@@ -310,6 +310,15 @@ def test_licence_renewal_guard_survives_modification_and_is_attributed():
 
 def test_advance_fx_difference_is_quantified_only_in_functional_money():
     basis = advance_fx_world()
+    # The report's historical billing basis survives the full engine/output boundary,
+    # independently of subsequent monetary liability remeasurement.
+    for book in compute(basis).books:
+        nodes = [
+            node for node in book.trace.nodes if node.id.startswith("billed_control_functional:")
+        ]
+        assert nodes
+        assert all(node.value == "1100.00" and node.currency == "USD" for node in nodes)
+        assert all(node.params["amount_txn"] == "100000" for node in nodes)
     functional = replay.calculate(prepared_world(basis, view="functional"), engine=compute)
     record = functional.retained["sources"][0]
     assert Decimal(record["asc606"]["CONTRACT_LIABILITY"]) == 1120

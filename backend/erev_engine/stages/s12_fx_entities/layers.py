@@ -322,6 +322,7 @@ class UnitBook:
         self.balances: list[LayerBalance] = []
         self.findings: list[Finding] = []
         self.functional: dict[tuple[str, str], Running] = {}
+        self.billing_evidence: dict[str, Running] = {}
         self.remeasurement: dict[tuple[str, str], Running] = {}
         self.gain_loss = Running("fx_gain_loss", self.unit_key, None, "FX_GAIN_LOSS")
         self.functional_targets: list[FxTarget] = []
@@ -412,6 +413,8 @@ class UnitBook:
             pieces = self.credit(flow, when, period, released)
         else:
             pieces = self.debit(flow, when, period)
+        if flow.kind in {"BILLING", "CREDIT_MEMO"}:
+            self.record_billing(flow, when, period)
         sign = _REVENUE_SIGNS.get(flow.kind)
         if sign is not None:
             running = self.functional.setdefault(
@@ -422,6 +425,37 @@ class UnitBook:
             for piece in pieces:
                 running.add(piece, sign)
         return pieces
+
+    def record_billing(self, flow: ControlFlow, when: date, period: dates.PeriodLike) -> None:
+        """Retain dated billing activity independently of liability carrying relief.
+
+        These disclosure nodes are not posting targets. Billing uses its admitted POL-160
+        date; a credit memo uses its own spot, including when it consumes an older historical
+        liability layer. The cumulative transaction quantity lets a reader prove that this
+        population matches its stage 10 billed amount before using the functional amount.
+        """
+        rate = self.rates.spot(when)
+        amount = to_functional(flow.amount, rate, self.mu_txn, self.mu_fn)
+        formula = "fx.asset_layer.create.v1"  # registered round(transaction amount × rate)
+        node = self.tb.node(
+            measure="billing_activity_functional",
+            subject_key=flow.flow_key,
+            period_key=period.period_key,
+            value=amount,
+            currency=self.fn,
+            minor_unit=self.mu_fn,
+            formula_id=formula,
+            inputs=rate.inputs(),
+            params=self.conversion_params(flow.amount, rate, when),
+            exact=Fraction(flow.amount, 10**self.mu_txn) * rate.value,
+            narrative_key=_narrative(formula),
+        )
+        running = self.billing_evidence.setdefault(
+            flow.subject_key, Running("billed_control_cum", flow.subject_key, None, None)
+        )
+        sign = 1 if flow.kind == "BILLING" else -1
+        running.amount_txn += sign * flow.amount
+        running.add(Piece(node, amount, rate), sign)
 
     def credit(
         self,
@@ -1118,6 +1152,8 @@ class UnitBook:
                     None,
                 )
             )
+        for _subject, running in sorted(self.billing_evidence.items()):
+            self.publish(running, "billed_control_functional", "fx.gain_loss.sum.v1", period)
         for (measure, _subject), running in sorted(self.functional.items()):
             node_measure, formula_id = _FUNCTIONAL_NODES[measure]
             target = self.publish(running, node_measure, formula_id, period)
@@ -1142,7 +1178,18 @@ class UnitBook:
             minor_unit=self.mu_fn,
             formula_id=formula_id,
             inputs=[node_id for node_id, _ in inputs],
-            params={"signs": "|".join(str(sign) for _, sign in inputs)},
+            params={
+                "signs": "|".join(str(sign) for _, sign in inputs),
+                **(
+                    {
+                        "amount_txn": str(running.amount_txn),
+                        "txn_minor_unit": str(self.mu_txn),
+                        "txn_currency": self.txn,
+                    }
+                    if running.measure == "billed_control_cum"
+                    else {}
+                ),
+            },
             narrative_key=_narrative(formula_id),
         )
         running.node_id = node

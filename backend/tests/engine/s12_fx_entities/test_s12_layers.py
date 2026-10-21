@@ -664,3 +664,61 @@ def test_s12_inv_03_layers_equal_net_position() -> None:
         (f.code, f.severity, f.subject_key, f.detail["rule"], f.detail["period_key"])
         for f in state.findings
     ] == [("ENGINE_INVARIANT_VIOLATION", "ERROR", UNIT, "S12-INV-03", "FY2026-P03")]
+
+
+def test_billing_disclosure_keeps_dated_spot_and_credit_memo_basis() -> None:
+    ctx = _context(months=3)
+    flows = [
+        _invoice(1, date(2026, 1, 1), "1000.00"),
+        _invoice(2, date(2026, 2, 1), "500.00"),
+        _on_event("CREDIT_MEMO", 3, date(2026, 2, 15), "200.00"),
+    ]
+    state, trace = _run(
+        ctx,
+        flows,
+        [
+            _spot(date(2026, 1, 1), "1.10"),
+            _spot(date(2026, 2, 1), "1.20"),
+            _spot(date(2026, 2, 15), "1.30"),
+            _period_rate("closing", date(2026, 3, 31), "1.50"),
+        ],
+    )
+    assert state.findings == ()
+    for month, functional, transaction in (
+        (1, "1100.00", "100000"),
+        (2, "1440.00", "130000"),
+        (3, "1440.00", "130000"),
+    ):
+        node = _node(trace, f"billed_control_functional:{CONTRACT}:FY2026-P{month:02d}")
+        assert node.value == functional
+        assert node.params["amount_txn"] == transaction
+        assert node.params["txn_currency"] == "EUR"
+        assert node.params["txn_minor_unit"] == "2"
+        assert node.currency == "USD"
+    # The credit memo is 260 at its spot, while the older layer relief is 220.
+    relief = _moves(state, "LIABILITY_LAYER_CONSUMED")
+    assert sum(item.amount_functional for item in relief) == 22000
+    assert not any(item.measure == "billed_control_cum" for item in state.functional_targets)
+
+
+def test_billing_disclosure_respects_layer_date_and_contract_members() -> None:
+    ctx = _context(months=3)
+    first = _invoice(
+        1, date(2026, 1, 1), "100.00", unconditional=date(2026, 1, 20), receipt=date(2026, 1, 10)
+    )
+    second = dataclasses.replace(
+        _invoice(2, date(2026, 1, 20), "200.00"),
+        subject_key="SECOND@" + ENTITY,
+        source_key="SECOND/EV-000002",
+    )
+    _, trace = _run(
+        ctx,
+        [first, second],
+        [
+            _spot(date(2026, 1, 1), "1.10"),
+            _spot(date(2026, 1, 10), "1.20"),
+            _spot(date(2026, 1, 20), "1.30"),
+        ],
+    )
+    assert _node(trace, f"billed_control_functional:{CONTRACT}:FY2026-P01").value == "120.00"
+    assert _node(trace, f"billed_control_functional:SECOND@{ENTITY}:FY2026-P01").value == "260.00"

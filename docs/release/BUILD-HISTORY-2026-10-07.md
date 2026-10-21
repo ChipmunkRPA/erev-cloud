@@ -11561,3 +11561,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: first-generation actor/display-name histories, approval-register rule/step display
   inputs and other OPEN report adapters, followed by final repository validation. This audit
   export is a selected event listing, not a complete audit-chain verification. No deployment.
+
+## Approval register retained display and decision inputs — October 21, 2026
+
+- Approvals Register now retains the consumed requests and decisions, resolved personnel and
+  entity labels, first-step names, automatic rule keys/versions and applied date range. Both
+  initial builds and same-source reruns feed the same row/control calculation; reruns make no
+  live approval or display-name reads. Decimal amounts, UUIDs and timestamps round-trip exactly.
+- Retained inputs are bound to the workspace and complete report entity scope. Existing
+  functional-view restriction, request population permissions and historical commit filtering
+  remain in place. Old OPEN runs keep their source classification and reevaluate on rerun.
+- Migration 0289 synchronizes catalogue metadata. Necessary checks cover multi-step/pending/
+  automatic decisions, resolved names/rules, exact money, recomputed control totals without a
+  database, scope isolation, public rerun after a later approval, catalogue parity and types/lint.
+- Remaining: first-generation historical actor/entity/step/rule display resolution and other
+  OPEN report adapters. Retention freezes the inputs actually consumed; it does not claim that
+  current labels were historically correct on a report's first generation. No deployment.

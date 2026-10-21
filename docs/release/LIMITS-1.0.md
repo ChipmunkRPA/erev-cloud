@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Adoption currency groundwork: dated billing evidence — October 21, 2026
+
+- Stage 12 now retains cumulative billed-control functional activity by contract/entity and
+  period, with the signed transaction quantity/currency/minor unit alongside it. Each movement
+  records the admitted billing date, pinned spot-rate inputs and exact conversion; cumulative
+  nodes replay from signed movements and prior periods. These are disclosure trace nodes,
+  not new posting targets or replacement liability balances.
+- Credit memos use their own dated spot rather than the carrying amount of the historical
+  liability layer consumed. Verified example: EUR 1,000 at 1.10 plus EUR 500 at 1.20 less
+  EUR 200 credit at 1.30 gives USD 1,440 cumulative activity, while the old layer relief is
+  USD 220. Later closing rates do not rewrite the historical activity. Contract members
+  remain separate and POL-160 receipt/due-date selection is preserved.
+- Necessary verification: 12 layer cases, 40 related functional/remeasurement/real book-replay
+  cases, and a full-engine trace-boundary assertion passed, plus scoped lint/types. No database
+  or posting schema changes; no deployment. New trace evidence changes computation content;
+  older computations are not backfilled and exact-original replay retains its mismatch guard.
+- Adoption Bridge multi-currency remains incomplete. The new control-flow population must
+  reconcile to stage 10 billed totals before use. LEGACY is a revenue-only fold with no stage
+  12 balances; its historical functional revenue/position basis and reporting-period translation
+  still need implementation. Do not derive a legacy liability merely by subtracting converted
+  activity where FX settlement/carrying differences exist, or substitute a current closing rate.
+
 ## Intercompany Pairs retained reconstruction — October 21, 2026
 
 - Transaction, functional and reporting runs now retain consumed ledger IDs, per-line amounts,
