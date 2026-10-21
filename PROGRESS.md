@@ -6,6 +6,22 @@
 
 
 
+## Dated revenue-waterfall population — October 20, 2026
+
+- New waterfall calculations exclude contracts entering after each performing entity's as-of
+  period end. Entry comes from the first included version along the contract's membership
+  chain and the book-specific activation/criteria/opening event, using the existing historical
+  entry rule (fallback: that version's effective date). Later measurements do not delay entry.
+- Entry dates and source-version identities are retained in versioned evidence. Bound reruns
+  do not read current entry events; old bindings and already-frozen datasets retain their
+  original population. Missing entry evidence is refused, not replaced by inception guesses.
+- Public API checks cover March exclusion/April entry, retained reruns, performing-entity
+  journal tie-out, restricted entity access and dated FX. Both regrouping computation orders
+  pass. A pure retained-binding check covers differing calendar endpoints and legacy behavior.
+  Migration 0231 updates the waterfall IPE and source list; scoped lint/types pass.
+- B4-1/C-3's population implementation gap is closed. Independent accounting acceptance,
+  broader lifecycle acceptance and final candidate verification remain open. No deployment.
+
 ## Filterable GL bridge workpapers — October 20, 2026
 
 - Excel exports now render GL tie-out evidence as a filterable table, one row per retained
@@ -221,33 +237,6 @@
   removing the equality check alone would be incorrect. No public agent acceptance is claimed.
 - Multiple-origin split inputs, other mixed-source gaps and independent sign-off remain open.
   Direct main publication only; no deployment.
-
-
-## Readable RPO exemption exports — October 20, 2026
-
-- XLSX exports now render retained exemption facts as rows with readable policy names, wrapped
-  text and numeric amounts, instead of one JSON cell that can exceed Excel's 32,767-character
-  limit. PDF exports emit per-obligation endpoint and movement lines with existing pagination.
-- A 120-obligation case larger than the cell limit retains the final record, all signed amounts
-  and the transaction-currency basis. Text retains the formula guard; amounts are not recomputed.
-  The CSV companion manifest retains the complete original facts without changing CSV columns.
-- Focused export checks and lint/types pass. No accounting or report-total changes, no deployment.
-  Remaining mixed-source functionality and independent accounting acceptance are still open.
-
-
-## RPO exemption change detail viewer — October 20, 2026
-
-- RPO rollforward now retains obligation-level opening/closing excluded amounts, dates, rule
-  codes and the signed exemption movement. Full eligibility transitions and partial POL-200
-  release use the same figures as the rollforward, without changing its accounting totals.
-- Both report and run pages show a collapsible detail table with readable exemption names.
-  Functional/reporting views explicitly label these original transaction-currency figures;
-  the browser formats backend amounts without recomputing the movement.
-- New source bindings opt into the details; legacy bindings retain their earlier output shape.
-  Migration 0221 records the metadata. Focused policy/endpoint tests, the viewer case, lint/types
-  and migrated catalogue checks pass. The DB multi-currency RPO journey also confirms retained
-  exemption details after a rate revision and rerun. Broader reporting and independent accounting acceptance
-  remain open. Direct main publication only; no deployment.
 
 
 ## Outstanding release verification

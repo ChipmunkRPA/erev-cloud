@@ -708,3 +708,35 @@ def test_rpo_rollforward_currency_movements_and_retained_rates(
         retained.json()["control_totals"]["exemption_detail_basis"]
         == "transaction_currency_endpoints"
     )
+
+
+@pytest.mark.slow
+def test_waterfall_excludes_contracts_entering_after_as_of_and_retains_rerun(
+    world: ReportWorld,
+) -> None:
+    from support.reference import post
+    from support.worlds import run_now
+
+    before = {
+        **parameters(AVM_US, AVM_UK),
+        "from_period_key": "FY2026-P01",
+        "to_period_key": "FY2026-P12",
+        "as_of": "2026-03-31",
+    }
+    run, rows = report_run(world, "revenue_waterfall", before)
+    assert O1_ROW not in keyed(rows)
+    assert O2_ROW not in keyed(rows)
+    entered, active_rows = report_run(
+        world, "revenue_waterfall", {**before, "as_of": "2026-04-30"}
+    )
+    assert {O1_ROW, O2_ROW} <= keyed(active_rows).keys()
+    for original in (run, entered):
+        started = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        completed = run_now(world, UUID(started.json()["id"]))
+        assert completed["state"] == "SUCCEEDED", completed
+        rebuilt = get(
+            world.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}", world.maya
+        )
+        assert rebuilt.status_code == 200, rebuilt.text
+        assert rebuilt.json()["control_totals"] == original["control_totals"]

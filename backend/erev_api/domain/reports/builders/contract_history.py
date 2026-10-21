@@ -278,6 +278,59 @@ def _entries(
     )
 
 
+def entry_dates(
+    session: Session, *, book_code: str, cutoff: datetime, contract_ids: Sequence[UUID]
+) -> dict[str, dict[str, str]]:
+    """Original included-chain entry, independent of contracting/performing entity scope."""
+    per_version = (
+        select(
+            obligation_version.c.contract_version_id,
+            func.max(obligation_version.c.effective_date).label("effective_date"),
+        )
+        .join(contract_version, contract_version.c.id == obligation_version.c.contract_version_id)
+        .where(contract_version.c.book_code == book_code, contract_version.c.known_at <= cutoff)
+        .group_by(obligation_version.c.contract_version_id)
+        .subquery()
+    )
+    chain = tie_outs.chain_versions(book_code=book_code, cutoff=cutoff).subquery()
+    first = (
+        select(chain.c.contract_id, chain.c.id.label("contract_version_id"))
+        .where(
+            chain.c.contract_id.in_(contract_ids),
+            chain.c.status_in_book.in_(sorted(tie_outs.INCLUDED_STATUSES)),
+        )
+        .distinct(chain.c.contract_id)
+        .order_by(chain.c.contract_id, chain.c.member_from, chain.c.version_no)
+        .subquery()
+    )
+    entries = _entries(per_version, book_code=book_code, cutoff=cutoff, versions=None)
+    statement = (
+        select(
+            first.c.contract_id,
+            first.c.contract_version_id,
+            func.least(
+                per_version.c.effective_date,
+                func.coalesce(entries.c.entry_date, per_version.c.effective_date),
+            ).label("entry_date"),
+        )
+        .join(per_version, per_version.c.contract_version_id == first.c.contract_version_id)
+        .outerjoin(
+            entries,
+            and_(
+                entries.c.contract_id == first.c.contract_id,
+                entries.c.contract_version_id == first.c.contract_version_id,
+            ),
+        )
+    )
+    return {
+        str(row["contract_id"]): {
+            "entry_date": row["entry_date"].isoformat(),
+            "contract_version_id": str(row["contract_version_id"]),
+        }
+        for row in session.execute(statement).mappings()
+    }
+
+
 def latest_where(
     session: Session,
     params: ReportParams,

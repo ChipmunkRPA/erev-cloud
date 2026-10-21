@@ -387,6 +387,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "combination_group_member",
             "contract_computation",
             "calc_trace",
+            "contract_event",
         ),
         joins=(
             "schedule_line.contract_version_id = contract_version.id",
@@ -431,6 +432,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "attributed shares; a separate dated reporting remainder excludes already-recognized "
             "deposit revenue while preserving contract measurement balances; projected future "
             "periods must reconcile to that net remainder",
+            "Waterfall entry dates come from the first included contract version on its "
+            "membership chain and its book-specific entry event; contracts entering after "
+            "the performing entity as-of period are excluded; retained entry bindings and "
+            "legacy populations remain unchanged on rerun",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),

@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — waterfall contract entry cutoff
+
+The B4-1/C-3 population gap is implemented for new calculations: each performing entity's
+as-of period end excludes contracts whose first included-chain entry is later. The existing
+historical entry rule uses the first included version's book-specific activation, criteria-met
+or opening event, with that version's effective date as fallback. Later measurements batched
+with activation cannot postpone entry. Dated entry evidence and original version identities
+are retained; legacy bindings and previously frozen datasets preserve their original content.
+
+API journeys cover exclusion before entry, inclusion afterward, deterministic reruns,
+performing-entity journal agreement, restricted access, forecast FX and both regrouping
+computation orders. A pure binding check covers entity-specific calendar endpoints, legacy
+semantics and absent evidence. Migration 0231 records the rule and event source. This is not
+independent accounting approval or full release acceptance; those remain outstanding.
+
+
 ### October 20 — structured GL reconciliation exports
 
 Excel now exposes retained GL bridge evidence as filterable numeric workpaper rows rather
@@ -2393,7 +2409,7 @@ Each was read by a reader of the control inventory at the line the inventory nam
 
 | No. | Limit | Consequence | Practice | Source |
 |---|---|---|---|---|
-| B4-1 | The revenue waterfall lists every contract known at the run: the frozen waterfall of a period holds contracts that became contracts after its end, with no revenue and their allocation under awaiting trigger; the RPO report of that lock states the position at the period's end. | Measured in the volume workspace: in the January lock of its US entity, 14 of 17 rows and all of the 2,128,470.41 USD awaiting trigger belong to five contracts incepted from 7 February to 14 June. The figure is right by the report's own rule — the latest version known at the run — and so is no wrong figure under a lock. Lane ACCT's reading: such a frozen waterfall is no statement of the position at that date, and it arises in a timely close as well, when a contract is activated between a period's end and its lock. | For the position at a locked period's end read the RPO report as locked, not the waterfall. | R-126 (b) (12); R-125 (k) (2); measured |
+| B4-1 | Repaired October 20: new revenue-waterfall calculations exclude contracts entering after the performing entity as-of period end. | Original entry dates/version identities are retained; legacy bindings and already-frozen datasets retain their original population. | New calculations use the dated population; independent accounting acceptance remains open. | Waterfall entry checkpoint; API, scope, currency and regrouping checks. |
 | B4-2 | Partially repaired October 8: dated realized allocation and fixed schedule components keep a later usage fee out of earlier RPO, including first-computation batching. API RPO and waterfall consume the same projected amounts and explain their component nodes. Separately traced usage no longer makes a batched fixed amendment ambiguous. | The PostgreSQL January/March case, journal tie-out and explanation links pass. October 14 API tests also cover royalty guarantee netting, delayed licence delivery and downward statement correction; migration 0144 admits the engine-supported point-in-time royalty licence template. Multi-cause fixed-allocation decomposition, adjustments/holds/Step-1 projections, zero-net omitted schedule lines, legacy upgrade handling and combined lifecycle/exemption/calendar/royalty verification remain open. Mixed legacy/detailed evidence is refused, not treated as zero. | Finish those cases and engine release cut/replays. See RPO-REALISED-FEES-2026-10-08.md for baselines, repairs and evidence. | R-126 (b) (13); R-125 (k) (2); October 8 engine and PostgreSQL regressions |
 | B4-3 | RPO exemption calculations are implemented, including retained royalty and targeted variable-consideration evidence. | Original allocations and dated evidence govern partial exclusions; ambiguous multi-cause allocation remains a limitation, not a guessed exclusion. | See the dated RPO checkpoints and rpo_quotas.py; independent accounting acceptance remains open. | October 20 code inspection |
 | B4-4 | Role-by-role rollforward-to-GL comparison is implemented using retained period reconciliation evidence. | Offsetting role discrepancies still fail. Missing comparable sources or unsupported currency/scope answer not applicable. New report details link to the retained reconciliation. This does not add a close-lock prerequisite. | rollforward_gl.py and targeted GL comparison/viewer tests. | October 20 code inspection |
@@ -2518,7 +2534,7 @@ The counts by phase come from the supervisor's scan of the build specification, 
 | No. | What moves | Where release 1.0 stands | Size, where the record gives one | Source |
 |---|---|---|---|---|
 | C-2 | Policy overrides, built: an approved override reaches the computation. With it the road of POL-122 for three answer keys (POS-CHK-012, DLT-CHK-020-CHK-022-GT07, POS-CHK-117), the exception of REQ-FX-002 by a contract-level override (POL-163), and the road to a discount rate for a significant financing component (row B3-14). Beside it, for a policy value of a product or a template: a reader that passes the obligation lifts the refusal for its parameter, by name (rows B3-13 and B3-21). | Partially implemented October 7: POL-122 and POL-047 API/workbench authoring and approved contract-pinned calculation are verified. POL-163, broader product readers, optional judgement attachment in the drawer and platform answer-key coverage remain open. | About 20 working hours and two gate cycles, by a lane's reading. | R-126 (b) (4), (c); R-124 (m) (3); record 28; index 309 |
-| C-3 | The entry rule of the revenue waterfall (row B4-1): an obligation is listed where its contract's entry event is not dated after the as-of end. | Not built. First among the next release's report items. It moves the frozen waterfall datasets of both seeds, their generator versions and the amounts of the QA pass. | 14 to 16 working hours and two gate cycles, by a lane's reading. | R-126 (b) (12); R-125 (k) (2) |
+| C-3 | Implemented October 20: dated waterfall entry population (B4-1). | New calculations use retained contract-chain entry dates; earlier frozen outputs remain unchanged. | Final candidate and independent accounting acceptance remain open. | Waterfall entry checkpoint and migration 0231. |
 | C-4 | Implemented October 8: USAGE_REPORTED maps to variable consideration; dated realized-fee movement also covers the first-computation usage case. | Scoped engine and API regressions pass; this cause-map item is no longer unbuilt. The broader B4-2 limitations above remain. | See RPO-REALISED-FEES-2026-10-08.md. | R-126 (b) (13); R-125 (k) (2); October 8 regressions |
 | C-5 | The second person for a posting into a period in soft close or reopened (row B1-2), with a difference report that the Controller reads before the re-lock (B1-3) and the attribute change's preview (B1-4). | Ruled, built on no branch. | — | R-124 (b) (7), (k) (8); R-120 (a); R-123 (e) (5) |
 | C-6 | The held control whose shape is accepted: the notice of a request without a decider (B1-15). | Authorship exclusion (former B1-14), modification questionnaire confirmation (former B1-6), close-task sign-offs (former B1-9), and estimate constraint bindings (former B1-5) closed October 7; remaining listed controls are open. | — | R-124 (k) (11), (l); R-120 (b) |

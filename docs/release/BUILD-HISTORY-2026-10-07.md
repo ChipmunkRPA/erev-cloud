@@ -10052,3 +10052,28 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Within-period mixtures, functional allocation mismatches, split/non-revenue inputs and broad
   mixed public-workflow acceptance remain open. Migration 0220 describes the two consumers.
 - No deployment. Independent accounting sign-off and final release verification remain open.
+
+## RPO exemption change detail viewer — October 20, 2026
+
+- RPO rollforward now retains obligation-level opening/closing excluded amounts, dates, rule
+  codes and the signed exemption movement. Full eligibility transitions and partial POL-200
+  release use the same figures as the rollforward, without changing its accounting totals.
+- Both report and run pages show a collapsible detail table with readable exemption names.
+  Functional/reporting views explicitly label these original transaction-currency figures;
+  the browser formats backend amounts without recomputing the movement.
+- New source bindings opt into the details; legacy bindings retain their earlier output shape.
+  Migration 0221 records the metadata. Focused policy/endpoint tests, the viewer case, lint/types
+  and migrated catalogue checks pass. The DB multi-currency RPO journey also confirms retained
+  exemption details after a rate revision and rerun. Broader reporting and independent accounting acceptance
+  remain open. Direct main publication only; no deployment.
+
+## Readable RPO exemption exports — October 20, 2026
+
+- XLSX exports now render retained exemption facts as rows with readable policy names, wrapped
+  text and numeric amounts, instead of one JSON cell that can exceed Excel's 32,767-character
+  limit. PDF exports emit per-obligation endpoint and movement lines with existing pagination.
+- A 120-obligation case larger than the cell limit retains the final record, all signed amounts
+  and the transaction-currency basis. Text retains the formula guard; amounts are not recomputed.
+  The CSV companion manifest retains the complete original facts without changing CSV columns.
+- Focused export checks and lint/types pass. No accounting or report-total changes, no deployment.
+  Remaining mixed-source functionality and independent accounting acceptance are still open.

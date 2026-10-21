@@ -7,7 +7,10 @@ R-121 (g)). An obligation is stated under the entity that performs it — the en
 hold its revenue (05 RCP-04, TZ-04; POLICIES JET-13) — in that entity's periods and beside that
 entity's journal. Until rev 1.69 the population was read by the contracting entity: a run for the
 contracting entity of a contract another entity performs stated revenue its books do not hold, a
-run for the performing entity stated none, and the tie-out could pass for neither. Every figure
+run for the performing entity stated none, and the tie-out could pass for neither. New runs
+exclude contracts whose first included-chain entry falls after the performing entity's
+as-of period end. Entry dates and source versions are retained; older bindings keep their original
+population. Every figure
 is stated at the as-of period (S15-R-01 rev 1.127; item RPT-ASOF-FIGURES-1; supervisor ruling
 R-116 (c)). Per obligation and period of the range:
 
@@ -76,7 +79,12 @@ from erev_api.db.tables import (
     subledger_line,
 )
 from erev_api.domain.reports import cuts, reporting_currency, tie_outs
-from erev_api.domain.reports.builders import ReportParams, filter_problem, unknown_filter
+from erev_api.domain.reports.builders import (
+    ReportParams,
+    contract_history,
+    filter_problem,
+    unknown_filter,
+)
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, Calendar, EntityRef, PeriodRef, add
 from erev_api.uow import UnitOfWork
@@ -174,7 +182,9 @@ def population(session: Session, params: ReportParams) -> Population:
     ordered.sort(key=lambda item: item.start)
     contract_id = tie_outs.contract_named(session, params)
     cutoff = tie_outs.cutoff_for(session, params)
-    obligations, version_of = _obligations(session, params, book_code, cutoff, contract_id)
+    obligations, version_of = _obligations(
+        session, params, book_code, cutoff, contract_id, as_of_ends
+    )
     period_ids = tuple(item.id for periods in ranges.values() for item in periods)
     key_of = {item.id: item.key for periods in ranges.values() for item in periods}
     end_of = {item.id: item.end for periods in ranges.values() for item in periods}
@@ -332,6 +342,7 @@ def _obligations(
     book_code: str,
     cutoff: Any,
     contract_id: UUID | None,
+    as_of_ends: Mapping[UUID, date],
 ) -> tuple[list[_Obligation], dict[UUID, UUID]]:
     """The run's obligations, and the contract version of each by its obligation-version row."""
     statement = (
@@ -344,6 +355,7 @@ def _obligations(
             obligation_version.c.txn_currency,
             obligation_version.c.performing_entity_id,
             obligation.c.line_sequence,
+            contract.c.id.label("contract_id"),
             contract.c.external_id,
             customer.c.id.label("customer_id"),
             customer.c.name.label("customer_name"),
@@ -408,6 +420,7 @@ def _obligations(
     if contract_id is not None:
         statement = statement.where(obligation_version.c.contract_id == contract_id)
     rows = [dict(row) for row in session.execute(statement).mappings()]
+    rows = _entered_rows(session, params, rows, book_code, cutoff, as_of_ends)
     version_of = {UUID(str(row["id"])): UUID(str(row["contract_version_id"])) for row in rows}
     found = [
         _Obligation(
@@ -439,6 +452,44 @@ def _obligations(
         for row in rows
     ]
     return found, version_of
+
+
+ENTRY_EVIDENCE = "waterfall_entry_dates_v1"
+
+
+def _entered_rows(
+    session: Session,
+    params: ReportParams,
+    rows: list[dict[str, Any]],
+    book_code: str,
+    cutoff: Any,
+    as_of_ends: Mapping[UUID, date],
+) -> list[dict[str, Any]]:
+    if params.binding is not None:
+        if ENTRY_EVIDENCE not in params.binding.evidence:
+            return rows  # Original runs retain their original population.
+        entries = params.binding.evidence[ENTRY_EVIDENCE]
+    else:
+        entries = (
+            contract_history.entry_dates(
+                session,
+                book_code=book_code,
+                cutoff=cutoff,
+                contract_ids=sorted({UUID(str(row["contract_id"])) for row in rows}, key=str),
+            )
+            if rows
+            else {}
+        )
+    if params.sources is not None:
+        params.sources.record_evidence(ENTRY_EVIDENCE, entries)
+    selected = []
+    for row in rows:
+        source = entries.get(str(row["contract_id"]))
+        if source is None:
+            raise tie_outs.invalid("as_of", "The contract entry date is unavailable.")
+        if date.fromisoformat(source["entry_date"]) <= as_of_ends[row["performing_entity_id"]]:
+            selected.append(row)
+    return selected
 
 
 def _at_as_of(
