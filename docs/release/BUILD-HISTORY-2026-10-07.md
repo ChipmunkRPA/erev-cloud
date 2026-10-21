@@ -9883,3 +9883,27 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Migration 0209 records the segmented calculation. These history-level cases do not establish
   that every public contract lifecycle can create every tested history; public lifecycle
   acceptance and competing cause decomposition remain open. No deployment.
+
+## Event-backed mixed RPO changes — October 20, 2026
+
+- Mixed modification/estimate versions now split original estimate-event allocations into
+  VC_ESTIMATE_CHANGES and the remaining modification amount. Every event's shares must sum to
+  its retained price delta; missing/non-routed events or incomplete shares stay unexplained.
+- Signed changes and offsetting zero-net changes are covered. Dated usage remains separately
+  attributed. Other competing cause sets and fully batched first-entry decomposition remain open.
+- 32 targeted tests pass, including real engine estimate traces and missing-share rejection.
+  DB currency/rate replay, lint and types pass. Migration 0210 matches catalogue. No deployment.
+
+## Explicit measurement-only estimate evidence — October 20, 2026
+
+- Stage 08 now retains whether an estimate changes measurement only, is absorbed at inception,
+  or routes a later allocation change. The report accepts a measurement-only pin as explicit
+  zero allocation impact after verifying its original estimate-version reference. Missing or
+  legacy pins and inception changes remain unsupported for this decomposition.
+- The flag is emitted after contract royalty-accrual routing is resolved, so those reallocating
+  estimates are not incorrectly labelled measurement-only. No posting amounts were changed.
+- The actual J-06 approval-to-report journey passes: September modification 150,000.00,
+  VC change 200,000.00, revenue/restatement -91,463.41 and closing RPO 658,536.59 USD.
+  This journey applies approvals separately; it does not claim one combined approval.
+- 56 scoped engine/report tests, Ruff and targeted mypy pass. Migration 0211 updates the report
+  calculation description. Independent accounting acceptance remains open; no deployment.

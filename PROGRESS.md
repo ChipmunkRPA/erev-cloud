@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Mixed-period TIME source amounts — October 20, 2026
+
+- S14 retains per-period transaction and functional TIME deltas from its original cumulative
+  targets, including rounding and role signs. No posting amounts or allocation policy change.
+- Reporting now handles a mixed cumulative input spanning periods/owners when each mixed period
+  has one original provenance. That period's TIME/EVENT amounts use the retained pair, with
+  both-currency total checks. Multiple owners within one mixed period still require finer evidence.
+- Source tests cover signed foreign amounts, changed functional evidence, missing history and
+  ambiguous owners. An original S14 mixed-period output feeds the report reader directly.
+  Uniform-period legacy source ordering is preserved for retained reruns.
+- Scoped source/engine cases, the DB intercompany reversal/public-report rerun journey, lint/types
+  and migrated catalogue checks pass. Migration 0224 documents the two consumers. A dedicated
+  public mixed-period workflow, multi-origin split and independent accounting sign-off remain
+  open. No deployment; direct main publication.
+
+
 ## Zero-net agent reporting — October 20, 2026
 
 - A zero-net agent entry can now use its sole AP_SUPPLIER counterpart. No zero revenue line is
@@ -230,32 +246,6 @@
   fixed-allocation/remainder evidence; this change does not repair those earlier balances.
 - 27 focused tests and the DB first-batch usage test pass; lint/types and migration 0212 checked.
   No deployment or independent accounting sign-off.
-
-
-## Explicit measurement-only estimate evidence — October 20, 2026
-
-- Stage 08 now retains whether an estimate changes measurement only, is absorbed at inception,
-  or routes a later allocation change. The report accepts a measurement-only pin as explicit
-  zero allocation impact after verifying its original estimate-version reference. Missing or
-  legacy pins and inception changes remain unsupported for this decomposition.
-- The flag is emitted after contract royalty-accrual routing is resolved, so those reallocating
-  estimates are not incorrectly labelled measurement-only. No posting amounts were changed.
-- The actual J-06 approval-to-report journey passes: September modification 150,000.00,
-  VC change 200,000.00, revenue/restatement -91,463.41 and closing RPO 658,536.59 USD.
-  This journey applies approvals separately; it does not claim one combined approval.
-- 56 scoped engine/report tests, Ruff and targeted mypy pass. Migration 0211 updates the report
-  calculation description. Independent accounting acceptance remains open; no deployment.
-
-
-## Event-backed mixed RPO changes — October 20, 2026
-
-- Mixed modification/estimate versions now split original estimate-event allocations into
-  VC_ESTIMATE_CHANGES and the remaining modification amount. Every event's shares must sum to
-  its retained price delta; missing/non-routed events or incomplete shares stay unexplained.
-- Signed changes and offsetting zero-net changes are covered. Dated usage remains separately
-  attributed. Other competing cause sets and fully batched first-entry decomposition remain open.
-- 32 targeted tests pass, including real engine estimate traces and missing-share rejection.
-  DB currency/rate replay, lint and types pass. Migration 0210 matches catalogue. No deployment.
 
 
 ## Outstanding release verification

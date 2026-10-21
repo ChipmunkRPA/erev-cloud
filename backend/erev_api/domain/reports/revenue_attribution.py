@@ -175,6 +175,7 @@ def read(
                 "time_functional",
                 "input_classes",
                 "input_period_classes",
+                "input_period_time",
                 "input_time_txn",
                 "input_time_functional",
                 "amount_functional",

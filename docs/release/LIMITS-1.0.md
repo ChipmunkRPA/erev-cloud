@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — mixed-period TIME amounts retained and consumed
+
+S14 now records the differences of its actual cumulative TIME targets per period, independently
+in transaction and functional currency. Reporting uses these retained amounts when a mixed
+period has exactly one original provenance, even if the cumulative input spans multiple other
+periods and owners. Original owner, layer, kind, date and source identity are preserved. Global
+TIME totals must reconcile in both currencies. No amounts are allocated across ambiguous owners.
+
+An original S14 mixed-period output is exercised through the reader; scoped source cases cover
+signed currency amounts and missing/changed evidence. The existing DB intercompany public-report
+and rerun workflow passes. A dedicated public mixed-period workflow is still unverified, and
+multiple owners inside the same mixed period, multi-origin split inputs and independent
+accounting acceptance remain open. Old envelopes without the finer retained amounts remain
+unavailable for this new path. No deployment or overall production-ready claim.
+
+
 ### October 20 — zero-net agent counterpart now supported
 
 The missing-counterpart failure for zero-net agent entries is resolved: exactly one supplier

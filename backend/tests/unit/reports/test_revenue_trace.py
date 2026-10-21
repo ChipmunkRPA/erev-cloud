@@ -308,6 +308,11 @@ def test_mixed_period_sources_preserve_distinct_owners(view: str, sign: int) -> 
     assert [item.amount for item in result] == [
         sign * Fraction(x) for x in ((100, 50, -30) if view == "transaction" else (80, 40, -24))
     ]
+    assert [item.contract_id.int for item in split(held=(sources[0], sources[2], sources[1]))] == [
+        11,
+        33,
+        22,
+    ]
     with pytest.raises(InvalidRevenueTrace, match="either currency"):
         split(time_functional=Fraction(119 * sign))
     with pytest.raises(InvalidRevenueTrace, match="finer source"):
@@ -445,3 +450,69 @@ def test_split_role_replays_original_rounding_and_preserves_source(
         read((*nodes[:-1], replace(nodes[-1], params={**params, "amount_functional": "-2666"})))
     with pytest.raises(InvalidRevenueTrace, match="transaction sources"):
         read(rows=({**original, "amount_txn": "100.00"},))
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional"])
+@pytest.mark.parametrize("sign", [1, -1])
+def test_mixed_period_retains_exact_time_for_one_period_origin(view: str, sign: int) -> None:
+    import json
+    from dataclasses import replace
+
+    from erev_api.domain.reports.revenue_trace import RevenueSource, split_mixed_sources
+
+    sources = (
+        RevenueSource(
+            UUID(int=1),
+            UUID(int=11),
+            "a",
+            "LIABILITY_LAYER_CONSUMED",
+            Fraction(80),
+            source_key="ob@P1",
+        ),
+        RevenueSource(
+            UUID(int=2),
+            UUID(int=22),
+            "b",
+            "LIABILITY_LAYER_CONSUMED",
+            Fraction(42),
+            source_key="ob@P2",
+        ),
+    )
+    amounts = {UUID(int=1): Fraction(100), UUID(int=2): Fraction(50)}
+    params = {
+        "input_period_classes": '[{"P1":"TIME","P2":"MIXED"}]',
+        "input_period_time": json.dumps(
+            [{"P1": [str(100 * sign), str(80 * sign)], "P2": [str(20 * sign), str(17 * sign)]}]
+        ),
+    }
+
+    def project(held=sources, config=params):
+        return split_mixed_sources(
+            held,
+            params=config,
+            count=1,
+            index=0,
+            subject="ob",
+            sign=sign,
+            transaction_amounts=amounts,
+            time_txn=Fraction(120 * sign),
+            time_functional=Fraction(97 * sign),
+            view=view,
+        )
+
+    result = project()
+    assert [(item.contract_id.int, item.time, item.amount) for item in result] == [
+        (11, True, sign * Fraction(100 if view == "transaction" else 80)),
+        (22, True, sign * Fraction(20 if view == "transaction" else 17)),
+        (22, False, sign * Fraction(30 if view == "transaction" else 25)),
+    ]
+    changed = {
+        **params,
+        "input_period_time": json.dumps([{"P2": [str(20 * sign), str(18 * sign)]}]),
+    }
+    with pytest.raises(InvalidRevenueTrace, match="either currency"):
+        project(config=changed)
+    with pytest.raises(InvalidRevenueTrace, match="unique original"):
+        project(held=(*sources, replace(sources[1], contract_id=UUID(int=33))))
+    with pytest.raises(InvalidRevenueTrace, match="finer source"):
+        project(config={"input_period_classes": params["input_period_classes"]})

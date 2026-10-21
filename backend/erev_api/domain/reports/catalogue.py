@@ -601,6 +601,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "zero-net agent control relief uses its sole retained AP_SUPPLIER counterpart, with "
             "no synthetic revenue line; supplier amounts and original signed sources must "
             "reconcile in both currencies",
+            "mixed recognition periods may use retained transaction and functional TIME target "
+            "deltas only with one original provenance per mixed period; totals must reconcile "
+            "in both currencies and ambiguous within-period owners remain unavailable",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -697,6 +700,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "zero-net agent control relief uses its sole retained AP_SUPPLIER counterpart, with "
             "no synthetic revenue line; supplier amounts and original signed sources must "
             "reconcile in both currencies",
+            "mixed recognition periods may use retained transaction and functional TIME target "
+            "deltas only with one original provenance per mixed period; totals must reconcile "
+            "in both currencies and ambiguous within-period owners remain unavailable",
         ),
     ),
     _definition(

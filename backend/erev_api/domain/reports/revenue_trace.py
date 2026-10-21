@@ -259,30 +259,77 @@ def split_mixed_sources(
             raise ValueError("Invalid period classes.")
     except (KeyError, ValueError, TypeError, IndexError) as error:
         raise InvalidRevenueTrace("Mixed sources lack retained period classifications.") from error
-    movements = []
+    movements: list[RevenueMovement] = []
     found_time_txn = found_time_functional = Fraction(0)
+    grouped: dict[str, list[RevenueSource]] = {}
     for item in sources:
         prefix = subject + "@"
         key = item.source_key
         if key is None or not key.startswith(prefix):
             raise InvalidRevenueTrace("Mixed source does not name its original recognition period.")
-        period = key[len(prefix) :]
+        grouped.setdefault(key[len(prefix) :], []).append(item)
+    handled: set[str] = set()
+    for source in sources:
+        assert source.source_key is not None  # validated while grouping above
+        period = source.source_key[len(subject) + 1 :]
         classification = periods.get(period)
+        if classification == "MIXED":
+            if period in handled:
+                continue
+            handled.add(period)
+            items = grouped[period]
+            # A period may contain multiple retained leaves but only one provenance.
+            # Amounts come from original target deltas, never a ratio across owners.
+            try:
+                retained = json.loads(params["input_period_time"])
+                if not isinstance(retained, list) or len(retained) != count:
+                    raise ValueError("Invalid input count.")
+                values = retained[index][period]
+                if (
+                    not isinstance(values, list)
+                    or len(values) != 2
+                    or any(not isinstance(value, str) for value in values)
+                ):
+                    raise ValueError("Invalid period TIME amounts.")
+                period_txn, period_functional = map(Fraction, values)
+            except (KeyError, ValueError, TypeError, IndexError, ZeroDivisionError) as error:
+                raise InvalidRevenueTrace(
+                    "Mixed recognition period requires finer source attribution."
+                ) from error
+            total = sign * sum(
+                (
+                    item.coefficient * transaction_amounts[item.movement_id]
+                    if view == "transaction"
+                    else item.amount
+                    for item in items
+                ),
+                Fraction(0),
+            )
+            movements.extend(
+                split_single_origin(
+                    items,
+                    total=total,
+                    time=period_txn if view == "transaction" else period_functional,
+                )
+            )
+            found_time_txn += period_txn
+            found_time_functional += period_functional
+            continue
         if classification not in {"TIME", "EVENT"}:
             raise InvalidRevenueTrace("Mixed recognition period requires finer source attribution.")
         is_time = classification == "TIME"
-        transaction = sign * item.coefficient * transaction_amounts[item.movement_id]
-        functional = sign * item.amount
+        transaction = sign * source.coefficient * transaction_amounts[source.movement_id]
+        functional = sign * source.amount
         if is_time:
             found_time_txn += transaction
             found_time_functional += functional
         movements.append(
             RevenueMovement(
-                item.contract_id,
-                item.layer_key,
-                item.movement_kind,
-                item.effective_date,
-                item.source_key,
+                source.contract_id,
+                source.layer_key,
+                source.movement_kind,
+                source.effective_date,
+                source.source_key,
                 is_time,
                 transaction if view == "transaction" else functional,
             )

@@ -345,12 +345,60 @@ def test_s14_r04_period_target_and_posted_by_origin() -> None:
     assert json.loads(
         _node(run.trace, targets[_period(1)].node_id).params["input_period_classes"]
     ) == [{_period(1): "TIME"}]
+    assert json.loads(
+        _node(run.trace, targets[_period(3)].node_id).params["input_period_time"]
+    ) == [
+        {
+            _period(1): ["100.00", "100.00"],
+            _period(2): ["40.00", "40.00"],
+            _period(3): ["0.00", "0.00"],
+        }
+    ]
     revenue = RoleKey("ASC606", ENTITY, p1, "REVENUE_RECOGNITION", REVENUE, None, None)
     assert [t.amount_txn for t in run.posting.role_targets if t.key == revenue] == [
         -10000,
         -25000,
         -26000,
     ]
+    # The report consumes the original signed S14 metadata, including February's
+    # mixed TIME/EVENT amounts, while keeping each period's original layer owner.
+    from uuid import UUID
+
+    from erev_api.domain.reports.revenue_trace import RevenueSource, split_mixed_sources
+
+    revenue_target = next(
+        t for t in run.posting.role_targets if t.key == revenue and t.period_key == _period(3)
+    )
+    sources = tuple(
+        RevenueSource(
+            UUID(int=i),
+            UUID(int=i),
+            f"layer-{i}",
+            "LIABILITY_LAYER_CONSUMED",
+            Fraction(amount),
+            source_key=f"{p1}@{_period(i)}",
+        )
+        for i, amount in enumerate((100, 150, 10), start=1)
+    )
+    for view in ("transaction", "functional"):
+        attributed = split_mixed_sources(
+            sources,
+            params=_node(run.trace, revenue_target.node_id).params,
+            count=1,
+            index=0,
+            subject=p1,
+            sign=-1,
+            transaction_amounts={item.movement_id: item.amount for item in sources},
+            time_txn=Fraction(-140),
+            time_functional=Fraction(-140),
+            view=view,
+        )
+        assert [(item.contract_id.int, item.time, item.amount) for item in attributed] == [
+            (1, True, Fraction(-100)),
+            (2, True, Fraction(-40)),
+            (2, False, Fraction(-110)),
+            (3, False, Fraction(-10)),
+        ]
     # January posted in full by origin; February's EVENT part equals its posted EVENT amount; only
     # March's 10.00 catch-up remains, and under COMMAND no TIME amount posts.
     assert _rows(run.posting.deltas) == [

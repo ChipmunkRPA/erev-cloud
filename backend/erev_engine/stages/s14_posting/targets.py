@@ -249,6 +249,7 @@ class PartTarget:
     split_inputs: tuple[tuple[str, tuple[NodeInput, ...]], ...] = ()
     weights: tuple[tuple[str, Fraction], ...] = ()  # split side weights by role label
     period_classes: tuple[tuple[str, str], ...] = ()
+    period_time: tuple[tuple[str, int, int], ...] = ()
 
     @property
     def key(self) -> tuple[str, str, str, str, str, str]:
@@ -704,7 +705,29 @@ def _relief(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarge
                 ),
             )
         )
-    return out
+    # Retain differences of the actual cumulative TIME targets, including functional
+    # rounding. Reporting must not reconstruct them by allocating across source owners.
+    histories: dict[tuple[str, str], list[tuple[str, int, int]]] = {}
+    previous: dict[tuple[str, str], tuple[int, int]] = {}
+    retained = {}
+    for retained_part in sorted(
+        out, key=lambda p: (p.entity, p.subject_key, _positions(ctx, p.entity)[p.period_key])
+    ):
+        key = (retained_part.entity, retained_part.subject_key)
+        before_txn, before_functional = previous.get(key, (0, 0))
+        history = histories.setdefault(key, [])
+        history.append(
+            (
+                retained_part.period_key,
+                retained_part.time_txn - before_txn,
+                retained_part.time_functional - before_functional,
+            )
+        )
+        previous[key] = (retained_part.time_txn, retained_part.time_functional)
+        retained[retained_part.key] = dataclasses.replace(
+            retained_part, period_time=tuple(history) if retained_part.period_classes else ()
+        )
+    return [retained[retained_part.key] for retained_part in out]
 
 
 def _positions(ctx: BookContext, entity: str) -> Mapping[str, int]:
@@ -1525,6 +1548,7 @@ class _Share:
     rates: tuple[RateRef, ...]
     currencies: tuple[str, str]
     period_classes: tuple[tuple[str, str], ...] = ()
+    period_time: tuple[tuple[str, int, int], ...] = ()
     reason: str | None = None  # the part's Table 14-A reason_code (S14-R-27)
 
 
@@ -1610,6 +1634,12 @@ def _shares(part: PartTarget) -> list[tuple[RoleKey, _Share]]:
             rates=part.rates,
             currencies=(part.txn_currency, part.functional_currency),
             period_classes=part.period_classes if len(inputs) == 1 and split is None else (),
+            period_time=tuple(
+                (period, sign * txn, sign * functional)
+                for period, txn, functional in part.period_time
+            )
+            if len(inputs) == 1 and split is None
+            else (),
             reason=spec.reason_code,
         )
         out.append((key, share))
@@ -1729,6 +1759,21 @@ def _target_node(
         "time_functional": str(time_functional),
         # A single signed input has an exact TIME contribution. Multiple inputs
         # still require component evidence; never distribute their TIME by ratio.
+        "input_period_time": json.dumps(
+            [
+                {
+                    period: [
+                        format_money(txn, ctx.currencies[share.currencies[0]].minor_unit),
+                        format_money(functional, ctx.currencies[share.currencies[1]].minor_unit),
+                    ]
+                    for period, txn, functional in share.period_time
+                }
+                for share in shares
+                for _ in share.inputs
+            ],
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
         "input_period_classes": json.dumps(
             [dict(share.period_classes) for share in shares for _ in share.inputs],
             sort_keys=True,
