@@ -29,17 +29,22 @@ amounts, keeping different functional currencies on separate rows with incompara
 Reporting view translates posted functional period activity at approved period-average rates to
 one common reporting currency. Translation differences remain visible in the unmatched amount;
 the report does not insert an elimination or force the tie-out to pass.
+Same-source reruns rebuild pairs and details from retained per-line inputs and entity/currency
+scope, with consumed ledger IDs and reporting-rate evidence retained. No live lines, labels or
+rates are consulted on a bound rebuild.
 """
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from collections.abc import Collection, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, false, or_, select
 from sqlalchemy.orm import Session
 
@@ -50,9 +55,11 @@ from erev_api.domain.reports.builders.contract_balance_rollforward import ranges
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, EntityRef, PeriodRef
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "intercompany_pairs"
+EVIDENCE: Final = "intercompany_pairs_inputs_v1"
 TO_IC_UNMATCHED_ZERO: Final = tie_outs.TO_IC_UNMATCHED_ZERO
 DEFAULT_CURRENCY_VIEW: Final = "transaction"  # SCREENS_B RPT-35 "default `transaction`"
 DUE_FROM: Final = "INTERCOMPANY_DUE_FROM"  # the performing entity's role (JET-13)
@@ -272,6 +279,7 @@ def sources(
     counter = legal_entity.alias("counterparty")
     statement = (
         select(
+            subledger_line.c.id,
             subledger_line.c.entity_id,
             subledger_line.c.period_id,
             subledger_line.c.amount_functional,
@@ -336,8 +344,10 @@ def sources(
     period_by_id = {item.id: item for items in periods.values() for item in items}
     translations: dict[tuple[UUID, UUID], reporting_currency.Translation] = {}
     result: list[Line] = []
+    consumed: list[UUID] = []
     target: str | None = None
     for row in session.execute(statement).mappings():
+        consumed.append(UUID(str(row["id"])))
         currency = str(row["txn_currency"]).strip()
         amount = Decimal(row["amount_txn"])
         functional = str(row["functional_currency"]).strip()
@@ -381,30 +391,59 @@ def sources(
                 period_key=str(row["period_key"]),
             )
         )
+    tie_outs.record_members(params, "intercompany_subledger_lines", consumed)
     return result
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
-    session = uow.session
-    book_code = tie_outs.book_of(session, params)
-    found, periods, _ = ranges(session, params)
-    lines = sources(
-        session,
-        params,
-        book_code=book_code,
-        periods=periods,
-        entities=found,
-        tenant_id=uow.principal.tenant_id,
-    )
     view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity) for entity in params.entity_ids
+        }:
+            raise Problem("forbidden", "The retained intercompany population exceeds report scope.")
+        if retained["currency_view"] != view:
+            raise tie_outs.invalid("currency_view", "The retained pairs use another currency view.")
+        if params.book_code is not None and params.book_code != retained["book_code"]:
+            raise tie_outs.invalid("book", "The retained pairs use another book.")
+    else:
+        session = uow.session
+        book_code = tie_outs.book_of(session, params)
+        found, periods, _ = ranges(session, params)
+        lines = sources(
+            session,
+            params,
+            book_code=book_code,
+            periods=periods,
+            entities=found,
+            tenant_id=uow.principal.tenant_id,
+        )
+        retained = json.loads(
+            canonical_bytes(
+                {
+                    "tenant_id": uow.principal.tenant_id,
+                    "entity_ids": params.entity_ids,
+                    "currency_view": view,
+                    "book_code": book_code,
+                    "run_entities": [entity.code for entity in found],
+                    "entity_currencies": {
+                        entity.code: entity.functional_currency for entity in found
+                    },
+                    "lines": [asdict(line) for line in lines],
+                }
+            )
+        )
+        tie_outs.record_evidence(params, EVIDENCE, retained)
+    lines = [
+        Line(**{**record, "amount": Decimal(record["amount"])}) for record in retained["lines"]
+    ]
     check_view(view, lines, reporting_currency_code=lines[0].currency if lines else "")
     rows, totals, tie = dataset_rows(
         lines,
-        run_entities={entity.code for entity in found},
-        entity_currencies={entity.code: entity.functional_currency for entity in found}
-        if view == "functional"
-        else None,
+        run_entities=retained["run_entities"],
+        entity_currencies=retained["entity_currencies"] if view == "functional" else None,
     )
     return ReportData(
         columns=COLUMNS, rows=tuple(rows), control_totals=totals, tie_out_results=(tie,)

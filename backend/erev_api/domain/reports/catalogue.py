@@ -2284,6 +2284,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "reporting view translates posted functional period activity at approved "
             "period-average rates to one reporting currency; unmatched translation residuals "
             "remain visible",
+            "same-source reruns reconstruct pairs from retained per-line amounts and "
+            "entity/currency scope without reading live ledger lines, labels or FX rates",
             "subledger_line.counterparty_entity_id is not null: an obligation performed by an "
             "entity other than the contracting entity",
         ),

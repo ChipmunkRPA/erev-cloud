@@ -296,6 +296,7 @@ def test_sources_out_summarises_a_bound_run_and_classifies_every_other_lifecycle
         "approvals_register",
         "chain_verification_report",
         "book_bridge",
+        "intercompany_pairs",
     ):
         legacy = framework.sources_out(
             _row(
@@ -366,9 +367,8 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "judgement_register",
         "estimate_change_listing",
         "scope_exclusion_register",
-        # Adoption bridge and intercompany pairs still read live.
+        # Adoption bridge still reads live.
         "adoption_bridge",
-        "intercompany_pairs",
         # BUILD_SPEC RPS-8 (lane F-RPS-REG): the late-entry report reads live, no adapter yet
         "late_entry_report",
     }

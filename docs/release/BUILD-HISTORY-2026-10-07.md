@@ -11542,3 +11542,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: standalone audit-export cutoff/retention, first-generation actor/display names,
   register rule/step display inputs and other OPEN report adapters. This completes the sample
   pack's approval/audit commit cutoff, not all historical source reconstruction. No deployment.
+
+## Audit export committed cutoff and retained inputs — October 21, 2026
+
+- Historical Audit Log Export now filters original audit transaction commits by known_at for
+  both the workspace and contract-trail paths. Business occurred_at range/filter semantics stay
+  intact; record basis preserves transaction-local visibility.
+- New exports retain redacted input events (including historical commit evidence) and rebuild
+  rows, canonical JSON cells and chain control totals from those inputs. Same-source reruns do
+  not query today's audit population. Retained evidence is workspace-bound. PostgreSQL IP
+  address values are normalized to text before canonical serialization.
+- The source contract is now retained_inputs. Old OPEN bindings remain explicitly OPEN and
+  rerun as new evaluations rather than claiming reproduction. Migration 0288 synchronizes the
+  catalogue. Existing exported rows/columns and saved files remain compatible.
+- Necessary verification: overlapping original audit commits with both selectors, database-free
+  retained rebuild and recomputed totals, redaction/workspace isolation, public rerun after a
+  later audit event, legacy source labels, catalogue parity and scoped lint/types.
+- Remaining: first-generation actor/display-name histories, approval-register rule/step display
+  inputs and other OPEN report adapters, followed by final repository validation. This audit
+  export is a selected event listing, not a complete audit-chain verification. No deployment.

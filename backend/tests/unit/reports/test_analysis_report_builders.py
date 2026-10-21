@@ -69,7 +69,7 @@ def test_columns_are_the_specification_grid(number: int, module: Any) -> None:
 def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module is bridge:
+    if module in (bridge, pairs):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -815,3 +815,73 @@ def test_book_bridge_retained_inputs_rebuild_without_live_reads() -> None:
         bridge.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=UUID(int=4))), params)
     with pytest.raises(Problem):
         bridge.build(uow, replace(params, parameters={"currency_view": "functional"}))
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_intercompany_retained_inputs_rebuild_without_live_reads(view: str) -> None:
+    import json
+    from dataclasses import asdict, replace
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    tenant_id = UUID(int=1)
+    entities = (UUID(int=2), UUID(int=3))
+    lines = _k04()
+    if view != "transaction":
+        lines[1] = replace(lines[1], currency="USD", amount=D("6131.98"))
+    if view == "reporting":
+        lines[0] = replace(lines[0], currency="USD", amount=D("-6130"))
+    currencies = {"AVM-US": "USD", "AVM-UK": "GBP"}
+    evidence = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": tenant_id,
+                "entity_ids": entities,
+                "currency_view": view,
+                "book_code": "ASC606",
+                "run_entities": list(currencies),
+                "entity_currencies": currencies,
+                "lines": [asdict(line) for line in lines],
+            }
+        )
+    )
+    at = datetime(2026, 9, 30, tzinfo=UTC)
+    params = ReportParams(
+        report_code=pairs.CODE,
+        report_version=1,
+        parameters={"currency_view": view},
+        entity_ids=entities,
+        known_at=at,
+        book_code="ASC606",
+        binding=SourceBinding(
+            cutoff=at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={pairs.EVIDENCE: evidence},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant_id))
+    data = pairs.build(uow, params)
+    expected, totals, tie = pairs.dataset_rows(
+        lines,
+        run_entities=currencies,
+        entity_currencies=currencies if view == "functional" else None,
+    )
+    assert data.rows == tuple(expected)
+    assert data.control_totals == totals
+    assert data.tie_out_results == (tie,)
+    evidence["lines"][0]["amount"] = "-5000"
+    assert pairs.build(uow, params).rows != data.rows
+    with pytest.raises(Problem, match="report scope"):
+        pairs.build(uow, replace(params, entity_ids=entities[:1]))
+    with pytest.raises(Problem, match="report scope"):
+        pairs.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=UUID(int=4))), params)
+    with pytest.raises(Problem):
+        pairs.build(uow, replace(params, book_code="IFRS15"))
+    with pytest.raises(Problem):
+        pairs.build(uow, replace(params, parameters={"currency_view": "invalid"}))

@@ -676,6 +676,61 @@ def test_intercompany_pairs_k04(
     assert partial_pair["due_to_amount"] == usd("6131.98")
     assert tie_of(partial, "TO_IC_UNMATCHED_ZERO")["result"] == "NOT_APPLICABLE"
 
+    # A later approved average changes a fresh report, but all original currency views replay.
+    from datetime import timedelta
+
+    from erev_api.db.tables import fx_rate_set
+    from support.reference import approve, get, post
+    from support.worlds import REPORT_RUN_ID_HEADER, _gbp_rates, run_now
+
+    set_id = world.place.scalar(
+        select(fx_rate_set.c.id).where(fx_rate_set.c.code == "AVM-RATES-AVERAGE")
+    )
+    rates = _gbp_rates("average")
+    rates[-1]["rate"] = "1.30"
+    draft = post(
+        app,
+        f"/api/v1/fx-rate-sets/{set_id}/versions",
+        world.maya,
+        {
+            "coverage_from": "2026-01-01",
+            "coverage_to": "2026-09-30",
+            "rates": rates,
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    submitted = post(
+        app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        world.maya,
+        {"comment": "Revised September average"},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert submitted.status_code == 200, submitted.text
+    clock.advance(timedelta(minutes=1))
+    decided = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+    assert decided.status_code == 200, decided.text
+    clock.advance(timedelta(minutes=1))
+    _, fresh_rows = report_run(
+        world, "intercompany_pairs", {**september, "currency_view": "reporting"}
+    )
+    assert keyed(fresh_rows)[f"pair:{AVM_US}:{AVM_UK}:USD"]["due_to_amount"] == usd("6227.79")
+    for original, original_rows in (
+        (run, rows),
+        (functional, functional_rows),
+        (reporting, reporting_rows),
+        (partial, partial_rows),
+    ):
+        started = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        rerun_id = started.headers[REPORT_RUN_ID_HEADER]
+        data = get(app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+        assert data.status_code == 200, data.text
+        assert data.json()["items"] == original_rows
+
 
 # --- RPT-36 -----------------------------------------------------------------------------------
 

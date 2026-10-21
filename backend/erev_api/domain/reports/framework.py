@@ -569,10 +569,6 @@ _ADOPTION_BRIDGE_OPEN: Final = (
     "origin period, and the revenue, billed and balance nodes of the latest ASC 606 contract "
     "versions at the period end before the date of initial application read live (RPS-12 RPT-34)"
 )
-_INTERCOMPANY_PAIRS_OPEN: Final = (
-    "the intercompany due-from and due-to subledger lines of the run's entities with their "
-    "counterparties, contracts, obligations and periods read live (RPS-12 RPT-35)"
-)
 _LATE_ENTRY_REPORT_OPEN: Final = (
     "contract events of the run's entities with their contracts, approval requests and "
     "recording principals, and the first lock record of each entity's period read live "
@@ -928,7 +924,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         ),
         adoption_bridge_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_ADOPTION_BRIDGE_OPEN,)),
         intercompany_pairs_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_INTERCOMPANY_PAIRS_OPEN,)
+            RETAINED, (_CUTOFF, "intercompany line inputs, entity/currency scope and FX evidence")
         ),
         late_entry_report_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_LATE_ENTRY_REPORT_OPEN,)
@@ -2075,6 +2071,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "approvals_register",
             "chain_verification_report",
             "book_bridge",
+            "intercompany_pairs",
         }
     ):
         try:

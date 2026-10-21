@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Intercompany Pairs retained reconstruction — October 21, 2026
+
+- Transaction, functional and reporting runs now retain consumed ledger IDs, per-line amounts,
+  entity/currency scope and FX evidence. Same-source reruns rebuild pairs, contract details,
+  totals and unmatched tie-outs without reading current ledger lines, entity labels or rates.
+  Tenant/entity/view/book checks remain; mixed functional currencies and out-of-scope sides
+  remain incomparable rather than becoming false zeroes. Older OPEN runs retain their original
+  new-evaluation semantics. Migration 0297 updates the report's IPE description.
+- Public workflow verification: approving September GBP/USD average 1.30 instead of 1.28 changes
+  fresh reporting due-to from USD 6,131.98 to 6,227.79; original transaction, functional,
+  reporting and partial-scope runs retain identical rows/output hashes. Input-only tests rebuild
+  without a database and recompute after changing inputs. 43 focused unit checks and scoped
+  lint/types passed; catalogue migration parity verified. No deployment.
+- Remaining: Adoption Bridge currency support, non-policy/book-context difference residuals,
+  other documented report adapters and final repository validation. Intercompany Pairs
+  retained reconstruction is complete; this does not claim all Reporting work is finished.
+
 ## Licence renewal recognition and advance-FX attribution — October 21, 2026
 
 - Fixed two connected engine gaps found through full book-bridge replay: stage 06 now tells

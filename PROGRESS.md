@@ -20,6 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Intercompany Pairs retained reconstruction — October 21, 2026
+
+- Transaction, functional and reporting runs now retain consumed ledger IDs, per-line amounts,
+  entity/currency scope and FX evidence. Same-source reruns rebuild pairs, contract details,
+  totals and unmatched tie-outs without reading current ledger lines, entity labels or rates.
+  Tenant/entity/view/book checks remain; mixed functional currencies and out-of-scope sides
+  remain incomparable rather than becoming false zeroes. Older OPEN runs retain their original
+  new-evaluation semantics. Migration 0297 updates the report's IPE description.
+- Public workflow verification: approving September GBP/USD average 1.30 instead of 1.28 changes
+  fresh reporting due-to from USD 6,131.98 to 6,227.79; original transaction, functional,
+  reporting and partial-scope runs retain identical rows/output hashes. Input-only tests rebuild
+  without a database and recompute after changing inputs. 43 focused unit checks and scoped
+  lint/types passed; catalogue migration parity verified. No deployment.
+- Remaining: Adoption Bridge currency support, non-policy/book-context difference residuals,
+  other documented report adapters and final repository validation. Intercompany Pairs
+  retained reconstruction is complete; this does not claim all Reporting work is finished.
+
 ## Licence renewal recognition and advance-FX attribution — October 21, 2026
 
 - Fixed two connected engine gaps found through full book-bridge replay: stage 06 now tells
@@ -200,25 +217,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: first-generation historical actor/entity/step/rule display resolution and other
   OPEN report adapters. Retention freezes the inputs actually consumed; it does not claim that
   current labels were historically correct on a report's first generation. No deployment.
-
-## Audit export committed cutoff and retained inputs — October 21, 2026
-
-- Historical Audit Log Export now filters original audit transaction commits by known_at for
-  both the workspace and contract-trail paths. Business occurred_at range/filter semantics stay
-  intact; record basis preserves transaction-local visibility.
-- New exports retain redacted input events (including historical commit evidence) and rebuild
-  rows, canonical JSON cells and chain control totals from those inputs. Same-source reruns do
-  not query today's audit population. Retained evidence is workspace-bound. PostgreSQL IP
-  address values are normalized to text before canonical serialization.
-- The source contract is now retained_inputs. Old OPEN bindings remain explicitly OPEN and
-  rerun as new evaluations rather than claiming reproduction. Migration 0288 synchronizes the
-  catalogue. Existing exported rows/columns and saved files remain compatible.
-- Necessary verification: overlapping original audit commits with both selectors, database-free
-  retained rebuild and recomputed totals, redaction/workspace isolation, public rerun after a
-  later audit event, legacy source labels, catalogue parity and scoped lint/types.
-- Remaining: first-generation actor/display-name histories, approval-register rule/step display
-  inputs and other OPEN report adapters, followed by final repository validation. This audit
-  export is a selected event listing, not a complete audit-chain verification. No deployment.
 
 ## Outstanding release verification
 
