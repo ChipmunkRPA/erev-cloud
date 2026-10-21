@@ -18,6 +18,7 @@ from sqlalchemy import func, select
 
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.tables import contract, contract_event, source_record
+from erev_api.domain.reports import contract_identity_history
 from erev_api.domain.reports.evidence_archive import PackFile
 from erev_api.domain.reports.evidence_commands import PERMISSIONS
 from erev_api.domain.reports.evidence_selection import SourceSelection, resolve
@@ -130,7 +131,7 @@ def collect(
         for permission in PERMISSIONS:
             require_for_entity(uow.ctx, permission, entity_id)
     tenant_id = selected.tenant_id
-    identities = list(
+    current_identities = list(
         uow.session.execute(
             select(
                 contract.c.id,
@@ -144,8 +145,24 @@ def collect(
             )
         ).mappings()
     )
-    if len(identities) != len(selected.contract_ids):
+    if len(current_identities) != len(selected.contract_ids):
         raise Problem("not-found")
+    historical = contract_identity_history.identities(
+        uow.session, tenant_id, selected.contract_ids, cutoff
+    )
+    historical_entities = {row["contracting_entity_id"] for row in historical.values()}
+    for entity_id in historical_entities:
+        if uow.principal.entity_scope != "*" and entity_id not in uow.principal.entity_scope:
+            raise Problem("not-found")
+        for permission in PERMISSIONS:
+            require_for_entity(uow.ctx, permission, entity_id)
+    selected = SourceSelection(
+        tenant_id,
+        cutoff,
+        tuple(sorted(set(selected.entity_ids) | historical_entities)),
+        selected.contract_ids,
+    )
+    identities = list(historical.values())
     rows = (
         uow.session.execute(
             select(
@@ -197,7 +214,7 @@ def collect(
             "sample/selection.json",
             canonical_bytes(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "tenant_id": tenant_id,
                     "as_of": request.as_of,
                     "known_at": cutoff,

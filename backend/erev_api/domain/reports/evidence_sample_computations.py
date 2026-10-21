@@ -28,6 +28,7 @@ from erev_api.db.tables import (
     schedule,
     schedule_line,
 )
+from erev_api.domain.reports import contract_identity_history
 from erev_api.domain.reports.builders.extract_contract_versions import KEYS as VERSION_KEYS
 from erev_api.domain.reports.builders.extract_obligations import COLUMNS as OBLIGATION_COLUMNS
 from erev_api.domain.reports.builders.extract_schedule_lines import COLUMNS as LINE_COLUMNS
@@ -155,6 +156,10 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
         if effective > as_of:
             continue
         group_entities = {row["contracting_entity_id"] for row in identities}
+        # Authorize current ownership as well as the historical owner before exporting labels.
+        with system_entity_scope(uow.session):
+            historical = contract_identity_history.identities(uow.session, tenant, members, cutoff)
+        group_entities.update(row["contracting_entity_id"] for row in historical.values())
         group_entities.update(
             row[key]
             for row in population
@@ -279,7 +284,7 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
             "version": version,
             "members": [
                 {**dict(row), "sampled": row["id"] in selected.contract_ids}
-                for row in sorted(identities, key=lambda row: str(row["id"]))
+                for row in sorted(historical.values(), key=lambda row: str(row["id"]))
             ],
             "allocations": obligations,
             "schedule": {"headers": headers, "lines": lines},

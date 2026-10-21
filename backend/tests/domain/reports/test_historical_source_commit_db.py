@@ -102,6 +102,11 @@ def test_late_event_and_version_commit_keeps_previous_historical_version(world: 
         new_events = evidence_sample_events.collect(reader, request, known_at=end)
         assert appended[0]["id"] not in old_events.event_ids
         assert appended[0]["id"] in new_events.event_ids
+        old_identity = json.loads(old_events.files[0].content)["contracts"][0]
+        new_identity = json.loads(new_events.files[0].content)["contracts"][0]
+        assert old_identity["external_id"] == new_identity["external_id"] == external_id
+        assert old_identity["source_revision_id"] != new_identity["source_revision_id"]
+        assert old_identity["committed_server_at"] < new_identity["committed_server_at"]
         old_computations = evidence_sample_computations.collect(
             reader, old_events.selection, as_of=request.as_of
         )
@@ -116,6 +121,32 @@ def test_late_event_and_version_commit_keeps_previous_historical_version(world: 
         assert {row["version_id"] for row in old_index["selected_versions"]} == {str(first)}
         assert {row["version_id"] for row in new_index["selected_versions"]} == {str(later)}
         assert all(row["committed_server_at"] for row in new_index["versions"])
+        old_members = json.loads(
+            next(
+                file.content
+                for file in old_computations.files
+                if file.path.endswith("/members.json")
+            )
+        )
+        assert old_members[0]["source_revision_id"] == old_identity["source_revision_id"]
+        from datetime import timedelta
+
+        from erev_api.db.tables import report_source_revision
+        from erev_api.problems import Problem
+
+        first_commit = reader.session.execute(
+            select(
+                func.erev.source_commit_time("report_source_revision", report_source_revision.c.id)
+            ).where(
+                report_source_revision.c.source_kind == "contract",
+                report_source_revision.c.source_id == cid,
+                report_source_revision.c.revision_no == 1,
+            )
+        ).scalar_one()
+        with pytest.raises(Problem, match="Contract identities are unavailable"):
+            evidence_sample_events.collect(
+                reader, request, known_at=first_commit - timedelta(microseconds=1)
+            )
     with world.place.uow() as uow:
         assert tie_outs.versions_for(uow.session, params, book_code="ASC606", cutoff=cutoff) == (
             first,

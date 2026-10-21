@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Committed contract identities in sample evidence — October 21, 2026
+
+- Sample selection v2 and computation member files now resolve contract identity fields from
+  committed header revisions at the requested cutoff, retaining revision identity and commit
+  time. Current selectors still authorize the requested contracts; historical/current owner
+  scopes are checked before export. Missing cutoff history refuses explicitly.
+- Contract external IDs remain fixed by the existing application rule; no rename capability
+  was added. The gap closed here is committed existence and header-version provenance, not a
+  new mutable business identifier. A backdated creation committed after cutoff cannot be
+  presented as an already-existing sampled contract.
+- Migration 0284 synchronizes catalogue metadata. Necessary checks passed: real overlapping
+  header/event/version changes, consistent selected/member revision identities, refusal before
+  the first committed header, full sample archive/PDF/XLSX flow, catalogue parity and scoped
+  lint/types. Existing stored archives remain unchanged. No deployment.
+- Remaining: actor/display-name history, approval-request/audit and document histories, and
+  other report-specific inputs still listed as OPEN. These contract identities do not replace
+  the remaining source-specific cutoff work or final repository release verification.
+
 ## Contract sample event and version commits — October 21, 2026
 
 - Event sample files v2 filter original event commits by known_at and retain the timestamp
@@ -204,30 +222,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - This closes automatic retry of failed post-commit retention. PostgreSQL evidence already
   discarded before a worker can recover it remains unavailable and is explicitly refused;
   there is no invented fallback timestamp. Other B4-11 historical-source readers remain open.
-
-## Historical ledger commit visibility — October 21, 2026
-
-- Historical ledger readers now require the original PostgreSQL commit timestamp, closing
-  the insertion-before-cutoff/commit-after-cutoff race. Commit evidence is queued with the
-  seal and retained after commit. Database guards prevent caller-supplied timestamps and
-  later changes; read-only historical queries can resolve pending evidence directly.
-- Ten report definitions version this ledger interpretation. Older bound runs preserve
-  their seal-time basis. Disaggregation catalogue metadata is also brought into agreement
-  with its existing ledger and multi-currency implementation.
-- PostgreSQL requires track_commit_timestamp=on before posting; Compose and the optional
-  GCP configuration include it, and check_env --db checks it. Migration 0274 requires an
-  empty posting-seal table and refuses populated ledgers rather than inventing old commits.
-  This is a repository-development prerequisite, not a migration-to-live deliverable.
-- Sandbox refresh regenerates commit evidence with its own derived postings. No production
-  transaction IDs are copied into sandbox evidence. No sandbox lock requirement is added.
-- Necessary verification covers concurrent late commits, immutable timestamps, pending
-  evidence fallback/recovery, read-only access, historical/record basis and catalogue parity.
-  Scoped lint/types and the affected configuration/catalogue/snapshot checks pass.
-- Remaining B4-11 work: other historical sources and direct report-specific seal queries
-  still need commit visibility. Post-commit hook failures leave recoverable pending rows;
-  automatic retry/monitoring before PostgreSQL discards old transaction evidence remains
-  to implement. Expired evidence is refused, never replaced with an estimated timestamp.
-  This increment does not close all historical-source gaps. No deployment.
 
 ## Outstanding release verification
 

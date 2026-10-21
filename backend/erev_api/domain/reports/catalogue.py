@@ -2783,6 +2783,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "sample event files and computations index v2 require original event/version commits "
             "by known_at before latest-version selection; retain commit timestamps "
             "and full schedules",
+            "selection.json v2 and computation member identities use committed contract header "
+            "revisions at known_at; missing history refuses; current and historical owner "
+            "permissions are enforced before export",
             "journal sample totals retain whole aggregated lines and separate sampled "
             "contributions; old archives remain unchanged",
             _SCOPE,
