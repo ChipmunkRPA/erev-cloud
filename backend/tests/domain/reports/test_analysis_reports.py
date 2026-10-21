@@ -266,6 +266,52 @@ def _line_count(world: ReportWorld, *where: Any) -> int:
 
 
 @pytest.mark.slow
+def test_adoption_bridge_foreign_functional(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = onb_s11_modretro_own(app, keyring, clock, files, functional_currency="EUR")
+    run, rows = report_run(
+        world,
+        "adoption_bridge",
+        {
+            "entity_codes": [US01],
+            "date_of_initial_application": "2026-01-01",
+            "currency_view": "functional",
+        },
+    )
+    found = keyed(rows)
+    from erev_api.db.tables import contract_computation, report_definition
+    from erev_api.domain.reports.catalogue import DEFINITIONS_BY_CODE
+
+    assert (
+        world.place.scalar(
+            select(report_definition.c.parameters_schema).where(
+                report_definition.c.code == "adoption_bridge", report_definition.c.version == 1
+            )
+        )
+        == DEFINITIONS_BY_CODE["adoption_bridge"].parameters_schema
+    )
+    assert f"contract:{C_ADOPT}" in found, world.place.rows(
+        select(contract_computation.c.status, contract_computation.c.problem)
+    )
+    item = found[f"contract:{C_ADOPT}"]
+
+    def money(value: str) -> dict[str, str]:
+        return book_bridge.tie_outs.money(D(value), "EUR")
+
+    assert item["revenue_legacy"] == money("80000")
+    assert item["revenue_asc606"] == money("176000")
+    assert item["cumulative_effect"] == money("96000")
+    assert item["contract_liability_asc606"] == money("64000")
+    assert item["contract_liability_legacy"] is None
+    assert "unavailable" in item["legacy_position_basis"]
+    for code in ("CONTRACT_LIABILITY", "UNBILLED_RECEIVABLE"):
+        assert found[f"line:{code}"]["legacy_amount"] is None
+        assert found[f"line:{code}"]["effect"] is None
+    assert run["control_totals"]["legacy_position_unavailable_contract_count"] == 1
+    assert run["control_totals"]["cumulative_effect_total"] == {"EUR": "96000.00"}
+
+
 def test_adoption_bridge_s11_modretro_own(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
 ) -> None:

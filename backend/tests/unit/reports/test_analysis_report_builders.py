@@ -885,3 +885,72 @@ def test_intercompany_retained_inputs_rebuild_without_live_reads(view: str) -> N
         pairs.build(uow, replace(params, book_code="IFRS15"))
     with pytest.raises(Problem):
         pairs.build(uow, replace(params, parameters={"currency_view": "invalid"}))
+
+
+def test_adoption_functional_revenue_requires_matching_transaction_population() -> None:
+    from dataclasses import replace
+
+    from erev_engine import ENGINE_VERSION
+    from erev_engine.trace import SourceRef, TraceBuilder
+
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    for measure, currency, value, params in (
+        ("revenue_cum", "EUR", 10000, {}),
+        (
+            "revenue_functional",
+            "USD",
+            11000,
+            {"amount_txn": "10000", "txn_minor_unit": "2", "txn_currency": "EUR"},
+        ),
+    ):
+        tb.node(
+            measure=measure,
+            subject_key="C/O1",
+            period_key="FY2026-P01",
+            value=value,
+            currency=currency,
+            minor_unit=2,
+            formula_id="books.legacy_fold.v1",
+            inputs=[SourceRef("contract_event", "C/EV-1", {"value": str(D(value) / 100)})],
+            params=params,
+            narrative_key="books.legacy_fold",
+        )
+    trace = tb.build(root_measures={})
+    assert adoption.functional_revenue_at(trace, ["C/O1"], "FY2026-P02", "USD") == D("110")
+    for patch in ({}, {"amount_txn": "9000", "txn_minor_unit": "2", "txn_currency": "EUR"}):
+        changed = replace(
+            trace,
+            nodes=tuple(
+                replace(node, params=patch) if node.measure == "revenue_functional" else node
+                for node in trace.nodes
+            ),
+        )
+        with pytest.raises(Problem):
+            adoption.functional_revenue_at(changed, ["C/O1"], "FY2026-P02", "USD")
+    with pytest.raises(Problem):
+        adoption.functional_revenue_at(trace, ["C/O1"], "FY2026-P02", "GBP")
+
+
+def test_adoption_unknown_legacy_position_does_not_publish_partial_totals() -> None:
+    rows, totals = adoption.dataset_rows(
+        [
+            adoption.Source("KNOWN", None, "USD", revenue_legacy=D("100"), billed=D("300")),
+            adoption.Source(
+                "FOREIGN",
+                None,
+                "USD",
+                revenue_legacy=D("200"),
+                revenue_asc606=D("220"),
+                contract_liability=D("50"),
+                legacy_position_available=False,
+            ),
+        ]
+    )
+    found = keyed(rows)
+    assert found["contract:FOREIGN"]["contract_liability_legacy"] is None
+    assert found["contract:KNOWN"]["contract_liability_legacy"] == usd("200.00")
+    for code in ("CONTRACT_LIABILITY", "UNBILLED_RECEIVABLE"):
+        assert found[f"line:{code}"]["legacy_amount"] is None
+        assert found[f"line:{code}"]["effect"] is None
+    assert totals["revenue_legacy_total"] == {"USD": "300.00"}
+    assert totals["legacy_position_unavailable_contract_count"] == 1

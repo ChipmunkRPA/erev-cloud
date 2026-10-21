@@ -580,6 +580,11 @@ def test_foreign_legacy_posts_historical_functional_revenue(
     legacy, trace, _ = legacy_posting(canonical(foreign_legacy_world(reversal)))
     assert legacy.findings == ()
     assert_reevaluates(trace)
+    output = legacy_book.book_output("LEGACY", legacy, trace)
+    assert set(dict(output.line_rates)) == {
+        line.line_key for entry in legacy.posting_intents for line in entry.lines
+    }
+    assert all(refs for _, refs in output.line_rates)
     lines = [
         (entry.posting_period_key, line.side, line.amount_txn, line.amount_functional)
         for entry in legacy.posting_intents

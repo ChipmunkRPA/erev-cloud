@@ -2222,14 +2222,15 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         _ALL,
         "Cumulative effect of adopting Topic 606 per contract and the line-item comparison at the "
         "date of initial application (REQ-BK-007; ASC 606-10-65-1(h), (i)).",
-        ("entity_codes", "date_of_initial_application", "contract_external_id"),
-        overrides=_ONE_ENTITY,
+        ("entity_codes", "date_of_initial_application", "contract_external_id", "currency_view"),
+        overrides={**_ONE_ENTITY, "currency_view": _one_of("transaction", "functional")},
         sources=(
             "contract_version",
             "contract_version_balance",
             "obligation_version",
             "contract",
             "customer",
+            "subledger_line",
         ),
         joins=(
             "contract_version_balance.contract_version_id = contract_version.id",
@@ -2241,6 +2242,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "one entity of entity_codes keeping the LEGACY book",
             "ASC606 and LEGACY figures at date_of_initial_application",
             _CONTRACT,
+            "functional view uses posted legacy revenue and reconciled dated primary revenue "
+            "and balances; foreign legacy positions without historical carrying evidence are "
+            "unavailable, including affected aggregate comparisons",
         ),
     ),
     _definition(

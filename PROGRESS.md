@@ -20,6 +20,30 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Adoption Bridge functional view — October 21, 2026
+
+- Added Transaction/Functional selection to the public report (migration 0298). Functional
+  revenue uses posted LEGACY amounts and dated primary revenue nodes whose original transaction
+  quantity/currency must reconcile to the stage 09 population. Stage 12 now retains that quantity
+  beside cumulative functional revenue; missing, stale or mismatched foreign evidence is refused.
+  Primary balances use the shared dated member-balance projection, preserving historical layers.
+- Foreign LEGACY liability/unbilled carrying evidence is still absent. Affected contract cells
+  and currency-level comparison totals/effects are unavailable with an explicit basis message
+  and count, rather than substituted transaction amounts, false zeroes or partial totals.
+  Same-currency and transaction-view comparisons retain their complete existing behavior.
+- The full public foreign workflow found and fixed an output-boundary omission: LEGACY
+  BookOutput now preserves JET-15 line rate references, which database persistence requires.
+  Engine-only posting tests had not covered that boundary. A regression now checks assembly,
+  and approved foreign events successfully compute, persist and appear in the report.
+- Necessary validation: public USD/EUR case shows legacy EUR 80,000, primary EUR 176,000,
+  cumulative effect EUR 96,000 and primary liability EUR 64,000; historical legacy positions
+  remain explicitly unavailable. Original transaction disclosure, schema/IPE migration parity,
+  45 focused report/source-binding cases, eight LEGACY cases and scoped lint/types pass.
+- Remaining: foreign legacy carrying-position sources, reporting-currency translation, Adoption
+  same-source reconstruction, other documented report adapters and final repository validation.
+  This completes the usable functional income/primary-balance view, not all multi-currency work.
+  No deployment or real-business migration requirements were added.
+
 ## Foreign LEGACY revenue and JET-15 — October 21, 2026
 
 - Fixed foreign pre-standard revenue failing at JET-15 because the LEGACY fold supplied only
@@ -202,27 +226,6 @@ review and publish changes without PR accumulation, and do not deploy.
   granular causal attribution of framework/licence/FX effects and same-source retention; inspect
   Adoption Bridge and Intercompany Pairs currency/source gaps next. These are real builder
   limitations, not closed by the preceding audit-report retention work. No deployment.
-
-## Audit chain verification report retained inputs — October 21, 2026
-
-- Historical chain-verification reports now require the original verification transaction to
-  have committed by known_at, in addition to the existing finished-at range. Migration 0291
-  queues commit evidence atomically, reuses the recovery worker and refuses fabricated history
-  on nonempty upgrade or removal of retained commit evidence on downgrade.
-- New reports retain the verification fields consumed by row generation, historical commit
-  evidence and the applied date range. Same-source reruns rebuild collision-safe row keys,
-  verification counts and failure counts without live verification reads. Workspace binding,
-  existing report permission checks and digest-file references remain intact; unused failure
-  payloads are not retained. Old OPEN runs remain labelled as new evaluations on rerun.
-- Necessary checks passed: real overlapping verification commit, old/new populations and FAIL
-  counts, equal-finish-time row keys, input-only rebuild, commit recovery, public rerun after a
-  later failing verification, catalogue parity, database architecture and scoped lint/types.
-- Approval-reference audit completed: the normal submission writer inserts a request and all
-  routed steps in one transaction (`approvals/engine.py`); routing/automatic decisions consume
-  published rule versions. DB-04 permits rule edits only while the parent is DRAFT/TESTED and
-  prevents edits to used published/superseded definitions (`db/migration_ops.py`). The earlier
-  first-step/rule-reference TODO does not require another history subsystem for these flows.
-- Remaining: other OPEN report adapters and final repository validation. No deployment.
 
 ## Outstanding release verification
 

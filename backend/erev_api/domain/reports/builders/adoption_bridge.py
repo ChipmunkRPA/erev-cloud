@@ -28,7 +28,11 @@ disclosures (E-06 ``ACTIVE``, ``COMPLETED``, ``TERMINATED``) and a figure on eit
 line and currency, ``row_key`` ``line:<LINE>`` (``:<ISO>`` when several currencies):
 ``legacy_amount``, ``asc606_amount`` and ``effect`` = Topic 606 − legacy GAAP. The ``LEGACY`` book
 records no contract cost asset, so that line's legacy amount and effect are empty, never 0.00.
-Amounts are in each contract's transaction currency (no currency view). Control totals: the
+Transaction view preserves each contract's currency. Functional view uses recorded LEGACY
+functional revenue, reconciled dated primary revenue and engine functional balances. Foreign
+legacy liabilities/unbilled balances stay unavailable until historical carrying evidence exists;
+line totals for those captions are also unavailable, never partial totals or artificial zeroes.
+Control totals: the
 contract count, the three revenue totals per currency, the date and the ``as_of`` day. A contract
 whose pre-standard revenue stands against no ``ASC606`` version in the disclosures (a draft, or
 not a contract under Topic 606) has no billed amount to read and is not listed; the control totals
@@ -48,6 +52,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.stages.s01_canonicalize.convert import obligation_subject_key
+from erev_engine.trace import Trace
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
@@ -59,7 +64,7 @@ from erev_api.db.tables import (
     period,
     subledger_line,
 )
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import functional_balances, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -75,6 +80,7 @@ PRE_STANDARD_ROLE: Final = "PRE_STANDARD_REVENUE"  # E-01; JET-15 debit (S13-R-0
 REVENUE_NODE: Final = "revenue_cum"  # T-ENG-03 measure per obligation and period
 BILLED_NODE: Final = "billed_cum"
 DATE_KEY: Final = "date_of_initial_application"
+POSITION_UNAVAILABLE: Final = "Historical functional legacy position unavailable"
 CONTRACT_PREFIX: Final = "contract:"
 LINE_PREFIX: Final = "line:"
 LINES: Final = (
@@ -128,6 +134,7 @@ class Source:
     contract_asset: Decimal = ZERO
     unbilled_receivable: Decimal = ZERO
     cost_assets: Decimal = ZERO
+    legacy_position_available: bool = True
 
     @property
     def cumulative_effect(self) -> Decimal:
@@ -199,6 +206,7 @@ def dataset_rows(
     rows: list[dict[str, Any]] = []
     # per currency: line → [legacy GAAP, Topic 606]
     lines: dict[str, dict[str, list[Decimal]]] = {}
+    unavailable = {item.currency for item in listed if not item.legacy_position_available}
     for item in listed:
         money = _money_of(item.currency)
         liability, unbilled = legacy_position(item.billed, item.revenue_legacy)
@@ -212,9 +220,16 @@ def dataset_rows(
                 "revenue_legacy": money(item.revenue_legacy),
                 "revenue_asc606": money(item.revenue_asc606),
                 "cumulative_effect": money(item.cumulative_effect),
-                "contract_liability_legacy": money(liability),
+                "contract_liability_legacy": money(liability)
+                if item.legacy_position_available
+                else None,
                 "contract_liability_asc606": money(item.contract_liability),
                 "asset_asc606": money(item.contract_asset + item.unbilled_receivable),
+                **(
+                    {"legacy_position_basis": POSITION_UNAVAILABLE}
+                    if not item.legacy_position_available
+                    else {}
+                ),
             }
         )
         into = lines.setdefault(item.currency, {code: [ZERO, ZERO] for code in LINES})
@@ -232,7 +247,9 @@ def dataset_rows(
         money = _money_of(currency)
         for code in LINES:
             legacy, topic_606 = lines[currency][code]
-            recorded = code != "COST_ASSETS"  # the LEGACY book records no contract cost asset
+            recorded = code != "COST_ASSETS" and not (
+                currency in unavailable and code in {"CONTRACT_LIABILITY", "UNBILLED_RECEIVABLE"}
+            )  # the LEGACY book records no contract cost asset
             rows.append(
                 {
                     "row_key": f"{LINE_PREFIX}{code}:{currency}"
@@ -245,6 +262,12 @@ def dataset_rows(
                     "legacy_amount": money(legacy) if recorded else None,
                     "asc606_amount": money(topic_606),
                     "effect": money(topic_606 - legacy) if recorded else None,
+                    **(
+                        {"legacy_position_basis": POSITION_UNAVAILABLE}
+                        if currency in unavailable
+                        and code in {"CONTRACT_LIABILITY", "UNBILLED_RECEIVABLE"}
+                        else {}
+                    ),
                 }
             )
     revenue = {currency: found_lines["REVENUE"] for currency, found_lines in lines.items()}
@@ -262,6 +285,10 @@ def dataset_rows(
         "legacy_only_contract_count": len(outside),
         "legacy_only_revenue": tie_outs.by_currency(outside_revenue),
     }
+    if unavailable:
+        totals["legacy_position_unavailable_contract_count"] = sum(
+            not item.legacy_position_available for item in listed
+        )
     return rows, totals
 
 
@@ -295,13 +322,17 @@ def _legacy_revenue(
     """Per contract the pre-standard revenue of the ``LEGACY`` book through ``through``, by origin
     period, as a ``Source`` that carries only the legacy side."""
     origin = period.alias("origin_period")
-    amount = func.sum(subledger_line.c.amount_txn).label("amount")
+    functional = params.parameters.get("currency_view") == "functional"
+    currency = subledger_line.c.functional_currency if functional else subledger_line.c.txn_currency
+    amount = func.sum(
+        subledger_line.c.amount_functional if functional else subledger_line.c.amount_txn
+    ).label("amount")
     statement = (
         select(
             subledger_line.c.contract_id,
             contract.c.external_id,
             customer.c.name.label("customer_name"),
-            subledger_line.c.txn_currency,
+            currency.label("currency"),
             amount,
         )
         .select_from(
@@ -338,20 +369,27 @@ def _legacy_revenue(
             subledger_line.c.contract_id,
             contract.c.external_id,
             customer.c.name,
-            subledger_line.c.txn_currency,
+            currency,
         )
         .order_by(contract.c.external_id)
     )
     if contract_id is not None:
         statement = statement.where(subledger_line.c.contract_id == contract_id)
+    rows = session.execute(statement).mappings().all()
+    if functional and any(
+        str(row["currency"]).strip() != entity.functional_currency for row in rows
+    ):
+        raise tie_outs.invalid(
+            "currency_view", "Legacy posted functional currency differs from entity."
+        )
     return {
         UUID(str(row["contract_id"])): Source(
             contract_external_id=str(row["external_id"]),
             customer_name=None if row["customer_name"] is None else str(row["customer_name"]),
-            currency=str(row["txn_currency"]).strip(),
+            currency=str(row["currency"]).strip(),
             revenue_legacy=Decimal(row["amount"]),
         )
-        for row in session.execute(statement).mappings()
+        for row in rows
     }
 
 
@@ -375,6 +413,61 @@ def _version_nodes(
     for values in nodes.values():
         values.sort()
     return nodes
+
+
+def functional_revenue_at(
+    trace: Trace,
+    subjects: Sequence[str],
+    period_key: str,
+    currency: str,
+) -> Decimal:
+    """Read dated functional revenue only when its transaction population reconciles.
+
+    Stage 12 relief can differ from gross stage 09 revenue. New cumulative FX nodes retain
+    their transaction quantity so a report can reject that mismatch, including old traces
+    without enough evidence, rather than display relief as revenue.
+    """
+    total = ZERO
+    for subject in subjects:
+
+        def latest(measure: str, subject: str = subject) -> Any:
+            prefix = f"{measure}:{subject}:"
+            nodes = [
+                node
+                for node in trace.nodes
+                if node.id.startswith(prefix)
+                and node.id[len(prefix) :].startswith("FY")
+                and node.id[len(prefix) :] <= period_key
+            ]
+            return max(nodes, key=lambda node: node.id, default=None)
+
+        txn = latest(REVENUE_NODE)
+        functional = latest("revenue_functional")
+        expected = ZERO if txn is None else Decimal(txn.value)
+        if functional is None:
+            if expected == 0:
+                continue
+            raise tie_outs.invalid("currency_view", "Historical functional revenue is missing.")
+        params = functional.params
+        if (
+            functional.currency != currency
+            or "amount_txn" not in params
+            or "txn_minor_unit" not in params
+            or txn is None
+            or params.get("txn_currency") != txn.currency
+            or Decimal(params["amount_txn"]).scaleb(-int(params["txn_minor_unit"])) != expected
+        ):
+            raise tie_outs.invalid(
+                "currency_view",
+                "Functional revenue does not reconcile to the historical revenue population; "
+                "recompute or review the source.",
+            )
+        if functional.id.rpartition(":")[2] < txn.id.rpartition(":")[2]:
+            raise tie_outs.invalid(
+                "currency_view", "Historical functional revenue endpoint is incomplete."
+            )
+        total += Decimal(functional.value)
+    return total
 
 
 def _obligation_keys(
@@ -418,6 +511,22 @@ def sources(
         contract_id=contract_id,
         params=params,
     )
+    functional = params.parameters.get("currency_view") == "functional"
+    translated = (
+        {
+            row.contract_id: row
+            for row in functional_balances.read(
+                session,
+                params,
+                balances,
+                entities=(entity,),
+                periods={entity.id: at},
+                book_code=PRIMARY,
+            )
+        }
+        if functional
+        else {}
+    )
     legacy = _legacy_revenue(session, params, entity, through=at.end, contract_id=contract_id)
     keys = _obligation_keys(session, balances)
     traces: dict[UUID, dict[tuple[str, str], list[tuple[str, Decimal]]]] = {}
@@ -430,23 +539,32 @@ def sources(
             obligation_subject_key(row.external_id, key)
             for key in keys.get((row.version_id, row.contract_id), ())
         ]
+        displayed = translated.get(row.contract_id, row)
+        revenue = sum(
+            (measure_at(nodes, REVENUE_NODE, subject, at.key) for subject in subjects), ZERO
+        )
+        foreign = functional and row.currency != entity.functional_currency
+        if foreign:
+            trace = store.load_trace(session, row.version_id)
+            if trace is None:
+                raise tie_outs.invalid("currency_view", "Historical functional trace is missing.")
+            revenue = functional_revenue_at(trace, subjects, at.key, entity.functional_currency)
         held = legacy.pop(row.contract_id, None)
         found.append(
             Source(
                 contract_external_id=row.external_id,
                 customer_name=row.customer_name,
-                currency=row.currency,
+                currency=displayed.currency,
                 revenue_legacy=ZERO if held is None else held.revenue_legacy,
-                revenue_asc606=sum(
-                    (measure_at(nodes, REVENUE_NODE, subject, at.key) for subject in subjects), ZERO
-                ),
+                revenue_asc606=revenue,
                 billed=sum(
                     (measure_at(nodes, BILLED_NODE, subject, at.key) for subject in subjects), ZERO
                 ),
-                contract_liability=row.value("contract_liability"),
-                contract_asset=row.value("contract_asset"),
-                unbilled_receivable=row.value("unbilled_receivable"),
-                cost_assets=row.value("cost_asset_carrying"),
+                contract_liability=displayed.value("contract_liability"),
+                contract_asset=displayed.value("contract_asset"),
+                unbilled_receivable=displayed.value("unbilled_receivable"),
+                cost_assets=displayed.value("cost_asset_carrying"),
+                legacy_position_available=not foreign,
             )
         )
     # what is left: contracts the LEGACY book holds without an ASC 606 version in the disclosures
@@ -455,6 +573,9 @@ def sources(
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
+    view = str(params.parameters.get("currency_view") or "transaction")
+    if view not in {"transaction", "functional"}:
+        raise tie_outs.invalid("currency_view", "Choose Transaction or Functional currency.")
     session = uow.session
     entities = tie_outs.entities(session, params.entity_ids, params=params)
     if len(entities) != 1:
@@ -476,7 +597,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     rows, totals = dataset_rows(found, legacy_only)
     totals[DATE_KEY] = day.isoformat()
     totals["as_of"] = None if at is None else at.end.isoformat()
-    return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
+    columns = COLUMNS + (
+        (Column("legacy_position_basis", "Legacy position basis", "text"),)
+        if view == "functional"
+        else ()
+    )
+    return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)
 
 
 __all__ = [

@@ -861,7 +861,7 @@ class BookOutput:
     time_triggers: tuple[TimeTrigger, ...]  # (date, kind, subject key)
     trace: Trace  # one per book
     # (line key, ((rate key, version key), ...)) of every foreign-currency posting line, sorted by
-    # line key: PostingState.line_rates (REQ-FX-006; D-88 L7-6-Q-1); () for the LEGACY book
+    # line key: PostingState.line_rates (REQ-FX-006; D-88 L7-6-Q-1), including foreign LEGACY lines
     line_rates: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = ()
 
 

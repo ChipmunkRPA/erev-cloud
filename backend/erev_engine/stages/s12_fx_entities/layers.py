@@ -1186,7 +1186,7 @@ class UnitBook:
                         "txn_minor_unit": str(self.mu_txn),
                         "txn_currency": self.txn,
                     }
-                    if running.measure == "billed_control_cum"
+                    if running.measure in {"billed_control_cum", "revenue_cum"}
                     else {}
                 ),
             },

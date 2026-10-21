@@ -2807,7 +2807,12 @@ ADOPTION_LEGACY_REVENUE: Final = (
 
 
 def onb_s11_modretro_own(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    *,
+    functional_currency: str = "USD",
 ) -> ReportWorld:
     """The facts of answer key ONB-S11-MODRETRO-OWN through the product's commands, with the
     ``LEGACY`` book the adoption bridge compares against. Maya, Priya and Marcus as in
@@ -2824,13 +2829,24 @@ def onb_s11_modretro_own(
     delta-posting keys"); its tenant value ``recognition.time_convention = MONTHLY_EVEN`` reaches
     the support line through the template's ratable convention, and the entity's
     ``transition.first_time_application`` is the registry default ``MODIFIED_RETROSPECTIVE``."""
+    from datetime import timedelta
+
     from support.reference import calendar, entity, mapping_published
 
     maya, priya, marcus = _analysis_people(app, keyring, clock)
-    enabled = put(app, "/api/v1/tenant-currencies", marcus, {"currency_codes": ["USD"]})
+    enabled = put(
+        app,
+        "/api/v1/tenant-currencies",
+        marcus,
+        {"currency_codes": sorted({"USD", functional_currency})},
+    )
     assert enabled.status_code == 200, enabled.text
     created = entity(
-        app, maya, code=US01, calendar_id=calendar(app, maya, years=(2025, 2026, 2027))
+        app,
+        maya,
+        code=US01,
+        calendar_id=calendar(app, maya, years=(2025, 2026, 2027)),
+        functional_currency=functional_currency,
     )
     entity_id = UUID(str(created["id"]))
     keys = [f"FY2025-P{month:02d}" for month in range(1, 13)]
@@ -2846,6 +2862,51 @@ def onb_s11_modretro_own(
         keys=keys,
         first_period_key="FY2025-P01",
     )
+    if functional_currency != "USD":
+        for rate_type in ("spot", "average", "closing"):
+            rate_set = post(
+                app,
+                "/api/v1/fx-rate-sets",
+                maya,
+                {
+                    "code": f"ADOPT-{rate_type.upper()}",
+                    "name": f"Adoption {rate_type}",
+                    "rate_type": rate_type,
+                },
+            )
+            assert rate_set.status_code == 201, rate_set.text
+            pair = {"base_currency": "USD", "quote_currency": functional_currency, "rate": "0.80"}
+            rates = (
+                [{**pair, "effective_date": "2025-01-01"}]
+                if rate_type == "spot"
+                else [
+                    {**pair, "period_key": f"FY{year}-P{month:02d}"}
+                    for year in (2025, 2026, 2027)
+                    for month in range(1, 13)
+                ]
+            )
+            draft = post(
+                app,
+                f"/api/v1/fx-rate-sets/{rate_set.json()['id']}/versions",
+                maya,
+                {
+                    "coverage_from": "2025-01-01",
+                    "coverage_to": "2027-12-31",
+                    "rates": rates,
+                },
+            )
+            assert draft.status_code == 201, draft.text
+            submitted = post(
+                app,
+                f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+                maya,
+                {"comment": "Adoption historical rates"},
+                if_match=f'"r{draft.json()["row_version"]}"',
+            )
+            assert submitted.status_code == 200, submitted.text
+            clock.advance(timedelta(minutes=1))
+            decided = approve(app, submitted.json()["pending_approval_request_id"], marcus)
+            assert decided.status_code == 200, decided.text
     buyer = customer_id(app, maya, code="CUST-1", name="Example Customer (Demo)")
     start = "2025-01-01T00:00:00Z"
     term = {"start_date": "2025-01-01", "end_date": "2027-12-31"}

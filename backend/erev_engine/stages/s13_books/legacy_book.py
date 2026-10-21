@@ -347,6 +347,12 @@ def book_output(book_code: str, state: LegacyState, trace: Trace) -> BookOutput:
         proposals=(),
         time_triggers=(),
         trace=trace,
+        line_rates=()
+        if state.posting is None
+        else tuple(
+            (key, tuple((ref.rate_key, ref.version_key) for ref in refs))
+            for key, refs in sorted(state.posting.line_rates.items())
+        ),
     )
 
 
