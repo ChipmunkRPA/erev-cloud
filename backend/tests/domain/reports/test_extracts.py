@@ -835,6 +835,7 @@ def test_journal_ancillary_sources_exclude_late_commits(
         approval_decision,
         approval_request,
         approval_step,
+        audit_event,
         journal_batch,
         posting_ack,
     )
@@ -847,7 +848,7 @@ def test_journal_ancillary_sources_exclude_late_commits(
         approval_step_values,
         posting_ack_values,
     )
-    from support.worlds import journal_run
+    from support.worlds import K01, journal_run
 
     world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
     clock.set(world.place.scalar(select(func.clock_timestamp())))
@@ -856,6 +857,7 @@ def test_journal_ancillary_sources_exclude_late_commits(
     batch_id = world.place.scalar(
         select(journal_batch.c.id).where(journal_batch.c.journal_run_id == UUID(journal["id"]))
     )
+    cid = UUID(str(world.contracts[K01].contract["id"]))
     request = approval_request_values(world.place.tenant_id)
     request_id = request["id"]
     step = approval_step_values(
@@ -906,6 +908,19 @@ def test_journal_ancillary_sources_exclude_late_commits(
             to_status="APPROVED",
             set_values={"decided_at": stamp},
             expected_status="PENDING",
+        )
+        writer.audit(
+            action="approval.approve",
+            object_type="approval_request",
+            object_id=request_id,
+            approval_request_id=request_id,
+            contract_id=cid,
+        )
+        from erev_api.audit.chain import flush
+
+        flush(writer)
+        audit_id = writer.session.scalar(
+            select(audit_event.c.id).where(audit_event.c.approval_request_id == request_id)
         )
         cutoff = world.place.scalar(select(func.clock_timestamp()))
         writer.commit()
@@ -984,8 +999,61 @@ def test_journal_ancillary_sources_exclude_late_commits(
                 bounds=bounds,
             )
         }
+    from erev_api.domain.reports import evidence_sample_decisions
+    from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.domain.reports.evidence_selection import SourceSelection
+
+    clock.set(now)
+    principal = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions | PERMISSIONS,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            **{permission: "*" for permission in PERMISSIONS},
+        },
+    )
+    selection = SourceSelection(
+        tenant_id=principal.tenant_id, known_at=cutoff, entity_ids=(), contract_ids=(cid,)
+    )
+    with world.place.uow(principal) as reader:
+        old_sample = evidence_sample_decisions.collect(
+            reader, selection, approval_request_ids=(request_id,)
+        )
+        new_sample = evidence_sample_decisions.collect(
+            reader, replace(selection, known_at=now), approval_request_ids=(request_id,)
+        )
+        old_files = {f.path: json.loads(f.content) for f in old_sample.files}
+        new_files = {f.path: json.loads(f.content) for f in new_sample.files}
+        old_approval = old_files["sample/approvals.json"]
+        new_approval = new_files["sample/approvals.json"]
+        assert old_approval["schema_version"] == new_approval["schema_version"] == 2
+        old_request = next(r for r in old_approval["requests"] if r["id"] == str(request_id))
+        new_request = next(r for r in new_approval["requests"] if r["id"] == str(request_id))
+        assert old_request["status"] == "PENDING"
+        assert new_request["status"] == "APPROVED"
+        assert str(decision["id"]) not in {d["id"] for d in old_approval["decisions"]}
+        assert str(decision["id"]) in {d["id"] for d in new_approval["decisions"]}
+        assert all(d["committed_server_at"] for d in new_approval["decisions"])
+        old_audit, new_audit = old_files["sample/audit.json"], new_files["sample/audit.json"]
+        assert str(audit_id) not in old_audit["commit_evidence"]
+        assert str(audit_id) in new_audit["commit_evidence"]
+        assert str(audit_id) not in old_audit["contracts"][str(cid)]
+        assert str(audit_id) in new_audit["contracts"][str(cid)]
+        assert new_audit["control_totals"]["row_count"] == len(new_audit["events"])
+        from erev_api.problems import Problem
+
+        with pytest.raises(Problem, match="unavailable at its source cutoff"):
+            evidence_sample_decisions.collect(
+                reader,
+                replace(selection, known_at=before_request_commit),
+                approval_request_ids=(request_id,),
+            )
     commit_evidence.recover_pending_sources(world.place.tenant_id)
-    for kind, identity in (("approval_decision", decision["id"]), ("posting_ack", ack["id"])):
+    for kind, identity in (
+        ("approval_decision", decision["id"]),
+        ("posting_ack", ack["id"]),
+        ("audit_event", audit_id),
+    ):
         commit = world.place.scalar(
             select(historical_source_commit.c.committed_server_at).where(
                 historical_source_commit.c.source_kind == kind,

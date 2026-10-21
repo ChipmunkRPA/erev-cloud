@@ -6413,6 +6413,10 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
             subject_ids=events.selection.contract_ids,
         )
         uow.commit()
+    clock.set(
+        max(clock.now(), world.place.scalar(select(func.clock_timestamp())))
+        + timedelta(microseconds=1)
+    )
     catalogue_ids = []
     for output_format in ("ZIP", "PDF", "XLSX"):
         started = post(

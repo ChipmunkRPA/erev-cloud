@@ -444,12 +444,14 @@ def requests(
 
 
 def requests_by_id(
-    session: Session, ids: Iterable[UUID], *, cutoff: datetime
+    session: Session, ids: Iterable[UUID], *, cutoff: datetime, committed: bool = False
 ) -> dict[UUID, Request]:
     wanted = sorted({value for value in ids}, key=str)
     if not wanted:
         return {}
-    found = requests(session, cutoff=cutoff, where=[approval_request.c.id.in_(wanted)])
+    found = requests(
+        session, cutoff=cutoff, where=[approval_request.c.id.in_(wanted)], committed=committed
+    )
     return {item.id: item for item in found}
 
 

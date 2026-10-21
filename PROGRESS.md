@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Contract sample approval and audit commit visibility — October 21, 2026
+
+- Migration 0287 queues original audit-event commits atomically. A fixed audit source kind
+  handles monthly partition triggers; an immutable occurred_at locator validates the original
+  event in its partition. Existing recovery archives timestamps. Upgrade requires an empty
+  audit table rather than fabricated history, and retained audit commits prevent downgrade.
+- Sample approvals/audit v2 now applies one committed cutoff to request revisions, decisions
+  and linked audit events. A late approval preserves the earlier request state and excludes
+  both the later decision and its audit event. Decision/audit commit timestamps are retained;
+  missing request history refuses explicitly. Original request comments remain in the snapshot.
+- Current whole-population permissions, linked-contract checks, redaction and subject-hash
+  verification remain enforced. Saved archives keep their original bytes and schema.
+- Necessary checks passed: overlapping request/decision/audit transaction at old/new cutoffs,
+  exclusion before request commit, commit recovery, immutable audit partition locator,
+  full ZIP/PDF/XLSX sample flow, catalogue parity, database architecture and scoped lint/types.
+  The full sample fixture advances its clock past real attachment commit before live capture.
+- Remaining: standalone audit-export cutoff/retention, first-generation actor/display names,
+  register rule/step display inputs and other OPEN report adapters. This completes the sample
+  pack's approval/audit commit cutoff, not all historical source reconstruction. No deployment.
+
 ## Approvals register committed request state — October 21, 2026
 
 - Migration 0286 captures source-owned approval-request revisions, including terminal state
@@ -194,36 +214,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining historical work includes journal-run state and other mutable memberships,
   configuration and report-specific inputs. These changes cover retained GL and contract
   revisions; they do not claim arbitrary reconstruction for every mutable source.
-
-## Contract event and version commit visibility — October 21, 2026
-
-- Original contract-event and computed-version transactions now have database-controlled
-  commit evidence, queued atomically with each source and archived after ordinary writes.
-  The minute worker also recovers pending source evidence in isolated keyset batches.
-  Delegated SYSTEM activation units are covered by that durable recovery path; read-only
-  queries can resolve the real timestamp before archival. Archived evidence is immutable.
-- Shared historical version selection excludes late commits before choosing the latest
-  candidate, retaining the preceding version correctly. RPO history and the touched history,
-  book-bridge, prior-obligation, SSP/allocation, modification and estimate readers use the
-  same cutoff protection. Explicitly bound original version identities remain compatible.
-- New event/version extracts and BBR event inputs retain their actual commit timestamps.
-  Incremental event/version exports use (known_since, known_at] in commit time, so backdated
-  events and computations committed after a prior export are picked up in the next window.
-  Published columns are unchanged; old bound extracts retain their original input basis.
-- Migration 0277 adds tenant-isolated evidence, pending indexes and synchronized metadata
-  for the affected report definitions. It requires empty contract-event/version tables,
-  refusing existing history rather than fabricating timestamps. Sandbox evidence regenerates
-  with its own copied/recomputed sources; no production transaction identity is reused.
-- Verified a real append/recompute transaction committed after an independent cutoff: the
-  prior version and RPO history remain selected, BBR excludes the late event, both next-window
-  exports include the new data, and new/legacy bindings reproduce. Public event/version and
-  three latest-version extracts, archive immutability, catalogue parity and snapshot inventory
-  checks pass, with scoped lint/types. No deployment.
-- B4-11 remains open for mutable journal/GL revisions, membership/configuration state and
-  report-specific source readers not covered here (including full historical modification
-  state). Commit evidence alone does not reconstruct prior values of mutable rows. The wider
-  final-candidate verification list remains outstanding; independent accounting sign-off and
-  migration-to-live work remain outside the owner's development scope.
 
 ## Outstanding release verification
 

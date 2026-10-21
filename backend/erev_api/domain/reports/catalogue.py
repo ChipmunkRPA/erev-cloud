@@ -2757,6 +2757,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ("entity_codes", "contract_external_ids", "as_of"),
         sources=(
             "evidence_pack",
+            "audit_event",
+            "audit_event_contract",
+            "approval_request",
+            "approval_decision",
             "contract",
             "contract_event",
             "contract_version",
@@ -2795,6 +2799,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "permissions are enforced before export",
             "documents.json v2 uses committed attachment lifecycle revisions at cutoff; "
             "current subject/file grants, availability and byte integrity remain mandatory",
+            "sample approvals/audit v2 use committed request revisions and original decision/audit "
+            "commits by known_at; decision and audit commit timestamps remain in the archive",
             "journal sample totals retain whole aggregated lines and separate sampled "
             "contributions; old archives remain unchanged",
             _SCOPE,

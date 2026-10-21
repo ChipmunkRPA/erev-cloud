@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.approvals.engine import request_entities
 from erev_api.audit.redact import redact
@@ -61,9 +61,15 @@ def collect(
     links: dict[str, list[str]] = {}
     for contract_id in selected.contract_ids:
         source = trail_source(contract_id)
+        committed_at = func.erev.source_commit_time("audit_event", source.columns["id"])
         statement = source.statement.with_only_columns(
-            *(source.columns[key].label(key) for key in audit_log_export.FIELDS)
-        ).where(source.columns["tenant_id"] == tenant, source.columns["occurred_at"] <= cutoff)
+            *(source.columns[key].label(key) for key in audit_log_export.FIELDS),
+            committed_at.label("committed_server_at"),
+        ).where(
+            source.columns["tenant_id"] == tenant,
+            source.columns["occurred_at"] <= cutoff,
+            committed_at <= cutoff,
+        )
         found = uow.session.execute(statement).mappings().all()
         links[str(contract_id)] = [
             str(row["id"]) for row in sorted(found, key=lambda row: row["chain_seq"])
@@ -135,16 +141,25 @@ def collect(
                 raise Problem("not-found")
         entities.update(scope.ids)
         all_entities |= scope.all_entities
-    historical = register_support.requests_by_id(uow.session, wanted, cutoff=cutoff)
+    historical = register_support.requests_by_id(uow.session, wanted, cutoff=cutoff, committed=True)
+    if set(historical) != wanted:
+        raise Problem("validation-failed", "A sample approval is unavailable at its source cutoff.")
     decisions = (
         [
             dict(row)
             for row in uow.session.execute(
-                select(approval_decision)
+                select(
+                    approval_decision,
+                    func.erev.source_commit_time("approval_decision", approval_decision.c.id).label(
+                        "committed_server_at"
+                    ),
+                )
                 .where(
                     approval_decision.c.tenant_id == tenant,
                     approval_decision.c.approval_request_id.in_(wanted),
                     approval_decision.c.decided_at <= cutoff,
+                    func.erev.source_commit_time("approval_decision", approval_decision.c.id)
+                    <= cutoff,
                 )
                 .order_by(approval_decision.c.decided_at, approval_decision.c.id)
             ).mappings()
@@ -164,14 +179,11 @@ def collect(
     request_rows = []
     for request_id in sorted(wanted):
         row = asdict(historical[request_id])
-        # Request comments can be supplied on a terminal transition after the cutoff.
-        if row["decided_at"] is None:
-            row["comment"] = None
         request_rows.append(row)
     audit_rows, controls = audit_log_export.dataset_rows(
         redact_contacts(row) for row in rows.values()
     )
-    common = {"schema_version": 1, "known_at": cutoff}
+    common = {"schema_version": 2, "known_at": cutoff}
     files = (
         PackFile(
             "sample/approvals.json",
@@ -196,6 +208,10 @@ def collect(
                     "contracts": links,
                     "events": audit_rows,
                     "control_totals": controls,
+                    "commit_evidence": {
+                        str(identity): row["committed_server_at"]
+                        for identity, row in sorted(rows.items())
+                    },
                     "basis": "Linked contract audit slice; not a full-chain verification.",
                 }
             ),

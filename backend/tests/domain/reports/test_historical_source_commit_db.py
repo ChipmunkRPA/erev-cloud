@@ -267,6 +267,19 @@ def test_source_commit_archive_and_catalogue_are_protected(world: K11World) -> N
                 )
                 .values(committed_server_at=func.clock_timestamp())
             )
+    audit_source = world.place.scalar(
+        select(historical_source_commit.c.source_id)
+        .where(historical_source_commit.c.source_kind == "audit_event")
+        .limit(1)
+    )
+    assert audit_source is not None
+    with pytest.raises(DBAPIError, match="permission denied for table historical_source_commit"):
+        with world.place.uow() as uow:
+            uow.session.execute(
+                update(historical_source_commit)
+                .where(historical_source_commit.c.source_id == audit_source)
+                .values(source_occurred_at=func.clock_timestamp())
+            )
     with world.place.uow() as uow:
         stored_ipe = dict(
             uow.session.execute(

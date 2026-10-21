@@ -11317,3 +11317,33 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - B4-11 is still open for non-ledger inputs such as contract events, version availability,
   journal state and other report-specific readers. This increment fixes the ledger source
   populations above; it does not claim full cross-source historical snapshot reconstruction.
+
+## Contract event and version commit visibility — October 21, 2026
+
+- Original contract-event and computed-version transactions now have database-controlled
+  commit evidence, queued atomically with each source and archived after ordinary writes.
+  The minute worker also recovers pending source evidence in isolated keyset batches.
+  Delegated SYSTEM activation units are covered by that durable recovery path; read-only
+  queries can resolve the real timestamp before archival. Archived evidence is immutable.
+- Shared historical version selection excludes late commits before choosing the latest
+  candidate, retaining the preceding version correctly. RPO history and the touched history,
+  book-bridge, prior-obligation, SSP/allocation, modification and estimate readers use the
+  same cutoff protection. Explicitly bound original version identities remain compatible.
+- New event/version extracts and BBR event inputs retain their actual commit timestamps.
+  Incremental event/version exports use (known_since, known_at] in commit time, so backdated
+  events and computations committed after a prior export are picked up in the next window.
+  Published columns are unchanged; old bound extracts retain their original input basis.
+- Migration 0277 adds tenant-isolated evidence, pending indexes and synchronized metadata
+  for the affected report definitions. It requires empty contract-event/version tables,
+  refusing existing history rather than fabricating timestamps. Sandbox evidence regenerates
+  with its own copied/recomputed sources; no production transaction identity is reused.
+- Verified a real append/recompute transaction committed after an independent cutoff: the
+  prior version and RPO history remain selected, BBR excludes the late event, both next-window
+  exports include the new data, and new/legacy bindings reproduce. Public event/version and
+  three latest-version extracts, archive immutability, catalogue parity and snapshot inventory
+  checks pass, with scoped lint/types. No deployment.
+- B4-11 remains open for mutable journal/GL revisions, membership/configuration state and
+  report-specific source readers not covered here (including full historical modification
+  state). Commit evidence alone does not reconstruct prior values of mutable rows. The wider
+  final-candidate verification list remains outstanding; independent accounting sign-off and
+  migration-to-live work remain outside the owner's development scope.

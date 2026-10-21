@@ -397,4 +397,5 @@ historical_source_commit: Final = Table(
     Column("source_id", Uuid(), primary_key=True),
     Column("source_transaction", Text(), nullable=False),
     Column("committed_server_at", DateTime(timezone=True), nullable=True),
+    Column("source_occurred_at", DateTime(timezone=True), nullable=True),
 )
