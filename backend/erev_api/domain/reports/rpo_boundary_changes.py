@@ -18,6 +18,8 @@ class Change:
     amount: Decimal
     created: bool = False
     record_seq: int | None = None
+    before: Decimal | None = None
+    after: Decimal | None = None
 
 
 def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
@@ -61,6 +63,8 @@ def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
                 values[0],
                 created,
                 record_seq,
+                values[1],
+                values[2],
             )
         except (KeyError, ValueError, InvalidOperation) as exc:
             raise Problem(

@@ -10244,3 +10244,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the three IPE definitions match the catalogue. Netted mixed projections, broader public API lifecycle
   and close-pass acceptance, independent accounting acceptance and final release checks remain
   open. Direct main publication; no deployment.
+
+## Step-1 netted reporting forecasts — October 20, 2026
+
+- Dated projections now freeze original deposit recognitions and apply the engine's existing
+  Step-1 netting formula after manual adjustments. Every net target cites the attributed original
+  deposit share; later adjustments cannot rewrite the historical schedule.
+- Added a separate dated reporting remainder that excludes already-recognized 25-7 deposit
+  revenue. The contract's stored cumulative measurement identity remains unchanged. Report
+  schedule readers require projected periods to sum to the net remainder; zero means no future
+  forecast. Legacy traces retain their original checks, without guessed deposit deductions.
+- Six engine journeys cover release/defer/override with partial and full prior deposit revenue,
+  replay every source chain and compare future periods with original schedules. Reader checks
+  confirm the separate reporting basis and reject negative/excess balances. Related usage,
+  royalty and historical-reader regressions pass (132 cases plus 3 new reader checks). Migration
+  0229 applied locally and all three IPE definitions match; lint/types pass.
+- Broader public API lifecycle and close-pass acceptance, independent accounting acceptance
+  and final release checks remain outstanding. This completes the deterministic Step-1/manual
+  projection path, not arbitrary source-changing or event-driven forecasts. No deployment.

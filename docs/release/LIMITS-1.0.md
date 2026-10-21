@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — mixed terminal cancellation attribution requires an original bridge
+
+For an already disclosed obligation, a later retained version containing modification/estimate
+changes and a single terminal cancellation can now separate those changes. Opening fixed
+allocation plus original deltas must equal the retained pre-termination allocation, with complete
+modification evidence and unambiguous event order. Cancellation removes the remaining allocation;
+recognized revenue and prior-period revenue restatements stay separately identified. New bindings
+carry rpo_cancelled_changes_v1; older runs retain their previous classification. Posting amounts
+are unchanged.
+
+Full-compute traces exercise a concession, upward/downward estimate change and nonrefundable full
+termination; scoped rollforward cases cover recognized/reversed/restated revenue and realized
+consideration, and reject a mismatched bridge. The existing public modification/report rerun
+journey remains valid in three currency views. This is not a full public mixed-cancellation
+workflow acceptance claim. First-entry-and-cancel batches, multiple cancellation events, usage
+mixtures and estimate changes on the termination day remain unexplained when their ordering or
+source bridge cannot be proved. Combined-member aging ownership, independent accounting sign-off
+and final-candidate verification remain outstanding. Migration 0240 records the rule; no deployment.
+
+
 ### October 20 — creation evidence closes the first-batch added-obligation gap
 
 New engine traces explicitly retain whether an obligation existed before its modification boundary

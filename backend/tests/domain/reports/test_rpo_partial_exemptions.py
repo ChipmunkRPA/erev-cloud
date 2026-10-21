@@ -335,10 +335,11 @@ def test_rollforward_exemption_changes_preserve_both_endpoints(
         assert sum(row.total for row in rows if row.exemption is None) == movement.lines[key]
 
 
+@pytest.mark.parametrize("mixed", [False, True])
 @pytest.mark.parametrize("realised", [False, True])
 @pytest.mark.parametrize("restated,revenue", [(40, 40), (40, 50), (45, 50), (40, 0)])
 def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
-    restated: int, revenue: int, realised: bool
+    restated: int, revenue: int, realised: bool, mixed: bool
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
 
@@ -394,9 +395,62 @@ def test_terminal_cancellation_removes_remaining_rpo_not_recognized_revenue(
             (next_vid, end): {oid: replace(at, revenue=Decimal(revenue), awaiting=Decimal(0))},
         },
     )
+    if mixed:
+        from erev_api.domain.reports.rpo_boundary_changes import Change
+
+        second = replace(
+            second,
+            causes=second.causes | {"CONTRACT_AMENDED", "ESTIMATE_CHANGED"},
+            modification_events=frozenset({"mod"}),
+            cancellation_events=frozenset({"cancel"}),
+            estimate_events=frozenset({"estimate"}),
+            estimate_dates=(("estimate", date(2026, 2, 10)),),
+        )
+        store = replace(store, versions={gid: (first, second)}, chains={cid: (first, second)})
+        opening_fixed = Decimal(0 if realised else 100)
+        store.estimate_allocations[next_vid] = {"C/O": Decimal(20)}
+        store.boundaries[next_vid] = {
+            "C/O": (
+                Change(
+                    date(2026, 2, 1),
+                    "mod",
+                    "CONTRACT_AMENDED",
+                    Decimal(30),
+                    record_seq=1,
+                    before=opening_fixed,
+                    after=opening_fixed + 30,
+                ),
+                Change(
+                    end,
+                    "cancel",
+                    "CONTRACT_TERMINATED",
+                    -(opening_fixed + 50),
+                    record_seq=3,
+                    before=opening_fixed + 50,
+                    after=Decimal(0),
+                ),
+            )
+        }
+        (legacy,) = rpo.rollforward_lines(
+            replace(store, classify_cancelled_changes=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert legacy.lines["UNEXPLAINED"] != 0
+        valid = store.boundaries[next_vid]
+        changed = valid["C/O"]
+        store.boundaries[next_vid] = {
+            "C/O": (*changed[:-1], replace(changed[-1], before=opening_fixed + 51))
+        }
+        (unmatched,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+        assert unmatched.lines["UNEXPLAINED"] != 0
+        assert unmatched.lines["MODIFICATIONS"] == 0
+        store.boundaries[next_vid] = valid
     (movement,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
     assert movement.lines["OPENING"] == 60
-    assert movement.lines["CANCELLATIONS"] == -(100 - revenue)
+    assert movement.lines["CANCELLATIONS"] == -(100 + (50 if mixed else 0) - revenue)
+    assert movement.lines["MODIFICATIONS"] == (30 if mixed else 0)
+    assert movement.lines["VC_ESTIMATE_CHANGES"] == (20 if mixed else 0)
     assert movement.lines["REVENUE"] == -(revenue - restated)
     assert movement.lines["LATE_EVENTS"] == -(restated - 40)
     assert movement.lines["CLOSING"] == movement.lines["UNEXPLAINED"] == 0
@@ -809,3 +863,69 @@ def test_first_entry_separates_later_original_estimate_events(
     assert february_row.lines["MODIFICATIONS"] == modification
     assert february_row.lines["CLOSING"] == final
     assert february_row.lines["UNEXPLAINED"] == 0
+
+    if with_modification and not added:
+        # The original cancellation boundary must reproduce every earlier movement.
+        termination = replace(
+            concession,
+            modification_key="K-01/TERM",
+            kind="TERMINATION",
+            chosen_treatments={},
+            treatment_summary=None,
+            effective_date=date(2026, 2, 28),
+            lines=tuple(
+                {
+                    "obligation_key": key,
+                    "action": "REMOVE",
+                    "product_code": f"PROD-{key}",
+                    "quantity_delta": Decimal(0),
+                    "consideration_delta": Decimal(0),
+                }
+                for key in ("A", "B")
+            ),
+        )
+        terminated = replace(
+            bundle,
+            contracts=tuple(
+                replace(c, modifications=(*c.modifications, termination)) for c in bundle.contracts
+            ),
+            events=tuple(
+                cpc_worlds.then(
+                    list(bundle.events),
+                    "CONTRACT_TERMINATED",
+                    termination.effective_date,
+                    {
+                        "modification_id": termination.modification_key,
+                        "termination_kind": "FULL",
+                        "refund_amount": Decimal(0),
+                    },
+                    modification_key=termination.modification_key,
+                )
+            ),
+        )
+        terminated_book = compute(terminated).books[0]
+        later_events = frozenset(event for event, day in estimates if day > entry)
+        cancelled_version = replace(
+            version,
+            causes=frozenset({"CONTRACT_AMENDED", "ESTIMATE_CHANGED", "CONTRACT_TERMINATED"}),
+            entries=(),
+            estimate_events=later_events,
+            cancellation_events=frozenset({terminated.events[-1].event_key}),
+        )
+        store.boundaries[vid] = history(terminated_book.trace)
+        shares = allocations(terminated_book.trace, later_events)
+        assert shares is not None
+        store.estimate_allocations[vid] = shares
+        separated = []
+        for original_ob in original.obligation_versions:
+            subject = original_ob.subject_key
+            opening_amount = Decimal(str(original_ob.columns["allocated_amount"])) / 100
+            change = rpo._cancelled_changes(store, cancelled_version, subject, opening_amount)
+            assert change is not None
+            separated.append(change)
+            assert (
+                rpo._cancelled_changes(store, cancelled_version, subject, opening_amount + 1)
+                is None
+            )
+        assert sum(item[0] for item in separated) == modification
+        assert sum(item[1] for item in separated) == final - initial - modification

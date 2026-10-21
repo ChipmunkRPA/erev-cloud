@@ -6,6 +6,25 @@
 
 
 
+## Source-reconciled mixed RPO cancellations — October 20, 2026
+
+- RPO can now separate modification and original estimate changes from a single terminal
+  cancellation in a later retained version. Admission requires opening fixed allocation plus
+  those original deltas to equal the trace's amount immediately before termination. A residual
+  is not used as evidence. Cancellation still removes only unrecognized allocation; current
+  revenue and prior-period revenue restatements retain their own lines.
+- Cancellation identities and original before/after boundary amounts are loaded explicitly.
+  New bindings use rpo_cancelled_changes_v1; older bindings retain their former classification,
+  including in converted monthly rollforwards. No engine posting change.
+- Full-compute concession/estimate/termination traces prove the pre-termination bridge for both
+  estimate directions; mismatched starting amounts are refused. The 48 scoped cases include
+  recognized/reversed/restated revenue, realized consideration, missing bridges and legacy
+  behavior. Existing public modification reports and reruns in three views pass. Lint/types
+  and migration 0240 down/up catalogue parity pass. No deployment; direct main publication.
+- First-entry-and-cancel batches, multiple cancellations, usage-event mixtures and estimates
+  on the termination day remain unsupported by this decomposition. Combined-member aging date
+  ownership, independent accounting sign-off and final-candidate verification also remain open.
+
 ## First-batch RPO creation boundaries — October 20, 2026
 
 - Stage 06 records whether the obligation existed before each boundary and the original
@@ -213,24 +232,6 @@
   draft/review/reopen, deterministic reruns and dated foreign functional balances. Migration
   0230 updates both IPE definitions. No deployment; broader lifecycle/accounting acceptance
   and final release-candidate verification remain outstanding.
-
-## Step-1 netted reporting forecasts — October 20, 2026
-
-- Dated projections now freeze original deposit recognitions and apply the engine's existing
-  Step-1 netting formula after manual adjustments. Every net target cites the attributed original
-  deposit share; later adjustments cannot rewrite the historical schedule.
-- Added a separate dated reporting remainder that excludes already-recognized 25-7 deposit
-  revenue. The contract's stored cumulative measurement identity remains unchanged. Report
-  schedule readers require projected periods to sum to the net remainder; zero means no future
-  forecast. Legacy traces retain their original checks, without guessed deposit deductions.
-- Six engine journeys cover release/defer/override with partial and full prior deposit revenue,
-  replay every source chain and compare future periods with original schedules. Reader checks
-  confirm the separate reporting basis and reject negative/excess balances. Related usage,
-  royalty and historical-reader regressions pass (132 cases plus 3 new reader checks). Migration
-  0229 applied locally and all three IPE definitions match; lint/types pass.
-- Broader public API lifecycle and close-pass acceptance, independent accounting acceptance
-  and final release checks remain outstanding. This completes the deterministic Step-1/manual
-  projection path, not arbitrary source-changing or event-driven forecasts. No deployment.
 
 ## Outstanding release verification
 

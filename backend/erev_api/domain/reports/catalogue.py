@@ -974,6 +974,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "original absent-before creation evidence and independently retained earlier "
             "event order; zero allocation alone never proves absence and missing post-"
             "creation evidence remains unsupported",
+            "mixed terminal cancellations separate original modification and estimate deltas "
+            "only when they reconcile from opening fixed allocation to the retained "
+            "pre-termination amount; missing or ambiguous event order remains unexplained and "
+            "legacy bindings keep original classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

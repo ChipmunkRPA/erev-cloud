@@ -288,6 +288,7 @@ class _Version:
     estimate_events: frozenset[str] = frozenset()
     estimate_dates: tuple[tuple[str, date], ...] = ()
     modification_events: frozenset[str] = frozenset()
+    cancellation_events: frozenset[str] = frozenset()
 
 
 @dataclass(slots=True)
@@ -343,6 +344,7 @@ class Store:
     cuts: dict[tuple[UUID, date], Mapping[UUID, to_date.ObligationAt]] = field(default_factory=dict)
 
     classify_added_obligations: bool = field(default=True, kw_only=True)
+    classify_cancelled_changes: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -421,6 +423,7 @@ def load(
     events: dict[UUID, tuple[str, date]] = {}
     estimate_keys: dict[UUID, str] = {}
     boundary_keys: dict[UUID, str] = {}
+    cancellation_keys: dict[UUID, str] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -445,6 +448,11 @@ def load(
                 )
             if CAUSE_LINES.get(kind) == "MODIFICATIONS":
                 boundary_keys[UUID(str(found["id"]))] = (
+                    f"{contract_subject_key(str(found['external_id']))}/"
+                    f"EV-{int(found['stream_version']):06d}"
+                )
+            if CAUSE_LINES.get(kind) == "CANCELLATIONS":
+                cancellation_keys[UUID(str(found["id"]))] = (
                     f"{contract_subject_key(str(found['external_id']))}/"
                     f"EV-{int(found['stream_version']):06d}"
                 )
@@ -494,6 +502,11 @@ def load(
                     boundary_keys[UUID(str(item))]
                     for item in row["cause_event_ids"] or ()
                     if UUID(str(item)) in boundary_keys
+                ),
+                cancellation_events=frozenset(
+                    cancellation_keys[UUID(str(item))]
+                    for item in row["cause_event_ids"] or ()
+                    if UUID(str(item)) in cancellation_keys
                 ),
                 estimate_dates=tuple(
                     (estimate_keys[UUID(str(item))], events[UUID(str(item))][1])
@@ -837,7 +850,10 @@ def measure(
         for version in chain:
             if version.id not in wanted or not (
                 version.entries
-                or any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
+                or any(
+                    CAUSE_LINES.get(kind) in {"MODIFICATIONS", "CANCELLATIONS"}
+                    for kind in version.causes
+                )
             ):
                 continue
             trace = trace_store.load_trace(session, version.id)
@@ -1090,6 +1106,53 @@ def _in_version(store: Store, version: _Version | None, obligation_id: UUID) -> 
     return None
 
 
+def _cancelled_changes(
+    store: Store, version: _Version, subject: str, opening: Decimal
+) -> tuple[Decimal, Decimal] | None:
+    if not store.classify_cancelled_changes or len(version.cancellation_events) != 1:
+        return None
+    if (
+        any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
+        and not version.modification_events
+    ) or ("ESTIMATE_CHANGED" in version.causes and not version.estimate_events):
+        return None
+    history = store.boundaries.get(version.id, {})
+    changes = history.get(subject, ())
+    terminal = [item for item in changes if item.event in version.cancellation_events]
+    if len(terminal) != 1 or terminal[0].before is None:
+        return None
+    termination = terminal[0]
+    if version.modification_events and not rpo_boundary_changes.complete(
+        history, subject, version.modification_events
+    ):
+        return None
+    modifications = [item for item in changes if item.event in version.modification_events]
+    for item in modifications:
+        if item.day > termination.day or (
+            item.day == termination.day
+            and (
+                item.record_seq is None
+                or termination.record_seq is None
+                or (item.record_seq, item.event) >= (termination.record_seq, termination.event)
+            )
+        ):
+            return None
+    estimate = ZERO
+    if version.estimate_events:
+        shares = store.estimate_allocations.get(version.id)
+        dates = dict(version.estimate_dates)
+        if shares is None or any(
+            event not in dates or dates[event] >= termination.day
+            for event in version.estimate_events
+        ):
+            return None
+        estimate = shares.get(subject, ZERO)
+    modified = sum((item.amount for item in modifications), ZERO)
+    if opening + modified + estimate != termination.before:
+        return None
+    return modified, estimate
+
+
 def _obligation_lines(
     store: Store,
     totals: dict[tuple[str, str], dict[str, Any]],
@@ -1305,6 +1368,28 @@ def _obligation_lines(
                 lines["VC_ESTIMATE_CHANGES"] += estimate_change
                 delta -= estimate_change
                 line = "MODIFICATIONS"
+            if (
+                current is None
+                and previous_obligation is not None
+                and "CANCELLATIONS" in causes
+                and len(causes) > 1
+                and causes <= {"CANCELLATIONS", "MODIFICATIONS", "VC_ESTIMATE_CHANGES"}
+                and "USAGE_REPORTED" not in version.causes
+            ):
+                separated = _cancelled_changes(
+                    store,
+                    version,
+                    obligation_subject_key(
+                        previous_obligation.external_id, previous_obligation.obligation_key
+                    ),
+                    previous,
+                )
+                if separated is not None:
+                    modified, estimate = separated
+                    lines["MODIFICATIONS"] += modified
+                    lines["VC_ESTIMATE_CHANGES"] += estimate
+                    delta -= modified + estimate
+                    line = "CANCELLATIONS"
         if line is not None:
             lines[line] += delta
             if current is None and line == "CANCELLATIONS":
