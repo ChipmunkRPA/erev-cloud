@@ -18,7 +18,24 @@ review and publish changes without PR accumulation, and do not deploy.
   Reproduction of production lock history and sandbox locking are not completion requirements.
 - Independent accounting review belongs to the owner and is not a development completion gate.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
-  or resume its paused state; this section records the superseding scope for repository work.
+  text; this section records the superseding scope while the goal remains active.
+
+## Original event-position amounts for RPO — October 21, 2026
+
+- Stage 09 retains before/after fixed allocation, realized consideration and cumulative
+  revenue at eligibility, amendment, estimate and usage events of collectibility histories.
+  Each point carries the original event key, date, sequence and source role; its trace
+  formula re-evaluates. The report reader rejects changed sources and incomplete triples.
+- Realized royalties now measure the requested date/position independently of frozen
+  recognition. A statement arriving after a same-day eligibility exit increases realized
+  consideration without retrospectively increasing the frozen revenue target.
+- The 34 scoped usage, royalty, eligibility and original-position checks pass; scoped
+  lint/types pass. No schema or report catalogue change in this increment.
+- Reporting does not yet consume these positions: enabling ordered initial-batch attribution
+  and its bound-run compatibility remains next. Return-path positional allocations are
+  intentionally absent until their rates/estimates support the same event cutoff; readers
+  must not substitute date-end amounts. Public mixed-batch and full royalty lifecycle
+  witnesses, plus B4-11 historical commit visibility, remain open. No deployment.
 
 ## Ordered Step 1 recognition freezes — October 21, 2026
 
@@ -193,32 +210,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - This establishes a consistent GL source-selection statement, not historical commit timestamps
   or a transaction-wide snapshot for every report source. B4-11 arbitrary historical commit
   visibility remains open, as do broader RPO mixed-lifecycle journeys. No deployment.
-
-## Public termination controls and same-day usage calculations — October 21, 2026
-
-- The modification form/API now accepts explicit FULL/PARTIAL termination scope and a refund
-  in contract currency. Preview and approval use the same CONTRACT_TERMINATED event; the terms
-  are stored, displayed in the detail, included in the approval fingerprint and cleared when
-  switching to another modification kind. REMOVE lines must have non-positive deltas and cover
-  the refund. New/edited termination drafts require terms; already approved historical rows
-  without terms retain their original amendment semantics and hash. Migration 0264 retains
-  the terms and refuses downgrade while any remain.
-- The real command journey exposed two engine faults: inception-day realized fees were included
-  in FIXED allocation and then counted again as period fees; an inception-day termination tried
-  to extend recognition through a truncated segment ending before the first calendar period.
-  Inception allocation now excludes separately recognized period fees, preserving zero trace
-  nodes and contract-wide royalty-estimate allocation. Only later term ends extend the horizon.
-- Four public journeys exercise two usage obligations, FULL/PARTIAL scope and refunds 0/40,
-  including original engine calculations, required approval steps, contract status, reporting and
-  retained reruns. Entry 160,000 and VC 150 remain separate; FULL recognizes the nonrefundable
-  pool at termination, PARTIAL allocates it to continuing O2 and recognizes it over its term.
-  Revenue, refunds and closing RPO reconcile. This closes the supplied-evidence-only limitation
-  for this same-day usage/termination case, not every mixed amendment or re-entry sequence.
-- Necessary checks pass: four public journeys, three ordinary modification regressions, 236
-  pricing/allocation/recognition cases, 48 modification units, 88 RPO cases, 68 frontend cases,
-  scoped lint/types, generated API parity, and migration round-trip/data-retention guard.
-  Broader repeated cancellation/re-entry, combined same-day amendment/estimate/usage journeys
-  and concurrent commit visibility remain open. No deployment.
 
 ## Outstanding release verification
 

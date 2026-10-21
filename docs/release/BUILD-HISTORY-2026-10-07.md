@@ -10962,3 +10962,29 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Original-engine/public-command coverage for these same-day usage mixtures remains outstanding,
   along with broader repeated cancellation/re-entry and concurrent commit visibility. Continue
   the October 21 repository-only scope; no deployment or independent accounting review gate.
+
+## Public termination controls and same-day usage calculations — October 21, 2026
+
+- The modification form/API now accepts explicit FULL/PARTIAL termination scope and a refund
+  in contract currency. Preview and approval use the same CONTRACT_TERMINATED event; the terms
+  are stored, displayed in the detail, included in the approval fingerprint and cleared when
+  switching to another modification kind. REMOVE lines must have non-positive deltas and cover
+  the refund. New/edited termination drafts require terms; already approved historical rows
+  without terms retain their original amendment semantics and hash. Migration 0264 retains
+  the terms and refuses downgrade while any remain.
+- The real command journey exposed two engine faults: inception-day realized fees were included
+  in FIXED allocation and then counted again as period fees; an inception-day termination tried
+  to extend recognition through a truncated segment ending before the first calendar period.
+  Inception allocation now excludes separately recognized period fees, preserving zero trace
+  nodes and contract-wide royalty-estimate allocation. Only later term ends extend the horizon.
+- Four public journeys exercise two usage obligations, FULL/PARTIAL scope and refunds 0/40,
+  including original engine calculations, required approval steps, contract status, reporting and
+  retained reruns. Entry 160,000 and VC 150 remain separate; FULL recognizes the nonrefundable
+  pool at termination, PARTIAL allocates it to continuing O2 and recognizes it over its term.
+  Revenue, refunds and closing RPO reconcile. This closes the supplied-evidence-only limitation
+  for this same-day usage/termination case, not every mixed amendment or re-entry sequence.
+- Necessary checks pass: four public journeys, three ordinary modification regressions, 236
+  pricing/allocation/recognition cases, 48 modification units, 88 RPO cases, 68 frontend cases,
+  scoped lint/types, generated API parity, and migration round-trip/data-retention guard.
+  Broader repeated cancellation/re-entry, combined same-day amendment/estimate/usage journeys
+  and concurrent commit visibility remain open. No deployment.

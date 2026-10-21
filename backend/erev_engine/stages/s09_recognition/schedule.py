@@ -268,23 +268,23 @@ def realised_at(
     ob: ObligationState,
     v: date,
     evaluation: components.Evaluation | None = None,
+    *,
+    position: Position | None = None,
 ) -> int:
     """Realised ``PERIOD_VC`` and ``ROYALTY`` amounts at ``v``: X = A = the amount (S09-R-02).
 
     Realised royalties count whether or not the licence is satisfied: unrecognised, they await
     their trigger (S09-R-45). ``evaluation`` is the posted evaluation at ``v``, whose royalty part
-    carries them; a guarded evaluation carries none, so they are measured here.
+    may freeze earlier than realization. Measure realization independently at the requested
+    event position, even when recognition is frozen.
     """
     total = 0
-    if components.active_segment(ob, "PERIOD_VC", v) is not None:
-        realised, _ = components.period_vc_realised(ctx, st, ob, v)
+    if components.active_segment(ob, "PERIOD_VC", v, st=st, position=position) is not None:
+        realised, _ = components.period_vc_realised(ctx, st, ob, v, position=position)
         total += sum(item.amount for item in realised)
-    if components.active_segment(ob, "ROYALTY", v) is not None:
-        if evaluation is not None and evaluation.royalty is not None:
-            total += evaluation.royalty.realised
-        else:
-            mu = components.minor_unit(ctx)
-            total += royalty.target(ctx, st, ob, v, satisfied=False, mu=mu).realised
+    if components.active_segment(ob, "ROYALTY", v, st=st, position=position) is not None:
+        mu = components.minor_unit(ctx)
+        total += royalty.target(ctx, st, ob, v, satisfied=False, position=position, mu=mu).realised
     return total
 
 
@@ -1749,6 +1749,77 @@ def _emit_realised_allocation(
             )
 
 
+def _emit_rpo_event_positions(
+    ctx: BookContext,
+    st: AllocatedState,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+) -> None:
+    """Retain original before/after amounts for ordered eligibility attribution.
+
+    Like activity measures, the sources name derived values at an original event,
+    rather than pretending those values are payload fields. Return-path allocations
+    need their own positional rate/estimate handling and are deliberately absent.
+    Readers must not fill absent positions from a day or period-end balance.
+    """
+    ob = evaluator.ob
+    if ob.subject_key in st.return_paths:
+        return
+    events = tuple(event for event in st.events if event.contract_key == ob.contract_key)
+    if not any(event.event_type == "COLLECTIBILITY_ASSESSED" for event in events):
+        return
+    kinds = {
+        "CONTRACT_CRITERIA_MET",
+        "COLLECTIBILITY_ASSESSED",
+        "CONTRACT_AMENDED",
+        "ESTIMATE_CHANGED",
+        "USAGE_REPORTED",
+    }
+    for event in events:
+        if event.event_type not in kinds:
+            continue
+        for side, inclusive in (("before", False), ("after", True)):
+            position = Position(event.order_key, inclusive=inclusive)
+            day = event.effective_date
+            segment = components.active_segment(ob, "FIXED", day, st=st, position=position)
+            evaluation = evaluator.posted(day, position)
+            amounts = {
+                "fixed": 0 if segment is None else segment.a_posted,
+                "realised": realised_at(ctx, st, ob, day, position=position),
+                "revenue": evaluation.value,
+            }
+            for member, value in amounts.items():
+                role = f"rpo_position_{member}_{side}"
+                tb.node(
+                    measure=f"rpo_position_{member}@{event.event_key}@{side}",
+                    subject_key=ob.subject_key,
+                    period_key=None,
+                    value=value,
+                    currency=ctx.txn_currency,
+                    minor_unit=evaluator.mu,
+                    formula_id=ACTIVITY_FORMULA,
+                    inputs=[
+                        SourceRef(
+                            "contract_event",
+                            event.event_key,
+                            {
+                                "role": role,
+                                "value": format_money(value, evaluator.mu),
+                            },
+                        )
+                    ],
+                    params={
+                        "as_of": day.isoformat(),
+                        "record_seq": str(event.order_key[1]),
+                        "event_key": event.event_key,
+                        "event_type": event.event_type,
+                        "side": side,
+                        "role": role,
+                    },
+                    narrative_key=_narrative(ACTIVITY_FORMULA),
+                )
+
+
 def build(
     ctx: BookContext, st: AllocatedState, tb: TraceBuilder, result: components.StageTargets
 ) -> tuple[tuple[ScheduleLineOut, ...], Mapping[str, ObligationMeasures]]:
@@ -1766,6 +1837,7 @@ def build(
     for subject_key in sorted(result.evaluators):
         evaluator = result.evaluators[subject_key]
         ob = evaluator.ob
+        _emit_rpo_event_positions(ctx, st, tb, evaluator)
         _emit_fixed_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
         _emit_realised_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
         _emit_dated_schedule(

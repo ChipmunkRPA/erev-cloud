@@ -822,3 +822,34 @@ def test_royalty_manual_projection_freezes_original_statements_and_accruals(
     )
     assert sum(projected.values()) == Decimal(remainder.value)
     assert any(node.measure == "scheduled_royalty_target" for node in trace.nodes)
+
+
+def test_royalty_realization_keeps_later_statement_when_revenue_freezes_same_day() -> None:
+    from erev_engine.stages.s09_recognition import components, schedule
+    from erev_engine.stages.s09_recognition.progress_events import Position
+
+    st = _ex_09_f_state(accrue=False)
+    exit_order = (NOV_15, 5, f"{CONTRACT_KEY}/EXIT")
+    contract = dataclasses.replace(
+        st.contracts[0],
+        status_in_book={"ASC606": ((JAN_1, "ACTIVE"), (NOV_15, "NOT_A_CONTRACT"))},
+        status_positions={
+            "ASC606": (
+                ((JAN_1, 0, ""), "ACTIVE"),
+                (exit_order, "NOT_A_CONTRACT"),
+            )
+        },
+    )
+    st = dataclasses.replace(st, contracts=(contract,))
+    ob = st.obligations[0]
+    evaluation = components.Evaluator(CTX_JPY, st, ob).posted(NOV_15)
+    assert evaluation.value == YEN_50M
+    assert evaluation.royalty is not None and evaluation.royalty.realised == 0
+    # 30m prior statement + 27m later statement less 50m guarantee; recognition stays frozen.
+    assert schedule.realised_at(CTX_JPY, st, ob, NOV_15, evaluation) == 7_000_000
+    assert (
+        schedule.realised_at(
+            CTX_JPY, st, ob, NOV_15, position=Position(exit_order, inclusive=False)
+        )
+        == 0
+    )
