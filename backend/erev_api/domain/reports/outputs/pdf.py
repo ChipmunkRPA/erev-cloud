@@ -25,6 +25,7 @@ from erev_api.domain.reports.outputs import (
     display_timestamp,
     layout,
     parameter_text,
+    rpo_exemptions,
     total_text,
 )
 from erev_api.domain.reports.outputs.xlsx import WorkbookChapter, validate_chapters
@@ -83,8 +84,44 @@ def _stamp_lines(data: ReportData, stamp: RunStamp, *, wrapped: bool = False) ->
         *(
             (f"{key}: {total_text(value, style)}", False)
             for key, value in sorted(data.control_totals.items())
+            if key != "exemption_changes"
         ),
     ]
+    if "exemption_changes" in data.control_totals:
+        details = rpo_exemptions.records(data.control_totals["exemption_changes"])
+        if details:
+            texts.extend(((rpo_exemptions.TITLE, True), (rpo_exemptions.BASIS, False)))
+        for detail in details:
+            texts.append(
+                (
+                    f"{detail['contract']} / {detail['obligation']} / {detail['entity']}",
+                    True,
+                )
+            )
+            for endpoint in ("opening", "closing"):
+                amount = total_text(
+                    {
+                        "amount": detail[f"{endpoint}_excluded"],
+                        "currency": detail["currency"],
+                    },
+                    style,
+                )
+                rule = rpo_exemptions.cell(detail, f"{endpoint}_rule")
+                texts.append(
+                    (
+                        f"{endpoint.title()} excluded RPO: {amount}; "
+                        f"{detail[f'{endpoint}_date']}; {rule}",
+                        False,
+                    )
+                )
+            movement = total_text(
+                {
+                    "amount": detail["movement"],
+                    "currency": detail["currency"],
+                },
+                style,
+            )
+            texts.append((f"Exemption movement: {movement}", False))
     if data.tie_out_results:
         texts.append(("Tie-outs", True))
         texts.extend(

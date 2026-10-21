@@ -71,6 +71,8 @@ class _Formats:
         self._style = style
         self._money: dict[int, Any] = {}
         self.bold = workbook.add_format({"bold": True})
+        self.wrapped = workbook.add_format({"text_wrap": True, "valign": "top"})
+        self.wrapped_bold = workbook.add_format({"bold": True, "text_wrap": True})
         self.date = workbook.add_format({"num_format": DATE_FORMAT})
         self.timestamp = workbook.add_format({"num_format": TIMESTAMP_FORMAT})
         self.integer = workbook.add_format({"num_format": INTEGER_FORMAT})
@@ -143,7 +145,40 @@ def _labelled(sheet: Any, row: int, label: str, value: str) -> int:
     return row + 1
 
 
+def _exemption_details(sheet: Any, formats: _Formats, row: int, value: Any) -> int:
+    from . import rpo_exemptions as details
+
+    records = details.records(value)
+    if not records:
+        return row
+    sheet.write_string(row, 0, details.TITLE, formats.bold)
+    sheet.write_string(row + 1, 0, details.BASIS)
+    row += 2
+    for col, (_, label) in enumerate(details.COLUMNS):
+        sheet.write_string(row, col, label, formats.wrapped_bold)
+    for record in records:
+        row += 1
+        for col, (key, _) in enumerate(details.COLUMNS):
+            if key in details.MONEY:
+                _write_money(
+                    sheet,
+                    formats,
+                    row,
+                    col,
+                    {
+                        "amount": record[key],
+                        "currency": record["currency"],
+                    },
+                )
+            else:
+                sheet.write_string(row, col, guard(details.cell(record, key)), formats.wrapped)
+    sheet.set_column(0, len(details.COLUMNS) - 1, 22)
+    return row + 2
+
+
 def _total(sheet: Any, formats: _Formats, row: int, key: str, value: Any) -> int:
+    if key == "exemption_changes":
+        return _exemption_details(sheet, formats, row, value)
     sheet.write_string(row, 0, guard(key))
     if isinstance(value, dict) and "amount" in value and "currency" in value:
         _write_money(sheet, formats, row, 1, value)

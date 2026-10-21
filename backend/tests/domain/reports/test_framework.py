@@ -661,3 +661,67 @@ def test_failed_run_keeps_record(
             .order_by(audit_event.c.chain_seq)
         ).all()
     assert list(actions) == ["report_run.start", "report_run.fail"]
+
+
+def test_exemption_exports_keep_large_detail_populations_readable() -> None:
+    from dataclasses import replace
+
+    details = [
+        {
+            "contract": "=EXEMPT-0" if index == 0 else f"EXEMPT-{index}",
+            "obligation": "SERVICE",
+            "entity": "AVM-US",
+            "currency": "USD",
+            "opening_date": "2026-08-31",
+            "closing_date": "2026-09-30",
+            "opening_rule": None,
+            "closing_rule": "POL-198",
+            "opening_excluded": "0.00",
+            "closing_excluded": "25.50",
+            "movement": "-25.50",
+        }
+        for index in range(120)
+    ]
+    assert len(json.dumps(details)) > 32767  # Excel's single-cell limit.
+    data = replace(
+        sample_data(),
+        control_totals={
+            "exemption_changes": details,
+            "exemption_detail_basis": "transaction_currency_endpoints",
+        },
+    )
+    stamp = sample_stamp()
+    book = openpyxl.load_workbook(io.BytesIO(xlsx_output.render_xlsx(data, stamp)))
+    sheet = book.worksheets[0]
+    header = next(
+        row
+        for row in range(1, sheet.max_row + 1)
+        if sheet.cell(row, 4).value == "Transaction currency"
+    )
+    assert sheet.cell(header + 1, 1).value == "'=EXEMPT-0"
+    assert sheet.cell(header + 1, 1).data_type == "s"
+    assert sheet.cell(header + 120, 1).value == "EXEMPT-119"
+    assert sheet.cell(header + 1, 6).value == "Not excluded"
+    assert sheet.cell(header + 1, 9).value == "Right to invoice"
+    assert sheet.cell(header + 1, 9).alignment.wrap_text is True
+    assert sheet.cell(header + 1, 11).value == -25.5
+    assert sheet.cell(header + 1, 11).data_type == "n"
+    assert sheet.cell(header + 1, 11).number_format == "#,##0.00_);(#,##0.00)"
+    pages = pdf_pages(pdf_output.render_pdf(data, stamp))
+    assert len(pages) > 1
+    texts = [text for page in pages for text in page]
+    assert "RPO exemption changes" in texts
+    assert any("Original transaction-currency" in text for text in texts)
+    assert "EXEMPT-119 / SERVICE / AVM-US" in texts
+    assert sum(text.startswith("Exemption movement: USD") for text in texts) == 120
+    assert "Exemption movement: USD (25.50)" in texts
+    manifest = json.loads(
+        manifest_output.manifest_bytes(
+            stamp=stamp,
+            data=data,
+            file_name="rpo.csv",
+            media_type=csv_output.MEDIA_TYPE,
+            content=csv_output.render_csv(data),
+        )
+    )
+    assert manifest["control_totals"]["exemption_changes"] == details

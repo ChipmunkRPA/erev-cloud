@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — readable exemption export details
+
+XLSX and PDF now present retained RPO exemption facts as readable records with original
+transaction-currency amounts and named rules. XLSX numeric cells preserve signed amounts;
+wrapped text keeps long rule names readable. PDF uses existing wrapping and pagination.
+The CSV companion manifest retains the original detail array; the CSV grid stays unchanged.
+A 120-record check exceeds Excel's single-cell limit and confirms that records are not lost.
+This is export presentation, not a change to accounting amounts or the remaining mixed-source
+limitations. Independent accounting sign-off is still outstanding. No deployment.
+
+
 ### October 20 — RPO exemption endpoint details
 
 The RPO rollforward report and run pages now display obligation-level exemption details:

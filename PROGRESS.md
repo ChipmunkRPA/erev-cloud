@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Readable RPO exemption exports — October 20, 2026
+
+- XLSX exports now render retained exemption facts as rows with readable policy names, wrapped
+  text and numeric amounts, instead of one JSON cell that can exceed Excel's 32,767-character
+  limit. PDF exports emit per-obligation endpoint and movement lines with existing pagination.
+- A 120-obligation case larger than the cell limit retains the final record, all signed amounts
+  and the transaction-currency basis. Text retains the formula guard; amounts are not recomputed.
+  The CSV companion manifest retains the complete original facts without changing CSV columns.
+- Focused export checks and lint/types pass. No accounting or report-total changes, no deployment.
+  Remaining mixed-source functionality and independent accounting acceptance are still open.
+
+
 ## RPO exemption change detail viewer — October 20, 2026
 
 - RPO rollforward now retains obligation-level opening/closing excluded amounts, dates, rule
@@ -245,19 +257,6 @@
 - Engine traces retain each input's class and functional TIME total; reporting verifies
   both currencies before attribution. Internally mixed inputs remain unsupported.
 - See [scope and verification](docs/release/REPORTING-SOURCE-CLASSES-2026-10-20.md).
-
-## Reporting GL source navigation and inventory — October 20, 2026
-
-- New GL tie-out details retain the source book and period key and link to that exact
-  reconciliation in the viewer. Earlier retained evidence without the route metadata still
-  renders its amounts without guessing a destination. Re-runs use retained source evidence.
-- Incomplete GL comparisons also retain the source link and distinguish missing role,
-  unstated amount, missing amount and currency mismatch. Two GL tests, lint and types pass.
-- Corrected obsolete B4-3/4/6/8/12 and C-11 inventory claims: 59 of 59 definitions have
-  execution paths (55 builders plus four composed reports). Registration is not accounting
-  acceptance; the detailed scenario limitations and independent accounting review remain open.
-- Necessary verification: two focused GL backend tests and the offsetting-role viewer test
-  passed; backend lint/type checking and frontend TypeScript checking passed. No deployment.
 
 ## Outstanding release verification
 

@@ -9821,3 +9821,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   relief as EVENT; do not infer TIME ownership from period-end source dates. Performing-side
   cross-calendar cases, close-only revenue histories, complex group changes and other documented
   release gaps still require work. No deployment or production-readiness claim.
+
+
+## Reporting GL source navigation and inventory — October 20, 2026
+
+- New GL tie-out details retain the source book and period key and link to that exact
+  reconciliation in the viewer. Earlier retained evidence without the route metadata still
+  renders its amounts without guessing a destination. Re-runs use retained source evidence.
+- Incomplete GL comparisons also retain the source link and distinguish missing role,
+  unstated amount, missing amount and currency mismatch. Two GL tests, lint and types pass.
+- Corrected obsolete B4-3/4/6/8/12 and C-11 inventory claims: 59 of 59 definitions have
+  execution paths (55 builders plus four composed reports). Registration is not accounting
+  acceptance; the detailed scenario limitations and independent accounting review remain open.
+- Necessary verification: two focused GL backend tests and the offsetting-role viewer test
+  passed; backend lint/type checking and frontend TypeScript checking passed. No deployment.
