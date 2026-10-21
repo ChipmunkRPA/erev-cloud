@@ -817,8 +817,12 @@ class Evaluator:
         at_k = anchor.fixed
         if fixed is None or at_k is None:
             raise _invariant("a schedule override needs a FIXED component", ob, rule="S09-R-40")
-        realized_anchor = sum(item.amount for item in anchor.realised)
-        realized_now = sum(item.amount for item in seg_ev.realised)
+        realized_anchor = sum(item.amount for item in anchor.realised) + (
+            0 if anchor.royalty is None else anchor.royalty.recognised
+        )
+        realized_now = sum(item.amount for item in seg_ev.realised) + (
+            0 if seg_ev.royalty is None else seg_ev.royalty.recognised
+        )
         params = manual.override_params(
             adj,
             as_of=d,

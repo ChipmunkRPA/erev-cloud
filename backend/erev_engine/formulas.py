@@ -804,7 +804,7 @@ def _override_respread(inputs: Sequence[Fraction], params: Mapping[str, str]) ->
     target T_j (param ``target``). ``respread`` after the latest listed period t_k:
     ``cumulative_posted``(X, A, (T_k + (X − T_k) × g) ÷ X) with g = (f(t) − f(t_k)) ÷ (1 − f(t_k)),
     and g = 1 when f(t_k) = 1; params ``t_k``, ``allocation`` (minor units), ``x_exact``, ``f_t``
-    and ``f_k``. Mixed usage includes already-realized consideration in X and A at the
+    and ``f_k``. Mixed usage/royalties include already-realized consideration in X and A at the
     last listed period. Optional ``realized_delta`` (minor units, default zero) adds usage
     realized since that anchor immediately; it is not spread over future periods.
     """

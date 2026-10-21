@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — royalty manual projection from original sources
+
+Fixed-guarantee plus royalty manual releases, deferrals and overrides now retain original-cut
+statement/accrual sources. Both event and estimate-pin effective/application dates are frozen;
+future statements, accruals and releases cannot change that forecast. Minimum guarantees,
+recognized amounts and source populations must remain stable over the projected horizon.
+Separate projection nodes avoid duplicating the live true-up evidence.
+
+Override respread now includes recognized royalties at its anchor and preserves subsequent
+signed royalty changes separately. Six JPY journeys cover positive and below-guarantee statement
+corrections, all three adjustment kinds and a later accrual/release. The approved manual-release
+floor still applies after a downward correction. Trace replay, original future schedules and
+dated remainder reconciliation are checked through the contract trace reader.
+
+This supersedes the generic royalty-mixture refusal for these supported snapshots. Netted
+mixtures, broader API lifecycle and close-pass acceptance, independent accounting sign-off and
+final release checks remain outstanding. Migration 0228 describes the path. No deployment.
+
+
 ### October 20 — fixed plus realized usage manual projections
 
 Manual releases, deferrals and overrides now project fixed plus PERIOD_VC targets from the

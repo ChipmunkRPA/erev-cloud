@@ -725,3 +725,100 @@ def test_royalty_rollforward_downward_correction_reverses_realized_additions() -
     assert january.lines["VC_ESTIMATE_CHANGES"] == -2_000_000
     assert january.lines["REVENUE"] == 2_000_000
     assert january.lines["UNEXPLAINED"] == 0
+
+
+@pytest.mark.parametrize("kind", ["MANUAL_RELEASE", "MANUAL_DEFER", "SCHEDULE_OVERRIDE"])
+@pytest.mark.parametrize("statement_amount", [1600, 1000])
+def test_royalty_manual_projection_freezes_original_statements_and_accruals(
+    kind: str, statement_amount: int
+) -> None:
+    from erev_api.domain.contracts import to_date
+
+    end = date(2026, 12, 31)
+    ob = obligation(
+        "L1",
+        [
+            segment(Fraction(1200), 1200, start=JAN_1, end=end, measure="ROYALTY"),
+            segment(0, 0, start=JAN_1, end=end, component="ROYALTY", measure="ROYALTY"),
+        ],
+        method="ROYALTY",
+        pattern="OVER_TIME",
+        criterion="OT_A",
+        kind="LICENCE",
+        start=JAN_1,
+        end=end,
+    )
+    accrued = _accrual(1, P1, JAN_1, P1, 1500)
+    accrual_event = _estimate(2, accrued)
+    extra = (
+        {
+            "periods": [
+                {"period_key": "FY2026-P02", "amount": Decimal(20)},
+                {"period_key": "FY2026-P03", "amount": Decimal(40)},
+            ]
+        }
+        if kind == "SCHEDULE_OVERRIDE"
+        else {"amount": Decimal(30)}
+    )
+    manual = _ev(
+        3,
+        "MANUAL_ADJUSTMENT_APPLIED",
+        date(2026, 2, 1),
+        {
+            "manual_adjustment_id": "MA-ROY",
+            "kind": kind,
+            "obligation_key": "L1",
+            "period_key": "FY2026-P02",
+            **extra,
+        },
+    )
+    original_state = allocated_state(
+        [ob], events=[accrual_event, manual], estimates=_pins((accrued, accrual_event))
+    )
+    original, _ = _run(CTX_JPY, original_state)
+    statement = _statement(4, P4, JAN_1, P1, statement_amount)
+    later = _accrual(2, date(2026, 5, 1), date(2026, 3, 1), P3, 700)
+    later_event = _estimate(5, later)
+    release = _ev(
+        6,
+        "MANUAL_ADJUSTMENT_APPLIED",
+        date(2026, 6, 1),
+        {
+            "manual_adjustment_id": "MA-LATER",
+            "kind": "MANUAL_RELEASE",
+            "obligation_key": "L1",
+            "period_key": "FY2026-P06",
+            "remaining": True,
+        },
+    )
+    state = allocated_state(
+        [ob],
+        events=[accrual_event, manual, statement, later_event, release],
+        estimates=_pins((accrued, accrual_event), (later, later_event)),
+    )
+    changed, trace = _run(CTX_JPY, state)
+    old = targets_by_period(original, ob.subject_key)
+    new = targets_by_period(changed, ob.subject_key)
+    assert old["FY2026-P12"] == 1500
+    assert new["FY2026-P12"] == statement_amount + 700
+    april_target = old["FY2026-P04"] + max(0, statement_amount - 1200) - 300
+    if kind == "MANUAL_RELEASE":
+        # S09-R-38 retains the approved release floor after a downward correction.
+        april_target = max(april_target, old["FY2026-P02"])
+    assert new["FY2026-P04"] == april_target
+    assert new["FY2026-P05"] - old["FY2026-P05"] == statement_amount + 700 - 1500
+    retained = to_date.nodes_of(to_date.nodes_at(trace.nodes, [P2]))
+    assert retained.period_schedule is not None
+    projected = {key: amount for key, _, amount in retained.period_schedule[ob.subject_key][P2]}
+    assert projected == {
+        key: Decimal(value)
+        for key, value in period_amounts(old).items()
+        if "FY2026-P02" < key <= "FY2026-P12"
+    }
+    remainder = next(
+        node
+        for node in trace.nodes
+        if node.id == f"scheduled_remainder:{ob.subject_key}:FY2026-P02"
+    )
+    assert sum(projected.values()) == Decimal(remainder.value)
+    assert any(node.measure == "scheduled_royalty_target" for node in trace.nodes)

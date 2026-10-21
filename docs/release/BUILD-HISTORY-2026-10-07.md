@@ -9993,3 +9993,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   revenue retain an explicit projection error; reports do not silently use the latest schedule.
   Missing calendar/terms, legacy evidence gaps, compound lifecycle/API acceptance and independent
   accounting sign-off remain open. Migration 0217 records scope. No deployment.
+
+## Mixed TIME/EVENT input with unique source — October 20, 2026
+
+- Stage 14 retains signed TIME amounts in both currencies for each single-input part. A
+  multi-input part explicitly remains unresolved; the report introduces no allocation ratio.
+- Revenue attribution can split an internally mixed input when every original source agrees
+  on contract, layer, movement kind, effective date and source key. Both currency TIME totals,
+  transaction sources, prior targets and paid history remain reconciled to original evidence.
+- 35 scoped posting/source tests pass, including negative input amounts, offsetting TIME/EVENT,
+  zero-net figures and ambiguous provenance rejection. Original S14 functional allocation is
+  preserved. The DB intercompany progress-reversal journey, lint/types and both migrated IPE
+  definitions pass. Migration 0218 describes the balance/opening-liability consumers.
+- Mixed multiple-provenance sources, legacy traces without exact input amounts, split-role
+  inputs and non-revenue components remain open. This is not acceptance of every public mixed
+  workflow; independent accounting sign-off remains outstanding. No deployment.

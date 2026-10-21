@@ -48,6 +48,7 @@ __all__ = [
     "bearing",
     "coverage_gaps",
     "emit",
+    "emit_projection",
     "target",
 ]
 
@@ -344,6 +345,30 @@ def emit(
         measure=ROYALTY_MEASURE,
         subject_key=ob.subject_key,
         period_key=period_key,
+        value=part.recognised,
+        currency=ctx.txn_currency,
+        minor_unit=mu,
+        formula_id=part.formula_id,
+        inputs=_sources(part.realisation),
+        params=part.params,
+        narrative_key=part.formula_id.rsplit(".v", 1)[0],
+    )
+
+
+def emit_projection(
+    tb: TraceBuilder,
+    ctx: BookContext,
+    ob: ObligationState,
+    slot: str,
+    part: RoyaltyPart,
+    *,
+    mu: int,
+) -> str:
+    """Trace the frozen royalty component without re-emitting live true-up events."""
+    return tb.node(
+        measure="scheduled_royalty_target",
+        subject_key=ob.subject_key,
+        period_key=slot,
         value=part.recognised,
         currency=ctx.txn_currency,
         minor_unit=mu,

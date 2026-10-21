@@ -4,6 +4,25 @@
 
 
 
+
+## Original-cut royalty manual projection — October 20, 2026
+
+- Added historical manual release/defer/override projection for fixed guarantees plus realized
+  royalty components. Frozen snapshots filter both measure events and estimate pins by their
+  original effective/application dates. Separate royalty projection nodes retain statement and
+  accrual sources without duplicating live true-up nodes.
+- Projections require stable original royalty sources, recognized amounts and guarantees over
+  the frozen horizon. Unsupported source changes remain explicit refusals. The override anchor
+  now retains recognized royalties, with subsequent signed changes separate from time respread.
+- Six JPY journeys cover all three adjustment kinds, later statements above/below the guarantee,
+  later accruals and releases. Every trace replays; future periods equal the original schedule,
+  survive the contract reader, and sum to the original dated remainder. Downward corrections
+  preserve the existing approved manual-release floor rather than bypassing S09-R-38.
+- Related recognition/dated-reader checks and lint/types pass. Migration 0228 was applied locally;
+  the three IPE definitions match the catalogue. Netted mixed projections, broader public API lifecycle
+  and close-pass acceptance, independent accounting acceptance and final release checks remain
+  open. Direct main publication; no deployment.
+
 ## Mixed usage manual projection — October 20, 2026
 
 - Historical projections now freeze already-realized PERIOD_VC amounts and replay manual
@@ -232,22 +251,6 @@
   That existing failure remains open; this is not full multicurrency acceptance.
 - Multi-provenance TIME/EVENT attribution, broader lifecycle coverage and independent accounting
   sign-off remain open. Direct main publication only; no deployment.
-
-
-## Mixed TIME/EVENT input with unique source — October 20, 2026
-
-- Stage 14 retains signed TIME amounts in both currencies for each single-input part. A
-  multi-input part explicitly remains unresolved; the report introduces no allocation ratio.
-- Revenue attribution can split an internally mixed input when every original source agrees
-  on contract, layer, movement kind, effective date and source key. Both currency TIME totals,
-  transaction sources, prior targets and paid history remain reconciled to original evidence.
-- 35 scoped posting/source tests pass, including negative input amounts, offsetting TIME/EVENT,
-  zero-net figures and ambiguous provenance rejection. Original S14 functional allocation is
-  preserved. The DB intercompany progress-reversal journey, lint/types and both migrated IPE
-  definitions pass. Migration 0218 describes the balance/opening-liability consumers.
-- Mixed multiple-provenance sources, legacy traces without exact input amounts, split-role
-  inputs and non-revenue components remain open. This is not acceptance of every public mixed
-  workflow; independent accounting sign-off remains outstanding. No deployment.
 
 
 

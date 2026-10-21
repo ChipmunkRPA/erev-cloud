@@ -423,6 +423,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "plus PERIOD_VC targets without proportional allocation; schedule overrides retain "
             "anchor-period realized consideration and recognize subsequent usage immediately; "
             "royalty and netted projections remain unavailable",
+            "royalty manual projections freeze original statements and effective estimate pins "
+            "at the reporting cut; minimum guarantees and recognized royalty sources must remain "
+            "stable over the frozen horizon; schedule overrides retain anchor royalties and "
+            "subsequent signed royalty changes separately",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -834,6 +838,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "plus PERIOD_VC targets without proportional allocation; schedule overrides retain "
             "anchor-period realized consideration and recognize subsequent usage immediately; "
             "royalty and netted projections remain unavailable",
+            "royalty manual projections freeze original statements and effective estimate pins "
+            "at the reporting cut; minimum guarantees and recognized royalty sources must remain "
+            "stable over the frozen horizon; schedule overrides retain anchor royalties and "
+            "subsequent signed royalty changes separately",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -918,6 +926,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "plus PERIOD_VC targets without proportional allocation; schedule overrides retain "
             "anchor-period realized consideration and recognize subsequent usage immediately; "
             "royalty and netted projections remain unavailable",
+            "royalty manual projections freeze original statements and effective estimate pins "
+            "at the reporting cut; minimum guarantees and recognized royalty sources must remain "
+            "stable over the frozen horizon; schedule overrides retain anchor royalties and "
+            "subsequent signed royalty changes separately",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

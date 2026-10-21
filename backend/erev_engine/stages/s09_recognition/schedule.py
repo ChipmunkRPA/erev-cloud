@@ -1305,7 +1305,7 @@ def _emit_dated_schedule(
             # Freeze already-realized usage at the cut and replay the original manual
             # rules on the complete target. Future deltas need no ratio-based split.
             if (
-                any(item.component not in {"FIXED", "PERIOD_VC"} for item in ob.segments)
+                any(item.component not in {"FIXED", "PERIOD_VC", "ROYALTY"} for item in ob.segments)
                 or evaluator.attribution is not None
             ):
                 _unavailable_projection(
@@ -1314,8 +1314,7 @@ def _emit_dated_schedule(
                     evaluator,
                     target.period_key,
                     cut,
-                    "Manual adjustments require unsupported royalty or netted "
-                    "component attribution.",
+                    "Manual adjustments require unsupported or netted component attribution.",
                 )
                 continue
             snapshot_contract = replace(
@@ -1332,6 +1331,19 @@ def _emit_dated_schedule(
                 st,
                 measure_events=tuple(
                     event for event in st.measure_events if event.effective_date <= cut
+                ),
+                estimates=replace(
+                    st.estimates,
+                    pins={
+                        key: tuple(
+                            pin
+                            for pin in pins
+                            if pin.version.effective_date <= cut
+                            and pin.event_order_key[0] <= cut
+                            and pin.applies()[0] <= cut
+                        )
+                        for key, pins in st.estimates.pins.items()
+                    },
                 ),
             )
             snapshot = components.Evaluator(
@@ -1363,6 +1375,22 @@ def _emit_dated_schedule(
                     target.period_key,
                     cut,
                     "Realized usage changes within the original-cut projection horizon.",
+                )
+                continue
+            if ev.royalty is not None and any(
+                value.royalty is None
+                or value.royalty.realisation != ev.royalty.realisation
+                or value.royalty.recognised != ev.royalty.recognised
+                or value.royalty.guarantee != ev.royalty.guarantee
+                for value in adjusted.values()
+            ):
+                _unavailable_projection(
+                    ctx,
+                    tb,
+                    evaluator,
+                    target.period_key,
+                    cut,
+                    "Royalty sources change within the original-cut horizon.",
                 )
                 continue
             if cut not in adjusted or adjusted[cut].value != ev.value:
@@ -1433,16 +1461,25 @@ def _emit_dated_schedule(
             if part.complete:
                 posted_params["complete"] = "true"
             realized = adjusted[end].realised if end in adjusted else ()
+            royalty_part = adjusted[end].royalty if end in adjusted else None
+            royalty_inputs = (
+                []
+                if royalty_part is None
+                else [royalty.emit_projection(tb, ctx, ob, slot, royalty_part, mu=evaluator.mu)]
+            )
             posted = tb.node(
                 measure="scheduled_target",
                 subject_key=ob.subject_key,
                 period_key=slot,
-                value=part.posted + sum(item.amount for item in realized),
+                value=part.posted
+                + sum(item.amount for item in realized)
+                + (0 if royalty_part is None else royalty_part.recognised),
                 currency=ctx.txn_currency,
                 minor_unit=evaluator.mu,
                 formula_id=components.REVENUE_CUM_FORMULA,
                 inputs=[
                     exact,
+                    *royalty_inputs,
                     *(
                         SourceRef(
                             "contract_event",
