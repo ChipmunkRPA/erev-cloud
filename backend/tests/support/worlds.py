@@ -3960,7 +3960,6 @@ def k07_august_locked(
     """``k07_delivered`` with Aug 2026 of AVM-DE locked through the product (``period_locked``)
     on the record-time clock: the PRD J-04 precondition "K-07 delivered with no invoice; Aug 2026
     locked"."""
-    from datetime import timedelta
 
     world = k07_delivered(app, keyring, clock, files)
     report = on_record_clock(world.report, clock)
@@ -4004,7 +4003,6 @@ def k07_august_locked(
             if_match=f'"r{draft.json()["row_version"]}"',
         )
         assert submitted.status_code == 200, submitted.text
-        clock.advance(timedelta(minutes=1))
         decision = approve(app, submitted.json()["pending_approval_request_id"], report.marcus)
         assert decision.status_code == 200, decision.text
     run, report = period_locked(report, clock, entity_code=AVM_DE, period_key=AUGUST_2026)

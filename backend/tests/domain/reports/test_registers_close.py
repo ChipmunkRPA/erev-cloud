@@ -950,6 +950,7 @@ def test_late_entry_window(
     september, rows = worlds.report_run(
         report, "late_entry_report", {"entity_codes": [AVM_DE], "period_key": SEPTEMBER_2026}
     )
+    saved_september = list(rows)
     entered, near = sections(rows)
     assert entered == []  # Sep 2026 has no lock
     assert [
@@ -995,6 +996,35 @@ def test_late_entry_window(
         "parameters.window_days",
         late_entry_report.WINDOW_COPY,
     )
+
+    clock.advance(timedelta(minutes=1))
+    noted = worlds._appended_through_api(
+        report.place,
+        world.contract_id,
+        {
+            "event_type": "MEMO_UPDATED",
+            "effective_date": "2026-09-29",
+            "payload": {"memo_1": "Additional cutoff review"},
+        },
+    )
+    assert noted["computation"]["status"] == "SUCCEEDED"
+    _, fresh = worlds.report_run(
+        report, "late_entry_report", {"entity_codes": [AVM_DE], "period_key": SEPTEMBER_2026}
+    )
+    assert len(fresh) == len(saved_september) + 1
+    started = post(app, f"/api/v1/report-runs/{september['id']}/rerun", report.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(report, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        report.maya,
+        {"limit": "200"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == saved_september
 
 
 @pytest.mark.slow

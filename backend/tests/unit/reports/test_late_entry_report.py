@@ -73,8 +73,7 @@ def test_columns_are_the_specification_grid() -> None:
 def test_registration_and_catalogue() -> None:
     assert framework.BUILDERS[late.CODE] is late.build
     contract = framework.SOURCE_CONTRACTS[late.CODE]
-    assert contract.strategy == "open" and len(contract.open) == 1
-    assert "RPT-17" in contract.open[0]
+    assert contract.strategy == "retained_inputs" and not contract.open
     definition = DEFINITIONS_BY_CODE[late.CODE]
     section = report_specs.section(17, late.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -362,3 +361,61 @@ def test_both_sections_render_in_every_output_format() -> None:
     for data in (populated, _data([])):
         assert xlsx_output.render_xlsx(data, _stamp()).startswith(b"PK")
         assert pdf_output.render_pdf(data, _stamp()).startswith(b"%PDF")
+
+
+def test_retained_late_inputs_reclassify_sections_without_database():
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    tenant_id, entity_id = uuid4(), uuid4()
+    at = datetime(2026, 9, 10, tzinfo=UTC)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": tenant_id,
+                "entity_ids": [entity_id],
+                "selection": {"book": None, "period_key": None, "window_days": None},
+                "days": 5,
+                "events": [asdict(event(date(2026, 8, 28), recorded_at=at))],
+                "scopes": {"AVM-DE": asdict(AUGUST)},
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=late.CODE,
+        report_version=1,
+        entity_ids=(entity_id,),
+        parameters={},
+        known_at=at,
+        binding=SourceBinding(
+            cutoff=at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={late.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant_id))
+    data = late.build(uow, params)
+    assert [row["section"] for row in data.rows] == [1, 2]
+    assert data.rows[0]["recorded_at"] == at
+    assert data.rows[0]["lock_recorded_at"] == AUGUST.lock_recorded_at
+    retained["days"] = 2
+    assert [row["section"] for row in late.build(uow, params).rows] == [1]
+    retained["scopes"]["AVM-DE"]["lock_recorded_at"] = None
+    assert late.build(uow, params).rows == ()
+    for invalid in (
+        replace(params, entity_ids=(uuid4(),)),
+        replace(params, parameters={"book": "IFRS15"}),
+        replace(params, parameters={"window_days": 1}),
+        replace(params, parameters={"period_key": "FY2026-P09"}),
+    ):
+        with pytest.raises(Problem):
+            late.build(uow, invalid)
+    with pytest.raises(Problem):
+        late.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=uuid4())), params)

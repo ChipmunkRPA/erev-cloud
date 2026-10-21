@@ -361,7 +361,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         # BUILD_SPEC RPS-11 (lane F-RPS-REG): the judgement, estimate-change and scope-exclusion
         # registers read live, no adapter yet
         # BUILD_SPEC RPS-8 (lane F-RPS-REG): the late-entry report reads live, no adapter yet
-        "late_entry_report",
     }
     # The registered explainers bind every SOURCE dimension and, since frps3c-1 retained the
     # consumed configuration as evidence, declare NOTHING open; no adapter names configuration as

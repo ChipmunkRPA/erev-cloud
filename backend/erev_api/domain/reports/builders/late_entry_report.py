@@ -36,12 +36,14 @@ records; ``build`` reads them through the unit of work.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -60,10 +62,12 @@ from erev_api.domain.reports.builders.out_of_period_register import event_key, e
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 from erev_api.enums import LockKind, PrincipalKind
+from erev_api.problems import Problem
 from erev_api.registry.resolve import setting
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "late_entry_report"
+EVIDENCE: Final = "late_entry_inputs_v1"
 WINDOW_DAYS: Final = "window_days"
 WINDOW_SETTING: Final = "close.late_entry_window_days"  # T-PLT-31 (REQ-CLS-007)
 WINDOW_RANGE: Final = (0, 31)
@@ -329,6 +333,16 @@ def sources(
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {key: params.parameters.get(key) for key in ("book", "period_key", WINDOW_DAYS)}
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained late-entry inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("period_key", "Retained inputs use another filter selection.")
+        return data_from_inputs(retained)
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     days = window_of(session, params)
@@ -349,7 +363,41 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         for entity in found
     }
     events = sources(session, entities=found, periods=periods, days=days, cutoff=cutoff)
-    rows, totals = dataset_rows(events, scopes, days=days)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "days": days,
+                "events": [asdict(item) for item in events],
+                "scopes": {key: asdict(value) for key, value in scopes.items()},
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    scopes = {}
+    for key, record in retained["scopes"].items():
+        values = dict(record)
+        for field in ("period_start", "period_end"):
+            values[field] = date.fromisoformat(values[field])
+        values["lock_recorded_at"] = (
+            None
+            if values["lock_recorded_at"] is None
+            else datetime.fromisoformat(values["lock_recorded_at"].replace("Z", "+00:00"))
+        )
+        scopes[key] = Scope(**values)
+    events = []
+    for record in retained["events"]:
+        values = dict(record)
+        values["effective_date"] = date.fromisoformat(values["effective_date"])
+        values["recorded_at"] = datetime.fromisoformat(values["recorded_at"].replace("Z", "+00:00"))
+        events.append(Event(**values))
+    rows, totals = dataset_rows(events, scopes, days=window_days(retained["days"]))
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

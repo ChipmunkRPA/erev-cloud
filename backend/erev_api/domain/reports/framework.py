@@ -540,11 +540,7 @@ _BOOK_BRIDGE_OPEN: Final = (
     "presented balances of each book's latest contract versions at the range end, the contract "
     "versions' status history and the IFRS 15 impairment-reversal lines read live (RPS-12 RPT-33)"
 )
-_LATE_ENTRY_REPORT_OPEN: Final = (
-    "contract events of the run's entities with their contracts, approval requests and "
-    "recording principals, and the first lock record of each entity's period read live "
-    "(RPS-8 RPT-17)"
-)
+
 _OPEN_ONLY: Final = (
     "effective record cutoff (the basis; nothing else is bound — a rerun is a NEW live evaluation, "
     "labelled open, never a reproduction)",
@@ -913,7 +909,8 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             RETAINED, (_CUTOFF, "intercompany line inputs, entity/currency scope and FX evidence")
         ),
         late_entry_report_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_LATE_ENTRY_REPORT_OPEN,)
+            RETAINED,
+            (_CUTOFF, "late-entry events, actor provenance, period/lock scopes and window"),
         ),
     }
 )
@@ -2076,6 +2073,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "estimate_change_listing",
             "scope_exclusion_register",
             "judgement_register",
+            "late_entry_report",
         }
     ):
         try:

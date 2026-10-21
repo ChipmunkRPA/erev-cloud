@@ -1727,6 +1727,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _IMPORT_APPROVAL,
         ),
         filters=(
+            "same-source runs retain event and actor inputs, resolved period/lock scopes "
+            "and window; "
+            "rebuild both sections and counts without live reads",
             _SCOPE,
             _BOOK,
             "section 1: contract_event.recorded_at after the first period_lock of period_key, with "
