@@ -10038,3 +10038,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   split/mixed-source work is still open.
 - The DATASET_FREEZE failure recorded in the preceding entry is resolved by this change.
   No deployment; independent accounting sign-off remains outstanding.
+
+## Mixed revenue by retained recognition period — October 20, 2026
+
+- S14 now retains per-input period classes from original relief causes, bounded by each target
+  period. NORMAL is TIME only for close-released obligations; mixed periods stay explicit.
+  Concession/multiple-input/split shares do not acquire invented classification evidence.
+- Reporting can attribute mixed cumulative inputs across multiple owners/layers when each
+  source period has a uniform class. It preserves original signed amounts and reconciles TIME
+  independently in transaction and functional currency. FX readers accept the new annotation.
+- 46 scoped engine/source cases, the DB intercompany progress-reversal workflow and two-month
+  foreign-balance/GL journey pass. Scoped lint/types and both migrated IPE definitions match.
+  Within-period mixtures, functional allocation mismatches, split/non-revenue inputs and broad
+  mixed public-workflow acceptance remain open. Migration 0220 describes the two consumers.
+- No deployment. Independent accounting sign-off and final release verification remain open.

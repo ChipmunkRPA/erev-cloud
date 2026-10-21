@@ -18,7 +18,9 @@ from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 if TYPE_CHECKING:
     from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
 
-EVIDENCE = "rollforward_gl_inputs_v2"
+EVIDENCE = "rollforward_gl_inputs_v3"
+BRIDGE_EVIDENCE = "rollforward_gl_inputs_v2"
+REVIEWED = frozenset({"REVIEWED", "AUTO_CERTIFIED", "CERTIFIED"})
 LEGACY_EVIDENCE = "rollforward_gl_inputs_v1"
 ROLES = {
     "CONTRACT_LIABILITY": "contract_liability",
@@ -33,6 +35,7 @@ def compare(
     sources: Mapping[str, Any],
     *,
     bridge: bool = True,
+    require_review: bool = True,
 ) -> dict[str, Any]:
     """GL debit-positive balances are compared to the report's positive captions per role."""
     details: list[dict[str, Any]] = []
@@ -53,6 +56,17 @@ def compare(
             **{key: source[key] for key in ("book_code", "period_key") if source.get(key)},
             **({"source_status": source["status"]} if "status" in source else {}),
         }
+        if require_review and source.get("status") not in REVIEWED:
+            incomplete = True
+            details.append(
+                {
+                    "entity": entity.code,
+                    **reference,
+                    "result": tie_outs.NOT_APPLICABLE,
+                    "reason": "The GL reconciliation has not been reviewed or certified.",
+                }
+            )
+            continue
         rows: dict[str, Any] = {}
         for row in source["totals"]:
             role = row.get("account_role")
@@ -205,8 +219,15 @@ def build(
         return result
     evidence_key = EVIDENCE
     if params.binding is not None:
-        # Preserve the earlier two-way control on legacy bindings, without a live read.
-        evidence_key = EVIDENCE if EVIDENCE in params.binding.evidence else LEGACY_EVIDENCE
+        # Preserve each retained control version without reading current review state.
+        evidence_key = next(
+            (
+                key
+                for key in (EVIDENCE, BRIDGE_EVIDENCE, LEGACY_EVIDENCE)
+                if key in params.binding.evidence
+            ),
+            LEGACY_EVIDENCE,
+        )
         sources = params.binding.evidence.get(evidence_key, {})
     else:
         sources = {}
@@ -255,4 +276,10 @@ def build(
                 }
     if params.sources is not None:
         params.sources.record_evidence(evidence_key, sources)
-    return compare(entities, items, sources, bridge=evidence_key == EVIDENCE)
+    return compare(
+        entities,
+        items,
+        sources,
+        bridge=evidence_key != LEGACY_EVIDENCE,
+        require_review=evidence_key == EVIDENCE,
+    )

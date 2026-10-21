@@ -20,6 +20,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, Final
+from uuid import UUID
 
 import pytest
 from erev_api.auth.keyring import KeyRing
@@ -32,7 +33,8 @@ from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
 from support.db import TestDatabase
-from support.reference import get, slug
+from support.principals import carrying, enrolled
+from support.reference import assign, get, post, slug
 from support.worlds import (
     AVM_US,
     K01,
@@ -43,6 +45,7 @@ from support.worlds import (
     recalculated_journal,
     report_run,
     revenue_without_contributors,
+    run_now,
 )
 
 CELL: Final = "/api/v1/explain/report-runs/{run_id}/cell"
@@ -303,7 +306,9 @@ def test_rollforward_path_ex_15_b() -> None:
 
 
 @pytest.mark.slow
-def test_rollforward_compares_uploaded_gl_role_balances(world: ReportWorld) -> None:
+def test_rollforward_compares_uploaded_gl_role_balances(
+    world: ReportWorld, clock: FrozenClock
+) -> None:
     from support import reconciliations as recon
 
     draft = recon.generated(
@@ -328,6 +333,23 @@ def test_rollforward_compares_uploaded_gl_role_balances(world: ReportWorld) -> N
         ),
     )
     recon.attached(world.app, world.maya, world.runtime, draft["id"], {"file_id": file_id})
+    pending, _ = report_run(world, "contract_balance_rollforward", SEPTEMBER)
+    assert tie(pending, tie_outs.TO_ROLLFORWARD_EQ_GL)["result"] == "NOT_APPLICABLE"
+    assign(world.priya.member, "revenue_reviewer")
+    world = carrying(world, maya=enrolled(world.app, clock, world.maya.member))
+    for item in recon.items_of(world.app, world.maya, draft["id"]):
+        explained = recon.explain(
+            world.app,
+            world.maya,
+            item,
+            "This focused trial balance includes the three contract balance roles only.",
+        )
+        assert explained.status_code == 200, explained.text
+    prepared = recon.prepare(world.app, world.maya, draft["id"])
+    assert prepared.status_code == 200, prepared.text
+    signed = recon.sign(world.app, world.priya, draft["id"])
+    assert signed.status_code == 200, signed.text
+    accepted_runs = []
     for code, parameters in (
         ("contract_balance_rollforward", SEPTEMBER),
         (
@@ -343,6 +365,25 @@ def test_rollforward_compares_uploaded_gl_role_balances(world: ReportWorld) -> N
         assert all(row["bridge_result"] == "PASS" for row in result["details"])
         assert all(D(row["subledger_gl_difference"]) == 0 for row in result["details"])
         assert all(D(row["report_subledger_difference"]) == 0 for row in result["details"])
+        accepted_runs.append(run)
+    reopened = recon.reopen(world.app, world.marcus, draft["id"], "Updated GL needs review")
+    assert reopened.status_code == 200, reopened.text
+    current, _ = report_run(world, "contract_balance_rollforward", SEPTEMBER)
+    assert tie(current, tie_outs.TO_ROLLFORWARD_EQ_GL)["result"] == "NOT_APPLICABLE"
+    for retained in (pending, *accepted_runs):
+        restarted = post(world.app, f"/api/v1/report-runs/{retained['id']}/rerun", world.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = run_now(world, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        rebuilt = get(
+            world.app,
+            f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}",
+            world.maya,
+        )
+        assert rebuilt.status_code == 200, rebuilt.text
+        assert tie(rebuilt.json(), tie_outs.TO_ROLLFORWARD_EQ_GL) == tie(
+            retained, tie_outs.TO_ROLLFORWARD_EQ_GL
+        )
 
 
 @pytest.mark.slow
@@ -391,6 +432,12 @@ def test_foreign_contract_balances_use_dated_functional_targets(
             app, world.maya, world.runtime, draft["id"], {"file_id": file_id}
         )
         assert reconciled["variance_count"] == 0
+        if period_key == "FY2026-P08":
+            world = carrying(world, maya=enrolled(app, clock, world.maya.member))
+        prepared = recon.prepare(app, world.maya, draft["id"])
+        assert prepared.status_code == 200, prepared.text
+        signed = recon.sign(app, world.priya, draft["id"])
+        assert signed.status_code == 200, signed.text
         params = {
             "entity_codes": [AVM_US],
             "book": "ASC606",

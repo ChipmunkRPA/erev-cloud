@@ -1,5 +1,19 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — reviewed GL source requirement
+
+New balance and rollforward reports require the latest retained GL reconciliation to be
+reviewed or certified before comparing its amounts. Draft, prepared, reopened and missing
+statuses are unavailable, even when all amounts agree. Source links and review status remain
+visible. Versioned v3 bindings preserve that review decision on rerun; legacy v1/v2 bindings
+retain their original arithmetic-only semantics without reading current review state.
+
+Focused public API journeys cover draft/review/reopen, retained reruns and foreign functional
+balances. Migration 0230 records this requirement in both IPE definitions. This adds a source
+review gate, not independent accounting acceptance or a production-readiness claim. Broader
+lifecycle/close acceptance and final release-candidate checks remain open. No deployment.
+
+
 ### October 20 — deterministic Step-1 netted forecasts
 
 Historical time-based forecasts now freeze original 25-7 deposit releases and cite each

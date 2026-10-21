@@ -3,6 +3,7 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -46,6 +47,7 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
         str(entity.id): {
             "id": str(uuid4()),
             "totals": rows,
+            "status": "REVIEWED",
             "book_code": "ASC606",
             "period_key": "FY2026-P08",
         }
@@ -101,17 +103,22 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
     )
 
 
-@pytest.mark.parametrize("legacy", [True, False])
-def test_retained_gl_rebuild_never_reads_current_reconciliation(legacy: bool) -> None:
+@pytest.mark.parametrize(
+    "evidence_key",
+    [rollforward_gl.LEGACY_EVIDENCE, rollforward_gl.BRIDGE_EVIDENCE, rollforward_gl.EVIDENCE],
+)
+def test_retained_gl_rebuild_never_reads_current_reconciliation(evidence_key: str) -> None:
     from typing import cast
 
     from sqlalchemy.orm import Session
 
+    legacy = evidence_key == rollforward_gl.LEGACY_EVIDENCE
     now = datetime(2026, 10, 20, tzinfo=UTC)
     entity = EntityRef(uuid4(), "US", uuid4(), "USD", "UTC")
     sources = {
         str(entity.id): {
             "id": str(uuid4()),
+            "status": "REVIEWED" if evidence_key == rollforward_gl.EVIDENCE else "DRAFT",
             "totals": [
                 {
                     "account_role": role,
@@ -134,9 +141,7 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation(legacy: bool) ->
             {},
             {},
             frozenset(),
-            evidence={
-                (rollforward_gl.LEGACY_EVIDENCE if legacy else rollforward_gl.EVIDENCE): sources
-            },
+            evidence={evidence_key: sources},
         ),
     )
 
@@ -156,3 +161,30 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation(legacy: bool) ->
     assert result["result"] == "PASS"
 
     assert ("source_subledger" in result["details"][0]) is not legacy
+
+
+@pytest.mark.parametrize("status", ["DRAFT", "PREPARED", "REOPENED", None])
+def test_gl_review_pending_never_passes_on_matching_numbers(status: str | None) -> None:
+    entity = EntityRef(uuid4(), "US", uuid4(), "USD", "UTC")
+    source: dict[str, Any] = {"id": str(uuid4()), "status": status, "totals": []}
+    result = rollforward_gl.compare([entity], [], {str(entity.id): source})
+    assert result["result"] == "NOT_APPLICABLE"
+    assert result["details"][0]["reconciliation_id"] == source["id"]
+    assert (
+        result["details"][0]["reason"]
+        == "The GL reconciliation has not been reviewed or certified."
+    )
+    # Earlier retained bindings keep their original arithmetic-only result.
+    assert (
+        rollforward_gl.compare([entity], [], {str(entity.id): source}, require_review=False)[
+            "result"
+        ]
+        == "PASS"
+    )
+
+
+@pytest.mark.parametrize("status", ["REVIEWED", "AUTO_CERTIFIED", "CERTIFIED"])
+def test_gl_accepted_review_states_allow_comparison(status: str) -> None:
+    entity = EntityRef(uuid4(), "US", uuid4(), "USD", "UTC")
+    source: dict[str, Any] = {"id": str(uuid4()), "status": status, "totals": []}
+    assert rollforward_gl.compare([entity], [], {str(entity.id): source})["result"] == "PASS"

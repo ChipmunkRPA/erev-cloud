@@ -487,6 +487,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "entity and role in functional currency; either nonzero leg fails even when net "
             "differences cancel; missing subledger evidence is unavailable and v1 bindings "
             "retain two-way semantics",
+            "GL bridge v3 requires the latest retained reconciliation to be reviewed or "
+            "certified; draft, prepared, reopened or missing status is unavailable; "
+            "historical v1 and v2 bindings preserve their original arithmetic controls",
         ),
         tie_outs=("TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -602,6 +605,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "entity and role in functional currency; either nonzero leg fails even when net "
             "differences cancel; missing subledger evidence is unavailable and v1 bindings "
             "retain two-way semantics",
+            "GL bridge v3 requires the latest retained reconciliation to be reviewed or "
+            "certified; draft, prepared, reopened or missing status is unavailable; "
+            "historical v1 and v2 bindings preserve their original arithmetic controls",
             "mixed revenue inputs spanning original sources use retained recognition-period "
             "classes only when every source period is uniform TIME or EVENT and both currency "
             "TIME totals reconcile; mixed periods and unmatched functional allocation remain "

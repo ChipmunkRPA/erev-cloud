@@ -6,6 +6,19 @@
 
 
 
+## Reviewed GL source gate — October 20, 2026
+
+- New contract balance and rollforward runs require reviewed/certified GL reconciliation
+  sources. Draft, prepared, reopened or missing review states remain unavailable, with source
+  identity and reason retained; matching numbers alone cannot produce PASS.
+- Versioned v3 bindings freeze review status. Earlier v1/v2 bindings retain their original
+  arithmetic controls without live reads. Reopening a source changes new runs, not retained
+  historical reruns.
+- Eleven focused comparison/binding checks and two public API journeys pass, including
+  draft/review/reopen, deterministic reruns and dated foreign functional balances. Migration
+  0230 updates both IPE definitions. No deployment; broader lifecycle/accounting acceptance
+  and final release-candidate verification remain outstanding.
+
 ## Step-1 netted reporting forecasts — October 20, 2026
 
 - Dated projections now freeze original deposit recognitions and apply the engine's existing
@@ -223,22 +236,6 @@
   and migrated catalogue checks pass. The DB multi-currency RPO journey also confirms retained
   exemption details after a rate revision and rerun. Broader reporting and independent accounting acceptance
   remain open. Direct main publication only; no deployment.
-
-
-## Mixed revenue by retained recognition period — October 20, 2026
-
-- S14 now retains per-input period classes from original relief causes, bounded by each target
-  period. NORMAL is TIME only for close-released obligations; mixed periods stay explicit.
-  Concession/multiple-input/split shares do not acquire invented classification evidence.
-- Reporting can attribute mixed cumulative inputs across multiple owners/layers when each
-  source period has a uniform class. It preserves original signed amounts and reconciles TIME
-  independently in transaction and functional currency. FX readers accept the new annotation.
-- 46 scoped engine/source cases, the DB intercompany progress-reversal workflow and two-month
-  foreign-balance/GL journey pass. Scoped lint/types and both migrated IPE definitions match.
-  Within-period mixtures, functional allocation mismatches, split/non-revenue inputs and broad
-  mixed public-workflow acceptance remain open. Migration 0220 describes the two consumers.
-- No deployment. Independent accounting sign-off and final release verification remain open.
-
 
 
 ## Outstanding release verification
