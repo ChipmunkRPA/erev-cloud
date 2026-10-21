@@ -954,3 +954,63 @@ def test_adoption_unknown_legacy_position_does_not_publish_partial_totals() -> N
         assert found[f"line:{code}"]["effect"] is None
     assert totals["revenue_legacy_total"] == {"USD": "300.00"}
     assert totals["legacy_position_unavailable_contract_count"] == 1
+
+
+def test_adoption_reporting_balances_do_not_use_translated_revenue_net() -> None:
+    from erev_api.domain.reports.reporting_currency import Translation
+
+    entity = UUID(int=1)
+    closing = Translation("USD", {entity: {"rate": "3", "base_currency": "EUR"}})
+    source = adoption.Source(
+        "C",
+        None,
+        "EUR",
+        revenue_legacy=D("100"),
+        revenue_asc606=D("150"),
+        billed=D("300"),
+        contract_liability=D("150"),
+    )
+    translated = adoption.translate_sources([source], closing, entity, {"C": (D("200"), D("250"))})
+    rows, _ = adoption.dataset_rows(translated)
+    found = keyed(rows)
+    assert found["contract:C"]["revenue_legacy"] == usd("200.00")
+    assert found["contract:C"]["cumulative_effect"] == usd("50.00")
+    # The ending legacy position is (300 - 100) * 3, not 300 * 3 - historical revenue 200.
+    assert found["contract:C"]["contract_liability_legacy"] == usd("600.00")
+    assert found["line:CONTRACT_LIABILITY"]["effect"] == usd("-150.00")
+
+
+@pytest.mark.parametrize("opening", [0, 10000])
+def test_adoption_reporting_requires_dated_opening_income(opening: int) -> None:
+    from erev_engine import ENGINE_VERSION
+    from erev_engine.trace import SourceRef, TraceBuilder
+
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    baseline = tb.node(
+        measure="opening_revenue_cum@C/EV-1",
+        subject_key="C/O1",
+        period_key=None,
+        value=opening,
+        currency="USD",
+        minor_unit=2,
+        formula_id="books.legacy_fold.v1",
+        inputs=[SourceRef("contract_event", "C/EV-1", {"value": str(D(opening) / 100)})],
+        narrative_key="books.legacy_fold",
+    )
+    tb.node(
+        measure="revenue_cum",
+        subject_key="C/O1",
+        period_key="FY2026-P01",
+        value=opening,
+        currency="USD",
+        minor_unit=2,
+        formula_id="books.legacy_fold.v1",
+        inputs=[baseline],
+        narrative_key="books.legacy_fold",
+    )
+    trace = tb.build(root_measures={})
+    if opening:
+        with pytest.raises(Problem):
+            adoption.require_dated_revenue(trace, ["C/O1"], "FY2026-P01")
+    else:
+        adoption.require_dated_revenue(trace, ["C/O1"], "FY2026-P01")

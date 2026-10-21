@@ -2223,7 +2223,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "Cumulative effect of adopting Topic 606 per contract and the line-item comparison at the "
         "date of initial application (REQ-BK-007; ASC 606-10-65-1(h), (i)).",
         ("entity_codes", "date_of_initial_application", "contract_external_id", "currency_view"),
-        overrides={**_ONE_ENTITY, "currency_view": _one_of("transaction", "functional")},
+        overrides={
+            **_ONE_ENTITY,
+            "currency_view": _one_of("transaction", "functional", "reporting"),
+        },
         sources=(
             "contract_version",
             "contract_version_balance",
@@ -2231,6 +2234,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract",
             "customer",
             "subledger_line",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "contract_version_balance.contract_version_id = contract_version.id",
@@ -2245,6 +2252,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "functional view uses posted legacy revenue and reconciled dated primary revenue "
             "and balances; foreign legacy positions without historical carrying evidence are "
             "unavailable, including affected aggregate comparisons",
+            "reporting view translates each period change in functional cumulative revenue at "
+            "its average rate and ending balances independently at the closing rate; "
+            "legacy-only historical revenue remains in its final endpoint population; nonzero "
+            "imported opening revenue without dated history cannot be translated",
         ),
     ),
     _definition(

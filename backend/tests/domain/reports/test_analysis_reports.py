@@ -311,6 +311,65 @@ def test_adoption_bridge_foreign_functional(
     assert run["control_totals"]["legacy_position_unavailable_contract_count"] == 1
     assert run["control_totals"]["cumulative_effect_total"] == {"EUR": "96000.00"}
 
+    from datetime import timedelta
+
+    from erev_api.db.tables import fx_rate_set
+    from support.reference import approve, post
+
+    for kind in ("average", "closing"):
+        # The FX service supplies inverse rows too: supersede the existing pair's set,
+        # rather than introducing a second simultaneously approved rate for EUR/USD.
+        set_id = world.place.scalar(
+            select(fx_rate_set.c.id).where(fx_rate_set.c.code == f"ADOPT-{kind.upper()}")
+        )
+        rates = [
+            {
+                "base_currency": "EUR",
+                "quote_currency": "USD",
+                "period_key": f"FY2025-P{month:02d}",
+                "rate": "3" if kind == "closing" else ("2" if month == 12 else "1"),
+            }
+            for month in range(1, 13)
+        ]
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{set_id}/versions",
+            world.maya,
+            {
+                "coverage_from": "2025-01-01",
+                "coverage_to": "2025-12-31",
+                "rates": rates,
+            },
+        )
+        assert draft.status_code == 201, draft.text
+        submitted = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            world.maya,
+            {"comment": "Historical reporting translation"},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert submitted.status_code == 200, submitted.text
+        clock.advance(timedelta(minutes=1))
+        decision = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+        assert decision.status_code == 200, decision.text
+    reporting, reporting_rows = report_run(
+        world,
+        "adoption_bridge",
+        {
+            "entity_codes": [US01],
+            "date_of_initial_application": "2026-01-01",
+            "currency_view": "reporting",
+        },
+    )
+    translated = keyed(reporting_rows)[f"contract:{C_ADOPT}"]
+    assert translated["revenue_legacy"] == usd("160000.00")  # all legacy income in December
+    assert translated["revenue_asc606"] == usd("178666.66")  # only December doubles
+    assert translated["cumulative_effect"] == usd("18666.66")
+    assert translated["contract_liability_asc606"] == usd("192000.00")  # closing 3.00
+    assert translated["contract_liability_legacy"] is None
+    assert reporting["control_totals"]["legacy_position_unavailable_contract_count"] == 1
+
 
 def test_adoption_bridge_s11_modretro_own(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore

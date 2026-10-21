@@ -20,6 +20,31 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Adoption Bridge reporting-currency view — October 21, 2026
+
+- Added Reporting currency to the public report and frozen migration 0299. The builder reads
+  each historical functional cumulative-income endpoint, translates each period's movement at
+  its approved average rate and accumulates those translated movements. Ending primary and
+  available legacy positions use the ending closing rate independently of income. Explicit
+  legacy position values prevent billed-at-closing minus historical revenue from inventing a
+  different balance. Included/legacy-only population is determined at the final endpoint.
+- Period-average and closing rate inputs are recorded separately. Missing/ambiguous rates are
+  refused through the shared approved-rate admission; unknown foreign legacy positions remain
+  unavailable at contract and aggregate level. A nonzero imported opening-revenue node actually
+  consumed by the revenue trace is refused for foreign reporting translation when its historical
+  period allocation is absent; it is never treated as first-period income. Identity conversion
+  does not require that historical FX allocation.
+- Public flow verified with recorded EUR income: January-November EUR/USD average 1, December
+  average 2 and closing 3 produce USD 160,000 legacy revenue, 178,666.66 primary revenue,
+  18,666.66 cumulative effect and 192,000 primary liability. This distinguishes period income
+  conversion from both ending-average and closing-rate shortcuts. The FX service generates
+  inverse rows, so the test approves a new version of the existing pair's set instead of
+  introducing duplicate simultaneously approved rates.
+- Necessary validation: public foreign reporting and original transaction flows, schema/IPE
+  migration parity, 48 focused report/source-binding cases and scoped lint/types passed.
+  Remaining: foreign legacy carrying-position sources, Adoption retained same-source replay,
+  other documented adapters and final repository verification. No deployment.
+
 ## Adoption Bridge functional view — October 21, 2026
 
 - Added Transaction/Functional selection to the public report (migration 0298). Functional
@@ -189,43 +214,6 @@ review and publish changes without PR accumulation, and do not deploy.
   Bridge is explicitly transaction-only and needs a separate cumulative adoption-date currency
   design. Book Bridge granular causal attribution/retention and other documented Reporting
   gaps remain open. This feature does not claim overall repository completion.
-
-## Book Bridge reporting-currency view — October 21, 2026
-
-- Reporting view now translates each contract/book/period's posted functional revenue using
-  its approved period-average rate, then aggregates the range. Ending functional member
-  balances use the final period closing rate. Both books share the same target currency and
-  rate basis; historical functional layers are projected before reporting translation.
-- Rate IDs, versions, period and cutoff are recorded through the existing reporting-rate
-  evidence helper. Missing approved rates refuse the run; no inversion, triangulation or
-  current-rate substitution is introduced. Migration 0293 updates the report IPE description.
-- Necessary validation passed: public dual-book GBP-to-USD report across April–September,
-  revenue translated at 1.27 rather than September average 1.28/closing 1.29; nonzero ending
-  balances translated at 1.29; driver tie-out, transaction/functional regression, six focused
-  builder tests, catalogue migration parity and scoped lint/types.
-- Remaining: granular framework/licence/advance-FX causal attribution, Book Bridge retained
-  input replay, Adoption Bridge and Intercompany Pairs currency/source gaps, other documented
-  incomplete adapters and final repository validation. OPEN reruns remain new evaluations;
-  recorded rate evidence alone does not claim same-source report retention. No deployment.
-
-## Book Bridge foreign-contract functional amounts — October 21, 2026
-
-- The registered Book Bridge still rejected foreign contracts in Functional view. It now reads
-  posted amount_functional revenue and the shared dated functional member-balance projection
-  for each book. Transaction view retains original-currency values; no single current rate is
-  applied to historical-layer liabilities or monetary balance targets.
-- A foreign functional difference left in OTHER no longer presents advance-consideration FX
-  as a proven zero: that driver is unquantified while the residual stays in OTHER and the driver
-  tie-out still sums to the book difference. Existing collectibility, loss-provision and cost
-  impairment precedence remains. Reporting currency is explicitly refused instead of being
-  silently treated as functional. Migration 0292 describes the expanded currency basis.
-- Necessary checks passed: both-book foreign revenue through public report runs (GBP 4,790.61
-  transaction versus posted USD 6,131.98 functional), existing collectibility bridge and output
-  checks, driver/tie-out behavior with an unclassified FX residual, catalogue parity and types/lint.
-- Remaining financial Reporting work is explicit: Book Bridge reporting-currency translation,
-  granular causal attribution of framework/licence/FX effects and same-source retention; inspect
-  Adoption Bridge and Intercompany Pairs currency/source gaps next. These are real builder
-  limitations, not closed by the preceding audit-report retention work. No deployment.
 
 ## Outstanding release verification
 

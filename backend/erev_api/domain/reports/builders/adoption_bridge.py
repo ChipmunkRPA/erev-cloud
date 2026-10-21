@@ -32,8 +32,10 @@ Transaction view preserves each contract's currency. Functional view uses record
 functional revenue, reconciled dated primary revenue and engine functional balances. Foreign
 legacy liabilities/unbilled balances stay unavailable until historical carrying evidence exists;
 line totals for those captions are also unavailable, never partial totals or artificial zeroes.
-Control totals: the
-contract count, the three revenue totals per currency, the date and the ``as_of`` day. A contract
+Reporting view translates each historical functional revenue movement at its period average
+and ending balances at the closing rate. Legacy balance captions are translated separately
+from revenue, preserving unavailable positions. Control totals include the contract count,
+revenue totals per currency, the date and the ``as_of`` day. A contract
 whose pre-standard revenue stands against no ``ASC606`` version in the disclosures (a draft, or
 not a contract under Topic 606) has no billed amount to read and is not listed; the control totals
 ``legacy_only_contract_count`` and ``legacy_only_revenue`` state what stays outside the bridge.
@@ -45,7 +47,7 @@ journal and no 1.0 posting uses the ``RETAINED_EARNINGS`` role (D-14a; REQ-BK-00
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -64,7 +66,7 @@ from erev_api.db.tables import (
     period,
     subledger_line,
 )
-from erev_api.domain.reports import functional_balances, tie_outs
+from erev_api.domain.reports import functional_balances, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -122,7 +124,8 @@ COLUMNS: Final = (
 @dataclass(frozen=True, slots=True)
 class Source:
     """One contract at the end of the day before the date of initial application — the input of
-    ``dataset_rows``. Amounts in the contract's transaction currency."""
+    ``dataset_rows``. Amounts use the selected currency; reporting income preserves its
+    historical period basis independently of translated ending balances."""
 
     contract_external_id: str
     customer_name: str | None
@@ -135,6 +138,7 @@ class Source:
     unbilled_receivable: Decimal = ZERO
     cost_assets: Decimal = ZERO
     legacy_position_available: bool = True
+    legacy_position_values: tuple[Decimal, Decimal] | None = None
 
     @property
     def cumulative_effect(self) -> Decimal:
@@ -151,6 +155,7 @@ class Source:
                 self.contract_asset,
                 self.unbilled_receivable,
                 self.cost_assets,
+                *(self.legacy_position_values or ()),
             )
         )
 
@@ -209,7 +214,9 @@ def dataset_rows(
     unavailable = {item.currency for item in listed if not item.legacy_position_available}
     for item in listed:
         money = _money_of(item.currency)
-        liability, unbilled = legacy_position(item.billed, item.revenue_legacy)
+        liability, unbilled = item.legacy_position_values or legacy_position(
+            item.billed, item.revenue_legacy
+        )
         rows.append(
             {
                 "row_key": f"{CONTRACT_PREFIX}{item.contract_external_id}",
@@ -470,6 +477,32 @@ def functional_revenue_at(
     return total
 
 
+def require_dated_revenue(trace: Trace, subjects: Sequence[str], period_key: str) -> None:
+    """Do not translate an undated imported cumulative baseline as current-period income."""
+    nodes = {node.id: node for node in trace.nodes}
+    pending = [
+        node.id
+        for node in trace.nodes
+        for subject in subjects
+        if node.id.startswith(f"{REVENUE_NODE}:{subject}:FY")
+        and node.id.rpartition(":")[2] <= period_key
+    ]
+    seen: set[str] = set()
+    while pending:
+        key = pending.pop()
+        if key in seen or key not in nodes:
+            continue
+        seen.add(key)
+        node = nodes[key]
+        if node.id.startswith("opening_revenue_cum@") and Decimal(node.value) != 0:
+            raise tie_outs.invalid(
+                "currency_view",
+                "Historical reporting translation requires dated income; an imported cumulative "
+                "opening revenue amount has no period allocation.",
+            )
+        pending.extend(ref for ref in node.inputs if isinstance(ref, str))
+
+
 def _obligation_keys(
     session: Session, balances: Sequence[BalanceRow]
 ) -> dict[tuple[UUID, UUID], list[str]]:
@@ -498,6 +531,7 @@ def sources(
     *,
     at: PeriodRef,
     contract_id: UUID | None,
+    require_income_history: bool = False,
 ) -> tuple[list[Source], list[Source]]:
     """(every contract of the entity with an ``ASC606`` version in the disclosures, with its
     figures at the end of ``at``; the contracts the ``LEGACY`` book holds without one)."""
@@ -544,11 +578,14 @@ def sources(
             (measure_at(nodes, REVENUE_NODE, subject, at.key) for subject in subjects), ZERO
         )
         foreign = functional and row.currency != entity.functional_currency
-        if foreign:
+        if foreign or require_income_history:
             trace = store.load_trace(session, row.version_id)
             if trace is None:
                 raise tie_outs.invalid("currency_view", "Historical functional trace is missing.")
-            revenue = functional_revenue_at(trace, subjects, at.key, entity.functional_currency)
+            if require_income_history:
+                require_dated_revenue(trace, subjects, at.key)
+            if foreign:
+                revenue = functional_revenue_at(trace, subjects, at.key, entity.functional_currency)
         held = legacy.pop(row.contract_id, None)
         found.append(
             Source(
@@ -571,11 +608,125 @@ def sources(
     return found, sorted(legacy.values(), key=lambda item: item.contract_external_id)
 
 
+def translate_sources(
+    items: Sequence[Source],
+    closing: reporting_currency.Translation,
+    entity_id: UUID,
+    revenue: Mapping[str, tuple[Decimal, Decimal]],
+) -> list[Source]:
+    """Translate balances independently of accumulated historical revenue movements."""
+    translated: list[Source] = []
+    for item in items:
+        if item.currency != closing.rates[entity_id]["base_currency"]:
+            raise tie_outs.invalid(
+                "currency_view", "Reporting translation requires functional amounts."
+            )
+        legacy, primary = revenue.get(item.contract_external_id, (ZERO, ZERO))
+        position = None
+        if item.legacy_position_available:
+            liability, unbilled = item.legacy_position_values or legacy_position(
+                item.billed, item.revenue_legacy
+            )
+            position = (closing.amount(entity_id, liability), closing.amount(entity_id, unbilled))
+        translated.append(
+            replace(
+                item,
+                currency=closing.currency,
+                revenue_legacy=legacy,
+                revenue_asc606=primary,
+                billed=closing.amount(entity_id, item.billed)
+                if item.legacy_position_available
+                else ZERO,
+                contract_liability=closing.amount(entity_id, item.contract_liability),
+                contract_asset=closing.amount(entity_id, item.contract_asset),
+                unbilled_receivable=closing.amount(entity_id, item.unbilled_receivable),
+                cost_assets=closing.amount(entity_id, item.cost_assets),
+                legacy_position_values=position,
+            )
+        )
+    return translated
+
+
+def reporting_sources(
+    uow: UnitOfWork,
+    params: ReportParams,
+    entity: EntityRef,
+    *,
+    at: PeriodRef,
+    periods: Sequence[PeriodRef],
+    contract_id: UUID | None,
+) -> tuple[list[Source], list[Source]]:
+    """Translate each period's change in cumulative income at its approved average rate.
+
+    Classification into included/legacy-only contracts is decided at the final endpoint;
+    revenue histories use both populations so a change of classification cannot lose income.
+    """
+    functional = replace(params, parameters={**params.parameters, "currency_view": "functional"})
+    closing = reporting_currency.rates_for_period(
+        uow.session,
+        params,
+        tenant_id=uow.principal.tenant_id,
+        entities=(entity,),
+        periods={entity.id: at},
+        evidence_key="adoption_closing_rate_v1",
+    )
+    previous: dict[str, tuple[Decimal, Decimal]] = {}
+    revenue: dict[str, tuple[Decimal, Decimal]] = {}
+    found: list[Source] = []
+    outside: list[Source] = []
+    for endpoint in sorted((p for p in periods if p.end <= at.end), key=lambda p: p.end):
+        found, outside = sources(
+            uow.session,
+            functional,
+            entity,
+            at=endpoint,
+            contract_id=contract_id,
+            require_income_history=closing.currency != entity.functional_currency,
+        )
+        current = {
+            item.contract_external_id: (item.revenue_legacy, item.revenue_asc606)
+            for item in (*found, *outside)
+        }
+        changes = {
+            key: tuple(
+                now - old
+                for now, old in zip(
+                    current.get(key, (ZERO, ZERO)), previous.get(key, (ZERO, ZERO)), strict=True
+                )
+            )
+            for key in current.keys() | previous.keys()
+        }
+        if any(any(value != 0 for value in values) for values in changes.values()):
+            average = reporting_currency.rates_for_period(
+                uow.session,
+                params,
+                tenant_id=uow.principal.tenant_id,
+                entities=(entity,),
+                periods={entity.id: endpoint},
+                rate_type="average",
+                target_currency=closing.currency,
+                evidence_key=f"adoption_average_rate_v1:{endpoint.key}",
+            )
+            for key, (legacy, primary) in changes.items():
+                before = revenue.get(key, (ZERO, ZERO))
+                revenue[key] = (
+                    before[0] + average.amount(entity.id, legacy),
+                    before[1] + average.amount(entity.id, primary),
+                )
+        previous = current
+    return (
+        translate_sources(found, closing, entity.id, revenue),
+        translate_sources(outside, closing, entity.id, revenue),
+    )
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     view = str(params.parameters.get("currency_view") or "transaction")
-    if view not in {"transaction", "functional"}:
-        raise tie_outs.invalid("currency_view", "Choose Transaction or Functional currency.")
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid(
+            "currency_view", "Choose Transaction, Functional or Reporting currency."
+        )
     session = uow.session
     entities = tie_outs.entities(session, params.entity_ids, params=params)
     if len(entities) != 1:
@@ -593,13 +744,23 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     found: list[Source] = []
     legacy_only: list[Source] = []
     if at is not None:  # a date that opens the calendar has no day before it: nothing to date
-        found, legacy_only = sources(session, params, entity, at=at, contract_id=contract_id)
+        if view == "reporting":
+            found, legacy_only = reporting_sources(
+                uow,
+                params,
+                entity,
+                at=at,
+                periods=calendar.periods,
+                contract_id=contract_id,
+            )
+        else:
+            found, legacy_only = sources(session, params, entity, at=at, contract_id=contract_id)
     rows, totals = dataset_rows(found, legacy_only)
     totals[DATE_KEY] = day.isoformat()
     totals["as_of"] = None if at is None else at.end.isoformat()
     columns = COLUMNS + (
         (Column("legacy_position_basis", "Legacy position basis", "text"),)
-        if view == "functional"
+        if view != "transaction"
         else ()
     )
     return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)

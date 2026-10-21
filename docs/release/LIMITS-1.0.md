@@ -1,5 +1,30 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Adoption Bridge reporting-currency view — October 21, 2026
+
+- Added Reporting currency to the public report and frozen migration 0299. The builder reads
+  each historical functional cumulative-income endpoint, translates each period's movement at
+  its approved average rate and accumulates those translated movements. Ending primary and
+  available legacy positions use the ending closing rate independently of income. Explicit
+  legacy position values prevent billed-at-closing minus historical revenue from inventing a
+  different balance. Included/legacy-only population is determined at the final endpoint.
+- Period-average and closing rate inputs are recorded separately. Missing/ambiguous rates are
+  refused through the shared approved-rate admission; unknown foreign legacy positions remain
+  unavailable at contract and aggregate level. A nonzero imported opening-revenue node actually
+  consumed by the revenue trace is refused for foreign reporting translation when its historical
+  period allocation is absent; it is never treated as first-period income. Identity conversion
+  does not require that historical FX allocation.
+- Public flow verified with recorded EUR income: January-November EUR/USD average 1, December
+  average 2 and closing 3 produce USD 160,000 legacy revenue, 178,666.66 primary revenue,
+  18,666.66 cumulative effect and 192,000 primary liability. This distinguishes period income
+  conversion from both ending-average and closing-rate shortcuts. The FX service generates
+  inverse rows, so the test approves a new version of the existing pair's set instead of
+  introducing duplicate simultaneously approved rates.
+- Necessary validation: public foreign reporting and original transaction flows, schema/IPE
+  migration parity, 48 focused report/source-binding cases and scoped lint/types passed.
+  Remaining: foreign legacy carrying-position sources, Adoption retained same-source replay,
+  other documented adapters and final repository verification. No deployment.
+
 ## Adoption Bridge functional view — October 21, 2026
 
 - Added Transaction/Functional selection to the public report (migration 0298). Functional
