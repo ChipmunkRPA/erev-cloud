@@ -264,17 +264,17 @@ def test_rpt_14_grid_fields_are_the_builder_columns() -> None:
         assert f'"{label}"' in section, label
 
 
-def test_registered_with_its_defaults_and_open_source_contract() -> None:
+def test_registered_with_its_defaults_and_retained_source_contract() -> None:
     """``framework.BUILDERS`` admits the code (18 → 19); the SCREENS_B RPT-14 status default and
-    the rev 1.23 transaction view are the run's stored defaults; the source contract is OPEN (a
-    rerun is a new live evaluation) and the catalogue row is the RPT-14 definition."""
+    the rev 1.23 transaction view are the run's stored defaults; the source contract retains
+    inputs for deterministic reruns and the catalogue row is the RPT-14 definition."""
     assert framework.BUILDERS[register.CODE] is register.build
     assert framework.PARAMETER_DEFAULTS[register.CODE] == {
         "status": ["APPLIED", "APPROVED"],
         "currency_view": "transaction",
     }
-    assert framework.SOURCE_CONTRACTS[register.CODE].strategy == "open"
-    assert framework.SOURCE_CONTRACTS[register.CODE].open
+    assert framework.SOURCE_CONTRACTS[register.CODE].strategy == "retained_inputs"
+    assert not framework.SOURCE_CONTRACTS[register.CODE].open
     definition = DEFINITIONS_BY_CODE[register.CODE]
     assert definition.kind == "REGISTER"
     assert set(definition.parameters_schema["properties"]) >= {
@@ -490,3 +490,82 @@ def test_reporting_equivalents_keep_originals_nulls_and_count_price_once():
         check_view("reporting", [_source(currency="EUR", functional_currency="USD")])
     with pytest.raises(Problem):
         check_view("invalid", [])
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_retained_modifications_recompute_without_live_reads(view):
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    tenant_id, entity_id = uuid4(), uuid4()
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": tenant_id,
+                "entity_ids": [entity_id],
+                "currency_view": view,
+                "selection": {
+                    key: None
+                    for key in ("book", "from_date", "to_date", "status", "contract_external_id")
+                },
+                "book": "ASC606",
+                "from_date": "2026-01-01",
+                "to_date": "2026-12-31",
+                "sources": [asdict(_source())],
+                "reporting_currency": "GBP",
+                "translations": [
+                    {
+                        "modification_no": "MOD-000001",
+                        "entity_id": entity_id,
+                        "currency": "GBP",
+                        "rates": {str(entity_id): {"base_currency": "USD", "rate": "0.8"}},
+                    }
+                ],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=register.CODE,
+        report_version=1,
+        entity_ids=(entity_id,),
+        parameters={"currency_view": view},
+        known_at=ENTERED,
+        binding=SourceBinding(
+            cutoff=ENTERED,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={register.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant_id))
+    data = register.build(uow, params)
+    assert data.rows[0]["created_at"] == ENTERED
+    assert data.rows[0]["approved_at"] == APPROVED
+    assert data.control_totals["from_date"] == "2026-01-01"
+    retained["sources"][0].update(tp_change="100", catch_up={"O2": "-20"})
+    changed = register.build(uow, params)
+    assert changed.control_totals["tp_change_total"] == {"USD": "100.00"}
+    assert changed.control_totals["catch_up_total"] == {"USD": "-20.00"}
+    if view == "reporting":
+        assert changed.control_totals["tp_change_reporting_total"] == {"GBP": "80.00"}
+        retained["translations"][0]["rates"][str(entity_id)]["rate"] = "0.9"
+        assert register.build(uow, params).control_totals["catch_up_reporting_total"] == {
+            "GBP": "-18.00"
+        }
+    for invalid in (
+        replace(params, entity_ids=(uuid4(),)),
+        replace(params, parameters={"currency_view": view, "book": "IFRS15"}),
+        replace(params, parameters={"currency_view": view, "status": ["DRAFT"]}),
+    ):
+        with pytest.raises(Problem):
+            register.build(uow, invalid)
+    with pytest.raises(Problem):
+        register.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=uuid4())), params)
+    retained["sources"][0].update(tp_change=None, catch_up=None)
+    assert register.build(uow, params).rows[0]["tp_change"] is None

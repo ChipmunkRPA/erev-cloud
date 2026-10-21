@@ -504,12 +504,6 @@ _LEGACY_EXPORT_OPEN: Final = (
 _MIGRATION_OPEN: Final = (
     "migration reconciliation, profile and exception mappings read live; frps3c"
 )
-_MODIFICATION_REGISTER_OPEN: Final = (
-    "modification rows with their contracts, approvals, judgement numbers, applied events, the "
-    "run book's contract / obligation versions, stored impact previews and reporting average "
-    "rates read live "
-    "(CTR-17 slice 1; S15-R-20c)"
-)
 # BUILD_SPEC RPS-9 to RPS-12 (lane F-RPS-REG): the registers and listings read live; no source
 # adapter yet — each names its actual input families.
 _SSP_CHANGE_LOG_OPEN: Final = (
@@ -855,9 +849,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 "posted lines, event/trigger attribution, late-event facts and currency evidence",
             ),
         ),
-        # F-CTR CTR-17 slice 1 (D-98 140-A1): the register reads live; no source adapter yet.
+        # RPT-14 retains selected modification/measure inputs and rate evidence.
         modification_register_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_MODIFICATION_REGISTER_OPEN,)
+            RETAINED,
+            (_CUTOFF, "modification inputs, application/preview provenance and rate evidence"),
         ),
         # RPT-18 retains adjustment, actor and rate inputs for same-source reconstruction.
         manual_adjustment_register_builder.CODE: SourceContract(
@@ -2086,6 +2081,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "adoption_bridge",
             "out_of_period_register",
             "manual_adjustment_register",
+            "modification_register",
         }
     ):
         try:

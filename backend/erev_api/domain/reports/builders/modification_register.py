@@ -39,13 +39,15 @@ F-RPS's registry entry ``SNAPSHOT_DATASETS["MODIFICATION_REGISTER"]`` wraps ``da
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -70,9 +72,11 @@ from erev_api.domain.reports.builders.contract_history import date_range
 from erev_api.domain.reports.builders.out_of_period_register import event_key, refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import ApprovalDecisionKind, ModificationStatus
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "modification_register"
+EVIDENCE: Final = "modification_inputs_v1"
 KEY_COLUMNS: Final = ("contract_external_id", "modification_no", "obligation_key")  # S15-R-20c
 MEASURES: Final = ("tp_change", "catch_up_amount")  # the declared measures (D-98 87)
 DEFAULT_CURRENCY_VIEW: Final = "transaction"  # SCREENS_B RPT-14 rev 1.23 "transaction served"
@@ -580,6 +584,15 @@ def _applied_measures(
             bound[modification_id] = version
     if not bound:
         return found
+    if params is not None:
+        tie_outs.record_members(
+            params, "modification_application_versions", (v["id"] for v in bound.values())
+        )
+        tie_outs.record_evidence(
+            params,
+            "modification_application_versions_v1",
+            json.loads(canonical_bytes({str(key): dict(value) for key, value in bound.items()})),
+        )
     cause_ids = sorted(
         {UUID(str(c)) for v in bound.values() for c in (v["cause_event_ids"] or ())}, key=str
     )
@@ -730,6 +743,16 @@ def sources(
     if refusal is not None:
         raise tie_outs.invalid("known_at", refusal)
     rows = population_filter(candidates, from_date=from_date, to_date=to_date, statuses=statuses)
+    tie_outs.record_members(params, "modifications", (row["id"] for row in rows))
+    tie_outs.record_members(
+        params,
+        "modification_preview_files",
+        (
+            row["impact_preview_file_id"]
+            for row in rows
+            if row["impact_preview_file_id"] is not None
+        ),
+    )
     if not rows:
         return []
     request_ids = [
@@ -908,6 +931,29 @@ def reporting_rows(
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    check_view(view, ())
+    selection = {
+        key: params.parameters.get(key)
+        for key in (
+            "book",
+            "from_date",
+            "to_date",
+            "status",
+            "contract_external_id",
+        )
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained modification inputs exceed report scope.")
+        if retained["currency_view"] != view or retained["selection"] != selection:
+            raise tie_outs.invalid(
+                "currency_view", "Retained inputs use another currency or filter selection."
+            )
+        return data_from_inputs(retained)
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     from_date, to_date = date_range(session, params, year=True)
@@ -919,9 +965,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         to_date=to_date,
         statuses=_statuses(params),
     )
-    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
     check_view(view, found)
-    columns: tuple[Column, ...] = COLUMNS
+    target: str | None = None
+    translations: dict[str, tuple[UUID, reporting_currency.Translation]] = {}
     if view == "reporting":
         target = str(
             session.execute(
@@ -932,7 +978,6 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         by_code = {entity.code: entity for entity in entities}
         calendars = tie_outs.calendars(session, entities)
         rates: dict[tuple[UUID, str], reporting_currency.Translation] = {}
-        translations = {}
         for item in found:
             if item.tp_change is None and not item.catch_up:
                 continue
@@ -955,7 +1000,67 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     evidence_key=f"modification_average_v1:{entity.id}:{at.key}",
                 )
             translations[item.modification_no] = (entity.id, rates[key])
-        rows, totals = reporting_rows(found, target, translations)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "currency_view": view,
+                "book": book_code,
+                "from_date": from_date,
+                "to_date": to_date,
+                "sources": [asdict(item) for item in found],
+                "reporting_currency": target,
+                "translations": [
+                    {
+                        "modification_no": key,
+                        "entity_id": entity_id,
+                        "currency": rate.currency,
+                        "rates": {str(k): v for k, v in rate.rates.items()},
+                    }
+                    for key, (entity_id, rate) in translations.items()
+                ],
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    found: list[Source] = []
+    for record in retained["sources"]:
+        values = dict(record)
+        values["effective_date"] = date.fromisoformat(values["effective_date"])
+        for key in ("created_at", "approved_at"):
+            values[key] = (
+                None
+                if values[key] is None
+                else datetime.fromisoformat(values[key].replace("Z", "+00:00"))
+            )
+        values["tp_change"] = None if values["tp_change"] is None else Decimal(values["tp_change"])
+        values["catch_up"] = (
+            None
+            if values["catch_up"] is None
+            else {key: Decimal(value) for key, value in values["catch_up"].items()}
+        )
+        values["obligation_keys"] = tuple(values["obligation_keys"])
+        found.append(Source(**values))
+    view = retained["currency_view"]
+    check_view(view, found)
+    columns: tuple[Column, ...] = COLUMNS
+    if view == "reporting":
+        translations = {
+            item["modification_no"]: (
+                UUID(item["entity_id"]),
+                reporting_currency.Translation(
+                    item["currency"], {UUID(key): value for key, value in item["rates"].items()}
+                ),
+            )
+            for item in retained["translations"]
+        }
+        rows, totals = reporting_rows(found, retained["reporting_currency"], translations)
         columns = COLUMNS + (
             Column("reporting_currency", "Reporting currency", "code"),
             Column("tp_change_reporting", "TP change, reporting equivalent", "money"),
@@ -966,6 +1071,6 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         rows = dataset_rows(found)
         totals = control_totals(rows)
     check_key_columns(rows)
-    totals["from_date"] = from_date.isoformat()
-    totals["to_date"] = to_date.isoformat()
+    totals["from_date"] = retained["from_date"]
+    totals["to_date"] = retained["to_date"]
     return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)

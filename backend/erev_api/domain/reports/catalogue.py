@@ -1578,6 +1578,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "reporting preserves original amounts and adds equivalents using the approved average "
             "of the modification effective period; these are analytical equivalents, not posted FX "
             "amounts; unknown measures stay empty and TP totals count each modification once",
+            "same-source runs retain modification inputs, applied-version/preview provenance, "
+            "resolved dates and reporting rates; reruns rebuild rows and totals without live reads",
             _SCOPE,
             _BOOK,
             "modification.effective_date from from_date to to_date inclusive",

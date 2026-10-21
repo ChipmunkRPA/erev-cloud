@@ -1268,3 +1268,53 @@ def test_a_contract_booked_after_seven_closed_periods_is_seven_rows_and_the_lock
     )
     assert as_locked["period_lock_id"] == str(lock_id)
     assert [row["row_key"] for row in locked_rows] == row_keys
+
+
+def test_modification_rerun_keeps_submitted_preview_after_application(
+    k02: K02World, runtime: JobRuntime, clock: FrozenClock
+) -> None:
+    from support import worlds
+
+    contract_id = flows._k02_contract(k02)
+    created = flows._create(k02, contract_id, flows._upgrade_body(questionnaire=dict(ANSWERS)))
+    flows._classify(k02, created["id"])
+    flows._preview(k02, created["id"], runtime)
+    request_id = flows._submit(k02, created["id"])
+    world = worlds.ReportWorld(
+        place=k02.place,
+        priya=k02.priya,
+        marcus=k02.marcus,
+        runtime=runtime,
+        entity_id=k02.entity_id,
+        contracts={},
+    )
+    parameters = {
+        "entity_codes": ["AVM-US"],
+        "from_date": "2026-01-01",
+        "to_date": "2027-12-31",
+        "status": ["SUBMITTED", "APPLIED"],
+    }
+    originals = []
+    for view in ("transaction", "functional", "reporting"):
+        run, rows = worlds.report_run(world, register.CODE, {**parameters, "currency_view": view})
+        assert rows[0]["status"] == "SUBMITTED"
+        originals.append((view, run, rows))
+    clock.advance(timedelta(minutes=1))
+    assert approve(k02.app, request_id, k02.priya).status_code == 200
+    for view, original, original_rows in originals:
+        _, fresh = worlds.report_run(world, register.CODE, {**parameters, "currency_view": view})
+        assert fresh[0]["status"] == "APPLIED"
+        assert fresh != original_rows
+        started = post(k02.app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        restored = get(
+            k02.app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == original_rows

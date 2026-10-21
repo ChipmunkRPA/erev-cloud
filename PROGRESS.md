@@ -20,6 +20,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Modification register retained reconstruction — October 21, 2026
+
+- New runs retain modification inputs, original preview hash/file membership, application-version
+  provenance, resolved dates, actor display values and effective-period reporting rates. Same-source
+  reruns validate tenant/entity scope and filters, then rebuild typed rows and control totals without
+  consulting current modification, approval, version or FX state.
+- This supersedes the preceding live-source limitation. Previously saved OPEN runs keep their
+  original new-evaluation behavior. Ad-hoc historical queries still refuse unavailable mutable-row
+  history; foreign-contract functional TP/catch-up support and lock support are unchanged.
+- Necessary validation passed: 34 focused register/source-binding cases; actual API/worker runs
+  across SUBMITTED-to-APPLIED approval in all three currency views. Fresh runs show APPLIED while
+  saved runs reproduce SUBMITTED rows and identical output hashes. Applied-upgrade reporting,
+  scoped lint/types and migration 0307 frozen-IPE parity also passed. No deployment.
+
 ## Modification register reporting equivalents — October 21, 2026
 
 - Fixed Reporting view returning unchanged transaction figures when contract and functional
@@ -204,26 +218,6 @@ review and publish changes without PR accumulation, and do not deploy.
   same-source reconstruction, other documented report adapters and final repository validation.
   This completes the usable functional income/primary-balance view, not all multi-currency work.
   No deployment or real-business migration requirements were added.
-
-## Foreign LEGACY revenue and JET-15 — October 21, 2026
-
-- Fixed foreign pre-standard revenue failing at JET-15 because the LEGACY fold supplied only
-  transaction amounts. It now converts each signed source event at its effective-date pinned
-  spot and accumulates those historical functional amounts by obligation/period. Stage 14
-  consumes the matching functional target and rate references; no framework recognition or
-  FX-layer stages are run for LEGACY. Same-currency behavior remains unchanged.
-- Registered replayable books.legacy_fx.v1 nodes cite both the original event amount and rate;
-  Explain includes the conversion date. Missing FX produces an FX_RATE_MISSING finding naming
-  the event and produces no partial LEGACY posting. Subsequent rates do not revalue prior income.
-- Verified real JET-15: USD 1,200 at EUR 0.80 posts EUR 960; a USD 200 reversal at 0.90 posts
-  EUR 180, leaving EUR 780. A full USD 1,200 reversal leaves zero transaction cumulative revenue
-  and EUR -120 historical functional activity; that difference is retained. All journal lines
-  balance in both currencies and traces re-evaluate. 38 book/legacy tests plus formula ownership
-  and scoped lint/types passed. No schema changes or deployment.
-- Adoption Bridge still needs the functional view wired to these recorded legacy amounts and
-  dated primary amounts, with a defensible legacy-position basis, plus reporting-currency
-  translation and retained reconstruction. This fixes a real foreign-currency posting blocker;
-  it does not declare the report's multi-currency work complete.
 
 ## Outstanding release verification
 
