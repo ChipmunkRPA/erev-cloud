@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Approval register retained display and decision inputs — October 21, 2026
+
+- Approvals Register now retains the consumed requests and decisions, resolved personnel and
+  entity labels, first-step names, automatic rule keys/versions and applied date range. Both
+  initial builds and same-source reruns feed the same row/control calculation; reruns make no
+  live approval or display-name reads. Decimal amounts, UUIDs and timestamps round-trip exactly.
+- Retained inputs are bound to the workspace and complete report entity scope. Existing
+  functional-view restriction, request population permissions and historical commit filtering
+  remain in place. Old OPEN runs keep their source classification and reevaluate on rerun.
+- Migration 0289 synchronizes catalogue metadata. Necessary checks cover multi-step/pending/
+  automatic decisions, resolved names/rules, exact money, recomputed control totals without a
+  database, scope isolation, public rerun after a later approval, catalogue parity and types/lint.
+- Remaining: first-generation historical actor/entity/step/rule display resolution and other
+  OPEN report adapters. Retention freezes the inputs actually consumed; it does not claim that
+  current labels were historically correct on a report's first generation. No deployment.
+
 ## Audit export committed cutoff and retained inputs — October 21, 2026
 
 - Historical Audit Log Export now filters original audit transaction commits by known_at for
@@ -208,31 +224,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: JE Population complete retained inputs, sample journal evidence and other mutable
   report inputs/configuration still need work. This does not claim all historical sources are
   complete. No deployment or actual-business migration is required or performed.
-
-## Committed GL and contract-source revisions — October 21, 2026
-
-- Migration 0278 extends original transaction evidence to immutable report-source revisions
-  (GL reconciliation state, contract headers and customer/entity code labels). Source triggers
-  queue evidence atomically; the existing minute recovery archives it. Existing revision
-  history is not assigned invented commits: upgrade requires an empty revision table, and
-  retained revision-commit evidence prevents downgrade.
-- GL bridge v7 filters revision commits before ranking source identity and review state in
-  its single snapshot query. A change inserted before a report cutoff but committed afterward
-  no longer replaces the original reviewed/reopened state on a later historical read.
-  Revision identity, insertion time and actual commit time are retained. Bound v1-v6
-  comparisons keep their original evidence and control rules.
-- Contract exports resolve header and code-label revisions at committed cutoffs. New
-  incremental exports return the latest contract when its header or customer/entity code
-  changed in (known_since, known_at], covering updates and late commits as well as new rows.
-  This remains an upsert dataset, not a deletion feed. Columns are unchanged; old bound
-  extracts preserve their original creation-time interpretation and retained labels.
-- Necessary checks pass: public reviewed GL/reopen flow with a real overlapping commit and
-  subsequent historical replay, old-v6 GL binding, source-owned contract revisions, late
-  header updates, code-only incremental changes, new/legacy extract bindings, archive guards
-  and catalogue parity. Scoped lint/types pass. No deployment.
-- Remaining historical work includes journal-run state and other mutable memberships,
-  configuration and report-specific inputs. These changes cover retained GL and contract
-  revisions; they do not claim arbitrary reconstruction for every mutable source.
 
 ## Outstanding release verification
 

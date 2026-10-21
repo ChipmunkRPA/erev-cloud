@@ -25,18 +25,24 @@ a request of all entities only in a run that names every entity), narrowed by ``
 - ``amount_functional`` is the request's amount in its entity's functional currency
   (``amount_currency``); the served view is ``functional`` and any other view is refused by name.
 
+Same-source reruns rebuild from retained requests, decisions and resolved display inputs;
+first-generation historical display-name reconstruction remains a separate source concern.
+
 Control totals ``request_count``, ``decision_count``, ``auto_approval_count`` and the date range
 applied.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import Session
 
@@ -46,9 +52,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import ApprovalDecisionKind
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "approvals_register"
+EVIDENCE: Final = "approvals_register_inputs_v1"
 ROW_KEY_PREFIX: Final = "decision:"  # RPT-26: row_key `decision:<request no>:<step no>:<sequence>`
 DEFAULT_CURRENCY_VIEW: Final = "functional"  # SCREENS_B RPT-26 "functional amounts of requests"
 AUTO_APPROVE: Final = ApprovalDecisionKind.AUTO_APPROVE.value
@@ -263,28 +271,93 @@ def sources(
     return found
 
 
+def _restore_sources(records: Sequence[Mapping[str, Any]]) -> list[Source]:
+    found = []
+    for record in records:
+        request = dict(record["request"])
+        for key in ("id", "subject_id", "entity_id", "preparer_id"):
+            request[key] = support.uuid_of(request[key])
+        for key in ("submitted_at", "decided_at"):
+            if request[key] is not None:
+                request[key] = datetime.fromisoformat(request[key])
+        if request["amount_functional"] is not None:
+            request["amount_functional"] = Decimal(request["amount_functional"])
+        request["flags"] = tuple(request["flags"])
+        decisions = []
+        for retained in request["decisions"]:
+            decision = dict(retained)
+            for key in (
+                "id",
+                "approver_id",
+                "on_behalf_of_id",
+                "auto_rule_id",
+                "auto_rule_set_version_id",
+            ):
+                decision[key] = support.uuid_of(decision[key])
+            decision["decided_at"] = datetime.fromisoformat(decision["decided_at"])
+            decisions.append(support.Decision(**decision))
+        request["decisions"] = tuple(decisions)
+        first_step = record["first_step"]
+        found.append(
+            Source(
+                request=support.Request(**request),
+                entity_code=record["entity_code"],
+                first_step=None if first_step is None else (int(first_step[0]), str(first_step[1])),
+            )
+        )
+    return found
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     check_view(params)
-    session = uow.session
-    first, last = support.date_range(session, params, year=False, today=True)
-    found = sources(uow, params, bounds=support.instants(first, last))
-    codes = _entity_codes(session, found)
-    steps = _first_steps(session, found)
-    rule_keys, rule_versions = _rules(session, found)
-    rows, totals = dataset_rows(
-        [
-            Source(
-                request=item,
-                entity_code=None if item.entity_id is None else codes.get(item.entity_id),
-                first_step=steps.get(item.id),
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity) for entity in params.entity_ids
+        }:
+            raise Problem("forbidden", "The retained approval population exceeds report scope.")
+    else:
+        session = uow.session
+        first, last = support.date_range(session, params, year=False, today=True)
+        found = sources(uow, params, bounds=support.instants(first, last))
+        codes = _entity_codes(session, found)
+        steps = _first_steps(session, found)
+        rule_keys, rule_versions = _rules(session, found)
+        retained = json.loads(
+            canonical_bytes(
+                {
+                    "tenant_id": uow.principal.tenant_id,
+                    "entity_ids": params.entity_ids,
+                    "sources": [
+                        asdict(
+                            Source(
+                                request=item,
+                                entity_code=None
+                                if item.entity_id is None
+                                else codes.get(item.entity_id),
+                                first_step=steps.get(item.id),
+                            )
+                        )
+                        for item in found
+                    ],
+                    "names": {
+                        str(key): value for key, value in support.names_of(session, found).items()
+                    },
+                    "rule_keys": {str(key): value for key, value in rule_keys.items()},
+                    "rule_versions": {str(key): value for key, value in rule_versions.items()},
+                    "from_date": first.isoformat(),
+                    "to_date": last.isoformat(),
+                }
             )
-            for item in found
-        ],
-        support.names_of(session, found),
-        rule_keys=rule_keys,
-        rule_versions=rule_versions,
+        )
+        tie_outs.record_evidence(params, EVIDENCE, retained)
+    rows, totals = dataset_rows(
+        _restore_sources(retained["sources"]),
+        {UUID(key): value for key, value in retained["names"].items()},
+        rule_keys={UUID(key): value for key, value in retained["rule_keys"].items()},
+        rule_versions={UUID(key): value for key, value in retained["rule_versions"].items()},
     )
-    totals["from_date"], totals["to_date"] = first.isoformat(), last.isoformat()
+    totals["from_date"], totals["to_date"] = retained["from_date"], retained["to_date"]
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

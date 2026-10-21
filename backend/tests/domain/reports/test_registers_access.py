@@ -1248,6 +1248,21 @@ def test_approvals_register(
     assert two[0]["step_name"] != two[1]["step_name"]
     assert "maya" in two[0]["preparer"].lower()
 
+    assert run["sources"]["kind"] == "retained"
+    clock.advance(MINUTE)
+    approved_later = decide(app, access.fresh("grace"), waiting_request, "Approve later")
+    assert approved_later["status"] == "APPROVED"
+    rerun = post(app, f"{REPORT_RUNS}/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    rerun_id = rerun.headers[REPORT_RUN_ID_HEADER]
+    repeated = get(app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+    shown = get(app, f"{REPORT_RUNS}/{rerun_id}", world.maya).json()
+    assert shown["control_totals"] == run["control_totals"]
+    assert shown["sources"]["kind"] == "retained"
+
 
 # --- RPT-44 ---------------------------------------------------------------------------------------
 

@@ -547,10 +547,6 @@ _SOD_CONFLICT_REPORT_OPEN: Final = (
     "SoD rule versions, role assignments, role permissions, memberships and SoD exceptions read "
     "live (RPS-10 RPT-25)"
 )
-_APPROVALS_REGISTER_OPEN: Final = (
-    "approval requests with their steps, decisions, auto-approval rules, entity codes and "
-    "display names read live (RPS-10 RPT-26)"
-)
 _CHAIN_VERIFICATION_REPORT_OPEN: Final = "audit chain verification rows read live (RPS-10 RPT-44)"
 _JUDGEMENT_REGISTER_OPEN: Final = (
     "judgement records with their contracts, subjects and display names read live (RPS-11 RPT-28)"
@@ -899,7 +895,8 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             OPEN, _OPEN_ONLY, (_SOD_CONFLICT_REPORT_OPEN,)
         ),
         approvals_register_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_APPROVALS_REGISTER_OPEN,)
+            RETAINED,
+            (_CUTOFF, "approval requests, decisions, resolved display names, steps and rules"),
         ),
         audit_log_export_builder.CODE: SourceContract(
             RETAINED,
@@ -2069,7 +2066,8 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
     kind = run_kind(run)
     if kind in (KIND_BOUND, KIND_RETAINED) or (
         kind == KIND_OPEN
-        and run.get("report_code") in {"forecast_outputs", "je_population", "audit_log_export"}
+        and run.get("report_code")
+        in {"forecast_outputs", "je_population", "audit_log_export", "approvals_register"}
     ):
         try:
             binding = SourceBinding.from_stored(run["source_binding"])

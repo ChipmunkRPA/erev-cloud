@@ -290,7 +290,7 @@ def test_sources_out_summarises_a_bound_run_and_classifies_every_other_lifecycle
         )
     )
     assert (opened.bound, opened.kind, opened.strategy) == (False, framework.KIND_OPEN, OPEN)
-    for code in ("je_population", "audit_log_export"):
+    for code in ("je_population", "audit_log_export", "approvals_register"):
         legacy = framework.sources_out(
             _row(
                 report_code=code,
@@ -355,7 +355,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "config_change_register",
         "user_access_listing",
         "sod_conflict_report",
-        "approvals_register",
         "chain_verification_report",
         # BUILD_SPEC RPS-11 (lane F-RPS-REG): the judgement, estimate-change and scope-exclusion
         # registers read live, no adapter yet

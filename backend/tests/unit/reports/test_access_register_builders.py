@@ -93,11 +93,11 @@ def test_rpt_43_columns_are_t_plt_19_in_the_specified_order() -> None:
 
 @pytest.mark.parametrize(("number", "module"), MODULES)
 def test_registration_and_catalogue(number: int, module: Any) -> None:
-    """The register sources remain OPEN; audit export retains its event inputs.
+    """Audit export and approvals retain inputs; the other registers remain OPEN.
     Each definition's kind and row key still match the specification."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module is audit_export:
+    if module in (audit_export, approvals):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -1270,3 +1270,70 @@ def test_retained_audit_inputs_rebuild_controls_without_database() -> None:
     assert [row["chain_seq"] for row in changed.rows] == [8]
     with pytest.raises(Problem, match="another workspace"):
         audit_export.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+
+
+def test_retained_approval_inputs_rebuild_names_steps_rules_and_totals() -> None:
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    rule, version, entity = _id(31), _id(32), _id(71)
+    request = _request(
+        "APR-000001",
+        _decision(1, None, kind="AUTO_APPROVE", rule=rule, rule_version=version),
+        amount="1234.56",
+        currency="USD",
+        entity=entity,
+    )
+    waiting = _request("APR-000002", status="PENDING")
+    inputs = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [entity],
+                "sources": [
+                    asdict(approvals.Source(request, "AVM-US", None)),
+                    asdict(approvals.Source(waiting, None, (1, "Access approval"))),
+                ],
+                "names": {str(k): v for k, v in NAMES.items()},
+                "rule_keys": {str(rule): "AUTO-ORIGINAL"},
+                "rule_versions": {str(version): 4},
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+            }
+        )
+    )
+    binding = SourceBinding(
+        cutoff=AT,
+        versions={},
+        labels={},
+        row_keys=frozenset(),
+        strategy=RETAINED,
+        evidence={approvals.EVIDENCE: inputs},
+    )
+    params = replace(_params({}), entity_ids=(entity,), binding=binding)
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    report = approvals.build(uow, params)
+    assert report.rows[0]["preparer"] == NAMES[MAYA]
+    assert report.rows[0]["auto_rule_key"] == "AUTO-ORIGINAL"
+    assert report.rows[0]["auto_rule_version"] == 4
+    assert report.rows[0]["amount_functional"] == {"amount": "1234.56", "currency": "USD"}
+    assert report.rows[1]["step_name"] == "Access approval"
+    assert report.control_totals == {
+        "request_count": 2,
+        "decision_count": 1,
+        "auto_approval_count": 1,
+        "from_date": "2026-09-01",
+        "to_date": "2026-09-30",
+    }
+    inputs["sources"] = inputs["sources"][1:]
+    changed = approvals.build(uow, params)
+    assert changed.control_totals["decision_count"] == 0
+    assert changed.control_totals["auto_approval_count"] == 0
+    assert len(changed.rows) == changed.control_totals["request_count"] == 1
+    with pytest.raises(Problem, match="exceeds report scope"):
+        approvals.build(uow, replace(params, entity_ids=()))
+    with pytest.raises(Problem, match="exceeds report scope"):
+        approvals.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
