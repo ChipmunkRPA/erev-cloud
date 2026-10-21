@@ -110,6 +110,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             else "rpo_cancelled_changes_v1",
             True,
         )
+    chain_evidence = "rpo_cancelled_chains_v1"
+    store = replace(
+        store,
+        classify_cancelled_chains=(
+            params.binding is None or chain_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_cancelled_chains and params.sources is not None:
+        params.sources.record_evidence(chain_evidence, True)
     applied = rpo.applied_expedients(session, found, book_code=book_code, known_at=params.known_at)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates

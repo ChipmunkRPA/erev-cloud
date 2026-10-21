@@ -6,6 +6,24 @@
 
 
 
+## RPO cancellations survive later retained versions — October 20, 2026
+
+- A first-batch cancellation is settled before a later retained version supersedes its
+  revenue evidence. The same bridge now handles an opening obligation cancelled before the
+  next retained version. Later cancelled versions carry retained revenue; re-entry admits
+  only its remaining allocation, preserving the earlier cancellation and revenue lines.
+- New report bindings retain rpo_cancelled_chains_v1; existing bindings keep the prior
+  classification on rerun. The change also reaches monthly converted rollforwards through
+  the shared Store. Accounting computations and original events are unchanged.
+- The 50 scoped cases pass, including real-engine cancellation traces adapted into later
+  retained/memo and re-entry chains, both estimate directions, refunds/non-refunds, full-range
+  and monthly balances, and legacy behavior. Existing public modification reports/reruns in
+  three views, scoped lint/types and migration 0243 down/up catalogue parity pass.
+- Multiple cancellations within one computation, versions intervening before the original
+  termination, same-day entry/cancellation, usage mixtures and combined-member aging ownership
+  remain open. Independent accounting sign-off and final-candidate checks remain open.
+  Direct main publication; no deployment.
+
 ## Original cancellation dates preserve historical RPO — October 20, 2026
 
 - Stage 06 retains each obligation's original termination date and pre-boundary end date.
@@ -211,20 +229,6 @@
 - A separate diagnostic exposed S04-R-02 failure after over-billing a right-to-invoice contract;
   it is recorded in LIMITS for follow-up. Locked aging datasets, combined-member allocation
   expansion, independent accounting acceptance and final candidate checks remain open.
-
-## Reporting-currency balance aging — October 20, 2026
-
-- Fixed reporting view returning untranslated aging amounts when transaction and functional
-  currencies coincide. Supported functional age buckets now translate at approved retained
-  closing rates, with currency/rate columns and source evidence in control totals.
-- Cumulative bucket rounding conserves the translated contract/role total, including signed
-  amounts and tiny balances. Functional balance reconciliation remains separate and explicitly
-  labelled. New bindings retain translation behavior; legacy bindings keep original output.
-- GBP-to-USD public report/rerun, existing asset/unbilled aging and later-billing rerun journeys
-  pass. Focused core/catalogue checks, lint/types and migration 0232 roundtrip/IPE agreement pass.
-- Foreign transaction-to-functional aging still requires exact functional layer attribution;
-  this path remains unavailable. Locked aging datasets, independent accounting acceptance and
-  final candidate verification remain open. Direct main publication; no deployment.
 
 ## Outstanding release verification
 

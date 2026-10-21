@@ -10303,3 +10303,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Migration 0231 updates the waterfall IPE and source list; scoped lint/types pass.
 - B4-1/C-3's population implementation gap is closed. Independent accounting acceptance,
   broader lifecycle acceptance and final candidate verification remain open. No deployment.
+
+## Reporting-currency balance aging — October 20, 2026
+
+- Fixed reporting view returning untranslated aging amounts when transaction and functional
+  currencies coincide. Supported functional age buckets now translate at approved retained
+  closing rates, with currency/rate columns and source evidence in control totals.
+- Cumulative bucket rounding conserves the translated contract/role total, including signed
+  amounts and tiny balances. Functional balance reconciliation remains separate and explicitly
+  labelled. New bindings retain translation behavior; legacy bindings keep original output.
+- GBP-to-USD public report/rerun, existing asset/unbilled aging and later-billing rerun journeys
+  pass. Focused core/catalogue checks, lint/types and migration 0232 roundtrip/IPE agreement pass.
+- Foreign transaction-to-functional aging still requires exact functional layer attribution;
+  this path remains unavailable. Locked aging datasets, independent accounting acceptance and
+  final candidate verification remain open. Direct main publication; no deployment.

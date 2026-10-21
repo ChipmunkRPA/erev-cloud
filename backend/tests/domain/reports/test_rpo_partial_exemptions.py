@@ -1102,3 +1102,88 @@ def test_first_entry_separates_later_original_estimate_events(
                 assert result.lines["CANCELLATIONS"] == -refund
                 assert result.lines["REVENUE"] == -(final - refund)
             assert result.lines["UNEXPLAINED"] == 0
+
+        # A later retained memo must not erase or duplicate that first cancellation.
+        later_id = uuid4()
+        retained = replace(
+            first_cancelled,
+            id=later_id,
+            version_no=2,
+            effective=end,
+            entries=(),
+            causes=frozenset({"MEMO_ADDED"}),
+            modification_events=frozenset(),
+            estimate_events=frozenset(),
+            cancellation_events=frozenset(),
+        )
+        later_obs = tuple(replace(ob, version_id=later_id) for ob in cancelled_obs)
+        continued = replace(
+            cancelled_store,
+            versions={gid: (first_cancelled, retained)},
+            chains={cid: (first_cancelled, retained)},
+            obligations={vid: cancelled_obs, later_id: later_obs},
+            cuts={
+                **cancelled_cuts,
+                **{(later_id, day): points for (source, day), points in cancelled_cuts.items()},
+            },
+            boundaries={**cancelled_store.boundaries, later_id: cancelled_store.boundaries[vid]},
+        )
+        (continued_row,) = rpo.rollforward_lines(continued, ranges={eid: (before, end)}, applied={})
+        (original_row,) = rpo.rollforward_lines(
+            cancelled_store, ranges={eid: (before, end)}, applied={}
+        )
+        assert continued_row.lines == original_row.lines
+
+        (continued_month,) = rpo.rollforward_lines(
+            continued, ranges={eid: (january, end)}, applied={}
+        )
+        (original_month,) = rpo.rollforward_lines(
+            cancelled_store, ranges={eid: (january, end)}, applied={}
+        )
+        assert continued_month.lines == original_month.lines
+
+        (legacy_month,) = rpo.rollforward_lines(
+            replace(continued, classify_cancelled_chains=False),
+            ranges={eid: (january, end)},
+            applied={},
+        )
+        assert legacy_month.lines != original_month.lines
+
+        # Re-entry admits only the new remainder; pre-cancellation revenue is not
+        # recognized a second time and the prior termination remains on its own line.
+        reopened = replace(
+            retained, causes=frozenset({"CONTRACT_ACTIVATED"}), entries=((cid, end),)
+        )
+        reopened_cuts = dict(continued.cuts)
+        reopened_obs = []
+        for ob in later_obs:
+            amount = cancelled_cuts[vid, end][ob.row_id].revenue + Decimal(30)
+            reopened_obs.append(replace(ob, cancelled=False, allocated=amount))
+        for day in (before, entry, january, end):
+            reopened_cuts[later_id, day] = {
+                ob.row_id: replace(
+                    cancelled_cuts[vid, day][ob.row_id],
+                    fixed_allocation=ob.allocated,
+                    awaiting=Decimal(30),
+                    satisfaction_status="PARTIALLY_SATISFIED",
+                )
+                for ob in reopened_obs
+            }
+        reentry_store = replace(
+            continued,
+            versions={gid: (first_cancelled, reopened)},
+            chains={cid: (first_cancelled, reopened)},
+            obligations={vid: cancelled_obs, later_id: tuple(reopened_obs)},
+            cuts=reopened_cuts,
+        )
+        for start in (before, january):
+            (reentered,) = rpo.rollforward_lines(
+                reentry_store, ranges={eid: (start, end)}, applied={}
+            )
+            (prior,) = rpo.rollforward_lines(
+                cancelled_store, ranges={eid: (start, end)}, applied={}
+            )
+            expected = dict(prior.lines)
+            expected["NEW_CONTRACTS"] += 60
+            expected["CLOSING"] = Decimal(60)
+            assert reentered.lines == expected

@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — retained versions no longer discard an earlier cancellation bridge
+
+The original first-batch cancellation and an opening obligation's same-version cancellation
+are now settled before the next retained version, provided that version is effective on or
+after the original termination. Later cancelled versions supply retained revenue without
+repeating the cancellation. Re-entry admits the remaining allocation after pre-entry revenue;
+the earlier termination and revenue remain separately attributed. New bindings retain
+rpo_cancelled_chains_v1, while earlier bindings preserve their previous classification.
+
+Scoped checks use real engine cancellation traces with adapted retained-version and re-entry
+chains, covering refund/non-refund endings, both estimate directions and full/monthly ranges.
+These are not a new public API reactivation journey. Fifty scoped cases, the existing public
+modification reports/reruns in three currency views, types/lint and migration 0243 down/up IPE
+parity pass. This supersedes the prior blanket limitation on later retained versions only when
+the original cancellation precedes the next version's effective date.
+
+Versions intervening before cancellation, multiple cancellations within one computation,
+same-day entry/cancellation and realized-usage mixtures remain outside this path. Combined-member
+aging ownership, independent accounting sign-off and final-candidate checks remain open.
+No deployment and no claim of production readiness.
+
+
 ### October 20 — original cancellation dates restore earlier RPO cuts
 
 New computations retain per-obligation termination and pre-boundary end dates. Historical RPO

@@ -990,6 +990,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "cuts; a single fixed-only first-entry or same-version cancellation separates "
             "original modifications and estimate changes from recognized revenue and cancelled "
             "remainder; traces without cancellation dates retain legacy behavior",
+            "rpo_cancelled_chains_v1 settles original first-batch and opening-version "
+            "cancellations before later retained versions; subsequent cancelled versions carry "
+            "current retained revenue and re-entry admits only its remaining allocation; legacy "
+            "bindings retain prior classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),
