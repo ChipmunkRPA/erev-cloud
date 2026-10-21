@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Mixed retained-version causes separate while obligations remain active — October 20, 2026
+
+- A later retained version that combines modification, estimate and partial-termination causes
+  now separates their original fixed amounts even when the affected obligation remains in RPO.
+  Complete original modification/termination coverage and estimate shares/dates are required;
+  their sum must equal the actual version movement. Missing evidence or mismatches remain
+  unexplained. New bindings retain rpo_mixed_continuing_changes_v1; legacy attribution remains.
+- The engine-generated cross-month partial-cancellation case now also feeds a prior January
+  version and a later February version into reporting. The surviving obligation's modification
+  and cancellation amounts complete the contract's separate February movement lines without
+  waiting for its March cancellation. This is an adapted retained-version read-layer witness,
+  not a new public API partial-termination lifecycle journey.
+- All 74 scoped RPO cases, original close-pass witness, legacy/missing-source/mismatched-delta
+  checks, existing public three-view reports/reruns, lint/types and migration 0254 down/up exact
+  IPE parity pass. No deployment; commit directly to main.
+- Intervening versions before original termination, repeated cancellation/reentry, complex
+  same-day entry mixtures, combined-member aging ownership, independent accounting sign-off
+  and final-candidate checks remain open. This is not a production-readiness claim.
+
 ## Partial-cancellation reporting works before the surviving obligation ends — October 20, 2026
 
 - First-entry and same-version monthly RPO cuts now attribute original partial-termination
@@ -201,24 +220,6 @@
   termination, same-day entry/cancellation, usage mixtures and combined-member aging ownership
   remain open. Independent accounting sign-off and final-candidate checks remain open.
   Direct main publication; no deployment.
-
-## Original cancellation dates preserve historical RPO — October 20, 2026
-
-- Stage 06 retains each obligation's original termination date and pre-boundary end date.
-  Historical RPO and close-variance reads now preserve the pre-cancellation remainder;
-  cancellation no longer removes that obligation from earlier months. New trace evidence
-  drives the change; old computations without those dates keep their former behavior.
-- A fixed-only first computation containing entry, modification, estimate change and one
-  later cancellation can separate those movements, recognized revenue and cancelled remainder.
-  Same-version subsequent-month rollforwards reconcile original deltas to the termination
-  boundary. Later/missing event order and realized-usage mixtures are not inferred.
-- Full engine witnesses cover positive/negative estimates, same-day ordered termination,
-  refund/non-refund cancellation, historical standalone RPO/variance and monthly rollforwards.
-  All 50 scoped cases and existing public modification reports/reruns in three currency views
-  pass. Scoped lint/types and migration 0242 down/up IPE parity pass. No deployment.
-- Multiple cancellations, first-entry cancellation followed by another retained version in the
-  same range, same-day entry/cancellation, realized-usage mixtures and combined-member aging
-  ownership remain open. Independent accounting sign-off and final-candidate checks remain open.
 
 ## Outstanding release verification
 

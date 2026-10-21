@@ -207,6 +207,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if store.classify_continuing_cancellations and params.sources is not None:
         params.sources.record_evidence(continuing_cancel_evidence, True)
+    mixed_continuing_evidence = "rpo_mixed_continuing_changes_v1"
+    store = replace(
+        store,
+        classify_mixed_continuing_changes=(
+            params.binding is None or mixed_continuing_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_mixed_continuing_changes and params.sources is not None:
+        params.sources.record_evidence(mixed_continuing_evidence, True)
     applied = rpo.applied_expedients(session, found, book_code=book_code, known_at=params.known_at)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates

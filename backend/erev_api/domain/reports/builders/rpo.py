@@ -357,6 +357,7 @@ class Store:
     classify_separate_cancellations: bool = field(default=True, kw_only=True)
     classify_cancellation_cross_changes: bool = field(default=True, kw_only=True)
     classify_continuing_cancellations: bool = field(default=True, kw_only=True)
+    classify_mixed_continuing_changes: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1219,6 +1220,45 @@ def _continuing_cancellations(
     return sum((item.amount for item in changes if start < item.day <= end), ZERO)
 
 
+def _continuing_changes(
+    store: Store, version: _Version, subject: str, delta: Decimal, end: date
+) -> tuple[Decimal, Decimal] | None:
+    """Separate a retained version's competing causes using their original amounts."""
+    if not store.classify_mixed_continuing_changes:
+        return None
+    if (
+        any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
+        and not version.modification_events
+    ) or ("ESTIMATE_CHANGED" in version.causes and not version.estimate_events):
+        return None
+    cancellation = _continuing_cancellations(store, version, subject, date.min, end)
+    if cancellation is None:
+        return None
+    history = store.boundaries.get(version.id, {})
+    if version.modification_events and not rpo_boundary_changes.complete(
+        history, subject, version.modification_events
+    ):
+        return None
+    modifications = [
+        item for item in history.get(subject, ()) if item.event in version.modification_events
+    ]
+    if any(item.day > end for item in modifications):
+        return None
+    estimate = ZERO
+    if version.estimate_events:
+        shares = store.estimate_allocations.get(version.id)
+        dates = dict(version.estimate_dates)
+        if shares is None or any(
+            event not in dates or dates[event] > end for event in version.estimate_events
+        ):
+            return None
+        estimate = shares.get(subject, ZERO)
+    modified = sum((item.amount for item in modifications), ZERO)
+    if modified + estimate + cancellation != delta:
+        return None
+    return modified, estimate
+
+
 def _cancelled_changes(
     store: Store, version: _Version, subject: str, opening: Decimal
 ) -> tuple[Decimal, Decimal] | None:
@@ -1815,6 +1855,28 @@ def _obligation_lines(
                 lines["VC_ESTIMATE_CHANGES"] += estimate_change
                 delta -= estimate_change
                 line = "MODIFICATIONS"
+            if (
+                current is not None
+                and previous_obligation is not None
+                and store.visible(current, end) is not None
+                and "CANCELLATIONS" in causes
+                and len(causes) > 1
+                and causes <= {"CANCELLATIONS", "MODIFICATIONS", "VC_ESTIMATE_CHANGES"}
+                and ("USAGE_REPORTED" not in version.causes or realised_is_separate)
+            ):
+                separated = _continuing_changes(
+                    store,
+                    version,
+                    obligation_subject_key(current.external_id, current.obligation_key),
+                    delta,
+                    end,
+                )
+                if separated is not None:
+                    modified, estimate = separated
+                    lines["MODIFICATIONS"] += modified
+                    lines["VC_ESTIMATE_CHANGES"] += estimate
+                    delta -= modified + estimate
+                    line = "CANCELLATIONS"
             if (
                 current is None
                 and previous_obligation is not None

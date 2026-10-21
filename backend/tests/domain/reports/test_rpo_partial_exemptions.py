@@ -1368,6 +1368,74 @@ def test_first_entry_separates_later_original_estimate_events(
                     applied={},
                 )
                 assert legacy_cross.lines["UNEXPLAINED"] != 0
+        if across_periods:
+            intermediate = date(2026, 2, 28)
+            partial_version = replace(later_version, effective=intermediate)
+            partial_store = replace(
+                later_store,
+                versions={gid: (prior_version, partial_version)},
+                chains={cid: (prior_version, partial_version)},
+                cuts={**later_store.cuts, (prior_id, intermediate): prior_points},
+            )
+            (mixed_partial,) = rpo.rollforward_lines(
+                partial_store, ranges={eid: (january, intermediate)}, applied={}
+            )
+            assert mixed_partial.lines["OPENING"] == initial
+            assert mixed_partial.lines["NEW_CONTRACTS"] == 0
+            assert mixed_partial.lines["MODIFICATIONS"] == modification
+            assert mixed_partial.lines["VC_ESTIMATE_CHANGES"] == final - initial - modification
+            assert mixed_partial.lines["CANCELLATIONS"] == -20
+            assert mixed_partial.lines["REVENUE"] == 0
+            assert mixed_partial.lines["CLOSING"] == final - 20
+            assert mixed_partial.lines["UNEXPLAINED"] == 0
+            (legacy_mixed,) = rpo.rollforward_lines(
+                replace(partial_store, classify_mixed_continuing_changes=False),
+                ranges={eid: (january, intermediate)},
+                applied={},
+            )
+            assert legacy_mixed.lines["UNEXPLAINED"] != 0
+            subject = "K-01/B"
+            assert rpo._continuing_changes(
+                partial_store, partial_version, subject, Decimal(210), intermediate
+            ) == (Decimal(40), Decimal(0))
+            assert (
+                rpo._continuing_changes(
+                    partial_store, partial_version, subject, Decimal(211), intermediate
+                )
+                is None
+            )
+            for incomplete in (
+                replace(partial_store, estimate_allocations={}),
+                replace(
+                    partial_store,
+                    boundaries={
+                        vid: {
+                            subject: tuple(
+                                item
+                                for item in partial_store.boundaries[vid][subject]
+                                if item.kind != "CONTRACT_AMENDED"
+                            )
+                        }
+                    },
+                ),
+            ):
+                assert (
+                    rpo._continuing_changes(
+                        incomplete, partial_version, subject, Decimal(210), intermediate
+                    )
+                    is None
+                )
+            assert (
+                rpo._continuing_changes(
+                    partial_store,
+                    replace(partial_version, estimate_dates=()),
+                    subject,
+                    Decimal(210),
+                    intermediate,
+                )
+                is None
+            )
+
         historical = variance_rpo.project(
             terminated,
             terminated_book,

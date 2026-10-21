@@ -1043,6 +1043,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "the continuing obligation must not be cancelled within the cut; monthly fixed "
             "movements must reconcile to dated allocations; older bindings retain prior "
             "classification",
+            "rpo_mixed_continuing_changes_v1 separates original modification, estimate and "
+            "partial-termination effects in a later retained version while the obligation remains "
+            "disclosed; original event coverage and dates are required and their fixed amounts "
+            "must sum to the actual version change; missing evidence or mismatched amounts remain "
+            "unexplained; older bindings retain prior attribution",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

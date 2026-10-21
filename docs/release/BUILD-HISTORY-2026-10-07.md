@@ -10505,3 +10505,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   No deployment; direct main publication.
 - First-entry cancellation batches, multiple cancellations, usage mixtures, combined-member
   aging ownership, independent accounting sign-off and final-candidate checks remain open.
+
+## Original cancellation dates preserve historical RPO — October 20, 2026
+
+- Stage 06 retains each obligation's original termination date and pre-boundary end date.
+  Historical RPO and close-variance reads now preserve the pre-cancellation remainder;
+  cancellation no longer removes that obligation from earlier months. New trace evidence
+  drives the change; old computations without those dates keep their former behavior.
+- A fixed-only first computation containing entry, modification, estimate change and one
+  later cancellation can separate those movements, recognized revenue and cancelled remainder.
+  Same-version subsequent-month rollforwards reconcile original deltas to the termination
+  boundary. Later/missing event order and realized-usage mixtures are not inferred.
+- Full engine witnesses cover positive/negative estimates, same-day ordered termination,
+  refund/non-refund cancellation, historical standalone RPO/variance and monthly rollforwards.
+  All 50 scoped cases and existing public modification reports/reruns in three currency views
+  pass. Scoped lint/types and migration 0242 down/up IPE parity pass. No deployment.
+- Multiple cancellations, first-entry cancellation followed by another retained version in the
+  same range, same-day entry/cancellation, realized-usage mixtures and combined-member aging
+  ownership remain open. Independent accounting sign-off and final-candidate checks remain open.
