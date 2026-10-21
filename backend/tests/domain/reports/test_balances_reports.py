@@ -340,6 +340,9 @@ def test_rollforward_compares_uploaded_gl_role_balances(world: ReportWorld) -> N
         assert result["result"] == "PASS", result["details"]
         assert len(result["details"]) == 3
         assert result["details"][0]["reconciliation_id"] == draft["id"]
+        assert all(row["bridge_result"] == "PASS" for row in result["details"])
+        assert all(D(row["subledger_gl_difference"]) == 0 for row in result["details"])
+        assert all(D(row["report_subledger_difference"]) == 0 for row in result["details"])
 
 
 @pytest.mark.slow

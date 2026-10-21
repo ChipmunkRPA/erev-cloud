@@ -471,6 +471,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "include_zero false: contracts with a non-zero balance only",
             _CONTRACT,
             _as_locked("CONTRACT_BALANCES"),
+            "GL bridge v2 compares report, retained reconciliation subledger and GL per "
+            "entity and role in functional currency; either nonzero leg fails even when net "
+            "differences cancel; missing subledger evidence is unavailable and v1 bindings "
+            "retain two-way semantics",
         ),
         tie_outs=("TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -582,6 +586,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "mixed revenue inputs use retained per-input TIME amounts in both currencies only "
             "when original sources have one contract, layer, movement kind, date and source "
             "identity; ambiguous ownership is not proportionally assigned",
+            "GL bridge v2 compares report, retained reconciliation subledger and GL per "
+            "entity and role in functional currency; either nonzero leg fails even when net "
+            "differences cancel; missing subledger evidence is unavailable and v1 bindings "
+            "retain two-way semantics",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),

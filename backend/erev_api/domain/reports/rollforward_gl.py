@@ -18,7 +18,8 @@ from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 if TYPE_CHECKING:
     from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
 
-EVIDENCE = "rollforward_gl_inputs_v1"
+EVIDENCE = "rollforward_gl_inputs_v2"
+LEGACY_EVIDENCE = "rollforward_gl_inputs_v1"
 ROLES = {
     "CONTRACT_LIABILITY": "contract_liability",
     "CONTRACT_ASSET": "contract_asset",
@@ -30,6 +31,8 @@ def compare(
     entities: Sequence[EntityRef],
     items: Sequence[ContractRollforward],
     sources: Mapping[str, Any],
+    *,
+    bridge: bool = True,
 ) -> dict[str, Any]:
     """GL debit-positive balances are compared to the report's positive captions per role."""
     details: list[dict[str, Any]] = []
@@ -86,6 +89,16 @@ def compare(
                         "rollforward": "0",
                         "difference": "0",
                         "result": tie_outs.PASS,
+                        **(
+                            {
+                                "source_subledger": "0",
+                                "subledger_gl_difference": "0",
+                                "report_subledger_difference": "0",
+                                "bridge_result": tie_outs.PASS,
+                            }
+                            if bridge
+                            else {}
+                        ),
                     }
                 )
                 continue
@@ -120,7 +133,33 @@ def compare(
             gl = Decimal(row["source_amount"]) * (-1 if role == "CONTRACT_LIABILITY" else 1)
             if not gl.is_finite():
                 raise tie_outs.invalid("currency_view", "The GL source amount is not finite.")
-            failed |= report != gl
+            role_failed = report != gl
+            bridge_values: dict[str, str] = {}
+            bridge_missing = False
+            if bridge:
+                retained = row.get("subledger_amount")
+                if retained is None:
+                    incomplete = bridge_missing = True
+                    bridge_values = {
+                        "bridge_result": tie_outs.NOT_APPLICABLE,
+                        "bridge_reason": "The GL source has no retained subledger amount.",
+                    }
+                else:
+                    subledger = Decimal(retained) * (-1 if role == "CONTRACT_LIABILITY" else 1)
+                    if not subledger.is_finite():
+                        raise tie_outs.invalid(
+                            "currency_view", "The retained subledger amount is not finite."
+                        )
+                    subledger_gl, report_subledger = subledger - gl, report - subledger
+                    bridge_failed = subledger_gl != 0 or report_subledger != 0
+                    role_failed |= bridge_failed
+                    bridge_values = {
+                        "source_subledger": str(subledger),
+                        "subledger_gl_difference": str(subledger_gl),
+                        "report_subledger_difference": str(report_subledger),
+                        "bridge_result": tie_outs.FAIL if bridge_failed else tie_outs.PASS,
+                    }
+            failed |= role_failed
             tie_outs.add(expected, entity.functional_currency, gl)
             tie_outs.add(actual, entity.functional_currency, report)
             details.append(
@@ -132,7 +171,12 @@ def compare(
                     "gl": str(gl),
                     "rollforward": str(report),
                     "difference": str(report - gl),
-                    "result": tie_outs.PASS if report == gl else tie_outs.FAIL,
+                    "result": tie_outs.FAIL
+                    if role_failed
+                    else tie_outs.NOT_APPLICABLE
+                    if bridge_missing
+                    else tie_outs.PASS,
+                    **bridge_values,
                 }
             )
     result = tie_outs.compared(tie_outs.TO_ROLLFORWARD_EQ_GL, expected, actual)
@@ -159,9 +203,11 @@ def build(
             {"reason": "An entity GL balance cannot be compared with one contract."}
         ]
         return result
+    evidence_key = EVIDENCE
     if params.binding is not None:
-        # Older reports did not capture GL inputs. Never substitute today's reconciliation.
-        sources = params.binding.evidence.get(EVIDENCE, {})
+        # Preserve the earlier two-way control on legacy bindings, without a live read.
+        evidence_key = EVIDENCE if EVIDENCE in params.binding.evidence else LEGACY_EVIDENCE
+        sources = params.binding.evidence.get(evidence_key, {})
     else:
         sources = {}
         cutoff = tie_outs.cutoff_for(session, params)
@@ -208,5 +254,5 @@ def build(
                     "totals": row["totals"],
                 }
     if params.sources is not None:
-        params.sources.record_evidence(EVIDENCE, sources)
-    return compare(entities, items, sources)
+        params.sources.record_evidence(evidence_key, sources)
+    return compare(entities, items, sources, bridge=evidence_key == EVIDENCE)

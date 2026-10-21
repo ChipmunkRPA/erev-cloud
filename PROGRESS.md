@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained subledger / GL / report bridge — October 20, 2026
+
+- Balance and rollforward GL controls now expose retained subledger balances, subledger-minus-GL
+  and report-minus-subledger per entity/role in functional currency. Either nonzero leg fails,
+  even if the report and GL agree. Missing subledger evidence remains explicitly unavailable.
+- The viewer shows both backend-calculated legs alongside the original GL source link. New v2
+  bindings retain three-way semantics; v1 reruns preserve the original two-way control without
+  live GL reads. Migration 0219 documents both consumers and repairs stale balance FX sources.
+- Three focused backend cases, the viewer case and uploaded-trial-balance DB journey pass;
+  lint/types and migrated catalogue checks pass. The foreign-balance DB journey fails during
+  close DATASET_FREEZE before report comparison, including with the original GL implementation.
+  That existing failure remains open; this is not full multicurrency acceptance.
+- Multi-provenance TIME/EVENT attribution, broader lifecycle coverage and independent accounting
+  sign-off remain open. Direct main publication only; no deployment.
+
+
 ## Mixed TIME/EVENT input with unique source — October 20, 2026
 
 - Stage 14 retains signed TIME amounts in both currencies for each single-input part. A
@@ -224,31 +240,6 @@
   relief as EVENT; do not infer TIME ownership from period-end source dates. Performing-side
   cross-calendar cases, close-only revenue histories, complex group changes and other documented
   release gaps still require work. No deployment or production-readiness claim.
-
-## Cross-member billing asset settlement and excess liabilities — October 20, 2026
-
-- Functional/reporting billings now retain signed asset-settlement amounts and both sides of
-  cross-member asset transfers from the original billing layers. Layer currencies, transaction
-  totals, functional amounts and trace identities must already reconcile before presentation.
-- Asset bridge v2 distinguishes billing that settles an asset from excess billing that creates
-  a liability, including when the invoice issuer has no asset of its own. Both billing roles
-  and corresponding member adjustments follow original source amounts, never unexplained OTHER.
-  Monthly and whole-range amounts are bound; earlier asset-bridge v1 bindings retain their path.
-- Billing and revenue-return asset transfers are combined without replacing either population.
-  The billing source method is recorded even for empty populations, preserving rerun scope.
-  Migration 0205 documents the expanded report logic.
-- The real foreign combined scenario invoices USD 60,000 after another member recognizes
-  USD 54,000: at retained spot .84 it settles GBP 45,360 of the other member's asset and creates
-  GBP 5,040 of liability for the issuer. Asset balances close to zero; issuer billing remains
-  split across the two roles and no member has unexplained OTHER.
-- Necessary checks passed: asset and liability report views in functional/reporting currency
-  with identical reruns, cross-member revenue-return regression, catalogue migration consistency,
-  scoped lint and types.
-- Mixed TIME/EVENT source allocation, intercompany counterparts, remaining close-only histories
-  and other documented implementation/release gaps remain open. More complex membership and
-  mixed billing/credit-memo histories still need end-to-end coverage. No deployment or claim
-  of production readiness; independent accounting sign-off remains outstanding.
-
 
 ## Outstanding release verification
 

@@ -644,6 +644,9 @@ describe("SF-08:report viewer", () => {
             reconciliation_id: "retained-source",
             book_code: "ASC606",
             period_key: "FY2026-P08",
+            source_subledger: "90.00",
+            subledger_gl_difference: "-20.00",
+            report_subledger_difference: "10.00",
             gl: "110.00",
             rollforward: "100.00",
             difference: "-10.00",
@@ -668,6 +671,9 @@ describe("SF-08:report viewer", () => {
     fireEvent.click(summary);
     expect(screen.getByText("AVM-US · CONTRACT_LIABILITY")).toBeTruthy();
     expect(screen.getByText("AVM-US · CONTRACT_ASSET")).toBeTruthy();
+    expect(screen.getByText("Retained subledger USD 90.00")).toBeTruthy();
+    expect(screen.getByText(/Subledger − GL USD.*20.00/)).toBeTruthy();
+    expect(screen.getByText("Report − subledger USD 10.00")).toBeTruthy();
     expect(screen.getByText(/GL USD 110.00; Rollforward USD 100.00;/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open GL reconciliation" }).getAttribute("href")).toBe(
       "/close/AVM-US/ASC606/FY2026-P08/reconciliations/retained-source",

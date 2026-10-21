@@ -103,6 +103,37 @@ export function TieOutStrip({ results, testIdPrefix = "SF-08" }: TieOutStripProp
                             {`Difference ${inline({ amount: detail.difference ?? "", currency: detail.currency ?? "" })}`}
                           </span>
                         )}
+                        {detail.source_subledger !== undefined ? (
+                          <div className="num mt-1 flex flex-wrap gap-x-4">
+                            <span>
+                              {t("reports.tieOuts.retainedSubledger", {
+                                amount: inline({
+                                  amount: detail.source_subledger,
+                                  currency: detail.currency ?? "",
+                                }),
+                              })}
+                            </span>
+                            <span>
+                              {t("reports.tieOuts.subledgerGlDifference", {
+                                amount: inline({
+                                  amount: detail.subledger_gl_difference ?? "",
+                                  currency: detail.currency ?? "",
+                                }),
+                              })}
+                            </span>
+                            <span>
+                              {t("reports.tieOuts.reportSubledgerDifference", {
+                                amount: inline({
+                                  amount: detail.report_subledger_difference ?? "",
+                                  currency: detail.currency ?? "",
+                                }),
+                              })}
+                            </span>
+                          </div>
+                        ) : null}
+                        {detail.bridge_reason ? (
+                          <div className="mt-1">{detail.bridge_reason}</div>
+                        ) : null}
                         {detail.reconciliation_id &&
                         detail.entity &&
                         detail.book_code &&

@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — retained three-way GL bridge
+
+New balance and rollforward runs compare the report closing caption, the reconciliation's
+retained subledger caption and its GL caption per entity and role in functional currency.
+Both bridge legs are visible; any nonzero leg fails even when the report-to-GL net is zero.
+Missing retained subledger amounts remain unavailable. Retained v1 runs preserve their original
+two-way comparison; v2 binds the new evidence without reading current GL data on rebuild.
+
+The uploaded-trial-balance DB journey and scoped backend/viewer cases pass. The existing foreign
+contract balance journey fails at close DATASET_FREEZE before report comparison; rerunning with
+the original GL implementation reproduces that failure. It remains unresolved and must not be
+counted as multicurrency acceptance. Broader mixed-source/lifecycle support and independent
+accounting sign-off are still outstanding. No deployment.
+
+
 ### October 20 — internally mixed revenue with unique provenance
 
 Revenue attribution now accepts an internally mixed TIME/EVENT input when its original sources

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from erev_api.domain.reports import rollforward_gl
 from erev_api.domain.reports.builders import ReportParams, SourceBinding
 from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
@@ -29,7 +30,12 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
         },
     )
     rows = [
-        {"account_role": role, "currency": "USD", "source_amount": amount}
+        {
+            "account_role": role,
+            "currency": "USD",
+            "source_amount": amount,
+            "subledger_amount": amount,
+        }
         for role, amount in (
             ("CONTRACT_LIABILITY", "-100"),
             ("CONTRACT_ASSET", "20"),
@@ -45,6 +51,23 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
         }
     }
     assert rollforward_gl.compare([entity], [item], sources)["result"] == "PASS"
+    # Equal GL/report balances must not mask opposite bridge differences.
+    rows[0]["subledger_amount"] = "-90"
+    offset = rollforward_gl.compare([entity], [item], sources)
+    assert offset["result"] == "FAIL"
+    detail = offset["details"][0]
+    assert detail["difference"] == "0"
+    assert detail["source_subledger"] == "90"
+    assert detail["subledger_gl_difference"] == "-10"
+    assert detail["report_subledger_difference"] == "10"
+    assert detail["bridge_result"] == "FAIL"
+    del rows[0]["subledger_amount"]
+    missing_bridge = rollforward_gl.compare([entity], [item], sources)
+    assert missing_bridge["result"] == "NOT_APPLICABLE"
+    detail = missing_bridge["details"][0]
+    assert "source_subledger" not in detail
+    assert detail["bridge_reason"] == "The GL source has no retained subledger amount."
+    rows[0]["subledger_amount"] = "-100"
     rows[0]["source_amount"] = "-110"
     rows[1]["source_amount"] = "10"
     failed = rollforward_gl.compare([entity], [item], sources)
@@ -78,7 +101,8 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
     )
 
 
-def test_retained_gl_rebuild_never_reads_current_reconciliation() -> None:
+@pytest.mark.parametrize("legacy", [True, False])
+def test_retained_gl_rebuild_never_reads_current_reconciliation(legacy: bool) -> None:
     from typing import cast
 
     from sqlalchemy.orm import Session
@@ -89,7 +113,12 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation() -> None:
         str(entity.id): {
             "id": str(uuid4()),
             "totals": [
-                {"account_role": role, "currency": "USD", "source_amount": "0"}
+                {
+                    "account_role": role,
+                    "currency": "USD",
+                    "source_amount": "0",
+                    **({} if legacy else {"subledger_amount": "0"}),
+                }
                 for role in rollforward_gl.ROLES
             ],
         }
@@ -105,7 +134,9 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation() -> None:
             {},
             {},
             frozenset(),
-            evidence={rollforward_gl.EVIDENCE: sources},
+            evidence={
+                (rollforward_gl.LEGACY_EVIDENCE if legacy else rollforward_gl.EVIDENCE): sources
+            },
         ),
     )
 
@@ -123,3 +154,5 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation() -> None:
         contract_id=None,
     )
     assert result["result"] == "PASS"
+
+    assert ("source_subledger" in result["details"][0]) is not legacy
