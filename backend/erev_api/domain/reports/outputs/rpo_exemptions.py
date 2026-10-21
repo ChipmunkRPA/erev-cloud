@@ -51,6 +51,11 @@ TRANSLATION_BASIS = (
     "Contract-level exemption movements translated at each period's retained average rates. "
     "Translated movements sum to the report's Exemptions line by currency."
 )
+MONTHLY_TITLE = "Monthly exemption movements"
+MONTHLY_BASIS = (
+    "Original transaction-currency exemption movements by contract and period. Intermediate "
+    "movements can differ from the range endpoint-based Exemptions line."
+)
 TRANSLATION_COLUMNS = (
     ("contract", "Contract"),
     ("entity", "Entity"),

@@ -223,6 +223,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if transaction_gaps and params.sources is not None:
         params.sources.record_evidence(transaction_gap_evidence, True)
+    transaction_exemption_evidence = "rpo_transaction_monthly_exemptions_v1"
+    transaction_exemptions = not converted and (
+        params.binding is None or transaction_exemption_evidence in params.binding.evidence
+    )
+    if transaction_exemptions and params.sources is not None:
+        params.sources.record_evidence(transaction_exemption_evidence, True)
     # S15-R-08 (rev 1.127): the opening, the closing and the revenue between them are read at
     # their dates
     rpo.measure(
@@ -232,7 +238,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             entity_id: tuple(day for p in selected for day in (p.start - timedelta(days=1), p.end))
             for entity_id, selected in periods.items()
         }
-        if converted or transaction_gaps
+        if converted or transaction_gaps or transaction_exemptions
         else ranges,
         applied=applied,
         uow=uow,
@@ -256,16 +262,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     if converted and include_gaps and params.sources is not None:
         params.sources.record_evidence(gap_evidence, True)
     translation_evidence = "rpo_exemption_translation_v1"
-    include_translation = converted and (
-        params.binding is None or translation_evidence in params.binding.evidence
+    include_translation = transaction_exemptions or (
+        converted and (params.binding is None or translation_evidence in params.binding.evidence)
     )
-    if include_translation and params.sources is not None:
+    if converted and include_translation and params.sources is not None:
         params.sources.record_evidence(translation_evidence, True)
     if converted:
         (items, rates, source_unexplained, exemption_translation, unexplained_details) = (
             rpo_rollforward_currency.project(uow, params, store, found, periods, before, applied)
         )
-    elif transaction_gaps:
+    elif transaction_gaps or transaction_exemptions:
         # Range-level netting can hide opposite monthly source differences.
         # Keep the report rows unchanged, but retain every nonzero original cut.
         for entity in found:
@@ -276,8 +282,21 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     applied=applied,
                 )
                 for item in monthly:
+                    exemption = item.lines["EXEMPTIONS"]
+                    if transaction_exemptions and exemption != 0:
+                        exemption_translation.append(
+                            {
+                                "contract": item.external_id,
+                                "entity": entity.code,
+                                "period": period.key,
+                                "currency": item.currency,
+                                "movement": str(exemption),
+                                "translated_currency": item.currency,
+                                "translated_movement": str(exemption),
+                            }
+                        )
                     gap = item.lines["UNEXPLAINED"]
-                    if gap == 0:
+                    if not transaction_gaps or gap == 0:
                         continue
                     source_unexplained = True
                     unexplained_details.append(

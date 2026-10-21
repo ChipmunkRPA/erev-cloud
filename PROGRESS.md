@@ -2,6 +2,26 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Transaction-currency reports show intermediate monthly exemption movements — October 20, 2026
+
+- Transaction-view RPO now retains nonzero contract/entity/period exemption movements even
+  when the contract enters and leaves exemption within the range and endpoint details are
+  empty. The shared exemption_translation schema stores unchanged original/report amounts;
+  new bindings retain rpo_transaction_monthly_exemptions_v1 and old bindings keep prior detail
+  populations. Existing range-level report rows are unchanged.
+- Viewer and XLSX/PDF distinguish Monthly exemption movements from converted Monthly exemption
+  translation, label unchanged amounts as Report movement and explain that intermediate
+  monthly movements can differ from the range endpoint-based Exemptions line. Manifest controls
+  retain the details with the original periods and currencies.
+- The builder/read-layer right-to-invoice round trip retains EUR -110/+110 with no endpoint
+  exclusions, passes reconciliation and reruns identically. Legacy omission is preserved.
+  Five scoped builder/converted/export cases, both viewer currency modes, public three-view
+  report/rerun journey, lint/types and migration 0256 down/up exact catalogue parity pass.
+  New monthly witness uses supplied retained rows, not a new public contract lifecycle journey.
+- Complex cancellation/reentry, intervening pre-termination versions and same-day entry mixtures,
+  combined-member aging ownership, independent accounting sign-off and final-candidate checks
+  remain open. No deployment; direct-main publication; no production-readiness claim.
+
 ## Transaction-currency RPO retains monthly unexplained differences — October 20, 2026
 
 - Transaction-view RPO rollforwards now measure every selected period boundary and inspect
@@ -204,25 +224,6 @@
   Multi-version usage chains, multiple cancellations within a computation, intervening versions,
   same-day entry/cancellation and combined-member aging ownership remain open. Independent
   accounting sign-off and final-candidate verification remain open. Direct main; no deployment.
-
-## Terminal realized usage stays out of fixed cancellation attribution — October 20, 2026
-
-- For an opening obligation and one later terminating version, the report now uses the
-  terminating version's dated realized amount when both versions retain realization evidence.
-  Newly realized fees and signed corrections remain VC changes, rather than distorting the
-  cancelled remainder. Mixed modification/estimate attribution still requires the original
-  fixed pre-termination bridge; missing realization evidence preserves unexplained differences.
-- New bindings retain rpo_cancelled_usage_v1; older bindings preserve former classification.
-  The shared reader covers transaction and monthly converted rollforwards. No engine postings
-  or original usage events change.
-- Fifty-eight scoped report cases plus six engine realization cases pass. New reader cases
-  cover positive/negative/zero fee changes, revenue restatement/reversal, missing evidence and
-  legacy behavior. Existing public modification reports/reruns in three views, lint/types and
-  migration 0244 down/up IPE parity pass. No new public usage/termination journey is claimed.
-- First-entry/same-version usage cancellation, multi-version usage chains, multiple cancellations
-  inside one computation, intervening pre-termination versions and combined-member aging policy
-  remain open, alongside independent accounting sign-off and final-candidate verification.
-  Direct main publication; no deployment.
 
 ## Outstanding release verification
 

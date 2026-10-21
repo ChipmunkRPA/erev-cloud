@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — transaction-currency intermediate monthly exemption movements
+
+- Transaction-view RPO now retains nonzero contract/entity/period exemption movements even
+  when the contract enters and leaves exemption within the range and endpoint details are
+  empty. The shared exemption_translation schema stores unchanged original/report amounts;
+  new bindings retain rpo_transaction_monthly_exemptions_v1 and old bindings keep prior detail
+  populations. Existing range-level report rows are unchanged.
+- Viewer and XLSX/PDF distinguish Monthly exemption movements from converted Monthly exemption
+  translation, label unchanged amounts as Report movement and explain that intermediate
+  monthly movements can differ from the range endpoint-based Exemptions line. Manifest controls
+  retain the details with the original periods and currencies.
+- The builder/read-layer right-to-invoice round trip retains EUR -110/+110 with no endpoint
+  exclusions, passes reconciliation and reruns identically. Legacy omission is preserved.
+  Five scoped builder/converted/export cases, both viewer currency modes, public three-view
+  report/rerun journey, lint/types and migration 0256 down/up exact catalogue parity pass.
+  New monthly witness uses supplied retained rows, not a new public contract lifecycle journey.
+- Complex cancellation/reentry, intervening pre-termination versions and same-day entry mixtures,
+  combined-member aging ownership, independent accounting sign-off and final-candidate checks
+  remain open. No deployment; direct-main publication; no production-readiness claim.
+
 ### October 20 — transaction-currency monthly source differences cannot offset away
 
 - Transaction-view RPO rollforwards now measure every selected period boundary and inspect

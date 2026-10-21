@@ -178,7 +178,13 @@ def _exemption_details(sheet: Any, formats: _Formats, row: int, value: Any) -> i
 
 
 def _exemption_translation(
-    sheet: Any, formats: _Formats, row: int, value: Any, *, unexplained: bool = False
+    sheet: Any,
+    formats: _Formats,
+    row: int,
+    value: Any,
+    *,
+    unexplained: bool = False,
+    transaction: bool = False,
 ) -> int:
     from . import rpo_exemptions as details
 
@@ -188,15 +194,30 @@ def _exemption_translation(
     sheet.write_string(
         row,
         0,
-        details.UNEXPLAINED_TITLE if unexplained else details.TRANSLATION_TITLE,
+        details.UNEXPLAINED_TITLE
+        if unexplained
+        else details.MONTHLY_TITLE
+        if transaction
+        else details.TRANSLATION_TITLE,
         formats.bold,
     )
     sheet.write_string(
-        row + 1, 0, details.UNEXPLAINED_BASIS if unexplained else details.TRANSLATION_BASIS
+        row + 1,
+        0,
+        details.UNEXPLAINED_BASIS
+        if unexplained
+        else details.MONTHLY_BASIS
+        if transaction
+        else details.TRANSLATION_BASIS,
     )
     row += 2
-    for col, (_, label) in enumerate(details.TRANSLATION_COLUMNS):
-        sheet.write_string(row, col, label, formats.wrapped_bold)
+    for col, (key, label) in enumerate(details.TRANSLATION_COLUMNS):
+        sheet.write_string(
+            row,
+            col,
+            "Report movement" if transaction and key == "translated_movement" else label,
+            formats.wrapped_bold,
+        )
     for record in records:
         row += 1
         for col, (key, _) in enumerate(details.TRANSLATION_COLUMNS):
@@ -211,11 +232,15 @@ def _exemption_translation(
     return row + 2
 
 
-def _total(sheet: Any, formats: _Formats, row: int, key: str, value: Any) -> int:
+def _total(
+    sheet: Any, formats: _Formats, row: int, key: str, value: Any, *, transaction: bool = False
+) -> int:
     if key == "unexplained_details":
-        return _exemption_translation(sheet, formats, row, value, unexplained=True)
+        return _exemption_translation(
+            sheet, formats, row, value, unexplained=True, transaction=transaction
+        )
     if key == "exemption_translation":
-        return _exemption_translation(sheet, formats, row, value)
+        return _exemption_translation(sheet, formats, row, value, transaction=transaction)
     if key == "exemption_changes":
         return _exemption_details(sheet, formats, row, value)
     sheet.write_string(row, 0, guard(key))
@@ -308,7 +333,14 @@ def _header_block(
     sheet.write_string(row, 0, LABEL_CONTROL_TOTALS, formats.bold)
     row += 1
     for key, value in sorted(data.control_totals.items()):
-        row = _total(sheet, formats, row, key, value)
+        row = _total(
+            sheet,
+            formats,
+            row,
+            key,
+            value,
+            transaction=data.control_totals.get("currency_view") == "transaction",
+        )
     if data.tie_out_results:
         sheet.write_string(row, 0, LABEL_TIE_OUTS, formats.bold)
         row += 1

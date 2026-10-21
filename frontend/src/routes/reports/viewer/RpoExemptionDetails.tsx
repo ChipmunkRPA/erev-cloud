@@ -57,6 +57,7 @@ export function RpoExemptionDetails({ run }: { readonly run: ReportRun }) {
   const raw = run.control_totals?.exemption_changes;
   if (run.report.code !== "rpo_rollforward") return null;
   const rows = Array.isArray(raw) ? raw.filter(isDetail) : [];
+  const transaction = run.control_totals?.currency_view === "transaction";
   const translated = run.control_totals?.exemption_translation;
   const translations = Array.isArray(translated) ? translated.filter(isTranslation) : [];
   if (rows.length === 0 && translations.length === 0) return null;
@@ -101,14 +102,32 @@ export function RpoExemptionDetails({ run }: { readonly run: ReportRun }) {
       </div>
       {translations.length > 0 ? (
         <div className="mt-4 overflow-x-auto">
-          <h3 className="font-medium">{t("reports.exemptions.translationTitle")}</h3>
-          <p className="my-2 text-sm">{t("reports.exemptions.translationBasis")}</p>
+          <h3 className="font-medium">
+            {t(
+              transaction
+                ? "reports.exemptions.monthlyTitle"
+                : "reports.exemptions.translationTitle",
+            )}
+          </h3>
+          <p className="my-2 text-sm">
+            {t(
+              transaction
+                ? "reports.exemptions.monthlyBasis"
+                : "reports.exemptions.translationBasis",
+            )}
+          </p>
           <table className="w-full text-left text-sm">
             <thead>
               <tr>
                 <th className="p-2">{t("reports.exemptions.contractPeriod")}</th>
                 <th className="p-2">{t("reports.exemptions.originalMovement")}</th>
-                <th className="p-2">{t("reports.exemptions.translatedMovement")}</th>
+                <th className="p-2">
+                  {t(
+                    transaction
+                      ? "reports.exemptions.reportMovement"
+                      : "reports.exemptions.translatedMovement",
+                  )}
+                </th>
               </tr>
             </thead>
             <tbody>

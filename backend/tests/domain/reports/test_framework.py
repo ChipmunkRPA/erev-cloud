@@ -776,3 +776,41 @@ def test_exemption_exports_keep_large_detail_populations_readable() -> None:
     assert sheet.cell(gap_title + 3, 1).value == "'=GAP"
     assert sheet.cell(gap_title + 3, 7).value == 8.4
     assert sheet.cell(gap_title + 4, 7).value == -8.4
+
+
+def test_transaction_monthly_exemptions_export_without_translation_claim() -> None:
+    from dataclasses import replace
+
+    data = replace(
+        sample_data(),
+        control_totals={
+            "currency_view": "transaction",
+            "exemption_changes": [],
+            "exemption_translation": [
+                {
+                    "contract": "C-MONTHLY",
+                    "entity": "E",
+                    "period": "FY2026-P02",
+                    "currency": "EUR",
+                    "movement": "-25.50",
+                    "translated_currency": "EUR",
+                    "translated_movement": "-25.50",
+                }
+            ],
+        },
+    )
+    stamp = sample_stamp()
+    sheet = openpyxl.load_workbook(io.BytesIO(xlsx_output.render_xlsx(data, stamp))).worksheets[0]
+    title = next(
+        row
+        for row in range(1, sheet.max_row + 1)
+        if sheet.cell(row, 1).value == "Monthly exemption movements"
+    )
+    assert "Intermediate movements can differ" in sheet.cell(title + 1, 1).value
+    assert sheet.cell(title + 2, 7).value == "Report movement"
+    assert sheet.cell(title + 3, 5).value == sheet.cell(title + 3, 7).value == -25.5
+    assert sheet.cell(title + 3, 7).data_type == "n"
+    texts = [text for page in pdf_pages(pdf_output.render_pdf(data, stamp)) for text in page]
+    assert "Monthly exemption movements" in texts
+    assert "Monthly exemption translation" not in texts
+    assert "Report movement: EUR (25.50)" in texts

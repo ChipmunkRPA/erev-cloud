@@ -1054,6 +1054,13 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "original amount unchanged in report currency for viewer and exports; period cuts and "
             "the rule are retained for reruns; older transaction bindings keep their previous "
             "range-level checks",
+            "rpo_transaction_monthly_exemptions_v1 retains nonzero original "
+            "contract/entity/period exemption movements in transaction-currency reports, "
+            "including intermediate entry and exit hidden by range endpoint disclosures; "
+            "exemption_translation holds unchanged original and report amounts for the shared "
+            "detail schema, labelled as monthly movements without claiming FX translation or "
+            "equality to the range endpoint-based Exemptions line; older transaction bindings "
+            "retain their prior detail population",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

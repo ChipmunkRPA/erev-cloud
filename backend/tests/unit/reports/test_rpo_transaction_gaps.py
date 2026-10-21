@@ -102,3 +102,36 @@ def test_transaction_report_retains_offsetting_monthly_gaps_and_legacy_binding(m
     assert reconciled.tie_out_results[0]["result"] == tie_outs.PASS
     assert reconciled.control_totals["source_unexplained"] is False
     assert reconciled.control_totals["unexplained_details"] == []
+
+    exempt_obligations = {
+        key: tuple(replace(ob, recognition_method="RIGHT_TO_INVOICE") for ob in obs)
+        if key == versions[1].id
+        else obs
+        for key, obs in supported.obligations.items()
+    }
+    exemption_store = replace(supported, obligations=exempt_obligations)
+    monkeypatch.setattr(rpo, "load", lambda *a, **kw: exemption_store)
+    monkeypatch.setattr(rpo, "applied_expedients", lambda *a, **kw: {eid: frozenset({"POL-198"})})
+    exempted = report.build(SimpleNamespace(session=object()), params)
+    assert exempted.control_totals["exemption_changes"] == []
+    monthly = exempted.control_totals["exemption_translation"]
+    assert [(d["period"], Decimal(d["movement"])) for d in monthly] == [
+        ("FY2026-P02", Decimal(-110)),
+        ("FY2026-P03", Decimal(110)),
+    ]
+    assert all(d["currency"] == d["translated_currency"] == "EUR" for d in monthly)
+    assert all(d["movement"] == d["translated_movement"] for d in monthly)
+    assert exempted.tie_out_results[0]["result"] == tie_outs.PASS
+    exemption_binding = SourceBinding(now, {}, {}, frozenset(), evidence=sources.evidence)
+    assert (
+        report.build(
+            SimpleNamespace(session=object()),
+            replace(params, binding=exemption_binding, sources=None),
+        )
+        == exempted
+    )
+    old_exemptions = report.build(
+        SimpleNamespace(session=object()),
+        replace(params, binding=replace(exemption_binding, evidence={}), sources=None),
+    )
+    assert "exemption_translation" not in old_exemptions.control_totals
