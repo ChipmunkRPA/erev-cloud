@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — structured GL reconciliation exports
+
+Excel now exposes retained GL bridge evidence as filterable numeric workpaper rows rather
+than a concatenated text cell. Separate currency, role, source identity, review state, GL,
+subledger, report and difference columns preserve the original result. Missing evidence is
+blank and unavailable reasons remain visible; exporting never performs new accounting math.
+This applies to standalone reports and disclosure workbook sections. Focused renderer checks
+cover offsetting failed differences, reopened sources, missing subledger evidence, numeric
+precision and formula-safe text. Independent accounting acceptance and final release checks
+remain outstanding. No deployment.
+
+
 ### October 20 — reviewed GL source requirement
 
 New balance and rollforward reports require the latest retained GL reconciliation to be

@@ -6,6 +6,18 @@
 
 
 
+## Filterable GL bridge workpapers — October 20, 2026
+
+- Excel exports now render GL tie-out evidence as a filterable table, one row per retained
+  entity/role. GL, retained subledger, report closing and both bridge differences are numeric
+  cells with amount precision; review state, source ID, book/period and unavailability reasons
+  remain separate columns. No balances or differences are recalculated during export.
+- Missing evidence stays blank, distinct from zero. Equal/opposite bridge differences remain
+  visible with FAIL even when the net difference is zero. Text retains formula protection.
+- Single reports and disclosure workbooks share the renderer. Focused workbook and existing
+  export checks pass; production renderer lint/types pass. Independent accounting acceptance
+  and final candidate verification remain outstanding. Direct main publication; no deployment.
+
 ## Reviewed GL source gate — October 20, 2026
 
 - New contract balance and rollforward runs require reviewed/certified GL reconciliation

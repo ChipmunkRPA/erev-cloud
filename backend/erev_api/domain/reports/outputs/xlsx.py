@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import io
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -190,6 +191,62 @@ def _total(sheet: Any, formats: _Formats, row: int, key: str, value: Any) -> int
     return row + 1
 
 
+_GL_COLUMNS = (
+    ("entity", "Entity"),
+    ("role", "Balance role"),
+    ("currency", "Currency"),
+    ("gl", "GL balance"),
+    ("source_subledger", "Retained subledger"),
+    ("rollforward", "Report closing balance"),
+    ("subledger_gl_difference", "Subledger minus GL"),
+    ("report_subledger_difference", "Report minus subledger"),
+    ("difference", "Report minus GL"),
+    ("result", "Result"),
+    ("bridge_result", "Bridge result"),
+    ("source_status", "Source review status"),
+    ("reconciliation_id", "Reconciliation ID"),
+    ("book_code", "Book"),
+    ("period_key", "Period"),
+    ("reason", "Unavailable reason"),
+    ("bridge_reason", "Bridge unavailable reason"),
+)
+_GL_MONEY = frozenset(key for key, _ in _GL_COLUMNS[3:9])
+
+
+def _gl_details(
+    sheet: Any, formats: _Formats, row: int, records: Sequence[Mapping[str, Any]]
+) -> int:
+    """Export retained bridge evidence as filterable numeric rows, without recalculation."""
+    if not records:
+        return row
+    first = row
+    for record in records:
+        row += 1
+        for col, (key, _) in enumerate(_GL_COLUMNS):
+            value = record.get(key)
+            if value is None:
+                continue  # Unavailable evidence stays blank, never a fabricated zero.
+            if key in _GL_MONEY:
+                _write_money(sheet, formats, row, col, {"amount": value})
+            else:
+                sheet.write_string(row, col, guard(str(value)), formats.wrapped)
+    sheet.add_table(
+        first,
+        0,
+        row,
+        len(_GL_COLUMNS) - 1,
+        {
+            "columns": [
+                {"header": label, "header_format": formats.wrapped_bold} for _, label in _GL_COLUMNS
+            ],
+            "style": "Table Style Medium 2",
+        },
+    )
+    sheet.set_row(first, 32)
+    sheet.set_column(0, len(_GL_COLUMNS) - 1, 22)
+    return row + 2
+
+
 def _header_block(
     sheet: Any, formats: _Formats, data: ReportData, stamp: RunStamp, row: int = 0
 ) -> int:
@@ -223,6 +280,9 @@ def _header_block(
             sheet.write_string(row, 2, guard(parameter_text(item.get("expected"))))
             sheet.write_string(row, 3, guard(parameter_text(item.get("actual"))))
             row += 1
+            if item["code"] == "TO_ROLLFORWARD_EQ_GL":
+                row = _gl_details(sheet, formats, row, item.get("details", ()))
+                continue
             for detail in item.get("details", ()):
                 sheet.write_string(
                     row, 0, guard("; ".join(f"{key}: {value}" for key, value in detail.items()))
