@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Royalty lifecycle and supported public workflow — October 21, 2026
+
+- Four original-engine Reporting journeys verify minimum-guarantee netting, downward
+  statement corrections, licence satisfaction before/after the eligibility boundary and
+  same-day statements before/after exit. All movement lines reconcile; the fixture now reads
+  the actual recognition method instead of labelling every obligation USAGE.
+- The public workflow intentionally rejects a batch mixing Step 1 reassessments with manual
+  usage (API-R-30). Verified rejection leaves computation count unchanged. The supported
+  separate-review sequence accepts usage while excluded, restores eligibility and preserves
+  the earlier bound report on rerun. Both existing and usage-bearing public variants pass.
+- A single public manual batch is therefore not a missing UI feature to enable by weakening
+  controls. Ordered initial historical computations remain covered at the original-engine
+  and report-builder boundary; no claim is made about every history-import route.
+- This increment closes the stated royalty guarantee/statement/satisfaction witness and
+  clarifies the public mixed-batch limitation without changing production logic. Scoped lint
+  passes. Next implementation focus is B4-11 arbitrary historical commit visibility;
+  final-candidate checks below remain outstanding. No deployment.
+
 ## Performance events in initial RPO eligibility batches — October 21, 2026
 
 - Ordered initial Reporting timelines now admit delivery, actual return, billing and credit

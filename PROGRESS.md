@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Royalty lifecycle and supported public workflow — October 21, 2026
+
+- Four original-engine Reporting journeys verify minimum-guarantee netting, downward
+  statement corrections, licence satisfaction before/after the eligibility boundary and
+  same-day statements before/after exit. All movement lines reconcile; the fixture now reads
+  the actual recognition method instead of labelling every obligation USAGE.
+- The public workflow intentionally rejects a batch mixing Step 1 reassessments with manual
+  usage (API-R-30). Verified rejection leaves computation count unchanged. The supported
+  separate-review sequence accepts usage while excluded, restores eligibility and preserves
+  the earlier bound report on rerun. Both existing and usage-bearing public variants pass.
+- A single public manual batch is therefore not a missing UI feature to enable by weakening
+  controls. Ordered initial historical computations remain covered at the original-engine
+  and report-builder boundary; no claim is made about every history-import route.
+- This increment closes the stated royalty guarantee/statement/satisfaction witness and
+  clarifies the public mixed-batch limitation without changing production logic. Scoped lint
+  passes. Next implementation focus is B4-11 arbitrary historical commit visibility;
+  final-candidate checks below remain outstanding. No deployment.
+
 ## Performance events in initial RPO eligibility batches — October 21, 2026
 
 - Ordered initial Reporting timelines now admit delivery, actual return, billing and credit
@@ -199,25 +217,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Multiple eligibility transitions within one initial computation and B4-11 arbitrary historical
   commit visibility remain open. This closes the supported retained mixed-exit decomposition,
   not every lifecycle combination. No deployment or additional accounting sign-off gate.
-
-## Public eligibility workflow and historical projection reads — October 21, 2026
-
-- The public reviewed collectibility/re-entry journey exposed two implementation faults.
-  Operational HOLD_APPLIED/HOLD_RELEASED dates could move a June business change into September;
-  RPO now dates versions by their business causes, while retaining each original computation
-  and its dated recognition/hold evidence. Hold-only versions inherit the prior business date.
-  New runs bind rpo_operational_hold_dates_v1; older bindings retain their previous dates.
-- Database trace reads omitted cut, period_key and reason even though the engine retained them.
-  These parameters now reach the existing projection reader: historical fixed schedules can use
-  their original period projections, and unavailable-projection reasons are not silently lost.
-- The public journey reviews a not-probable assessment, appends the significant change and
-  assessment, generates June RPO, then reviews probable collection, submits/approves criteria
-  re-entry and generates July RPO. Eligibility movements reconcile; rerunning June after July
-  preserves its original rows. This closes the public-workflow gap recorded in the 0266 note.
-- Migration 0267 updates both RPO definitions; reversible migration/catalogue parity, 93 dated
-  reader cases, scoped lint/types and the public journey pass. Mixed eligibility exits with
-  amendments/estimates, multiple transitions in one initial computation and B4-11 commit
-  visibility remain open. No deployment or expanded approval requirement.
 
 ## Outstanding release verification
 

@@ -11041,3 +11041,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   multiple transitions inside one initial computation and B4-11 commit visibility remain open.
   The new eligibility journey uses original engine outputs; a public reassessment-to-report
   journey is still unverified. No deployment.
+
+## Public eligibility workflow and historical projection reads — October 21, 2026
+
+- The public reviewed collectibility/re-entry journey exposed two implementation faults.
+  Operational HOLD_APPLIED/HOLD_RELEASED dates could move a June business change into September;
+  RPO now dates versions by their business causes, while retaining each original computation
+  and its dated recognition/hold evidence. Hold-only versions inherit the prior business date.
+  New runs bind rpo_operational_hold_dates_v1; older bindings retain their previous dates.
+- Database trace reads omitted cut, period_key and reason even though the engine retained them.
+  These parameters now reach the existing projection reader: historical fixed schedules can use
+  their original period projections, and unavailable-projection reasons are not silently lost.
+- The public journey reviews a not-probable assessment, appends the significant change and
+  assessment, generates June RPO, then reviews probable collection, submits/approves criteria
+  re-entry and generates July RPO. Eligibility movements reconcile; rerunning June after July
+  preserves its original rows. This closes the public-workflow gap recorded in the 0266 note.
+- Migration 0267 updates both RPO definitions; reversible migration/catalogue parity, 93 dated
+  reader cases, scoped lint/types and the public journey pass. Mixed eligibility exits with
+  amendments/estimates, multiple transitions in one initial computation and B4-11 commit
+  visibility remain open. No deployment or expanded approval requirement.

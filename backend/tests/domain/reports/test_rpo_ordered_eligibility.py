@@ -66,7 +66,7 @@ def report_store(bundle, before, end, *, performance=False):
         eid,
         "E",
         "USD",
-        "USAGE",
+        bundle.pob_template_versions[0].recognition_method,
         date(2026, 12, 31),
         admitted,
         Decimal(str(columns["allocated_amount"])) / 100,
@@ -226,4 +226,68 @@ def test_returns_and_delivery_follow_original_eligibility_order(after, exited, e
     assert result.lines["ELIGIBILITY_CHANGES"] == (0 if not after else -120)
     assert result.lines["CLOSING"] == 480
     assert result.lines["REVENUE"] == expected_revenue
+    assert result.lines["UNEXPLAINED"] == 0, result.lines
+
+
+@pytest.mark.parametrize("after", [False, True])
+@pytest.mark.parametrize("delivered_early", [False, True])
+def test_royalty_guarantee_correction_and_satisfaction_across_eligibility(after, delivered_early):
+    from support import cpc_worlds
+
+    jan, exited = date(2026, 1, 1), date(2026, 2, 10)
+    bundle = worlds.time_world(
+        paid=None,
+        steps=[("C", jan, "")],
+        template_changes={
+            "obligation_kind": "LICENCE",
+            "licence_nature": "FUNCTIONAL",
+            "recognition_method": "ROYALTY",
+        },
+        policies={"royalty.minimum_guarantee": "FIXED_ON_LICENCE_PATTERN"},
+    )
+    events = list(bundle.events)
+    if delivered_early:
+        events = worlds.delivered(events, date(2026, 1, 15), worlds.SERVICE)
+
+    def statement(events, day, start, end, amount):
+        return cpc_worlds.then(
+            events,
+            "USAGE_REPORTED",
+            day,
+            {
+                "obligation_key": worlds.SERVICE,
+                "usage_period_start": start,
+                "usage_period_end": end,
+                "metric": "LICENSEE_SALES",
+                "quantity": Decimal(amount),
+                "rated_amount": Decimal(amount),
+                "is_royalty_statement": True,
+            },
+        )
+
+    events = statement(events, date(2026, 1, 31), jan, date(2026, 1, 31), 600)
+    events = worlds.significant_change(events, exited, "Licensee distress")
+    if after:
+        events = worlds.not_probable(events, exited)
+    events = statement(events, exited, date(2026, 2, 1), exited, 1000)
+    if not after:
+        events = worlds.not_probable(events, exited)
+    events = worlds.criteria_met(events, exited)
+    if not delivered_early:
+        events = worlds.delivered(events, date(2026, 3, 15), worlds.SERVICE)
+    events = statement(events, date(2026, 3, 20), date(2026, 2, 1), exited, 800)
+    bundle = replace(
+        bundle,
+        events=tuple(events),
+        known_at=max(bundle.known_at, *(event.recorded_at for event in events)),
+    )
+    before, end = date(2026, 1, 31), date(2026, 3, 31)
+    store, eid, vid, oid, book, cuts = report_store(bundle, before, end, performance=True)
+    (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
+    # 600 January + corrected 800 February less the 1,200 guarantee = 200 excess royalty.
+    assert result.lines["OPENING"] == (0 if delivered_early else 1200)
+    assert result.lines["VC_ESTIMATE_CHANGES"] == (-200 if after else 200)
+    assert result.lines["ELIGIBILITY_CHANGES"] == (400 if after and not delivered_early else 0)
+    assert result.lines["REVENUE"] == ((200 if after else -200) if delivered_early else -1400)
+    assert result.lines["CLOSING"] == 0
     assert result.lines["UNEXPLAINED"] == 0, result.lines

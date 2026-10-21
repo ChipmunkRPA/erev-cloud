@@ -730,12 +730,14 @@ def test_same_day_usage_termination_public_report(
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("with_excluded_usage", [False, True])
 def test_collectibility_reentry_public_rpo(
     app: FastAPI,
     keyring: KeyRing,
     clock: FrozenClock,
     files: LocalFileStore,
     monkeypatch: pytest.MonkeyPatch,
+    with_excluded_usage: bool,
 ) -> None:
     """Reviewed Step 1 exits and re-entry reach the retained RPO calculation."""
     from support.factories import step1_criteria
@@ -774,9 +776,7 @@ def test_collectibility_reentry_public_rpo(
         return record["id"]
 
     record = reviewed(False)
-    exited = worlds._appended_through_api(
-        world.place,
-        cid,
+    events = [
         {
             "event_type": "SIGNIFICANT_CHANGE_FLAGGED",
             "effective_date": "2026-06-01",
@@ -787,7 +787,44 @@ def test_collectibility_reentry_public_rpo(
             "effective_date": "2026-06-01",
             "payload": {"book": "ASC606", "is_probable": False, "judgement_record_id": record},
         },
-    )
+    ]
+    if with_excluded_usage:
+        events.append(
+            {
+                "event_type": "USAGE_REPORTED",
+                "effective_date": "2026-06-01",
+                "payload": {
+                    "obligation_key": "O1",
+                    "usage_period_start": "2026-06-01",
+                    "usage_period_end": "2026-06-01",
+                    "metric": "API_CALLS",
+                    "quantity": "1500",
+                    "rated_amount": {"amount": "150.00", "currency": "USD"},
+                },
+            }
+        )
+        # Step 1 and manual facts have separate approval routes. The public API
+        # rejects a mixed batch; verify the supported sequence instead of weakening it.
+        from erev_api.db.tables import contract_version
+
+        versions = select(func.count()).select_from(contract_version)
+        original_count = world.place.scalar(versions)
+        current = get(app, f"/api/v1/contracts/{cid}", world.maya)
+        rejected = post(
+            app,
+            f"/api/v1/contracts/{cid}/events",
+            world.maya,
+            {"events": events, "evidence_file_ids": [worlds.evidence_file(app, world.maya)]},
+            if_match=current.headers["ETag"],
+        )
+        assert rejected.status_code == 422, rejected.text
+        assert {error["rule_id"] for error in rejected.json()["errors"]} == {"API-R-30"}
+        assert world.place.scalar(versions) == original_count
+        exited = worlds._appended_through_api(world.place, cid, *events[:2])
+        usage = worlds.approved_manual_events(world.place, world.priya, cid, events[2])
+        assert usage["computation"]["status"] == "SUCCEEDED", usage
+    else:
+        exited = worlds._appended_through_api(world.place, cid, *events)
     assert exited["computation"]["status"] == "SUCCEEDED", exited
     june, june_run = rollforward(world, AVM_US, "FY2026-P06")
     june_rows = get(app, f"/api/v1/report-runs/{june_run['id']}/data", world.maya).json()["items"]
@@ -795,6 +832,7 @@ def test_collectibility_reentry_public_rpo(
     assert june["ELIGIBILITY_CHANGES"] + june["REVENUE"] == -june["OPENING"], june
     assert june["CLOSING"] == june["NEW_CONTRACTS"] == june["CANCELLATIONS"] == 0, june
     assert june["UNEXPLAINED"] == 0, june
+    assert june["VC_ESTIMATE_CHANGES"] == 0, june
 
     clock.advance(timedelta(minutes=1))
     record = reviewed(True)
