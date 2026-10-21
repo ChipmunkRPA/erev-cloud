@@ -1079,6 +1079,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "disclosure re-entry admits only its remaining balance, without duplicating pre- "
             "entry revenue; original termination boundaries and dated realization remain "
             "required; older bindings retain their single-version eligibility",
+            "rpo_pretermination_versions_v1 carries original pre-termination fixed balances "
+            "across intervening retained versions instead of settling a future cancellation "
+            "early; the superseding computation determines the pending termination and "
+            "version deltas retain their own cause attribution; original boundary and dated "
+            "realization guards remain required; older bindings retain prior treatment",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

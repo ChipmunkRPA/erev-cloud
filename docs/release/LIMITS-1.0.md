@@ -1,5 +1,28 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — pending cancellation across intervening versions; aging policy resolved
+
+- RPO rollforward carries original pre-termination fixed balances across intervening
+  retained versions. It no longer settles a future cancellation early or loses the original
+  modifications, estimates and cancellation when a memo version precedes termination.
+  A superseding computation determines the pending termination. Competing original modification,
+  estimate and partial-cancellation amounts are separated before the pending cancellation settles.
+- New bindings retain rpo_pretermination_versions_v1; older bindings preserve prior behavior.
+  Original boundary coverage, chronology, fixed amount reconciliation and dated realization
+  guards remain required. Migration 0259 records the rule in the IPE catalogue.
+- All 74 related cases pass, including original engine termination amounts with intervening
+  read-layer memo versions, mixed later-version causes, monthly/range cuts and legacy behavior.
+  Public currency report/retained-rate rerun, scoped lint/types and migration downgrade/upgrade
+  exact catalogue parity pass. Adapted version chains are not new public lifecycle witnesses.
+- Remaining work includes broader repeated cancellation/re-entry and mixed same-day entry,
+  B4-11 concurrent commit visibility, independent accounting sign-off and final-candidate checks.
+  This does not establish production readiness. Direct main; no deployment.
+- Owner decision, October 20: combined-contract aging must retain the original receiving
+  contract's aging and show member allocation adjustments separately. The policy question is
+  resolved; implementation remains outstanding. After this current RPO fix is published,
+  pause development as requested; do not start the aging implementation until resumed.
+
+
 ### October 20 — same-day RPO entry/cancellation across retained versions
 
 - RPO rollforward now preserves the original gross entry, revenue and cancellation when a

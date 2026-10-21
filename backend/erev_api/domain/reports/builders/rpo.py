@@ -359,6 +359,7 @@ class Store:
     classify_continuing_cancellations: bool = field(default=True, kw_only=True)
     classify_mixed_continuing_changes: bool = field(default=True, kw_only=True)
     classify_same_day_entry_chains: bool = field(default=True, kw_only=True)
+    classify_pretermination_versions: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1516,6 +1517,7 @@ def _obligation_lines(
             and (
                 not moved
                 or (store.classify_cancelled_chains and terminal.day <= moved[0].effective)
+                or (store.classify_cancelled_chains and store.classify_pretermination_versions)
             )
             and terminal.before is not None
             and (
@@ -1592,8 +1594,17 @@ def _obligation_lines(
                         scoped.cancellation_events,
                     )
                     assert boundary is not None
-                    lines["CANCELLATIONS"] += boundary[1] - terminal.before
-                    terminal_cancellation = opening
+                    if (
+                        store.classify_pretermination_versions
+                        and moved
+                        and moved[0].effective < terminal.day
+                    ):
+                        lines["CANCELLATIONS"] += boundary[1]
+                        previous = terminal.before
+                        pending_cancellation = opening
+                    else:
+                        lines["CANCELLATIONS"] += boundary[1] - terminal.before
+                        terminal_cancellation = opening
                     if store.classify_batch_cancelled_usage:
                         batch_segment = cancelled_segment(0, opening)
                         if batch_segment is not None:
@@ -1602,11 +1613,18 @@ def _obligation_lines(
                             batch_cancelled_usage = opening
                         elif cancelled_tail(0) is not None:
                             batch_cancelled_usage = cancelled_tail(0)
-                    previous = ZERO
-                    previous_obligation = None
-                    was_cancelled = True
+                    if pending_cancellation is None:
+                        previous = ZERO
+                        previous_obligation = None
+                        was_cancelled = True
 
     for index, version in enumerate(moved):
+        if pending_cancellation is not None and store.classify_pretermination_versions:
+            terminal = store.cancellation(pending_cancellation)
+            if terminal is not None and version.effective < terminal.day:
+                # A newer computation can supersede a future cancellation. Carry
+                # its pre-termination balance into the version delta, not zero.
+                pending_cancellation = None
         if pending_cancellation is not None:
             terminal = store.cancellation(pending_cancellation)
             assert terminal is not None and terminal.before is not None
@@ -1665,14 +1683,18 @@ def _obligation_lines(
         if (
             current is not None
             and current.cancelled
-            and admission
+            and (admission or store.classify_pretermination_versions)
             and (store.classify_cancelled_chains or len(moved) == 1)
         ):
             terminal = store.cancellation(current)
             if (
                 terminal is not None
                 and terminal.day <= end
-                and (index + 1 == len(moved) or terminal.day <= moved[index + 1].effective)
+                and (
+                    index + 1 == len(moved)
+                    or terminal.day <= moved[index + 1].effective
+                    or store.classify_pretermination_versions
+                )
                 and terminal.before is not None
                 and (
                     (
@@ -1880,7 +1902,10 @@ def _obligation_lines(
                     delta -= modified + estimate
                     line = "CANCELLATIONS"
             if (
-                current is None
+                (
+                    current is None
+                    or (store.classify_pretermination_versions and pending_cancellation is current)
+                )
                 and previous_obligation is not None
                 and "CANCELLATIONS" in causes
                 and len(causes) > 1

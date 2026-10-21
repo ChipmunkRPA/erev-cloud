@@ -10632,3 +10632,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Multiple cancellations within one computation, intervening pre-termination versions, same-day
   entry/cancellation and combined-member aging ownership remain open. Independent accounting
   sign-off and final-candidate verification remain open. Direct main; no deployment.
+
+## Reviewable monthly unexplained RPO differences — October 20, 2026
+
+- Confirmed all 59 catalogue definitions have registered execution paths. Converted RPO
+  rollforwards now retain every nonzero source contract/entity/period difference with its
+  original amount and the exact translated amount already used by the report. Offsetting
+  months or rounding to zero no longer hide why the existing source tie-out failed.
+- The report viewer and run record show an open detail table; XLSX/PDF render readable rows
+  and the CSV manifest retains the same facts. Currency registration now includes currencies
+  present only in retained RPO/exemption details. No UI allocation, FX or root-cause inference.
+- New bindings retain rpo_unexplained_details_v1; older runs keep their original control totals.
+  Functional/reporting offset cases, viewer display, formula-safe numeric XLSX/PDF/manifest
+  exports, existing public three-view reports/reruns, lint/types and migration 0249 parity pass.
+- This identifies source differences; it does not repair unsupported attribution combinations.
+  Multiple cancellations within one computation, intervening pre-termination versions, same-day
+  entry/cancellation and combined-member aging ownership remain open. Independent accounting
+  sign-off and final-candidate checks remain open. Direct main publication; no deployment.

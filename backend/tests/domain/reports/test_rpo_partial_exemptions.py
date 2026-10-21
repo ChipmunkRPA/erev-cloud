@@ -1355,6 +1355,18 @@ def test_first_entry_separates_later_original_estimate_events(
             assert later_result.lines["CANCELLATIONS"] == -40
             assert later_result.lines["REVENUE"] == -(final - 40)
             assert later_result.lines["CLOSING"] == later_result.lines["UNEXPLAINED"] == 0
+            pending_version = replace(later_version, effective=date(2026, 2, 1))
+            pending_store = replace(
+                later_store,
+                versions={gid: (prior_version, pending_version)},
+                chains={cid: (prior_version, pending_version)},
+            )
+            (pending_result,) = rpo.rollforward_lines(
+                pending_store,
+                ranges={eid: (january, end)},
+                applied={},
+            )
+            assert pending_result.lines == later_result.lines
             (old_result,) = rpo.rollforward_lines(
                 replace(later_store, classify_separate_cancellations=False),
                 ranges={eid: (january, end)},
@@ -1567,6 +1579,30 @@ def test_first_entry_separates_later_original_estimate_events(
             cancelled_store, ranges={eid: (january, end)}, applied={}
         )
         assert continued_month.lines == original_month.lines
+
+        # A retained version before the original termination must not erase the
+        # original pre-termination amounts or settle the cancellation prematurely.
+        if not same_day:
+            intermediate_version = replace(retained, effective=date(2026, 2, 1))
+            intervening = replace(
+                continued,
+                versions={gid: (first_cancelled, intermediate_version)},
+                chains={cid: (first_cancelled, intermediate_version)},
+            )
+            for start in (before, january):
+                (intervening_row,) = rpo.rollforward_lines(
+                    intervening, ranges={eid: (start, end)}, applied={}
+                )
+                (unchanged_row,) = rpo.rollforward_lines(
+                    cancelled_store, ranges={eid: (start, end)}, applied={}
+                )
+                assert intervening_row.lines == unchanged_row.lines
+                (legacy_intervening,) = rpo.rollforward_lines(
+                    replace(intervening, classify_pretermination_versions=False),
+                    ranges={eid: (start, end)},
+                    applied={},
+                )
+                assert legacy_intervening.lines != unchanged_row.lines
 
         (legacy_month,) = rpo.rollforward_lines(
             replace(continued, classify_cancelled_chains=False),

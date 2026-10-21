@@ -2,6 +2,28 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## RPO pre-termination version attribution and requested pause — October 20, 2026
+
+- RPO rollforward carries original pre-termination fixed balances across intervening
+  retained versions. It no longer settles a future cancellation early or loses the original
+  modifications, estimates and cancellation when a memo version precedes termination.
+  A superseding computation determines the pending termination. Competing original modification,
+  estimate and partial-cancellation amounts are separated before the pending cancellation settles.
+- New bindings retain rpo_pretermination_versions_v1; older bindings preserve prior behavior.
+  Original boundary coverage, chronology, fixed amount reconciliation and dated realization
+  guards remain required. Migration 0259 records the rule in the IPE catalogue.
+- All 74 related cases pass, including original engine termination amounts with intervening
+  read-layer memo versions, mixed later-version causes, monthly/range cuts and legacy behavior.
+  Public currency report/retained-rate rerun, scoped lint/types and migration downgrade/upgrade
+  exact catalogue parity pass. Adapted version chains are not new public lifecycle witnesses.
+- Remaining work includes broader repeated cancellation/re-entry and mixed same-day entry,
+  B4-11 concurrent commit visibility, independent accounting sign-off and final-candidate checks.
+  This does not establish production readiness. Direct main; no deployment.
+- Owner decision, October 20: combined-contract aging must retain the original receiving
+  contract's aging and show member allocation adjustments separately. The policy question is
+  resolved; implementation remains outstanding. After this current RPO fix is published,
+  pause development as requested; do not start the aging implementation until resumed.
+
 ## Same-day RPO entry/cancellation survives later versions — October 20, 2026
 
 - RPO rollforward now preserves the original gross entry, revenue and cancellation when a
@@ -194,23 +216,6 @@
 - Same-day modification/estimate/usage mixtures, multiple cancellations in one computation,
   intervening pre-termination versions and combined-member aging ownership remain open.
   Independent accounting sign-off and final-candidate checks remain open. No deployment.
-
-## Reviewable monthly unexplained RPO differences — October 20, 2026
-
-- Confirmed all 59 catalogue definitions have registered execution paths. Converted RPO
-  rollforwards now retain every nonzero source contract/entity/period difference with its
-  original amount and the exact translated amount already used by the report. Offsetting
-  months or rounding to zero no longer hide why the existing source tie-out failed.
-- The report viewer and run record show an open detail table; XLSX/PDF render readable rows
-  and the CSV manifest retains the same facts. Currency registration now includes currencies
-  present only in retained RPO/exemption details. No UI allocation, FX or root-cause inference.
-- New bindings retain rpo_unexplained_details_v1; older runs keep their original control totals.
-  Functional/reporting offset cases, viewer display, formula-safe numeric XLSX/PDF/manifest
-  exports, existing public three-view reports/reruns, lint/types and migration 0249 parity pass.
-- This identifies source differences; it does not repair unsupported attribution combinations.
-  Multiple cancellations within one computation, intervening pre-termination versions, same-day
-  entry/cancellation and combined-member aging ownership remain open. Independent accounting
-  sign-off and final-candidate checks remain open. Direct main publication; no deployment.
 
 ## Outstanding release verification
 
