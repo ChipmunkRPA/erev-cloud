@@ -24,12 +24,16 @@ lines of the run's book for the run's entities, each over its own period range, 
 Tie-out ``TO_IC_UNMATCHED_ZERO`` (S12-R-16, S12-INV-07): every pair whose two entities are in the
 run has an unmatched amount of 0; ``NOT_APPLICABLE`` without such a pair. Control totals: the pair
 counts and ``due_from_total``, ``due_to_total`` and ``unmatched_total`` per currency.
-``currency_view`` ``transaction`` (the default) is always served; another view only when every
-line's currency is the functional currency of the entity that carries it, else refused by name.
+``currency_view`` ``transaction`` is the default. Functional view reads posted functional
+amounts, keeping different functional currencies on separate rows with incomparable sides empty.
+Reporting view translates posted functional period activity at approved period-average rates to
+one common reporting currency. Translation differences remain visible in the unmatched amount;
+the report does not insert an elimination or force the tie-out to pass.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
@@ -40,12 +44,12 @@ from sqlalchemy import and_, false, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract, legal_entity, obligation, period, subledger_line
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import ranges
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
-from erev_api.domain.reports.tie_outs import ZERO, PeriodRef
+from erev_api.domain.reports.tie_outs import ZERO, EntityRef, PeriodRef
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "intercompany_pairs"
@@ -57,8 +61,7 @@ ROLES: Final = (DUE_FROM, DUE_TO)
 PAIR_PREFIX: Final = "pair:"
 CONTRACT_PREFIX: Final = "contract:"
 FUNCTIONAL_ONLY: Final = (
-    "The functional and reporting views show pairs whose currency is the functional currency of "
-    "both entities; choose the transaction view."
+    "Functional view requires the posted functional amount and currency for each entity."
 )
 COLUMNS: Final = (
     Column("section", "Section", "integer"),
@@ -116,13 +119,21 @@ def pair_of(line: Line) -> tuple[str, str, str]:
     return line.counterparty_code, line.entity_code, line.currency
 
 
-def check_view(view: str, lines: Iterable[Line]) -> None:
-    """``transaction`` always; another view only when every line is in the functional currency of
-    the entity that carries it, else refused by name."""
-    if view != DEFAULT_CURRENCY_VIEW and any(
-        line.currency != line.functional_currency for line in lines
-    ):
+def check_view(
+    view: str, lines: Iterable[Line], *, reporting_currency_code: str | None = None
+) -> None:
+    """Validate already-projected amounts without treating an untranslated view as reporting."""
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid(
+            "currency_view", "Choose Transaction, Functional or Reporting currency."
+        )
+    if view == "functional" and any(line.currency != line.functional_currency for line in lines):
         raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
+    if view == "reporting" and (
+        reporting_currency_code is None
+        or any(line.currency != reporting_currency_code for line in lines)
+    ):
+        raise tie_outs.invalid("currency_view", "Reporting currency projection is required.")
 
 
 def _amounts(
@@ -142,10 +153,19 @@ def _money(amount: Decimal | None, currency: str) -> dict[str, str] | None:
 
 
 def dataset_rows(
-    lines: Iterable[Line], *, run_entities: Collection[str]
+    lines: Iterable[Line],
+    *,
+    run_entities: Collection[str],
+    entity_currencies: Mapping[str, str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """(rows of sections 1 and 2, control totals, the ``TO_IC_UNMATCHED_ZERO`` result).
     ``run_entities`` are the entity codes of the run: only their lines are in ``lines``. Pure."""
+
+    def comparable(currency: str) -> Collection[str]:
+        if entity_currencies is None:
+            return run_entities
+        return {code for code in run_entities if entity_currencies.get(code) == currency}
+
     pairs: dict[tuple[str, str, str], _Sides] = {}
     details: dict[tuple[str, str, str, tuple[str, str, str]], _Sides] = {}
     for line in lines:
@@ -161,7 +181,7 @@ def dataset_rows(
     complete = broken = 0
     for pair in sorted(pairs):
         due_from_entity, due_to_entity, currency = pair
-        due_from, due_to, unmatched = _amounts(pairs[pair], pair, run_entities)
+        due_from, due_to, unmatched = _amounts(pairs[pair], pair, comparable(currency))
         if due_from is not None:
             tie_outs.add(due_from_total, currency, due_from)
         if due_to is not None:
@@ -183,13 +203,19 @@ def dataset_rows(
                 "unmatched_amount": _money(unmatched, currency),
             }
         )
+    detail_counts = Counter(key[:3] for key in details)
     for key in sorted(details):
         external_id, obligation_key, period_key, pair = key
         due_from_entity, due_to_entity, currency = pair
-        due_from, due_to, unmatched = _amounts(details[key], pair, run_entities)
+        due_from, due_to, unmatched = _amounts(details[key], pair, comparable(currency))
         rows.append(
             {
-                "row_key": f"{CONTRACT_PREFIX}{external_id}:{obligation_key}:{period_key}",
+                "row_key": f"{CONTRACT_PREFIX}{external_id}:{obligation_key}:{period_key}"
+                + (
+                    f":{due_from_entity}:{due_to_entity}:{currency}"
+                    if detail_counts[key[:3]] > 1
+                    else ""
+                ),
                 "section": 2,
                 "contract_external_id": external_id,
                 "obligation_key": obligation_key or None,
@@ -229,6 +255,8 @@ def sources(
     *,
     book_code: str,
     periods: Mapping[UUID, Sequence[PeriodRef]],
+    entities: Sequence[EntityRef],
+    tenant_id: UUID,
 ) -> list[Line]:
     """The intercompany lines of the run's entities, each over its own period range, recorded by
     the run's ``known_at``."""
@@ -244,6 +272,10 @@ def sources(
     counter = legal_entity.alias("counterparty")
     statement = (
         select(
+            subledger_line.c.entity_id,
+            subledger_line.c.period_id,
+            subledger_line.c.amount_functional,
+            subledger_line.c.functional_currency.label("posted_functional_currency"),
             carrier.c.code.label("entity_code"),
             carrier.c.functional_currency,
             counter.c.code.label("counterparty_code"),
@@ -299,20 +331,57 @@ def sources(
         )
         .order_by(subledger_line.c.period_end_date, subledger_line.c.entry_no, subledger_line.c.id)
     )
-    return [
-        Line(
-            entity_code=str(row["entity_code"]),
-            counterparty_code=str(row["counterparty_code"]),
-            account_role=str(row["account_role"]),
-            currency=str(row["txn_currency"]).strip(),
-            amount=Decimal(row["amount_txn"]),
-            functional_currency=str(row["functional_currency"]).strip(),
-            contract_external_id=str(row["external_id"]),
-            obligation_key=None if row["obligation_key"] is None else str(row["obligation_key"]),
-            period_key=str(row["period_key"]),
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    entity_by_id = {entity.id: entity for entity in entities}
+    period_by_id = {item.id: item for items in periods.values() for item in items}
+    translations: dict[tuple[UUID, UUID], reporting_currency.Translation] = {}
+    result: list[Line] = []
+    target: str | None = None
+    for row in session.execute(statement).mappings():
+        currency = str(row["txn_currency"]).strip()
+        amount = Decimal(row["amount_txn"])
+        functional = str(row["functional_currency"]).strip()
+        if view in {"functional", "reporting"}:
+            currency = str(row["posted_functional_currency"]).strip()
+            if currency != functional:
+                raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
+            amount = Decimal(row["amount_functional"])
+        if view == "reporting":
+            entity_id = UUID(str(row["entity_id"]))
+            period_id = UUID(str(row["period_id"]))
+            key = (entity_id, period_id)
+            if key not in translations:
+                at = period_by_id[period_id]
+                translations[key] = reporting_currency.rates_for_period(
+                    session,
+                    params,
+                    tenant_id=tenant_id,
+                    entities=(entity_by_id[entity_id],),
+                    periods={entity_id: at},
+                    rate_type="average",
+                    target_currency=target,
+                    evidence_key=f"ic_reporting_average_v1:{entity_id}:{at.key}",
+                )
+            translation = translations[key]
+            target = translation.currency
+            amount = translation.amount(entity_id, amount)
+            currency = target
+        result.append(
+            Line(
+                entity_code=str(row["entity_code"]),
+                counterparty_code=str(row["counterparty_code"]),
+                account_role=str(row["account_role"]),
+                currency=currency,
+                amount=amount,
+                functional_currency=functional,
+                contract_external_id=str(row["external_id"]),
+                obligation_key=None
+                if row["obligation_key"] is None
+                else str(row["obligation_key"]),
+                period_key=str(row["period_key"]),
+            )
         )
-        for row in session.execute(statement).mappings()
-    ]
+    return result
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
@@ -320,9 +389,23 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     found, periods, _ = ranges(session, params)
-    lines = sources(session, params, book_code=book_code, periods=periods)
-    check_view(str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW), lines)
-    rows, totals, tie = dataset_rows(lines, run_entities={entity.code for entity in found})
+    lines = sources(
+        session,
+        params,
+        book_code=book_code,
+        periods=periods,
+        entities=found,
+        tenant_id=uow.principal.tenant_id,
+    )
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    check_view(view, lines, reporting_currency_code=lines[0].currency if lines else "")
+    rows, totals, tie = dataset_rows(
+        lines,
+        run_entities={entity.code for entity in found},
+        entity_currencies={entity.code: entity.functional_currency for entity in found}
+        if view == "functional"
+        else None,
+    )
     return ReportData(
         columns=COLUMNS, rows=tuple(rows), control_totals=totals, tie_out_results=(tie,)
     )

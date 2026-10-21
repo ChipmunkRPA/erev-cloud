@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Intercompany Pairs functional and reporting currencies — October 21, 2026
+
+- Functional view now reads the posted functional amount/currency of each entity's lines.
+  Different functional currencies remain separate: an incomparable counterpart and unmatched
+  amount are empty, not zero or a false break. Contract-detail keys distinguish split currency
+  and entity-pair rows without changing existing unambiguous transaction-view keys.
+- Reporting view translates each entity's posted period activity using the approved period
+  average into the tenant reporting currency, with rate/version/cutoff evidence. This is the
+  existing period-activity report, not a new cumulative closing-balance report. Translation
+  residuals remain visible and can fail the tie-out; no artificial elimination is inserted.
+- Necessary validation passed: public K04 transaction and functional/reporting runs, comparison
+  to posted USD due-from amounts and GBP due-to translated at September 1.28, single-entity
+  permission scope, existing CSV/XLSX/PDF output, seven focused row/tie-out tests, migration
+  0294 catalogue parity and scoped lint/types. No deployment.
+- Remaining: Intercompany Pairs same-source retention and finer residual attribution; Adoption
+  Bridge is explicitly transaction-only and needs a separate cumulative adoption-date currency
+  design. Book Bridge granular causal attribution/retention and other documented Reporting
+  gaps remain open. This feature does not claim overall repository completion.
+
 ## Book Bridge reporting-currency view — October 21, 2026
 
 - Reporting view now translates each contract/book/period's posted functional revenue using
@@ -207,24 +226,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: actor/display-name history, approval-request/audit and document histories, and
   other report-specific inputs still listed as OPEN. These contract identities do not replace
   the remaining source-specific cutoff work or final repository release verification.
-
-## Contract sample event and version commits — October 21, 2026
-
-- Event sample files v2 filter original event commits by known_at and retain the timestamp
-  alongside original/redacted payload digests. Effective-date scope and provenance checks stay
-  intact; an event recorded before cutoff but committed later is excluded from that sample.
-- Computations index v2 and version evidence retain original version commits. Filtering happens
-  before ranking selected versions, keeping the preceding committed version when a newer
-  calculation commits late. Full allocation, trace and future planned schedule evidence remains.
-- Migration 0283 updates the sample catalogue description. Existing archives remain original
-  bytes. The pending-source check now includes approval decisions added by 0282 and verifies
-  recovery of all pending kinds, rather than assuming only event/version/revision sources.
-- Necessary checks passed: actual overlapping event+computation transaction with old/new sample
-  reads and selected versions, complete sample archive/PDF/XLSX flow, commit/redaction validation,
-  worker recovery, catalogue parity and scoped lint/types. No deployment.
-- Remaining: actor/display-name history, sample contract identity labels, approval-request/audit
-  and document histories. These readers now cover immutable event/version commit availability;
-  this does not claim complete historical reconstruction of every source in a sample pack.
 
 ## Outstanding release verification
 

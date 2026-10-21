@@ -724,3 +724,27 @@ def test_book_bridge_functional_fx_residual_is_not_a_false_zero() -> None:
     assert refused.value.errors[0].field == "parameters.currency_view"
     assert refused.value.errors[0].message == "Reporting currency projection is required."
     bridge.check_view("reporting", [item], functional_currency="GBP", reporting_currency_code="USD")
+
+
+def test_intercompany_functional_currencies_do_not_create_false_breaks() -> None:
+    lines = [
+        _line("UK", "US", pairs.DUE_TO, "-100", currency="GBP"),
+        _line("US", "UK", pairs.DUE_FROM, "128", currency="USD"),
+    ]
+    rows, totals, tie = pairs.dataset_rows(
+        lines, run_entities={"US", "UK"}, entity_currencies={"US": "USD", "UK": "GBP"}
+    )
+    assert len({row["row_key"] for row in rows}) == len(rows) == 4
+    assert all(row["unmatched_amount"] is None for row in rows)
+    assert totals["incomplete_pair_count"] == 2
+    assert totals["unmatched_total"] == {}
+    assert tie["result"] == "NOT_APPLICABLE"
+    # A common-currency translation residual remains a real report difference.
+    translated = [
+        _line("UK", "US", pairs.DUE_TO, "-128", currency="USD", functional="GBP"),
+        _line("US", "UK", pairs.DUE_FROM, "130", currency="USD"),
+    ]
+    pairs.check_view("reporting", translated, reporting_currency_code="USD")
+    rows, _, tie = pairs.dataset_rows(translated, run_entities={"US", "UK"})
+    assert rows[0]["unmatched_amount"] == usd("2.00")
+    assert tie["result"] == "FAIL"

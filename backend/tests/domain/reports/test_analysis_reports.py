@@ -33,7 +33,6 @@ from erev_api.domain.reports.builders import (
     ReportParams,
     adoption_bridge,
     book_bridge,
-    intercompany_pairs,
 )
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
@@ -623,14 +622,48 @@ def test_intercompany_pairs_k04(
     tie = tie_of(run, "TO_IC_UNMATCHED_ZERO")
     assert (tie["result"], tie["expected"], tie["actual"]) == ("NOT_APPLICABLE", None, None)
     assert run["control_totals"]["incomplete_pair_count"] == 1
-    # AVM-US carries its side in GBP, not in its functional currency: the functional view is
-    # refused by name
-    assert refused(
+    functional, functional_rows = report_run(
+        world, "intercompany_pairs", {**september, "currency_view": "functional"}
+    )
+    functional_pairs = keyed(functional_rows)
+    us_amount = world.place.scalar(
+        select(func.sum(subledger_line.c.amount_functional)).where(
+            subledger_line.c.entity_id == k04.us_entity_id,
+            subledger_line.c.book_code == "ASC606",
+            subledger_line.c.account_role == "INTERCOMPANY_DUE_FROM",
+            subledger_line.c.period_end_date == date(2026, 9, 30),
+        )
+    )
+    usd_pair = functional_pairs[f"pair:{AVM_US}:{AVM_UK}:USD"]
+    gbp_pair = functional_pairs[f"pair:{AVM_US}:{AVM_UK}:GBP"]
+    assert usd_pair["due_from_amount"] == book_bridge.tie_outs.money(D(us_amount), "USD")
+    assert usd_pair["due_to_amount"] is None
+    assert gbp_pair["due_from_amount"] is None
+    assert gbp_pair["due_to_amount"] == gbp("4790.61")
+    assert usd_pair["unmatched_amount"] is gbp_pair["unmatched_amount"] is None
+    assert len(functional_pairs) == len(functional_rows) == 4
+    assert tie_of(functional, "TO_IC_UNMATCHED_ZERO")["result"] == "NOT_APPLICABLE"
+
+    reporting, reporting_rows = report_run(
+        world, "intercompany_pairs", {**september, "currency_view": "reporting"}
+    )
+    pair = keyed(reporting_rows)[f"pair:{AVM_US}:{AVM_UK}:USD"]
+    assert pair["due_from_amount"] == book_bridge.tie_outs.money(D(us_amount), "USD")
+    assert pair["due_to_amount"] == usd("6131.98")  # approved September average 1.28
+    unmatched = D(us_amount) - D("6131.98")
+    assert pair["unmatched_amount"] == book_bridge.tie_outs.money(unmatched, "USD")
+    assert tie_of(reporting, "TO_IC_UNMATCHED_ZERO")["result"] == (
+        "PASS" if unmatched == 0 else "FAIL"
+    )
+    partial, partial_rows = report_run(
         world,
         "intercompany_pairs",
-        {**september, "currency_view": "functional"},
-        entity_ids=(k04.us_entity_id, k04.uk_entity_id),
-    ) == ("parameters.currency_view", intercompany_pairs.FUNCTIONAL_ONLY)
+        {**september, "entity_codes": [AVM_UK], "currency_view": "reporting"},
+    )
+    partial_pair = keyed(partial_rows)[f"pair:{AVM_US}:{AVM_UK}:USD"]
+    assert partial_pair["due_from_amount"] is partial_pair["unmatched_amount"] is None
+    assert partial_pair["due_to_amount"] == usd("6131.98")
+    assert tie_of(partial, "TO_IC_UNMATCHED_ZERO")["result"] == "NOT_APPLICABLE"
 
 
 # --- RPT-36 -----------------------------------------------------------------------------------

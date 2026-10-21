@@ -11449,3 +11449,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: first-generation actor/display-name history and broader sample approval-request,
   audit, event, computation and document histories. This change covers JE Population's
   decision/ack readers; it does not silently apply a partial cutoff to entire approval packs.
+
+## Contract sample event and version commits — October 21, 2026
+
+- Event sample files v2 filter original event commits by known_at and retain the timestamp
+  alongside original/redacted payload digests. Effective-date scope and provenance checks stay
+  intact; an event recorded before cutoff but committed later is excluded from that sample.
+- Computations index v2 and version evidence retain original version commits. Filtering happens
+  before ranking selected versions, keeping the preceding committed version when a newer
+  calculation commits late. Full allocation, trace and future planned schedule evidence remains.
+- Migration 0283 updates the sample catalogue description. Existing archives remain original
+  bytes. The pending-source check now includes approval decisions added by 0282 and verifies
+  recovery of all pending kinds, rather than assuming only event/version/revision sources.
+- Necessary checks passed: actual overlapping event+computation transaction with old/new sample
+  reads and selected versions, complete sample archive/PDF/XLSX flow, commit/redaction validation,
+  worker recovery, catalogue parity and scoped lint/types. No deployment.
+- Remaining: actor/display-name history, sample contract identity labels, approval-request/audit
+  and document histories. These readers now cover immutable event/version commit availability;
+  this does not claim complete historical reconstruction of every source in a sample pack.

@@ -2245,7 +2245,17 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "to_period_key",
             "currency_view",
         ),
-        sources=("subledger_line", "obligation_version", "contract", "legal_entity", "period"),
+        sources=(
+            "subledger_line",
+            "obligation_version",
+            "contract",
+            "legal_entity",
+            "period",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
+        ),
         joins=(
             "subledger_line.counterparty_entity_id = legal_entity.id",
             "subledger_line.obligation_id = obligation_version.obligation_id",
@@ -2256,6 +2266,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _SCOPE,
             _BOOK,
             _PERIODS,
+            "functional view reads posted functional activity; different functional currencies "
+            "remain separate with incomparable sides empty",
+            "reporting view translates posted functional period activity at approved "
+            "period-average rates to one reporting currency; unmatched translation residuals "
+            "remain visible",
             "subledger_line.counterparty_entity_id is not null: an obligation performed by an "
             "entity other than the contracting entity",
         ),

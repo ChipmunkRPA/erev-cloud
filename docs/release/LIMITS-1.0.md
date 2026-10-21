@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Intercompany Pairs functional and reporting currencies — October 21, 2026
+
+- Functional view now reads the posted functional amount/currency of each entity's lines.
+  Different functional currencies remain separate: an incomparable counterpart and unmatched
+  amount are empty, not zero or a false break. Contract-detail keys distinguish split currency
+  and entity-pair rows without changing existing unambiguous transaction-view keys.
+- Reporting view translates each entity's posted period activity using the approved period
+  average into the tenant reporting currency, with rate/version/cutoff evidence. This is the
+  existing period-activity report, not a new cumulative closing-balance report. Translation
+  residuals remain visible and can fail the tie-out; no artificial elimination is inserted.
+- Necessary validation passed: public K04 transaction and functional/reporting runs, comparison
+  to posted USD due-from amounts and GBP due-to translated at September 1.28, single-entity
+  permission scope, existing CSV/XLSX/PDF output, seven focused row/tie-out tests, migration
+  0294 catalogue parity and scoped lint/types. No deployment.
+- Remaining: Intercompany Pairs same-source retention and finer residual attribution; Adoption
+  Bridge is explicitly transaction-only and needs a separate cumulative adoption-date currency
+  design. Book Bridge granular causal attribution/retention and other documented Reporting
+  gaps remain open. This feature does not claim overall repository completion.
+
 ## Book Bridge reporting-currency view — October 21, 2026
 
 - Reporting view now translates each contract/book/period's posted functional revenue using
