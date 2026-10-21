@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — production revenue posting-class scope correction
+
+The previously listed “dedicated public mixed-period TIME workflow” is not a missing workflow
+under current production policy. S13 costs_view deliberately leaves revenue released_at_close
+empty (L3-2-Q-15): both scheduled NORMAL revenue and TP_CHANGE post as EVENT. A schedule row's
+is_released_at_close flag does not override this posting policy. The recently added mixed-TIME
+reader remains conditional support for original producers that explicitly supply TIME amounts;
+it is not evidence that the public product emits such revenue targets, nor a reason to change
+posting timing. Earlier broad claims about this being an outstanding live reporting feature
+are superseded by this finding.
+
+The actual public scenario is a prepaid service with a reviewed variable-consideration bonus.
+For May it has NORMAL 3,224.18 and TP_CHANGE 445.05, totaling 3,669.23 GBP; original revenue
+counterparts remain EVENT-only. Both public reports pass transaction, functional and reporting
+views and retained reruns, with zero unexplained OTHER and passing balance ties.
+Multi-origin agent split attribution and other documented dated
+projection limits still need engineering work. Independent accounting sign-off remains absent;
+no deployment or overall production-ready claim is made.
+
+
 ### October 20 — mixed-period TIME amounts retained and consumed
 
 S14 now records the differences of its actual cumulative TIME targets per period, independently

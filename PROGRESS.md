@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Public revenue cause / posting-class distinction — October 20, 2026
+
+- Correction to preceding mixed-TIME entries: the production S13 costs_view explicitly leaves
+  released_at_close empty for revenue (L3-2-Q-15). Deterministic NORMAL revenue and TP_CHANGE
+  therefore post as EVENT. The schedule close-release flag is not the posting classifier.
+  Conditional mixed-TIME support is an internal producer capability, not a presently missing
+  public revenue workflow; do not change posting timing merely to exercise that capability.
+- The actual public workflow uses a prepaid GBP service and an approved May bonus. Its May
+  schedule separates NORMAL 3,224.18 and TP_CHANGE 445.05; public revenue/opening relief is
+  3,669.23. Original counterpart amounts and EVENT-only target evidence are checked independently.
+  Both public reports pass all three views and retained reruns, with zero OTHER and balance ties.
+- Remaining live priorities include multi-origin agent split attribution and documented dated
+  projection gaps. Independent accounting sign-off and final-candidate checks remain required.
+  No deployment. This entry supersedes the earlier public mixed-TIME acceptance task.
+
+
 ## Mixed-period TIME source amounts — October 20, 2026
 
 - S14 retains per-period transaction and functional TIME deltas from its original cumulative
@@ -234,18 +250,6 @@
   Compound competing causes and independent accounting acceptance also remain open.
 - 109 focused tests plus two database report journeys pass; Ruff and targeted mypy pass.
   Migration 0213 describes the evidence. No deployment.
-
-
-## First-entry batch estimate attribution — October 20, 2026
-
-- Initial disclosure entry now separates later original estimate-event shares from NEW_CONTRACTS
-  into VC_ESTIMATE_CHANGES, including signed decreases. Event dates and shares come from the
-  original version's causes and retained trace; inception estimates remain part of entry.
-- This path requires complete shares, all later changes through the range end, and no competing
-  modification/cancellation. Earlier cuts before a batched fixed-price change still need dated
-  fixed-allocation/remainder evidence; this change does not repair those earlier balances.
-- 27 focused tests and the DB first-batch usage test pass; lint/types and migration 0212 checked.
-  No deployment or independent accounting sign-off.
 
 
 ## Outstanding release verification

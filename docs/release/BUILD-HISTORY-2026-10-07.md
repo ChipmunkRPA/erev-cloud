@@ -9907,3 +9907,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   This journey applies approvals separately; it does not claim one combined approval.
 - 56 scoped engine/report tests, Ruff and targeted mypy pass. Migration 0211 updates the report
   calculation description. Independent accounting acceptance remains open; no deployment.
+
+## First-entry batch estimate attribution — October 20, 2026
+
+- Initial disclosure entry now separates later original estimate-event shares from NEW_CONTRACTS
+  into VC_ESTIMATE_CHANGES, including signed decreases. Event dates and shares come from the
+  original version's causes and retained trace; inception estimates remain part of entry.
+- This path requires complete shares, all later changes through the range end, and no competing
+  modification/cancellation. Earlier cuts before a batched fixed-price change still need dated
+  fixed-allocation/remainder evidence; this change does not repair those earlier balances.
+- 27 focused tests and the DB first-batch usage test pass; lint/types and migration 0212 checked.
+  No deployment or independent accounting sign-off.

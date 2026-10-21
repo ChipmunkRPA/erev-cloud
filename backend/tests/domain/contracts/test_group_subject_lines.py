@@ -1626,3 +1626,185 @@ def test_agent_supplier_sources_retain_original_paid_history(fx: FxWorld, net_fe
                 fx.maya,
             )
             assert repeated.status_code == 200 and repeated.json()["items"] == data, repeated.text
+
+
+def test_scheduled_revenue_and_bonus_reach_public_reports(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    """NORMAL plus TP_CHANGE are separate causes, both posted as EVENT by S13 policy."""
+    from datetime import date
+
+    from erev_api.db.tables import close_run, schedule_line
+    from erev_api.domain.close import gates, period_end
+    from erev_api.domain.close.pass_evidence import read_for_line
+    from erev_api.domain.reports.revenue_attribution import for_control
+    from support.reference import get
+
+    world = worlds.k04_saltmarsh(app, keyring, clock, files)
+    report = world.report
+    customer = report.place.scalar(
+        select(contract.c.customer_id).where(contract.c.id == world.contract_id)
+    )
+    booked = booked_contract(
+        report.place,
+        {
+            "external_id": "MIXED-TIME",
+            "customer_id": str(customer),
+            "contracting_entity_code": AVM_UK,
+            "transaction_currency": "GBP",
+            "inception_date": "2026-04-01",
+            "lines": [
+                {
+                    "obligation_key": "O1",
+                    "product_code": worlds.PLATFORM_UK,
+                    "quantity": "1",
+                    "total_price": {"amount": "9000.00", "currency": "GBP"},
+                    "start_date": "2026-04-01",
+                    "end_date": "2026-06-30",
+                }
+            ],
+        },
+        activate=True,
+    )
+    identity = UUID(str(booked.contract["id"]))
+    head = report.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == identity)
+    )
+    invoice = _invoice("MIXED-ADV", "2026-04-01", "9000.00")
+    invoice["payload"]["amount"]["currency"] = "GBP"
+    _recorded(report, identity, int(head), invoice)
+
+    def release(key: str) -> None:
+        run_id, _ = runs.started(app, report.marcus, entity_code=AVM_UK, period_key=key)
+        with report.place.uow() as uow:
+            run = (
+                uow.session.execute(select(close_run).where(close_run.c.id == UUID(run_id)))
+                .mappings()
+                .one()
+            )
+            scope = gates.scope_of_period(uow.session, run["entity_id"], "ASC606", run["period_id"])
+            assert scope is not None
+            period_end.post_pass(
+                uow,
+                close_run_id=UUID(run_id),
+                close_run_no=run["close_run_no"],
+                scope=scope,
+                pass_name=period_end.CLOSE_RELEASE,
+            )
+            uow.commit()
+
+    release("FY2026-P04")
+    element = post(
+        app,
+        f"/api/v1/contracts/{identity}/estimates",
+        report.maya,
+        {
+            "estimate_kind": "VARIABLE_CONSIDERATION",
+            "element_code": "MIXED-BONUS",
+            "vc_element_type": "BONUS",
+            "method": "MOST_LIKELY_AMOUNT",
+        },
+    )
+    assert element.status_code == 201, element.text
+    worlds.estimate_version_approved(
+        app,
+        report.maya,
+        report.priya,
+        element.json()["id"],
+        {
+            "effective_date": "2026-05-15",
+            "scenarios": [{"outcome": "Bonus earned", "amount": "900.00"}],
+            "unconstrained_amount": "900.00",
+            "most_conservative_amount": "900.00",
+            "constrained_amount": "900.00",
+            "rationale": "Approved bonus earned on the service term.",
+        },
+        constraint_of="MIXED-BONUS",
+    )
+    release("FY2026-P05")
+    with report.place.uow() as uow:
+        controls = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id == identity,
+                    subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
+            )
+            .mappings()
+            .all()
+        )
+        target_count = 0
+        for control in controls:
+            for view in ("transaction", "functional"):
+                counterpart, result = for_control(uow, control["id"], view=view)
+                amount = "amount_txn" if view == "transaction" else "amount_functional"
+                assert result.delta.amount == -control[amount]
+            held = read_for_line(uow, counterpart, revenue=True)
+            assert held is not None
+            for node in held["trace_record"]["trace"]["nodes"]:
+                if node["id"].startswith(
+                    "posting_target:MIXED-TIME/O1/REVENUE_RECOGNITION/REVENUE:"
+                ):
+                    target_count += 1
+                    params = node["params"]
+                    # costs_view deliberately posts scheduled revenue as EVENT.
+                    # A schedule's close-release flag does not change posting policy.
+                    assert set(params["input_classes"].split("|")) == {"EVENT"}
+                    assert params["time"] == params["time_functional"] == "0"
+        assert target_count
+        changed_version = uow.session.execute(
+            select(schedule_line.c.contract_version_id)
+            .where(
+                schedule_line.c.contract_id == identity,
+                schedule_line.c.line_type == "TP_CHANGE",
+            )
+            .order_by(schedule_line.c.created_at.desc())
+            .limit(1)
+        ).scalar_one()
+        causes = uow.session.execute(
+            select(schedule_line.c.line_type, schedule_line.c.amount).where(
+                schedule_line.c.contract_version_id == changed_version,
+                schedule_line.c.period_end_date == date(2026, 5, 31),
+            )
+        ).all()
+        assert set(causes) == {("NORMAL", Decimal("3224.18")), ("TP_CHANGE", Decimal("445.05"))}
+    for code in ("contract_balance_rollforward", "revenue_from_opening_liability"):
+        for view in ("transaction", "functional", "reporting"):
+            run, rows = worlds.report_run(
+                report,
+                code,
+                {
+                    "entity_codes": [AVM_UK],
+                    "book": "ASC606",
+                    "currency_view": view,
+                    "from_period_key": "FY2026-P05",
+                    "to_period_key": "FY2026-P05",
+                },
+            )
+            detail = next(row for row in rows if row.get("contract_external_id") == "MIXED-TIME")
+            if code == "contract_balance_rollforward":
+                assert Decimal(detail["other"]["amount"]) == 0, detail
+                assert (
+                    next(
+                        check
+                        for check in run["tie_out_results"]
+                        if check["code"] == "TO_ROLLFORWARD_BALANCES"
+                    )["result"]
+                    == "PASS"
+                )
+            else:
+                assert Decimal(detail["revenue_from_opening"]["amount"]) > 0, detail
+                if view in {"transaction", "functional"}:
+                    assert detail["revenue_recognized"]["amount"] == "3669.23", detail
+                    assert detail["revenue_from_opening"]["amount"] == "3669.23", detail
+            restarted = post(app, f"/api/v1/report-runs/{run['id']}/rerun", report.maya, {})
+            assert restarted.status_code == 202, restarted.text
+            complete = worlds.run_now(report, UUID(restarted.json()["id"]))
+            assert complete["state"] == "SUCCEEDED", complete
+            repeated = get(
+                app,
+                f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+                report.maya,
+            )
+            assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
