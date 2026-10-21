@@ -21,6 +21,8 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.stages.s01_canonicalize.convert import contract_entity_subject_key
+from erev_engine.trace import Trace
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -96,10 +98,11 @@ class AgedRow:
     balance_role: str
     currency: str
     buckets: Mapping[str, Decimal]
+    allocation_adjustment: Decimal = ZERO
 
     @property
     def total(self) -> Decimal:
-        return sum(self.buckets.values(), ZERO)
+        return sum(self.buckets.values(), ZERO) + self.allocation_adjustment
 
     @property
     def row_key(self) -> str:
@@ -181,13 +184,107 @@ def aged_rows(layers: Sequence[Layer], as_of: Mapping[UUID, date]) -> tuple[Aged
     return tuple(rows)
 
 
-def total_rows(rows: Sequence[AgedRow]) -> list[dict[str, Any]]:
+def member_adjustments(
+    rows: Sequence[AgedRow],
+    balances: Sequence[BalanceRow],
+    traces: Mapping[UUID, Trace | None],
+    ends: Mapping[UUID, date],
+) -> tuple[AgedRow, ...]:
+    """Keep source ages; bridge only complete, conserving engine member allocations."""
+    grouped: dict[tuple[UUID, UUID, str], list[BalanceRow]] = {}
+    for balance in balances:
+        grouped.setdefault((balance.version_id, balance.entity_id, balance.currency), []).append(
+            balance
+        )
+    result = list(rows)
+    index = {
+        (r.contract_id, r.entity_id, r.balance_role, r.currency): i for i, r in enumerate(result)
+    }
+    for (version, entity, currency), members in grouped.items():
+        if len(members) < 2:
+            continue
+        names = {m.external_id for m in members}
+        trace = traces.get(version)
+        if trace is None:
+            continue
+        # Engine member_cl nodes identify the allocation population, not merely a
+        # convenient group whose unrelated discrepancies happen to cancel out.
+        latest: dict[str, tuple[date, frozenset[str]]] = {}
+        for node in trace.nodes:
+            if (
+                node.measure != "contract_liability"
+                or node.params.get("mode") != "member_cl"
+                or node.formula_id != "pos.split_ca_ur.v1"
+                or len(node.id.split(":")) != 3
+                or node.id.endswith(":-")
+            ):
+                continue
+            member_name = node.params.get("key", "")
+            if member_name not in names or node.id.split(":")[1] != contract_entity_subject_key(
+                member_name, members[0].entity_code
+            ):
+                continue
+            try:
+                day = date.fromisoformat(node.params["as_of"])
+                population = frozenset(node.params["keys"].split("|"))
+            except (KeyError, ValueError) as exc:
+                raise tie_outs.invalid("period_key", "Invalid member allocation evidence.") from exc
+            if day <= ends[entity] and (member_name not in latest or latest[member_name][0] < day):
+                latest[member_name] = (day, population)
+        if (
+            set(latest) != names
+            or any(keys != names for _, keys in latest.values())
+            or len({day for day, _ in latest.values()}) != 1
+        ):
+            continue
+        originals = {}
+        for member in members:
+            key = (member.contract_id, entity, "CONTRACT_LIABILITY", currency)
+            originals[key] = result[index[key]].total if key in index else ZERO
+        expected = sum((m.value("contract_liability") for m in members), ZERO)
+        if sum(originals.values(), ZERO) != expected:
+            raise tie_outs.invalid(
+                "period_key", "Original liability layers do not conserve the combined balance."
+            )
+        for member in members:
+            key = (member.contract_id, entity, "CONTRACT_LIABILITY", currency)
+            adjustment = member.value("contract_liability") - originals[key]
+            if adjustment == ZERO:
+                continue
+            if key in index:
+                result[index[key]] = replace(result[index[key]], allocation_adjustment=adjustment)
+            else:
+                index[key] = len(result)
+                result.append(
+                    AgedRow(
+                        member.contract_id,
+                        member.external_id,
+                        member.customer_name,
+                        entity,
+                        member.entity_code,
+                        "CONTRACT_LIABILITY",
+                        currency,
+                        dict.fromkeys(BUCKET_FIELDS, ZERO),
+                        adjustment,
+                    )
+                )
+    return tuple(
+        sorted(
+            result,
+            key=lambda row: (row.external_id, row.entity_code, ROLES.index(row.balance_role)),
+        )
+    )
+
+
+def total_rows(rows: Sequence[AgedRow], *, adjustments: bool = False) -> list[dict[str, Any]]:
     """Totals per balance role and currency: ``TOTAL:<role>:<ISO>`` (SCREENS_B RPT-36)."""
     totals: dict[tuple[int, str], dict[str, Decimal]] = {}
     for row in rows:
         into = totals.setdefault((ROLES.index(row.balance_role), row.currency), {})
         for field, amount in row.buckets.items():
             add(into, field, amount)
+        if adjustments:
+            add(into, "allocation_adjustment", row.allocation_adjustment)
     found: list[dict[str, Any]] = []
     for (index, currency), buckets in sorted(totals.items()):
         role = ROLES[index]
@@ -203,6 +300,15 @@ def total_rows(rows: Sequence[AgedRow]) -> list[dict[str, Any]]:
                     field: tie_outs.money(buckets.get(field, ZERO), currency)
                     for field in BUCKET_FIELDS
                 },
+                **(
+                    {
+                        "allocation_adjustment": tie_outs.money(
+                            buckets.get("allocation_adjustment", ZERO), currency
+                        )
+                    }
+                    if adjustments
+                    else {}
+                ),
                 "total": tie_outs.money(sum(buckets.values(), ZERO), currency),
             }
         )
@@ -382,7 +488,14 @@ def _translated(
             current = translation.amount(row.entity_id, cumulative)
             buckets[field] = current - previous
             previous = current
-        result.append(replace(row, currency=translation.currency, buckets=buckets))
+        result.append(
+            replace(
+                row,
+                currency=translation.currency,
+                buckets=buckets,
+                allocation_adjustment=translation.amount(row.entity_id, row.total) - previous,
+            )
+        )
     return tuple(result)
 
 
@@ -431,6 +544,19 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             params.sources.record_evidence(functional_key, {"basis": "retained_engine_sources"})
     role_filter = str(params.parameters.get("balance_role") or "ALL")
     rows = aged_rows(layers, period_ends)
+    adjustment_key = "aging_member_adjustments_v1"
+    adjustments = params.binding is None or adjustment_key in params.binding.evidence
+    if adjustments:
+        rows = member_adjustments(
+            rows,
+            balances,
+            {b.version_id: store.load_trace(session, b.version_id) for b in balances},
+            period_ends,
+        )
+        if params.sources is not None:
+            params.sources.record_evidence(
+                adjustment_key, {"basis": "original_owner_ages_separate_allocation"}
+            )
     _check_view(params, found, rows)
     check = aging_tie(rows, balances)
     if functional is not None and check["result"] != tie_outs.PASS:
@@ -455,7 +581,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     shown = tuple(
         row
         for row in rows
-        if row.total != ZERO and (role_filter == "ALL" or row.balance_role == role_filter)
+        if (row.total != ZERO or (adjustments and row.allocation_adjustment != ZERO))
+        and (role_filter == "ALL" or row.balance_role == role_filter)
     )
     data: list[dict[str, Any]] = [
         {
@@ -474,16 +601,31 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 else {}
             ),
             **{field: tie_outs.money(row.buckets[field], row.currency) for field in BUCKET_FIELDS},
+            **(
+                {"allocation_adjustment": tie_outs.money(row.allocation_adjustment, row.currency)}
+                if adjustments
+                else {}
+            ),
             "total": tie_outs.money(row.total, row.currency),
         }
         for row in shown
     ]
-    data.extend(total_rows(shown))
+    data.extend(total_rows(shown, adjustments=adjustments))
     totals: dict[str, Decimal] = {}
     for row in shown:
         add(totals, row.currency, row.total)
     control: dict[str, Any] = {"total": tie_outs.by_currency(totals)}
     columns: tuple[Column, ...] = COLUMNS
+    if adjustments:
+        columns = COLUMNS[:-1] + (
+            Column("allocation_adjustment", "Member allocation adjustment", "money"),
+            COLUMNS[-1],
+        )
+        control["aging_basis"] = (
+            "Original receiving-contract ages; member allocations shown separately without an age. "
+            "Total equals aged buckets plus member allocation adjustment."
+        )
+
     if translation is not None:
         control.update(
             reporting_currency=translation.currency,

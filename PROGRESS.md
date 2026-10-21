@@ -2,6 +2,43 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Current owner-authorized goal — October 21, 2026
+
+Finish the repository for public source publication under its noncommercial license;
+prioritize feature completion with necessary targeted validation. Continue directly on main,
+review and publish changes without PR accumulation, and do not deploy.
+
+- Reporting priorities remain difference attribution, multi-currency, RPO exemptions and GL
+  reconciliation. Next: retain original receiving-contract aging and separately show member
+  allocation adjustments for combined contracts.
+- Migration-to-live promotion/replay completion is outside scope; no actual business launch.
+- Keep key financial permissions, segregation of duties and audit evidence; full approval
+  coverage is not required. Implementation is not a SOX certification.
+- Sandbox goal: refresh from production and allow experimentation isolated from production.
+  Reproduction of production lock history and sandbox locking are not completion requirements.
+- Independent accounting review belongs to the owner and is not a development completion gate.
+- Owner resumed development October 21. The app goal tool cannot edit the existing objective
+  or resume its paused state; this section records the superseding scope for repository work.
+
+## Original-owner aging and separate member allocations — October 21, 2026
+
+- Implemented aging_member_adjustments_v1: original liability buckets retain their receiving
+  contract and date; a separate Member allocation adjustment column bridges to the member's
+  presented balance. Allocation adjustments have no invented age. Original owners remain
+  visible even when their adjusted balance is zero, and group adjustment totals conserve cash
+  layer balances. Complete retained engine member populations are required; unsupported or
+  missing evidence is not silently repaired. Reporting translation preserves buckets and the
+  adjusted total; retained legacy bindings keep their earlier schema.
+- Re-lock comparisons treat allocation_adjustment as a monetary measure. Migration 0260 adds
+  the IPE explanation. Targeted aging and re-lock checks, the platform historical-aging journey,
+  the public functional/reporting aging rerun, lint/types and reversible migration catalogue
+  parity passed. The combined-owner witness exercises retained-row/trace inputs; a full combined
+  contract command-to-lock journey remains to verify before claiming all scenarios covered.
+- Development scope is now public repository completion, not production readiness. Migration
+  promotion, complete approval coverage, sandbox lock-chain reproduction and independent
+  accounting sign-off are not completion gates. Sandbox refresh/isolation and key financial
+  controls remain in scope. Preserve noncommercial licensing/publication exclusions; no deployment.
+
 ## RPO pre-termination version attribution and requested pause — October 20, 2026
 
 - RPO rollforward carries original pre-termination fixed balances across intervening
@@ -182,40 +219,6 @@
 - Repeated cancellation/reentry mixtures, intervening pre-termination versions, complex same-day
   entry mixtures and combined-member aging ownership still need work. Independent accounting
   sign-off/final-candidate checks remain open. No deployment; publish directly to main.
-
-## Separate obligations can cancel in one retained computation — October 20, 2026
-
-- Mixed cancellation attribution now selects the original cancellation of each obligation,
-  rather than rejecting every contract with multiple termination causes. Each termination
-  must retain explicit per-obligation state, exactly one must cancel that obligation, and
-  every other termination must have zero fixed-allocation effect on it. The existing original
-  opening/modification/estimate bridge still must reconcile; missing or cross-affected evidence
-  remains unsupported. New bindings use rpo_separate_cancellations_v1; legacy rules are retained.
-- A full engine case now applies a concession and estimate change, partially terminates A,
-  then terminates B with two refunds. First-batch/monthly reporting and the later retained
-  version bridge reconcile; legacy, missing metadata and nonzero cross-effects are checked.
-- The 72 scoped cases, targeted negative checks, existing public three-view reports/reruns,
-  lint/types and migration 0251 down/up IPE parity pass. New split-cancellation evidence is an
-  engine/read-layer witness, not a new public API journey. No deployment; direct main.
-- Cancellations with cross-obligation reallocations or repeated effects on one obligation,
-  intervening pre-termination versions, complex same-day entry mixtures and combined-member
-  aging ownership remain open. Independent accounting sign-off/final-candidate checks remain open.
-
-## Same-day fixed activation and cancellation retain gross movements — October 20, 2026
-
-- A single first computation with same-day activation and cancellation can now retain the
-  original fixed allocation as NEW_CONTRACTS, original recognized revenue and the cancelled
-  remainder, instead of omitting every movement because closing status is CANCELLED.
-  Original termination date/before allocation and explicit zero realized evidence are required.
-  Booked/activation/termination/memo causes are admitted; other event mixtures remain outside
-  this path. Full exemptions still omit the movement; closing disclosure remains zero.
-- New bindings retain rpo_same_day_entry_cancel_v1; earlier runs preserve their classification.
-- Full engine refund/non-refund witnesses use actual dated trace reads and all original event
-  causes. The 72 scoped cases, existing public three-view reports/reruns, lint/types and
-  migration 0250 down/up IPE parity pass. The new engine cases are not a new API lifecycle test.
-- Same-day modification/estimate/usage mixtures, multiple cancellations in one computation,
-  intervening pre-termination versions and combined-member aging ownership remain open.
-  Independent accounting sign-off and final-candidate checks remain open. No deployment.
 
 ## Outstanding release verification
 

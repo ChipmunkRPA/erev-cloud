@@ -2074,6 +2074,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "reporting view uses retained closing rates and cumulative bucket rounding; "
             "legacy bindings retain original behavior",
             _as_locked("BALANCE_AGING"),
+            "aging_member_adjustments_v1 preserves original receiving-contract liability ages "
+            "and shows member allocation adjustments separately without an age; complete "
+            "retained engine member populations and conservation of original layers are "
+            "required; totals include the adjustment and original zero-net owners remain "
+            "visible; older bindings retain their previous schema and treatment",
         ),
         tie_outs=("TO_AGING_EQ_BALANCES",),
     ),

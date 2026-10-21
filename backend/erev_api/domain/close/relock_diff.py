@@ -110,13 +110,14 @@ KEY_COLUMNS: Final[Mapping[str, KeySpec]] = {
     SnapshotKind.BALANCE_AGING.value: KeySpec(
         ("entity_code", "contract_external_id", "balance_role", "currency"),
         "builder",
-        "Original period-end aging by entity, contract, balance role and currency.",
+        "Original period-end aging by entity, contract, balance role and currency; no book column.",
         measures=(
             "bucket_0_30",
             "bucket_31_90",
             "bucket_91_180",
             "bucket_181_365",
             "bucket_over_365",
+            "allocation_adjustment",
             "total",
         ),
     ),

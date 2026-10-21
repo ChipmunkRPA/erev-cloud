@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 21 — owner scope supersedes production-readiness gates; combined aging
+
+- Implemented aging_member_adjustments_v1: original liability buckets retain their receiving
+  contract and date; a separate Member allocation adjustment column bridges to the member's
+  presented balance. Allocation adjustments have no invented age. Original owners remain
+  visible even when their adjusted balance is zero, and group adjustment totals conserve cash
+  layer balances. Complete retained engine member populations are required; unsupported or
+  missing evidence is not silently repaired. Reporting translation preserves buckets and the
+  adjusted total; retained legacy bindings keep their earlier schema.
+- Re-lock comparisons treat allocation_adjustment as a monetary measure. Migration 0260 adds
+  the IPE explanation. Targeted aging and re-lock checks, the platform historical-aging journey,
+  the public functional/reporting aging rerun, lint/types and reversible migration catalogue
+  parity passed. The combined-owner witness exercises retained-row/trace inputs; a full combined
+  contract command-to-lock journey remains to verify before claiming all scenarios covered.
+- Development scope is now public repository completion, not production readiness. Migration
+  promotion, complete approval coverage, sandbox lock-chain reproduction and independent
+  accounting sign-off are not completion gates. Sandbox refresh/isolation and key financial
+  controls remain in scope. Preserve noncommercial licensing/publication exclusions; no deployment.
+
+
 ### October 20 — pending cancellation across intervening versions; aging policy resolved
 
 - RPO rollforward carries original pre-termination fixed balances across intervening

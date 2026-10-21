@@ -71,6 +71,20 @@ CERT_AFTER = [
 # Fixture headers per E-64 kind: the report builders' columns on this tree, or the SCREENS_B field
 # names where the builder is not on the tree yet (the table entry states which).
 FIXTURE_HEADERS: dict[str, list[str]] = {
+    "BALANCE_AGING": [
+        "contract_external_id",
+        "customer_name",
+        "entity_code",
+        "balance_role",
+        "currency",
+        "bucket_0_30",
+        "bucket_31_90",
+        "bucket_91_180",
+        "bucket_181_365",
+        "bucket_over_365",
+        "allocation_adjustment",
+        "total",
+    ],
     "WATERFALL": [
         "contract_external_id",
         "customer_name",

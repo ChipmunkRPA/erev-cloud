@@ -245,3 +245,80 @@ def test_reporting_buckets_preserve_signed_amounts_and_translated_balance() -> N
         assert converted.buckets["bucket_0_30"] == D("0.01") * sign
         assert converted.buckets["bucket_31_90"] == 0
         assert converted.buckets["bucket_over_365"] == 0
+
+
+def test_combined_liability_keeps_source_age_and_separate_member_adjustment() -> None:
+    from dataclasses import replace
+
+    import pytest
+    from erev_api.problems import Problem
+    from erev_engine.stages.s01_canonicalize.convert import contract_entity_subject_key
+    from erev_engine.trace import Trace, TraceNode
+
+    second = uuid5(NS, "other")
+    balances = (
+        _balance(contract_liability="40"),
+        replace(
+            _balance(contract_liability="60"),
+            contract_id=second,
+            external_id="OTHER",
+        ),
+    )
+    source = aged_rows(
+        (_layer("CONTRACT_LIABILITY", "100", date(2025, 1, 1)),), {ENTITY: MARCH_END}
+    )
+    nodes = tuple(
+        TraceNode(
+            id=(
+                "contract_liability:"
+                + contract_entity_subject_key(b.external_id, b.entity_code)
+                + ":P03"
+            ),
+            measure="contract_liability",
+            value=str(b.value("contract_liability")),
+            currency="USD",
+            formula_id="pos.split_ca_ur.v1",
+            inputs=("group",),
+            rounding_residue=None,
+            narrative_key="test",
+            params={
+                "mode": "member_cl",
+                "key": b.external_id,
+                "keys": "C-POS-117|OTHER",
+                "as_of": "2026-03-31",
+            },
+        )
+        for b in balances
+    )
+    traces = {VERSION: Trace(1, "test", nodes, {})}
+    rows = aging.member_adjustments(source, balances, traces, {ENTITY: MARCH_END})
+    owner, recipient = rows
+    assert owner.buckets["bucket_over_365"] == 100
+    assert owner.allocation_adjustment == -60 and owner.total == 40
+    assert all(value == 0 for value in recipient.buckets.values())
+    assert recipient.allocation_adjustment == recipient.total == 60
+    assert aging_tie(rows, balances)["result"] == "PASS"
+    (total,) = total_rows(rows, adjustments=True)
+    assert total["allocation_adjustment"]["amount"] == "0.00"
+    assert aging.member_adjustments(source, balances, {}, {ENTITY: MARCH_END}) == source
+    with pytest.raises(Problem):
+        aging.member_adjustments(
+            source,
+            (replace(balances[0], values={"contract_liability": D(41)}), balances[1]),
+            traces,
+            {ENTITY: MARCH_END},
+        )
+    transferred = (
+        replace(balances[0], values={"contract_liability": D(0)}),
+        replace(balances[1], values={"contract_liability": D(100)}),
+    )
+    fully = aging.member_adjustments(source, transferred, traces, {ENTITY: MARCH_END})
+    assert fully[0].total == 0 and fully[0].buckets["bucket_over_365"] == 100
+
+    from erev_api.domain.reports.reporting_currency import Translation
+    translation = Translation("GBP", {ENTITY: {"rate": "0.8125"}})
+    converted = aging._translated(rows, translation)
+    assert converted[0].buckets["bucket_over_365"] == D("81.25")
+    assert converted[0].allocation_adjustment == D("-48.75")
+    assert converted[0].total == D("32.50")
+    assert converted[1].total == D("48.75")

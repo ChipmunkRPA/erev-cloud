@@ -10649,3 +10649,37 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Multiple cancellations within one computation, intervening pre-termination versions, same-day
   entry/cancellation and combined-member aging ownership remain open. Independent accounting
   sign-off and final-candidate checks remain open. Direct main publication; no deployment.
+
+## Same-day fixed activation and cancellation retain gross movements — October 20, 2026
+
+- A single first computation with same-day activation and cancellation can now retain the
+  original fixed allocation as NEW_CONTRACTS, original recognized revenue and the cancelled
+  remainder, instead of omitting every movement because closing status is CANCELLED.
+  Original termination date/before allocation and explicit zero realized evidence are required.
+  Booked/activation/termination/memo causes are admitted; other event mixtures remain outside
+  this path. Full exemptions still omit the movement; closing disclosure remains zero.
+- New bindings retain rpo_same_day_entry_cancel_v1; earlier runs preserve their classification.
+- Full engine refund/non-refund witnesses use actual dated trace reads and all original event
+  causes. The 72 scoped cases, existing public three-view reports/reruns, lint/types and
+  migration 0250 down/up IPE parity pass. The new engine cases are not a new API lifecycle test.
+- Same-day modification/estimate/usage mixtures, multiple cancellations in one computation,
+  intervening pre-termination versions and combined-member aging ownership remain open.
+  Independent accounting sign-off and final-candidate checks remain open. No deployment.
+
+## Separate obligations can cancel in one retained computation — October 20, 2026
+
+- Mixed cancellation attribution now selects the original cancellation of each obligation,
+  rather than rejecting every contract with multiple termination causes. Each termination
+  must retain explicit per-obligation state, exactly one must cancel that obligation, and
+  every other termination must have zero fixed-allocation effect on it. The existing original
+  opening/modification/estimate bridge still must reconcile; missing or cross-affected evidence
+  remains unsupported. New bindings use rpo_separate_cancellations_v1; legacy rules are retained.
+- A full engine case now applies a concession and estimate change, partially terminates A,
+  then terminates B with two refunds. First-batch/monthly reporting and the later retained
+  version bridge reconcile; legacy, missing metadata and nonzero cross-effects are checked.
+- The 72 scoped cases, targeted negative checks, existing public three-view reports/reruns,
+  lint/types and migration 0251 down/up IPE parity pass. New split-cancellation evidence is an
+  engine/read-layer witness, not a new public API journey. No deployment; direct main.
+- Cancellations with cross-obligation reallocations or repeated effects on one obligation,
+  intervening pre-termination versions, complex same-day entry mixtures and combined-member
+  aging ownership remain open. Independent accounting sign-off/final-candidate checks remain open.
