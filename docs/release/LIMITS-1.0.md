@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — foreign-currency freeze compatibility restored
+
+The DATASET_FREEZE failure recorded under the three-way GL bridge is resolved. FX source
+attribution now recognizes the additional S14 TIME/EVENT annotations as descriptive metadata,
+while continuing to derive source ownership and amounts from retained S12 layers and reconcile
+current targets, prior targets and paid history. Genuine split-role parameters remain refused.
+Seven scoped source cases and the previously failing two-month foreign-receivable DB journey
+pass, along with locked-endpoint reruns in both functional and reporting views. This restores
+that workflow; it does not complete every mixed-source or multi-currency
+scenario, and independent accounting sign-off remains outstanding. No deployment.
+
+
 ### October 20 — retained three-way GL bridge
 
 New balance and rollforward runs compare the report closing caption, the reconciliation's

@@ -159,7 +159,19 @@ def project(
                 )
             # Split targets need their explicit apportionment semantics; treating
             # them as an ordinary signed sum would silently change ownership.
-            if set(node.params) - {"signs", "time", "amount_functional", "minor_unit"}:
+            # These S14 annotations describe the same signed inputs. FX ownership
+            # and TIME classification still come from the original S12 layers;
+            # annotations must not be mistaken for role-splitting parameters.
+            if set(node.params) - {
+                "signs",
+                "time",
+                "amount_functional",
+                "minor_unit",
+                "time_functional",
+                "input_classes",
+                "input_time_txn",
+                "input_time_functional",
+            }:
                 raise InvalidLiabilityTrace(
                     "Liability target requires unsupported split attribution."
                 )

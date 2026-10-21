@@ -1,5 +1,6 @@
 """Signed layer attribution: two owners, changed targets and prior posted amounts."""
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal as D
 from uuid import UUID
@@ -13,8 +14,11 @@ from erev_api.domain.reports.liability_fx_trace import (
 from erev_engine.trace import SourceRef, Trace, TraceNode
 
 
+@pytest.mark.parametrize("annotations", [False, True])
 @pytest.mark.parametrize("closing", [False, True])
-def test_prior_target_and_paid_amounts_keep_their_actual_owners(closing: bool) -> None:
+def test_prior_target_and_paid_amounts_keep_their_actual_owners(
+    closing: bool, annotations: bool
+) -> None:
     day = date(2026, 9, 30)
     nodes = []
     movements = []
@@ -50,7 +54,20 @@ def test_prior_target_and_paid_amounts_keep_their_actual_owners(closing: bool) -
                 "GBP",
                 "post.role_target.v1",
                 inputs,
-                {"signs": "-1|-1", "minor_unit": "2"},
+                {
+                    "signs": "-1|-1",
+                    "minor_unit": "2",
+                    **(
+                        {
+                            "time_functional": str(int(D(amount) * 100)) if closing else "0",
+                            "input_classes": "TIME|TIME" if closing else "EVENT|EVENT",
+                            "input_time_txn": "0|0",
+                            "input_time_functional": "unresolved|unresolved",
+                        }
+                        if annotations
+                        else {}
+                    ),
+                },
                 "0",
                 "post.role_target",
             )
@@ -83,6 +100,20 @@ def test_prior_target_and_paid_amounts_keep_their_actual_owners(closing: bool) -
         UUID(int=1): D("-3"),
         UUID(int=2): D("-1"),
     }
+    # Informational annotations do not authorize genuinely split ownership.
+    split_nodes = tuple(
+        replace(node, params={**node.params, "split": "true"}) if node.id == "now" else node
+        for node in nodes
+    )
+    with pytest.raises(InvalidLiabilityTrace, match="unsupported split attribution"):
+        posting_delta(
+            Trace(1, "test", split_nodes, {}),
+            "delta",
+            movements,
+            currency="GBP",
+            minor_unit=2,
+            paid=paid,
+        )
     # The previous aggregate cannot be dropped just because both new targets reconcile.
     with pytest.raises(InvalidLiabilityTrace, match="paid amount"):
         posting_delta(trace, "delta", movements, currency="GBP", minor_unit=2, paid=())
