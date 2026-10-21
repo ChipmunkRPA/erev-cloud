@@ -788,6 +788,10 @@ NARRATIVES: Final[Mapping[str, str]] = MappingProxyType(
             "closing rate less the carrying amount before = {value}."
         ),
         # ENGINE_SPEC_B §13.5 LEGACY book fold (END-8).
+        "books.legacy_fx": (
+            "Pre-standard revenue converted at its effective-date spot on "
+            "{date:effective_date}, using the retained event amount and pinned rate = {value}."
+        ),
         "books.legacy_fold": (
             "Pre-standard revenue to {period}: the signed amounts of the pre-standard revenue "
             "events recorded for the obligation = {value}."

@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Foreign LEGACY revenue and JET-15 — October 21, 2026
+
+- Fixed foreign pre-standard revenue failing at JET-15 because the LEGACY fold supplied only
+  transaction amounts. It now converts each signed source event at its effective-date pinned
+  spot and accumulates those historical functional amounts by obligation/period. Stage 14
+  consumes the matching functional target and rate references; no framework recognition or
+  FX-layer stages are run for LEGACY. Same-currency behavior remains unchanged.
+- Registered replayable books.legacy_fx.v1 nodes cite both the original event amount and rate;
+  Explain includes the conversion date. Missing FX produces an FX_RATE_MISSING finding naming
+  the event and produces no partial LEGACY posting. Subsequent rates do not revalue prior income.
+- Verified real JET-15: USD 1,200 at EUR 0.80 posts EUR 960; a USD 200 reversal at 0.90 posts
+  EUR 180, leaving EUR 780. A full USD 1,200 reversal leaves zero transaction cumulative revenue
+  and EUR -120 historical functional activity; that difference is retained. All journal lines
+  balance in both currencies and traces re-evaluate. 38 book/legacy tests plus formula ownership
+  and scoped lint/types passed. No schema changes or deployment.
+- Adoption Bridge still needs the functional view wired to these recorded legacy amounts and
+  dated primary amounts, with a defensible legacy-position basis, plus reporting-currency
+  translation and retained reconstruction. This fixes a real foreign-currency posting blocker;
+  it does not declare the report's multi-currency work complete.
+
 ## Adoption currency groundwork: dated billing evidence — October 21, 2026
 
 - Stage 12 now retains cumulative billed-control functional activity by contract/entity and
@@ -203,26 +223,6 @@ review and publish changes without PR accumulation, and do not deploy.
   prevents edits to used published/superseded definitions (`db/migration_ops.py`). The earlier
   first-step/rule-reference TODO does not require another history subsystem for these flows.
 - Remaining: other OPEN report adapters and final repository validation. No deployment.
-
-## Approval entity-code history and display semantics — October 21, 2026
-
-- Historical Approvals Register now resolves entity codes from the latest source revision whose
-  original transaction committed by known_at. A rename committed after cutoff cannot rewrite
-  the old display. Missing entity-code history refuses explicitly; source revision IDs and
-  commit timestamps are retained alongside the already retained approval inputs.
-- Record-basis reads keep current codes, and existing retained reports rebuild from their
-  original inputs. Migration 0290 synchronizes the catalogue description.
-- Necessary verification covers an actual entity rename held across cutoff, old/new report
-  codes, source revision evidence, retained rebuild, existing public register flow, catalogue
-  parity and scoped lint/types.
-- Scope correction from implementation evidence: personnel names are intentionally current
-  identity labels, including anonymization (`domain/platform/actors.py`, `approval_queries.py`).
-  Reconstructing erased/past names is not a missing feature. Approval step names/numbers are
-  immutable after insertion (0013 permits only status/activation/completion updates); a separate
-  name-change history is unnecessary. These findings supersede earlier broad display-history
-  TODOs. Retained reports still preserve their consumed inputs under existing artifact controls.
-- Remaining: confirm first-step availability and rule-reference validity at historical cutoffs,
-  finish other OPEN report adapters and final repository validation. No deployment.
 
 ## Outstanding release verification
 

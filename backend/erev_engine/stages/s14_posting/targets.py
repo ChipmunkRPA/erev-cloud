@@ -388,7 +388,7 @@ def part_targets(ctx: BookContext, st: FxState, inputs: PartInputs) -> tuple[Par
         *_remeasurement(ctx, st),
         *_reclass(ctx, st, inputs),
         *_invoices(ctx, st, inputs),
-        *_pre_standard(ctx, inputs),
+        *_pre_standard(ctx, st, inputs),
         *_deposits(ctx, inputs, st),
         *_customer_consideration(ctx, inputs, st),
         *_warranties(ctx, inputs),
@@ -1445,7 +1445,7 @@ def _invoices(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTar
     return out
 
 
-def _pre_standard(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
+def _pre_standard(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarget]:
     """``JET-15``: cumulative pre-standard revenue per obligation in its contracting entity, posted
     only by the ``LEGACY`` book (POLICIES R6; ENGINE_SPEC_B S13-R-08)."""
     if not inputs.pre_standard:
@@ -1453,9 +1453,24 @@ def _pre_standard(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
     if str(ctx.book_code) != _LEGACY_BOOK:
         raise ValueError(f"JET-15 inputs in book {ctx.book_code} (POLICIES R6; S13-R-08)")
     out: list[PartTarget] = []
+    functional = {
+        (fx.entity, fx.subject_key, fx.period_key): fx
+        for fx in st.functional_targets
+        if fx.measure == PRE_STANDARD_MEASURE
+    }
     for target in inputs.pre_standard:
         _require(target, PRE_STANDARD_MEASURE, ctx)
-        out.append(_plain(ctx, target, "JET-15", None, target.value, ((target.node_id, 1),)))
+        out.append(
+            _plain(
+                ctx,
+                target,
+                "JET-15",
+                None,
+                target.value,
+                ((target.node_id, 1),),
+                fx=functional.get((target.entity, target.subject_key, target.period_key)),
+            )
+        )
     return out
 
 

@@ -883,6 +883,13 @@ def _catch_up_sum(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Frac
     return sum(inputs, Fraction(0))
 
 
+def _legacy_fx(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    """Signed pre-standard revenue at the pinned spot of its effective date."""
+    _require_arity(inputs, 2, "books.legacy_fx.v1")
+    minor = minor_unit_of(params)
+    return Fraction(round_half_up(inputs[0] * inputs[1], minor), 10**minor)
+
+
 def _legacy_fold(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     """``books.legacy_fold.v1``: cumulative pre-standard revenue, the sum of the signed amounts of
     the ``PRE_STANDARD_REVENUE_RECORDED`` events it cites (ENGINE_SPEC_B §13.2.4, §13.5; END-8)."""
@@ -4058,6 +4065,7 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "alloc.original_total_amount.v1": _original_total_amount,
         "alloc.original_weight.v1": _original_weight,
         "books.legacy_fold.v1": _legacy_fold,
+        "books.legacy_fx.v1": _legacy_fx,
         "books.version_adjustment.v1": _version_adjustment,
         "cost.accelerate.v1": _cost_accelerate,
         "cost.member_sum.v1": _signed_formula("cost.member_sum.v1"),

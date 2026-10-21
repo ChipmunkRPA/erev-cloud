@@ -535,3 +535,81 @@ def test_s13_inv_02_no_revenue_in_legacy() -> None:
         s14_posting.run(ctx, fx, tb, posted=PostedIndex(()))
     december = sum(t.value for t in legacy.targets if t.period_key == "FY2026-P12")
     assert format_money(december, 2) == "1000.00"
+
+
+def foreign_legacy_world(reversal: str = "-200.00") -> InputBundle:
+    from erev_engine.bundle import FxRateInput
+
+    basis = world(stream(pre_standard(6, date(2026, 3, 15), reversal)))
+    return dataclasses.replace(
+        basis,
+        currencies=bundles.currencies("USD", "EUR"),
+        entities=tuple(
+            dataclasses.replace(entity, functional_currency="EUR") for entity in basis.entities
+        ),
+        fx_rates=tuple(
+            FxRateInput(
+                f"USD-EUR-{day}",
+                "FX@v1",
+                "spot",
+                "USD",
+                "EUR",
+                date.fromisoformat(day),
+                None,
+                Decimal(rate),
+            )
+            for day, rate in (
+                ("2026-01-31", "0.80"),
+                ("2026-03-15", "0.90"),
+                ("2026-06-01", "0.95"),
+            )
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "reversal,txn,fn,ending_value",
+    [
+        ("-200.00", 20000, 18000, "780.00"),
+        ("-1200.00", 120000, 108000, "-120.00"),
+    ],
+)
+def test_foreign_legacy_posts_historical_functional_revenue(
+    reversal: str, txn: int, fn: int, ending_value: str
+) -> None:
+    legacy, trace, _ = legacy_posting(canonical(foreign_legacy_world(reversal)))
+    assert legacy.findings == ()
+    assert_reevaluates(trace)
+    lines = [
+        (entry.posting_period_key, line.side, line.amount_txn, line.amount_functional)
+        for entry in legacy.posting_intents
+        for line in entry.lines
+        if line.account_role == PRE
+    ]
+    assert sorted(lines) == [("FY2026-P01", "D", 120000, 96000), ("FY2026-P03", "C", txn, fn)]
+    nodes = {node.id: node for node in trace.nodes}
+    # Later rates do not restate historical revenue; the reversal uses its own event date.
+    ending = nodes[f"pre_standard_revenue_functional:{SUBJECT}:FY2026-P12"]
+    assert (ending.value, ending.currency) == (ending_value, "EUR")
+    for entry in legacy.posting_intents:
+        assert (
+            sum(line.amount_functional * (1 if line.side == "D" else -1) for line in entry.lines)
+            == 0
+        )
+    event_nodes = [
+        node for node in trace.nodes if node.measure == "pre_standard_revenue_functional_event"
+    ]
+    assert len(event_nodes) == 2
+    assert all(
+        any(isinstance(ref, SourceRef) and ref.ref_type == "contract_event" for ref in node.inputs)
+        for node in event_nodes
+    )
+
+
+def test_foreign_legacy_missing_rate_produces_finding_without_partial_posting() -> None:
+    basis = foreign_legacy_world()
+    basis = dataclasses.replace(basis, fx_rates=basis.fx_rates[1:])
+    legacy, _, _ = legacy_posting(canonical(basis))
+    assert legacy.posting_intents == ()
+    assert [finding.code for finding in legacy.findings] == ["FX_RATE_MISSING"]
+    assert legacy.findings[0].event_key == pre_standard(5, date(2026, 1, 31), "1200").event_key

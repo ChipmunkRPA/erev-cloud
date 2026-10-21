@@ -5,7 +5,10 @@ contracting entity through the horizon, the cumulative pre-standard revenue L_p 
 signed event amounts effective on or before the period end, traced as ``pre_standard_revenue_cum``
 (formula ``books.legacy_fold.v1``). No stage 02 to 12 runs for the book (S13-R-07; RCP-14). POL-008
 selects where the events come from (progress uploads or the ERP revenue feed); both arrive as the
-same event type, so the fold only checks the literal. When the stage list holds stage 14, the book
+same event type, so the fold only checks the literal. Foreign pre-standard revenue is converted
+per signed source event at its effective-date pinned spot, then accumulated without revaluing
+prior revenue. JET-15 consumes those functional targets, and a missing rate prevents posting.
+When the stage list holds stage 14, the book
 posts its own ``JET-15`` lines through stage 14, reversing the pre-standard revenue the ERP booked:
 Dr ``PRE_STANDARD_REVENUE`` / Cr ``CONTRACT_LIABILITY``, the period change of L_p less what the
 LEGACY subledger already holds, in the obligation's contracting entity (S13-R-08; D-89
@@ -27,6 +30,7 @@ import dataclasses
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
+from fractions import Fraction
 from types import MappingProxyType
 from typing import Final
 
@@ -38,6 +42,8 @@ from erev_engine.stages.s01_canonicalize import (
     payload_fraction,
 )
 from erev_engine.stages.s12_fx_entities import FxFlows, FxState
+from erev_engine.stages.s12_fx_entities.layers import FxTarget, RateRef
+from erev_engine.stages.s12_fx_entities.rates import RateMissing, Rates, to_functional
 from erev_engine.stages.s14_posting import PartInputs, PostingState
 from erev_engine.stages.state import (
     AllocatedState,
@@ -147,13 +153,119 @@ def run(
                 break
     ordered = tuple(targets)
     posting: PostingState | None = None
+    try:
+        functional = _functional_targets(ctx, cb, ordered, amounts, tb)
+    except RateMissing as missing:
+        finding = Finding(
+            "FX_RATE_MISSING",
+            "ERROR",
+            missing.event_key or ctx.txn_currency,
+            missing.detail,
+            13,
+            missing.event_key,
+        )
+        return LegacyState(allocated=base, targets=ordered, posting=None, findings=(finding,))
     if post is not None:
         strings = revenue_strings(base)
         source_state = _Source(strings, FxFlows(()), PartInputs(pre_standard=ordered))
-        found = post(_fx_state(strings, source_state))
+        found = post(_fx_state(strings, source_state, functional))
         posting = found if isinstance(found, PostingState) else None
     findings = () if posting is None else posting.findings
     return LegacyState(allocated=base, targets=ordered, posting=posting, findings=findings)
+
+
+def _functional_targets(
+    ctx: BookContext,
+    cb: CanonicalBundle,
+    targets: Sequence[Target],
+    amounts: Amounts,
+    tb: TraceBuilder,
+) -> tuple[FxTarget, ...]:
+    """Historical functional LEGACY revenue; no framework recognition or FX layers run.
+
+    Each signed ERP revenue event is converted once at its own effective-date spot. Later
+    periods carry the sum of those conversions, so a later rate never revalues prior revenue.
+    """
+    out: list[FxTarget] = []
+    converted: dict[tuple[str, str], tuple[str, int, RateRef]] = {}
+    txn_minor = ctx.currencies[ctx.txn_currency].minor_unit
+    for target in targets:
+        entity = ctx.entities[target.entity]
+        currency = entity.functional_currency
+        if currency == ctx.txn_currency:
+            continue
+        minor = ctx.currencies[currency].minor_unit
+        at = next(p for p in entity.periods if p.period_key == target.period_key)
+        rates = Rates(cb.fx.rates, ctx.txn_currency, currency)
+        nodes: list[str] = []
+        refs: set[RateRef] = set()
+        total = 0
+        for event, amount in amounts.get(target.subject_key, ()):
+            if event.effective_date > at.end_date or amount == 0:
+                continue
+            key = (target.subject_key, event.event_key)
+            if key not in converted:
+                try:
+                    rate = rates.spot(event.effective_date)
+                except RateMissing as missing:
+                    missing.event_key = event.event_key
+                    raise
+                assert rate.rate_key is not None and rate.version_key is not None
+                value = to_functional(amount, rate, txn_minor, minor)
+                node = tb.node(
+                    measure="pre_standard_revenue_functional_event",
+                    subject_key=f"{target.subject_key}@{event.event_key}",
+                    period_key=None,
+                    value=value,
+                    currency=currency,
+                    minor_unit=minor,
+                    formula_id="books.legacy_fx.v1",
+                    inputs=[
+                        SourceRef(
+                            "contract_event",
+                            event.event_key,
+                            {"value": format_money(amount, txn_minor)},
+                        ),
+                        *rate.inputs(),
+                    ],
+                    params={"effective_date": event.effective_date.isoformat()},
+                    exact=Fraction(amount, 10**txn_minor) * rate.value,
+                    narrative_key="books.legacy_fx",
+                )
+                converted[key] = (node, value, RateRef(rate.rate_key, rate.version_key))
+            node, value, ref = converted[key]
+            nodes.append(node)
+            total += value
+            refs.add(ref)
+        node = tb.node(
+            measure="pre_standard_revenue_functional",
+            subject_key=target.subject_key,
+            period_key=target.period_key,
+            value=total,
+            currency=currency,
+            minor_unit=minor,
+            formula_id=FORMULA_ID,
+            inputs=nodes,
+            narrative_key=_NARRATIVE,
+        )
+        out.append(
+            FxTarget(
+                book_code=ctx.book_code,
+                entity=target.entity,
+                subject_key=target.subject_key,
+                measure=MEASURE,
+                part=None,
+                balance_role=None,
+                period_key=target.period_key,
+                txn_currency=ctx.txn_currency,
+                amount_txn=target.value,
+                functional_currency=currency,
+                amount_functional=total,
+                rates=tuple(sorted(refs, key=lambda ref: (ref.rate_key, ref.version_key))),
+                node_id=node,
+            )
+        )
+    return tuple(out)
 
 
 def fold_at(ctx: BookContext, cb: CanonicalBundle, subject_key: str, at: date) -> int:
@@ -346,14 +458,16 @@ def _node(
     )
 
 
-def _fx_state(allocated: AllocatedState, source: _Source) -> FxState:
-    """A stage 12 state without flows: the LEGACY book converts nothing (S13-R-07)."""
+def _fx_state(
+    allocated: AllocatedState, source: _Source, functional: tuple[FxTarget, ...] = ()
+) -> FxState:
+    """No stage 12 flows; only the LEGACY fold's dated revenue conversion targets."""
     return FxState(
         allocated=allocated,
         costs=source,
         layer_movements=(),
         layer_balances=(),
-        functional_targets=(),
+        functional_targets=functional,
         remeasurement_targets=(),
         gain_loss_targets=(),
         ic_pairs=(),
