@@ -10386,3 +10386,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   a separate member-allocation adjustment, or apportion original dated layers on the existing
   member liability basis. Current engine member totals alone do not specify that date ownership.
   The question has been raised with the owner; no new allocation rule is silently assumed.
+
+## Historical GL source identity — October 20, 2026
+
+- Fixed a historical comparison defect: filtering updated_at before selecting the latest GL
+  reconciliation could skip a later-reopened source and falsely PASS against an older reviewed
+  source. New v4 runs select the latest eligible identity first; a later mutation now records
+  NOT_APPLICABLE with its source link and a historical-evidence reason, without future totals
+  or future review status. No older source is substituted.
+- Previously retained v1/v2 arithmetic and v3 reviewed-source evidence keep their original
+  controls. Accepted and unavailable v4 runs also reproduce from their retained evidence.
+- Public API checks create two independently reviewed GL sources, then reopen the latest after
+  the cutoff. Both balance reports refuse the stale fallback; earlier accepted runs and new
+  unavailable runs rerun identically. The existing review workflow and 12 scoped control cases
+  pass, with lint/types and migration 0235 down/up catalogue parity. No deployment.
+- This does not reconstruct mutable reconciliation history that was never retained. Combined
+  member-aging date ownership, independent accounting sign-off and final-candidate checks remain.

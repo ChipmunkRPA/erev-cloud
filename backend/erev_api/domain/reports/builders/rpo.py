@@ -352,6 +352,7 @@ class Store:
     classify_batch_cancelled_usage: bool = field(default=True, kw_only=True)
     classify_cancelled_usage_chains: bool = field(default=True, kw_only=True)
     classify_usage_reentry: bool = field(default=True, kw_only=True)
+    classify_batch_usage_reentry: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1282,6 +1283,7 @@ def _obligation_lines(
     terminal_cancellation: _Ob | None = None
     pending_cancellation: _Ob | None = None
     batch_cancelled_usage: _Ob | None = None
+    batch_usage_cut = end
     segment_start = before
     segment_opening = ZERO if opening is None else store.at(opening, before).revenue
     segment_has_opening = opening is not None
@@ -1328,11 +1330,18 @@ def _obligation_lines(
             latest = candidate
         return latest
 
-    def cancelled_segment(start: int) -> tuple[_Ob, date] | None:
+    def cancelled_segment(start: int, initial: _Ob | None = None) -> tuple[_Ob, date] | None:
         """Retained cancellation evidence up to the next disclosure re-entry."""
         if not store.classify_usage_reentry:
             return None
-        latest = None
+        if initial is not None and (
+            not store.classify_batch_usage_reentry
+            or not store.classify_batch_cancelled_usage
+            or not store.classify_cancelled_usage_chains
+            or not store.at(initial, end).realised_traced
+        ):
+            return None
+        latest = initial
         for retained in moved[start:]:
             if not retained.included:
                 return None
@@ -1353,6 +1362,14 @@ def _obligation_lines(
             latest = candidate
         return None if latest is None else (latest, end)
 
+    def settle_batch_usage() -> None:
+        nonlocal batch_cancelled_usage
+        if batch_cancelled_usage is not None:
+            realized = store.at(batch_cancelled_usage, batch_usage_cut).realised
+            lines["VC_ESTIMATE_CHANGES"] += realized
+            lines["CANCELLATIONS"] -= realized
+            batch_cancelled_usage = None
+
     if opening is not None:
         terminal = store.cancellation(opening)
         if (
@@ -1367,7 +1384,11 @@ def _obligation_lines(
                 (store.at(opening, end).realised == 0 and realised_opening == 0)
                 or (
                     store.classify_batch_cancelled_usage
-                    and (not moved or cancelled_tail(0) is not None)
+                    and (
+                        not moved
+                        or cancelled_tail(0) is not None
+                        or cancelled_segment(0, opening) is not None
+                    )
                     and store.at(opening, end).realised_traced
                     and store.at(opening, before).realised_traced
                 )
@@ -1424,7 +1445,10 @@ def _obligation_lines(
                     lines["CANCELLATIONS"] -= terminal.before
                     terminal_cancellation = opening
                     if store.classify_batch_cancelled_usage:
-                        if not moved:
+                        batch_segment = cancelled_segment(0, opening)
+                        if batch_segment is not None:
+                            batch_cancelled_usage, batch_usage_cut = batch_segment
+                        elif not moved:
                             batch_cancelled_usage = opening
                         elif cancelled_tail(0) is not None:
                             batch_cancelled_usage = cancelled_tail(0)
@@ -1440,7 +1464,10 @@ def _obligation_lines(
             # version can supersede its retained revenue or admit a new segment.
             lines["CANCELLATIONS"] -= terminal.before
             terminal_cancellation = pending_cancellation
-            if store.classify_batch_cancelled_usage and cancelled_tail(index) is not None:
+            batch_segment = cancelled_segment(index, pending_cancellation)
+            if batch_segment is not None:
+                batch_cancelled_usage, batch_usage_cut = batch_segment
+            elif store.classify_batch_cancelled_usage and cancelled_tail(index) is not None:
                 batch_cancelled_usage = cancelled_tail(index)
             pending_cancellation = None
             previous = ZERO
@@ -1462,6 +1489,7 @@ def _obligation_lines(
         reentry = current is not None and previous_obligation is None and was_cancelled
         if current is not None:
             if terminal_cancellation is not None:
+                settle_batch_usage()
                 lines["CANCELLATIONS"] += recognition(terminal_cancellation, version.effective)
                 terminal_cancellation = None
             if previous_obligation is None and was_cancelled:
@@ -1501,7 +1529,11 @@ def _obligation_lines(
                     )
                     or (
                         store.classify_batch_cancelled_usage
-                        and (len(moved) == 1 or cancelled_tail(index + 1) is not None)
+                        and (
+                            len(moved) == 1
+                            or cancelled_tail(index + 1) is not None
+                            or cancelled_segment(index + 1, current) is not None
+                        )
                         and store.at(current, end).realised_traced
                     )
                 )
@@ -1704,8 +1736,12 @@ def _obligation_lines(
         assert terminal is not None and terminal.before is not None
         lines["CANCELLATIONS"] -= terminal.before
         terminal_cancellation = pending_cancellation
-        if store.classify_batch_cancelled_usage and len(moved) == 1:
+        batch_segment = cancelled_segment(len(moved), pending_cancellation)
+        if batch_segment is not None:
+            batch_cancelled_usage, batch_usage_cut = batch_segment
+        elif store.classify_batch_cancelled_usage and len(moved) == 1:
             batch_cancelled_usage = pending_cancellation
+            batch_usage_cut = end
     if opening is not None and closing is not None and not moved:
         open_fixed = store.at(opening, before).fixed_allocation
         close_fixed = store.at(closing, end).fixed_allocation
@@ -1736,10 +1772,7 @@ def _obligation_lines(
                 if change + modifications == close_fixed - open_fixed:
                     lines["VC_ESTIMATE_CHANGES"] += change
                     lines["MODIFICATIONS"] += modifications
-    if batch_cancelled_usage is not None:
-        realized = store.at(batch_cancelled_usage, end).realised
-        lines["VC_ESTIMATE_CHANGES"] += realized
-        lines["CANCELLATIONS"] -= realized
+    settle_batch_usage()
     realised_closing = ZERO if closing is None else store.at(closing, end).realised
     lines["VC_ESTIMATE_CHANGES"] += realised_closing - realised_opening
     if closing is not None:

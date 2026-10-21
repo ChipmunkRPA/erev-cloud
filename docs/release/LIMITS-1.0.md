@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — original first-batch usage cancellation can precede retained re-entry
+
+An original cancellation in the first or opening computation can now settle dated realized fees
+at the next retained re-entry cut, including an intermediate cancelled correction version. The
+segment's realized fees are settled once before the new remaining allocation is admitted; fixed
+allocation changes and retained revenue keep their own lines. New bindings retain
+rpo_cancelled_usage_v5; v1-v4 keep their earlier scope and markers on rerun. Missing realized
+traces, absent obligations or excluded intermediate versions do not authorize this path.
+
+The 70 scoped cases include direct and intermediate-correction re-entry following first-batch
+and same-version monthly cancellation, both realized-fee directions, revenue reversals and
+legacy behavior. These are retained-reader witnesses, not a new public API lifecycle journey.
+Existing public modification reports/reruns in three currency views, scoped lint/types and
+migration 0248 down/up IPE parity are the release checks.
+
+This supersedes the first-batch/same-version usage cancellation followed by retained re-entry
+limitation for the evidenced path. Multiple cancellations within one computation, versions
+intervening before termination, same-day entry/cancellation and combined-member aging ownership
+remain open. Independent accounting sign-off and final-candidate verification remain open.
+No deployment and no claim of production readiness.
+
+
 ### October 20 — separately retained usage cancellation and re-entry segments
 
 Realized-fee cancellation attribution now stops at the next disclosure re-entry. The final

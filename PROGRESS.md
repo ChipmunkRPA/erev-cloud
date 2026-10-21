@@ -6,6 +6,24 @@
 
 
 
+## First-batch realized-fee cancellation settles before re-entry — October 20, 2026
+
+- An original cancellation embedded in the first/opening computation can now settle its dated
+  realized fees at the next retained re-entry. Intermediate cancelled corrections supply the
+  final evidence for that segment; fees are settled once before admission of the new remainder.
+  The fixed allocation bridge and retained revenue recognition remain separate.
+- New bindings use rpo_cancelled_usage_v5. Retained v1-v4 preserve scope and markers on rerun.
+  Missing realized evidence, missing obligations or excluded intermediate versions still cannot
+  authorize the new segment reader. Original accounting amounts and events are unchanged.
+- The 70 scoped report cases cover direct and intermediate-correction re-entry after first-batch
+  or same-version monthly cancellation, positive/negative realized changes, revenue reversals,
+  line-level expected results and legacy behavior. Existing public modification reports/reruns
+  in three views, scoped lint/types and migration 0248 down/up IPE parity are the release checks.
+  New combinations use retained-reader witnesses, not a new public API lifecycle journey.
+- Multiple cancellations within one computation, intervening pre-termination versions, same-day
+  entry/cancellation and combined-member aging ownership remain open. Independent accounting
+  sign-off and final-candidate verification remain open. Direct main; no deployment.
+
 ## Realized fees follow cancellation and re-entry segments — October 20, 2026
 
 - For separately retained cancellation/re-entry versions, realized fees now use the final
@@ -217,22 +235,6 @@
 - Old traces are not backfilled. Missing modification boundaries, newly introduced obligations
   lacking a complete boundary history and cancellation mixtures retain existing limitations.
   Combined-member aging date ownership and independent accounting sign-off remain open.
-
-## Historical GL source identity — October 20, 2026
-
-- Fixed a historical comparison defect: filtering updated_at before selecting the latest GL
-  reconciliation could skip a later-reopened source and falsely PASS against an older reviewed
-  source. New v4 runs select the latest eligible identity first; a later mutation now records
-  NOT_APPLICABLE with its source link and a historical-evidence reason, without future totals
-  or future review status. No older source is substituted.
-- Previously retained v1/v2 arithmetic and v3 reviewed-source evidence keep their original
-  controls. Accepted and unavailable v4 runs also reproduce from their retained evidence.
-- Public API checks create two independently reviewed GL sources, then reopen the latest after
-  the cutoff. Both balance reports refuse the stale fallback; earlier accepted runs and new
-  unavailable runs rerun identically. The existing review workflow and 12 scoped control cases
-  pass, with lint/types and migration 0235 down/up catalogue parity. No deployment.
-- This does not reconstruct mutable reconciliation history that was never retained. Combined
-  member-aging date ownership, independent accounting sign-off and final-candidate checks remain.
 
 ## Outstanding release verification
 

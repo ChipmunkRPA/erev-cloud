@@ -1472,3 +1472,78 @@ def test_one_computation_separates_realized_fees_from_cancellation(
         }
         (missing,) = rpo.rollforward_lines(continued, ranges={eid: (before, end)}, applied={})
         assert missing.lines != expected
+
+    for intermediate in (False, True):
+        reopened_id = uuid4()
+        reopened = replace(
+            version,
+            id=reopened_id,
+            version_no=3,
+            effective=end,
+            causes=frozenset({"CONTRACT_ACTIVATED"}),
+            entries=((cid, end),),
+            modification_events=frozenset(),
+            estimate_events=frozenset(),
+            cancellation_events=frozenset(),
+        )
+        fee_correction = Decimal(10 if intermediate else 0)
+        new_fee = Decimal(realized) + fee_correction + 10
+        new_revenue = Decimal(revenue) + fee_correction + 20
+        remainder = Decimal(80) + new_fee - new_revenue
+        reopened_ob = replace(
+            ob, version_id=reopened_id, cancelled=False, allocated=Decimal(80) + new_fee
+        )
+        reopened_cuts = {(reopened_id, day): points for (source, day), points in store.cuts.items()}
+        reopened_cuts[reopened_id, end] = {
+            oid: replace(
+                closing,
+                fixed_allocation=Decimal(80),
+                realised=new_fee,
+                revenue=new_revenue,
+                awaiting=remainder,
+                satisfaction_status="PARTIALLY_SATISFIED",
+            )
+        }
+        chain = (version, reopened)
+        chain_obligations = {**store.obligations, reopened_id: (reopened_ob,)}
+        chain_cuts = {**store.cuts, **reopened_cuts}
+        chain_boundaries = dict(store.boundaries)
+        if intermediate:
+            memo_id = uuid4()
+            memo = replace(
+                reopened, id=memo_id, version_no=2, entries=(), causes=frozenset({"USAGE_REPORTED"})
+            )
+            chain = (version, memo, reopened)
+            chain_obligations[memo_id] = (replace(ob, version_id=memo_id),)
+            chain_cuts.update(
+                {(memo_id, day): points for (source, day), points in store.cuts.items()}
+            )
+            chain_cuts[memo_id, end] = {
+                oid: replace(
+                    closing,
+                    realised=Decimal(realized) + fee_correction,
+                    revenue=Decimal(revenue) + fee_correction,
+                )
+            }
+            chain_boundaries[memo_id] = store.boundaries[vid]
+        reentry_store = replace(
+            store,
+            versions={gid: chain},
+            chains={cid: chain},
+            obligations=chain_obligations,
+            cuts=chain_cuts,
+            boundaries=chain_boundaries,
+        )
+        (reentered,) = rpo.rollforward_lines(reentry_store, ranges={eid: (before, end)}, applied={})
+        expected = dict(result.lines)
+        expected["NEW_CONTRACTS"] += remainder
+        expected["CLOSING"] = remainder
+        expected["VC_ESTIMATE_CHANGES"] += fee_correction
+        expected["REVENUE"] -= fee_correction
+        assert reentered.lines == expected
+        (legacy_reentry,) = rpo.rollforward_lines(
+            replace(reentry_store, classify_batch_usage_reentry=False),
+            ranges={eid: (before, end)},
+            applied={},
+        )
+        assert legacy_reentry.lines != expected

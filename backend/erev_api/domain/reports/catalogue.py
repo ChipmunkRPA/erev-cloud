@@ -1013,6 +1013,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "through the next re-entry cut; re-entry admits its fixed plus realized allocation "
             "net of prior revenue and removes pre-entry realized fees from in-scope VC changes; "
             "retained v1-v3 bindings preserve prior classification",
+            "rpo_cancelled_usage_v5 settles original first-batch and opening-version "
+            "realized-fee cancellation at the next retained re-entry cut, including intervening "
+            "cancelled corrections, before admitting the new remaining allocation; retained "
+            "v1-v4 preserve their classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

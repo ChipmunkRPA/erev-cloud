@@ -119,7 +119,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if store.classify_cancelled_chains and params.sources is not None:
         params.sources.record_evidence(chain_evidence, True)
-    usage_evidence = "rpo_cancelled_usage_v4"
+    usage_evidence = "rpo_cancelled_usage_v5"
     store = replace(
         store,
         classify_cancelled_usage=(
@@ -128,33 +128,45 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             or "rpo_cancelled_usage_v1" in params.binding.evidence
             or "rpo_cancelled_usage_v2" in params.binding.evidence
             or "rpo_cancelled_usage_v3" in params.binding.evidence
+            or "rpo_cancelled_usage_v4" in params.binding.evidence
         ),
         classify_batch_cancelled_usage=(
             params.binding is None
             or usage_evidence in params.binding.evidence
             or "rpo_cancelled_usage_v2" in params.binding.evidence
             or "rpo_cancelled_usage_v3" in params.binding.evidence
+            or "rpo_cancelled_usage_v4" in params.binding.evidence
         ),
         classify_cancelled_usage_chains=(
             params.binding is None
             or usage_evidence in params.binding.evidence
             or "rpo_cancelled_usage_v3" in params.binding.evidence
+            or "rpo_cancelled_usage_v4" in params.binding.evidence
         ),
         classify_usage_reentry=(
+            params.binding is None
+            or usage_evidence in params.binding.evidence
+            or "rpo_cancelled_usage_v4" in params.binding.evidence
+        ),
+        classify_batch_usage_reentry=(
             params.binding is None or usage_evidence in params.binding.evidence
         ),
     )
     if store.classify_cancelled_usage and params.sources is not None:
         params.sources.record_evidence(
             usage_evidence
-            if store.classify_usage_reentry
+            if store.classify_batch_usage_reentry
             else (
-                "rpo_cancelled_usage_v3"
-                if store.classify_cancelled_usage_chains
+                "rpo_cancelled_usage_v4"
+                if store.classify_usage_reentry
                 else (
-                    "rpo_cancelled_usage_v2"
-                    if store.classify_batch_cancelled_usage
-                    else "rpo_cancelled_usage_v1"
+                    "rpo_cancelled_usage_v3"
+                    if store.classify_cancelled_usage_chains
+                    else (
+                        "rpo_cancelled_usage_v2"
+                        if store.classify_batch_cancelled_usage
+                        else "rpo_cancelled_usage_v1"
+                    )
                 )
             ),
             True,
