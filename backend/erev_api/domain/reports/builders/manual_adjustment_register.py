@@ -24,17 +24,22 @@ per currency ``amount_functional_abs_total`` (Σ|amount| over every row — the 
 ``amount_reporting_abs_total`` and uses reporting amounts for ``posted_total``, preserving the
 original posted amount separately as ``posted_functional_total``. Labels are attribute columns;
 the key is (``entity_code``, ``adjustment_no``) — the KeySpec ``close/relock_diff.py`` pins.
+New runs retain adjustment inputs, names and period-rate evidence. Bound runs restore dates and
+identities, then rebuild rows and totals without live reads. This does not create row history for
+an ad-hoc historical query; its original cutoff refusal still applies.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
@@ -58,6 +63,7 @@ from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "manual_adjustment_register"
+EVIDENCE: Final = "manual_adjustment_inputs_v1"
 KEY_COLUMNS: Final = ("entity_code", "adjustment_no")  # S15-R-20d; relock_diff KeySpec
 MEASURES: Final = ("amount_functional_abs",)  # the one declared measure
 DEFAULT_CURRENCY_VIEW: Final = "functional"  # SCREENS_B RPT-18 "default functional"
@@ -486,6 +492,28 @@ def reporting_data(
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     check_view(params)
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    selection = {
+        key: params.parameters.get(key)
+        for key in (
+            "book",
+            "from_period_key",
+            "to_period_key",
+            "status",
+            "kind",
+        )
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained adjustment inputs exceed report scope.")
+        if retained["currency_view"] != view or retained["selection"] != selection:
+            raise tie_outs.invalid(
+                "currency_view", "Retained inputs use another currency or filter selection."
+            )
+        return data_from_inputs(retained)
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     entities = tie_outs.entities(session, params.entity_ids)
@@ -507,10 +535,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         [item.preparer_id for item in found]
         + [user_id for item in found for user_id, _ in item.approvers],
     )
-    rows = dataset_rows(found, names)
-    check_key_columns(rows)
-    if params.parameters.get("currency_view") == "reporting":
-        translations: dict[tuple[str, str], tuple[UUID, reporting_currency.Translation]] = {}
+    translations: dict[tuple[str, str], tuple[UUID, reporting_currency.Translation]] = {}
+    if view == "reporting":
         by_code = {entity.code: entity for entity in entities}
         target: str | None = None
         for adjustment in found:
@@ -531,6 +557,66 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             )
             target = translation.currency
             translations[key] = (entity.id, translation)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "currency_view": view,
+                "selection": selection,
+                "book": book_code,
+                "sources": [asdict(item) for item in found],
+                "names": {str(key): value for key, value in names.items()},
+                "translations": [
+                    {
+                        "entity_code": key[0],
+                        "period_key": key[1],
+                        "entity_id": entity_id,
+                        "currency": translation.currency,
+                        "rates": {str(key): value for key, value in translation.rates.items()},
+                    }
+                    for key, (entity_id, translation) in translations.items()
+                ],
+            }
+        )
+    )
+    tie_outs.record_members(params, "manual_adjustments", (item.adjustment_id for item in found))
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    sources: list[Source] = []
+    for record in retained["sources"]:
+        values = dict(record)
+        values["adjustment_id"] = UUID(values["adjustment_id"])
+        values["amount_functional_abs"] = Decimal(values["amount_functional_abs"])
+        values["effective_date"] = date.fromisoformat(values["effective_date"])
+        values["approved_at"] = (
+            None
+            if values["approved_at"] is None
+            else datetime.fromisoformat(values["approved_at"].replace("Z", "+00:00"))
+        )
+        values["preparer_id"] = (
+            None if values["preparer_id"] is None else UUID(values["preparer_id"])
+        )
+        values["approvers"] = tuple(
+            (None if actor is None else UUID(actor), kind) for actor, kind in values["approvers"]
+        )
+        sources.append(Source(**values))
+    names = {UUID(key): value for key, value in retained["names"].items()}
+    rows = dataset_rows(sources, names)
+    check_key_columns(rows)
+    if retained["currency_view"] == "reporting":
+        translations = {
+            (item["entity_code"], item["period_key"]): (
+                UUID(item["entity_id"]),
+                reporting_currency.Translation(
+                    item["currency"], {UUID(key): value for key, value in item["rates"].items()}
+                ),
+            )
+            for item in retained["translations"]
+        }
         return reporting_data(rows, translations)
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=control_totals(rows))
 

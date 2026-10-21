@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Manual adjustment retained reconstruction — October 21, 2026
+
+- Functional and reporting runs now retain adjustment source records, preparer/approver names,
+  decision timestamps/comments, attachment counts and period-rate inputs. Adjustment IDs are
+  captured as membership. Bound runs validate tenant/entity scope, view and book/period/status/kind
+  selection before restoring typed inputs and rebuilding rows, converted amounts and totals.
+- Rebuilds do not read current adjustment statuses, approvals, attachments, actor names or rates.
+  Retained reporting amounts are recalculated from functional amounts and saved rates. Date,
+  timestamp, UUID and Decimal restoration preserves rendering and actor-identity comparisons.
+- Migration 0305 documents the retained basis. Older OPEN runs retain new-evaluation behavior.
+  This adds saved-run reproduction, not historical versions of mutable adjustment rows: an ad-hoc
+  known_at query still refuses when required row history is unavailable.
+- Necessary verification passed: 27 focused register/source-binding cases; actual report API and
+  worker runs before/after approval of a USD 50 release (fresh posted total rises from USD 100 to
+  USD 150; original functional/reporting rows and output hashes remain identical); frozen IPE
+  parity and scoped lint/types. Input-only reconstruction tests need no session and recompute
+  approval displays, attachment counts, posted totals and rate changes.
+- Remaining: other documented report adapters and final repository verification. No deployment.
+
 ## Manual adjustment reporting-currency comparison — October 21, 2026
 
 - Added Reporting currency to the manual adjustment register. Original functional currency and
@@ -186,45 +205,6 @@ review and publish changes without PR accumulation, and do not deploy.
   dated primary amounts, with a defensible legacy-position basis, plus reporting-currency
   translation and retained reconstruction. This fixes a real foreign-currency posting blocker;
   it does not declare the report's multi-currency work complete.
-
-## Adoption currency groundwork: dated billing evidence — October 21, 2026
-
-- Stage 12 now retains cumulative billed-control functional activity by contract/entity and
-  period, with the signed transaction quantity/currency/minor unit alongside it. Each movement
-  records the admitted billing date, pinned spot-rate inputs and exact conversion; cumulative
-  nodes replay from signed movements and prior periods. These are disclosure trace nodes,
-  not new posting targets or replacement liability balances.
-- Credit memos use their own dated spot rather than the carrying amount of the historical
-  liability layer consumed. Verified example: EUR 1,000 at 1.10 plus EUR 500 at 1.20 less
-  EUR 200 credit at 1.30 gives USD 1,440 cumulative activity, while the old layer relief is
-  USD 220. Later closing rates do not rewrite the historical activity. Contract members
-  remain separate and POL-160 receipt/due-date selection is preserved.
-- Necessary verification: 12 layer cases, 40 related functional/remeasurement/real book-replay
-  cases, and a full-engine trace-boundary assertion passed, plus scoped lint/types. No database
-  or posting schema changes; no deployment. New trace evidence changes computation content;
-  older computations are not backfilled and exact-original replay retains its mismatch guard.
-- Adoption Bridge multi-currency remains incomplete. The new control-flow population must
-  reconcile to stage 10 billed totals before use. LEGACY is a revenue-only fold with no stage
-  12 balances; its historical functional revenue/position basis and reporting-period translation
-  still need implementation. Do not derive a legacy liability merely by subtracting converted
-  activity where FX settlement/carrying differences exist, or substitute a current closing rate.
-
-## Intercompany Pairs retained reconstruction — October 21, 2026
-
-- Transaction, functional and reporting runs now retain consumed ledger IDs, per-line amounts,
-  entity/currency scope and FX evidence. Same-source reruns rebuild pairs, contract details,
-  totals and unmatched tie-outs without reading current ledger lines, entity labels or rates.
-  Tenant/entity/view/book checks remain; mixed functional currencies and out-of-scope sides
-  remain incomparable rather than becoming false zeroes. Older OPEN runs retain their original
-  new-evaluation semantics. Migration 0297 updates the report's IPE description.
-- Public workflow verification: approving September GBP/USD average 1.30 instead of 1.28 changes
-  fresh reporting due-to from USD 6,131.98 to 6,227.79; original transaction, functional,
-  reporting and partial-scope runs retain identical rows/output hashes. Input-only tests rebuild
-  without a database and recompute after changing inputs. 43 focused unit checks and scoped
-  lint/types passed; catalogue migration parity verified. No deployment.
-- Remaining: Adoption Bridge currency support, non-policy/book-context difference residuals,
-  other documented report adapters and final repository validation. Intercompany Pairs
-  retained reconstruction is complete; this does not claim all Reporting work is finished.
 
 ## Outstanding release verification
 

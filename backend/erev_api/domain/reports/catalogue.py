@@ -1773,6 +1773,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "at each posting period's approved average rate; total impact includes all statuses "
             "while the posted footer includes only POSTED adjustments; "
             "transaction view is unavailable",
+            "same-source runs retain adjustment inputs, approval/actor displays, attachment counts "
+            "and per-period rate evidence; reruns rebuild rows and totals "
+            "without live source reads",
             _SCOPE,
             _BOOK,
             _PERIODS,

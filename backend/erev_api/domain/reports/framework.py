@@ -509,10 +509,6 @@ _MODIFICATION_REGISTER_OPEN: Final = (
     "run book's contract / obligation versions and the stored impact previews read live "
     "(CTR-17 slice 1; S15-R-20c)"
 )
-_MANUAL_ADJUSTMENT_REGISTER_OPEN: Final = (
-    "manual adjustment rows (T-SL-05) with their contracts, obligations, posting periods, "
-    "approvals and attachment counts read live (F-CLO RPS-8 RPT-18; S15-R-20d)"
-)
 # BUILD_SPEC RPS-9 to RPS-12 (lane F-RPS-REG): the registers and listings read live; no source
 # adapter yet — each names its actual input families.
 _SSP_CHANGE_LOG_OPEN: Final = (
@@ -862,9 +858,13 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         modification_register_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_MODIFICATION_REGISTER_OPEN,)
         ),
-        # F-CLO RPS-8 RPT-18: the register reads live; no source adapter yet.
+        # RPT-18 retains adjustment, actor and rate inputs for same-source reconstruction.
         manual_adjustment_register_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_MANUAL_ADJUSTMENT_REGISTER_OPEN,)
+            RETAINED,
+            (
+                _CUTOFF,
+                "adjustment inputs, approval actors/decisions, attachment counts and FX evidence",
+            ),
         ),
         # RPS-9 (RPT-19 to RPT-22): the SSP reports read live; no source adapter yet.
         ssp_change_log_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_SSP_CHANGE_LOG_OPEN,)),
@@ -2084,6 +2084,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "intercompany_pairs",
             "adoption_bridge",
             "out_of_period_register",
+            "manual_adjustment_register",
         }
     ):
         try:

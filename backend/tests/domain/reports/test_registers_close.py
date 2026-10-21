@@ -556,6 +556,56 @@ def test_manual_adjustment_register(k02: K02World, runtime: JobRuntime, clock: F
     assert translated.control_totals["posted_total"] == {"USD": "100.00"}
     for translated_row in translated.rows:
         assert translated_row["amount_reporting_abs"] == translated_row["amount_functional_abs"]
+    from support import worlds
+
+    report_world = worlds.ReportWorld(
+        place=k02.place,
+        priya=k02.priya,
+        marcus=k02.marcus,
+        runtime=runtime,
+        entity_id=k02.entity_id,
+        contracts={},
+    )
+    pending = prepared(
+        "MANUAL_RELEASE",
+        "ESTIMATE_CORRECTION",
+        "Awaiting acceptance",
+        {"amount": usd(Decimal("50.00"))},
+    )
+    parameters = {
+        "entity_codes": ["AVM-US"],
+        "from_period_key": "FY2026-P09",
+        "to_period_key": "FY2026-P09",
+    }
+    originals = []
+    for view in ("functional", "reporting"):
+        run, saved = worlds.report_run(
+            report_world, manual_register.CODE, {**parameters, "currency_view": view}
+        )
+        assert run["control_totals"]["posted_total"] == {"USD": "100.00"}
+        originals.append((view, run, saved))
+    clock.advance(timedelta(minutes=1))
+    decision = approve(k02.app, pending["approval_request_id"], k02.priya)
+    assert decision.status_code == 200, decision.text
+    for view, original, original_rows in originals:
+        fresh, current = worlds.report_run(
+            report_world, manual_register.CODE, {**parameters, "currency_view": view}
+        )
+        assert current != original_rows
+        assert fresh["control_totals"]["posted_total"] == {"USD": "150.00"}
+        started = post(k02.app, f"/api/v1/report-runs/{original['id']}/rerun", maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(report_world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        restored = get(
+            k02.app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == original_rows
 
 
 # --- BUILD_SPEC RPS-8: je_population, out_of_period_register, late_entry_report (F-RPS-REG) ---

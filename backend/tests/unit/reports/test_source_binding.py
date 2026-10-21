@@ -350,7 +350,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "legacy_je_summary",
         "migration_reconciliation",
         "modification_register",  # F-CTR CTR-17 slice 1 (D-98 140-A1): reads live, no adapter yet
-        "manual_adjustment_register",  # F-CLO RPS-8 RPT-18 (S15-R-20d): reads live, no adapter yet
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet
         "ssp_change_log",
         "ssp_version_diff",

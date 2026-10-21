@@ -53,10 +53,10 @@ def _source(**over: object) -> register.Source:
 
 def test_registration_and_catalogue_row() -> None:
     """``framework.BUILDERS`` admits the code (19 → 20); the served view defaults to functional
-    (RPT-18); the source contract is OPEN; the catalogue row admits the lock (CLO-8b)."""
+    (RPT-18); the source contract is RETAINED; the catalogue row admits the lock (CLO-8b)."""
     assert framework.BUILDERS[register.CODE] is register.build
     assert framework.PARAMETER_DEFAULTS[register.CODE] == {"currency_view": "functional"}
-    assert framework.SOURCE_CONTRACTS[register.CODE].strategy == "open"
+    assert framework.SOURCE_CONTRACTS[register.CODE].strategy == "retained_inputs"
     definition = DEFINITIONS_BY_CODE[register.CODE]
     assert definition.kind == "REGISTER"
     assert {"from_period_key", "to_period_key", "status", "kind", "period_lock_id"} <= set(
@@ -220,3 +220,86 @@ def test_reporting_view_preserves_functional_basis_and_uses_each_period_rate():
     assert data.control_totals["posted_functional_total"] == {"EUR": "50.00", "USD": "100.00"}
     assert data.control_totals["amount_functional_abs_total"] == {"EUR": "50.00", "USD": "2500.00"}
     assert data.control_totals["translation_basis"] == "posting_period_average"
+
+
+@pytest.mark.parametrize("view", ["functional", "reporting"])
+def test_retained_adjustments_rebuild_without_live_reads(view):
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    selection = {
+        key: None for key in ("book", "from_period_key", "to_period_key", "status", "kind")
+    }
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": ADJ,
+                "entity_ids": [MAYA],
+                "currency_view": view,
+                "selection": selection,
+                "sources": [asdict(_source())],
+                "names": {str(MAYA): "Original preparer"},
+                "translations": [
+                    {
+                        "entity_code": "AVM-US",
+                        "period_key": "FY2026-P09",
+                        "entity_id": MAYA,
+                        "currency": "GBP",
+                        "rates": {str(MAYA): {"base_currency": "USD", "rate": "0.8"}},
+                    }
+                ],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=register.CODE,
+        report_version=1,
+        entity_ids=(MAYA,),
+        parameters={"currency_view": view},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={register.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=ADJ))
+    data = register.build(uow, params)
+    assert data.rows[0]["preparer"] == "Original preparer"
+    assert data.rows[0]["effective_date"] == date(2026, 9, 16)
+    assert data.control_totals["posted_total"] == {}
+    retained["sources"][0].update(
+        status="POSTED",
+        amount_functional_abs="100",
+        attachment_count=2,
+        approved_at=AT.isoformat(),
+        approvers=[[str(PRIYA), "USER"]],
+    )
+    retained["names"][str(PRIYA)] = "Original approver"
+    changed = register.build(uow, params)
+    assert changed.rows[0]["approvers"] == "Original approver"
+    assert changed.rows[0]["attachment_count"] == 2
+    assert changed.rows[0]["approved_at"] == AT
+    assert changed.control_totals["posted_total"] == (
+        {"GBP": "80.00"} if view == "reporting" else {"USD": "100.00"}
+    )
+    if view == "reporting":
+        retained["translations"][0]["rates"][str(MAYA)]["rate"] = "0.9"
+        assert register.build(uow, params).control_totals["posted_total"] == {"GBP": "90.00"}
+    for changed_params in (
+        replace(params, entity_ids=(PRIYA,)),
+        replace(params, parameters={"currency_view": "transaction"}),
+        replace(params, parameters={"currency_view": view, "status": ["POSTED"]}),
+        replace(params, parameters={"currency_view": view, "book": "IFRS15"}),
+    ):
+        with pytest.raises(Problem):
+            register.build(uow, changed_params)
+    with pytest.raises(Problem):
+        register.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
