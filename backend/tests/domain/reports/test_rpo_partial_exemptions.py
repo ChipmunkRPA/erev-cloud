@@ -1014,6 +1014,54 @@ def test_first_entry_separates_later_original_estimate_events(
                 )
             ),
         )
+        split_termination = later_amount == "200" and not same_day
+        if split_termination:
+            first_termination = replace(
+                termination,
+                modification_key="K-01/TERM-A",
+                effective_date=date(2026, 2, 20),
+                lines=termination.lines[:1],
+            )
+            last_termination = replace(termination, lines=termination.lines[1:])
+            events = cpc_worlds.then(
+                list(bundle.events),
+                "CONTRACT_TERMINATED",
+                first_termination.effective_date,
+                {
+                    "modification_id": first_termination.modification_key,
+                    "termination_kind": "PARTIAL",
+                    "obligation_keys": ["A"],
+                    "refund_amount": Decimal(20),
+                },
+                modification_key=first_termination.modification_key,
+            )
+            events = cpc_worlds.then(
+                events,
+                "CONTRACT_TERMINATED",
+                last_termination.effective_date,
+                {
+                    "modification_id": last_termination.modification_key,
+                    "termination_kind": "FULL",
+                    "refund_amount": Decimal(20),
+                },
+                modification_key=last_termination.modification_key,
+            )
+            terminated = replace(
+                terminated,
+                events=tuple(events),
+                contracts=tuple(
+                    replace(
+                        c,
+                        modifications=tuple(
+                            sorted(
+                                (*c.modifications, first_termination, last_termination),
+                                key=lambda m: m.modification_key,
+                            )
+                        ),
+                    )
+                    for c in bundle.contracts
+                ),
+            )
         termination_event = terminated.events[-1]
         terminated = replace(
             terminated,
@@ -1069,7 +1117,11 @@ def test_first_entry_separates_later_original_estimate_events(
             causes=frozenset({"CONTRACT_AMENDED", "ESTIMATE_CHANGED", "CONTRACT_TERMINATED"}),
             entries=(),
             estimate_events=later_events,
-            cancellation_events=frozenset({termination_event.event_key}),
+            cancellation_events=frozenset(
+                event.event_key
+                for event in terminated.events
+                if event.event_type == "CONTRACT_TERMINATED"
+            ),
             estimate_order=tuple(
                 (event.event_key, event.record_seq)
                 for event in terminated.events
@@ -1086,6 +1138,34 @@ def test_first_entry_separates_later_original_estimate_events(
             opening_amount = Decimal(str(original_ob.columns["allocated_amount"])) / 100
             change = rpo._cancelled_changes(store, cancelled_version, subject, opening_amount)
             assert change is not None
+            if split_termination:
+                assert (
+                    rpo._cancelled_changes(
+                        replace(store, classify_separate_cancellations=False),
+                        cancelled_version,
+                        subject,
+                        opening_amount,
+                    )
+                    is None
+                )
+            if split_termination:
+                original_history = store.boundaries[vid]
+                for remove_evidence in (False, True):
+                    changed = tuple(
+                        replace(item, cancellation_stated=False)
+                        if remove_evidence
+                        else replace(item, amount=Decimal(1))
+                        if item.event in cancelled_version.cancellation_events
+                        and item.cancelled_on != item.day
+                        else item
+                        for item in original_history[subject]
+                    )
+                    store.boundaries[vid] = {**original_history, subject: changed}
+                    assert (
+                        rpo._cancelled_changes(store, cancelled_version, subject, opening_amount)
+                        is None
+                    )
+                store.boundaries[vid] = original_history
             if same_day:
                 assert (
                     rpo._cancelled_changes(
@@ -1176,6 +1256,50 @@ def test_first_entry_separates_later_original_estimate_events(
             chains={cid: (first_cancelled,)},
             cuts=cancelled_cuts,
         )
+        if split_termination:
+            prior_id = uuid4()
+            prior_version = replace(version, id=prior_id, version_no=1)
+            later_version = replace(cancelled_version, effective=end, version_no=2)
+            prior_obs = tuple(
+                replace(
+                    ob,
+                    version_id=prior_id,
+                    cancelled=False,
+                    allocated=cancelled_cuts[vid, january][ob.row_id].fixed_allocation,
+                )
+                for ob in cancelled_obs
+            )
+            prior_points = {
+                ob.row_id: replace(
+                    cancelled_cuts[vid, january][ob.row_id], satisfaction_status="UNSATISFIED"
+                )
+                for ob in prior_obs
+            }
+            later_store = replace(
+                cancelled_store,
+                versions={gid: (prior_version, later_version)},
+                chains={cid: (prior_version, later_version)},
+                obligations={prior_id: prior_obs, vid: cancelled_obs},
+                cuts={
+                    **cancelled_cuts,
+                    **{(prior_id, day): prior_points for day in (before, entry, january, end)},
+                },
+            )
+            (later_result,) = rpo.rollforward_lines(
+                later_store, ranges={eid: (january, end)}, applied={}
+            )
+            assert later_result.lines["OPENING"] == initial
+            assert later_result.lines["MODIFICATIONS"] == modification
+            assert later_result.lines["VC_ESTIMATE_CHANGES"] == final - initial - modification
+            assert later_result.lines["CANCELLATIONS"] == -40
+            assert later_result.lines["REVENUE"] == -(final - 40)
+            assert later_result.lines["CLOSING"] == later_result.lines["UNEXPLAINED"] == 0
+            (old_result,) = rpo.rollforward_lines(
+                replace(later_store, classify_separate_cancellations=False),
+                ranges={eid: (january, end)},
+                applied={},
+            )
+            assert old_result.lines["UNEXPLAINED"] != 0
         historical = variance_rpo.project(
             terminated,
             terminated_book,

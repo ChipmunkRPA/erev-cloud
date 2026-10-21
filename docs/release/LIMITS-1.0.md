@@ -1,5 +1,29 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — independently cancelled obligations can share a computation
+
+A retained version may contain multiple termination causes while each obligation has one original
+cancellation. Mixed RPO attribution now admits this case only when every termination has explicit
+per-obligation cancellation metadata, exactly one is the obligation's actual cancellation, and
+all other terminations have zero fixed-allocation effect on it. Opening fixed allocation plus
+original modification/estimate deltas must still reconcile to the actual pre-termination amount.
+Missing metadata or nonzero cross-effects remain unsupported. New bindings retain
+rpo_separate_cancellations_v1; older bindings preserve their prior classification.
+
+A full engine witness applies a concession and estimate change, partially terminates A and later
+terminates B with separate refunds. Original trace reads prove first-batch/monthly balances and
+the mixed later-version bridge. Legacy, absent metadata and cross-effect refusals are checked.
+The 72 scoped cases, targeted negative checks, existing public modification reports/reruns in
+three views, lint/types and migration 0251 down/up IPE parity pass. This is not a new public API
+split-termination journey.
+
+This supersedes the blanket multiple-cancellations-per-computation limitation for independently
+affected obligations. Cross-obligation reallocation, repeated effects on one obligation,
+intervening pre-termination versions, complex same-day entry mixtures and combined-member aging
+ownership remain open, along with independent accounting sign-off and final-candidate checks.
+No deployment and no claim of production readiness.
+
+
 ### October 20 — fixed same-day activation and cancellation preserve movements
 
 For one first computation containing booked/activated/terminated/memo causes only, an original

@@ -6,6 +6,24 @@
 
 
 
+## Separate obligations can cancel in one retained computation — October 20, 2026
+
+- Mixed cancellation attribution now selects the original cancellation of each obligation,
+  rather than rejecting every contract with multiple termination causes. Each termination
+  must retain explicit per-obligation state, exactly one must cancel that obligation, and
+  every other termination must have zero fixed-allocation effect on it. The existing original
+  opening/modification/estimate bridge still must reconcile; missing or cross-affected evidence
+  remains unsupported. New bindings use rpo_separate_cancellations_v1; legacy rules are retained.
+- A full engine case now applies a concession and estimate change, partially terminates A,
+  then terminates B with two refunds. First-batch/monthly reporting and the later retained
+  version bridge reconcile; legacy, missing metadata and nonzero cross-effects are checked.
+- The 72 scoped cases, targeted negative checks, existing public three-view reports/reruns,
+  lint/types and migration 0251 down/up IPE parity pass. New split-cancellation evidence is an
+  engine/read-layer witness, not a new public API journey. No deployment; direct main.
+- Cancellations with cross-obligation reallocations or repeated effects on one obligation,
+  intervening pre-termination versions, complex same-day entry mixtures and combined-member
+  aging ownership remain open. Independent accounting sign-off/final-candidate checks remain open.
+
 ## Same-day fixed activation and cancellation retain gross movements — October 20, 2026
 
 - A single first computation with same-day activation and cancellation can now retain the
@@ -200,40 +218,6 @@
 - First-entry-and-cancel batches, multiple cancellations, usage-event mixtures and estimates
   on the termination day remain unsupported by this decomposition. Combined-member aging date
   ownership, independent accounting sign-off and final-candidate verification also remain open.
-
-## First-batch RPO creation boundaries — October 20, 2026
-
-- Stage 06 records whether the obligation existed before each boundary and the original
-  event record sequence. For an obligation added after earlier modifications, RPO can now prove
-  those earlier subject boundaries are legitimately absent instead of requiring nonexistent rows.
-  Earlier event order must still be retained on another obligation in that same computation.
-- A zero before amount alone is not absence evidence. Missing creation or earlier event order,
-  multiple creation histories and missing post-creation boundaries keep the conservative fallback.
-  Legacy traces are not backfilled; original accounting amounts and event order are unchanged.
-- Full compute witnesses combine a price decrease, an addition later on the SAME day and a
-  subsequent estimate increase/decrease in one first computation. New contracts, modifications,
-  estimates and historical/monthly cuts reconcile, and the new trace nodes re-evaluate. The
-  40 scoped report cases and public modification/report journey pass, including three currency
-  views and reruns. Lint/types and migration 0239 down/up catalogue parity pass. No deployment.
-- Combined-member aging date ownership, legacy evidence gaps, cancellation mixtures, independent
-  accounting sign-off and final-candidate verification remain outstanding.
-
-## Monthly RPO exemption translation details — October 20, 2026
-
-- Converted rollforwards now retain each nonzero contract-period exemption movement in its
-  original currency and the exact translated amount already used by the report. This explains
-  nonzero translated flows even when the full-range original exclusions cancel at the endpoints.
-  Existing obligation endpoint details remain separate; no allocation or FX math is done in UI.
-- The viewer displays the monthly bridge even with no endpoint detail rows. Excel exports
-  numeric source/translated cells with guarded identities; PDF exports readable period and
-  currency amounts; CSV manifests retain the structured records. New bindings record
-  rpo_exemption_translation_v1 and older bindings keep their existing control shape.
-- Focused witnesses cover EUR-to-USD and EUR-to-USD-to-GBP: opposite original 100 movements at
-  different monthly rates produce net 20 USD / 16 GBP, matching EXEMPTIONS with separate FX and
-  zero rounding. Export, viewer, scoped types/lint, public report reruns and migration 0238
-  catalogue parity are the necessary checks. No deployment; direct main publication.
-- Combined-member aging date ownership, missing first-batch boundary histories, independent
-  accounting sign-off and final-candidate verification remain outstanding.
 
 ## Outstanding release verification
 

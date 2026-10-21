@@ -1026,6 +1026,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "activation and original termination evidence; closing RPO remains zero and full "
             "exemptions still apply; other event mixtures and legacy bindings retain prior "
             "behavior",
+            "rpo_separate_cancellations_v1 permits multiple contract termination causes only "
+            "when original per-obligation metadata identifies one actual cancellation and every "
+            "other termination has an explicitly retained zero fixed-allocation change for that "
+            "obligation; incomplete or nonzero cross-effects remain unexplained; older bindings "
+            "keep prior classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

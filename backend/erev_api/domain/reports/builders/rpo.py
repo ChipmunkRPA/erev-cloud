@@ -354,6 +354,7 @@ class Store:
     classify_usage_reentry: bool = field(default=True, kw_only=True)
     classify_batch_usage_reentry: bool = field(default=True, kw_only=True)
     classify_same_day_entry_cancellation: bool = field(default=True, kw_only=True)
+    classify_separate_cancellations: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1159,7 +1160,7 @@ def _in_version(
 def _cancelled_changes(
     store: Store, version: _Version, subject: str, opening: Decimal
 ) -> tuple[Decimal, Decimal] | None:
-    if not store.classify_cancelled_changes or len(version.cancellation_events) != 1:
+    if not store.classify_cancelled_changes or not version.cancellation_events:
         return None
     if (
         any(CAUSE_LINES.get(kind) == "MODIFICATIONS" for kind in version.causes)
@@ -1169,6 +1170,20 @@ def _cancelled_changes(
     history = store.boundaries.get(version.id, {})
     changes = history.get(subject, ())
     terminal = [item for item in changes if item.event in version.cancellation_events]
+    if len(version.cancellation_events) > 1:
+        if (
+            not store.classify_separate_cancellations
+            or {item.event for item in terminal} != version.cancellation_events
+            or len(terminal) != len(version.cancellation_events)
+            or not all(item.cancellation_stated for item in terminal)
+        ):
+            return None
+        actual = rpo_boundary_changes.cancellation(tuple(terminal))
+        if actual is None or any(
+            item.event != actual.event and item.amount != 0 for item in terminal
+        ):
+            return None
+        terminal = [actual]
     if len(terminal) != 1 or terminal[0].before is None:
         return None
     termination = terminal[0]

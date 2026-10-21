@@ -10436,3 +10436,37 @@ cleanup in the shared database session kernel was also repaired and regression-t
   0237 down/up catalogue parity pass. No deployment; publish directly to main.
 - This does not supply missing first-batch boundary history, resolve combined-member aging date
   ownership or provide independent accounting sign-off. Those remain outstanding.
+
+## Monthly RPO exemption translation details — October 20, 2026
+
+- Converted rollforwards now retain each nonzero contract-period exemption movement in its
+  original currency and the exact translated amount already used by the report. This explains
+  nonzero translated flows even when the full-range original exclusions cancel at the endpoints.
+  Existing obligation endpoint details remain separate; no allocation or FX math is done in UI.
+- The viewer displays the monthly bridge even with no endpoint detail rows. Excel exports
+  numeric source/translated cells with guarded identities; PDF exports readable period and
+  currency amounts; CSV manifests retain the structured records. New bindings record
+  rpo_exemption_translation_v1 and older bindings keep their existing control shape.
+- Focused witnesses cover EUR-to-USD and EUR-to-USD-to-GBP: opposite original 100 movements at
+  different monthly rates produce net 20 USD / 16 GBP, matching EXEMPTIONS with separate FX and
+  zero rounding. Export, viewer, scoped types/lint, public report reruns and migration 0238
+  catalogue parity are the necessary checks. No deployment; direct main publication.
+- Combined-member aging date ownership, missing first-batch boundary histories, independent
+  accounting sign-off and final-candidate verification remain outstanding.
+
+## First-batch RPO creation boundaries — October 20, 2026
+
+- Stage 06 records whether the obligation existed before each boundary and the original
+  event record sequence. For an obligation added after earlier modifications, RPO can now prove
+  those earlier subject boundaries are legitimately absent instead of requiring nonexistent rows.
+  Earlier event order must still be retained on another obligation in that same computation.
+- A zero before amount alone is not absence evidence. Missing creation or earlier event order,
+  multiple creation histories and missing post-creation boundaries keep the conservative fallback.
+  Legacy traces are not backfilled; original accounting amounts and event order are unchanged.
+- Full compute witnesses combine a price decrease, an addition later on the SAME day and a
+  subsequent estimate increase/decrease in one first computation. New contracts, modifications,
+  estimates and historical/monthly cuts reconcile, and the new trace nodes re-evaluate. The
+  40 scoped report cases and public modification/report journey pass, including three currency
+  views and reruns. Lint/types and migration 0239 down/up catalogue parity pass. No deployment.
+- Combined-member aging date ownership, legacy evidence gaps, cancellation mixtures, independent
+  accounting sign-off and final-candidate verification remain outstanding.

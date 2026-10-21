@@ -22,6 +22,7 @@ class Change:
     after: Decimal | None = None
     cancelled_on: date | None = None
     prior_end: date | None = None
+    cancellation_stated: bool = False
 
 
 def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
@@ -73,6 +74,7 @@ def history(trace: Trace) -> dict[str, tuple[Change, ...]]:
                 date.fromisoformat(before.params["end_date"])
                 if before.params.get("end_date")
                 else None,
+                "cancelled_on" in after.params,
             )
         except (KeyError, ValueError, InvalidOperation) as exc:
             raise Problem(
