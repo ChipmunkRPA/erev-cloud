@@ -1084,6 +1084,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "early; the superseding computation determines the pending termination and "
             "version deltas retain their own cause attribution; original boundary and dated "
             "realization guards remain required; older bindings retain prior treatment",
+            "rpo_same_day_entry_modifications_v1 separates original contract amendments "
+            "between same-day activation and termination from new-contract amounts; original "
+            "admission and amendment record order, complete boundaries and continuity through "
+            "the termination before-state are required; later re-entry does not repeat the "
+            "amendment; older bindings retain their previous eligibility",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

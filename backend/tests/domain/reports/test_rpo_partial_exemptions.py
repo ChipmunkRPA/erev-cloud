@@ -1903,7 +1903,10 @@ def test_one_computation_separates_realized_fees_from_cancellation(
 
 
 @pytest.mark.parametrize("refund", [0, 40])
-def test_original_same_day_activation_and_cancellation_keeps_movements(refund: int) -> None:
+@pytest.mark.parametrize("amended", [False, True])
+def test_original_same_day_activation_and_cancellation_keeps_movements(
+    refund: int, amended: bool
+) -> None:
     from erev_api.domain.contracts import to_date
     from erev_api.domain.reports.rpo_boundary_changes import history
     from erev_engine.bundle import MappingRuleInput
@@ -1911,6 +1914,32 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(refund: i
 
     entry, before, end = date(2026, 1, 1), date(2025, 12, 31), date(2026, 1, 31)
     base = worlds.targeted_world(estimates=[])
+    if amended:
+        modification = replace(
+            cpc_worlds.concession("-20", entry, key="A"),
+            modification_key="K-01/MOD-1",
+            status="APPLIED",
+            price_change_amount=None,
+            questionnaire={},
+            chosen_treatments={"A": "PROSPECTIVE", "B": "PROSPECTIVE"},
+            treatment_summary="PROSPECTIVE",
+            lines=(
+                {
+                    "obligation_key": "A",
+                    "action": "CHANGE",
+                    "product_code": "PROD-A",
+                    "quantity_delta": Decimal(0),
+                    "consideration_delta": Decimal(-20),
+                },
+            ),
+        )
+        base = replace(
+            base,
+            contracts=tuple(replace(c, modifications=(modification,)) for c in base.contracts),
+            events=tuple(
+                cpc_worlds.amended(list(base.events), modification, modification.chosen_treatments)
+            ),
+        )
     termination = replace(
         cpc_worlds.concession("0", entry, key="A"),
         modification_key="K-01/TERM",
@@ -1933,7 +1962,9 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(refund: i
     )
     bundle = replace(
         base,
-        contracts=tuple(replace(c, modifications=(termination,)) for c in base.contracts),
+        contracts=tuple(
+            replace(c, modifications=(*c.modifications, termination)) for c in base.contracts
+        ),
         events=tuple(
             cpc_worlds.then(
                 list(base.events),
@@ -1991,6 +2022,15 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(refund: i
         entry,
         frozenset(event.event_type for event in bundle.events),
         entries=((cid, entry),),
+        entry_order=(
+            (
+                cid,
+                next(e.record_seq for e in bundle.events if e.event_type == "CONTRACT_ACTIVATED"),
+            ),
+        ),
+        modification_events=frozenset(
+            e.event_key for e in bundle.events if e.event_type == "CONTRACT_AMENDED"
+        ),
     )
     obligations, rows = [], []
     for output in book.obligation_versions:
@@ -2045,7 +2085,26 @@ def test_original_same_day_activation_and_cancellation_keeps_movements(refund: i
     )
     (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
     assert result.lines["NEW_CONTRACTS"] == 100
-    assert result.lines["REVENUE"] == -(100 - refund)
+    assert result.lines["REVENUE"] == -(100 - (20 if amended else 0) - refund)
+    assert result.lines["MODIFICATIONS"] == (-20 if amended else 0)
+    if amended:
+        for unsupported in (
+            replace(store, classify_same_day_entry_modifications=False),
+            replace(
+                store,
+                versions={gid: (replace(version, entry_order=((cid, 9999),)),)},
+                chains={cid: (replace(version, entry_order=((cid, 9999),)),)},
+            ),
+            replace(
+                store,
+                versions={gid: (replace(version, entry_order=()),)},
+                chains={cid: (replace(version, entry_order=()),)},
+            ),
+        ):
+            (old_entry,) = rpo.rollforward_lines(
+                unsupported, ranges={eid: (before, end)}, applied={}
+            )
+            assert old_entry.lines["NEW_CONTRACTS"] == 0
     assert result.lines["CANCELLATIONS"] == -refund
     assert result.lines["OPENING"] == result.lines["CLOSING"] == result.lines["UNEXPLAINED"] == 0
     assert not rpo.rows_at(store, as_of={eid: end}, bands=rpo.DEFAULT_BANDS, applied={})

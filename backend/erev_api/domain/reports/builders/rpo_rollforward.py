@@ -198,6 +198,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     if store.classify_pretermination_versions and params.sources is not None:
         params.sources.record_evidence(pretermination_evidence, True)
+    entry_modification_evidence = "rpo_same_day_entry_modifications_v1"
+    store = replace(
+        store,
+        classify_same_day_entry_modifications=(
+            params.binding is None or entry_modification_evidence in params.binding.evidence
+        ),
+    )
+    if store.classify_same_day_entry_modifications and params.sources is not None:
+        params.sources.record_evidence(entry_modification_evidence, True)
     separate_cancel_evidence = "rpo_separate_cancellations_v1"
     store = replace(
         store,

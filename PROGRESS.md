@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Original same-day RPO entry amendments — October 21, 2026
+
+- RPO now separates original amendments after same-day activation and before termination:
+  an original 100 contract followed by a -20 amendment retains NEW_CONTRACTS 100 and
+  MODIFICATIONS -20, alongside the original revenue and refund/cancellation amounts.
+  Previously the mixed cause set suppressed the original entry entirely.
+- The reader retains admission record sequence from the original bound cause events. Complete
+  amendment boundaries, strictly ordered original records and continuity into termination's
+  before-state are required. Later memo/re-entry versions do not count the amendment again.
+  New bindings retain rpo_same_day_entry_modifications_v1; legacy eligibility is unchanged.
+  Migration 0261 adds the IPE rule.
+- All 76 related cases pass; targeted missing/contradictory admission-order checks also pass.
+  The witnesses use original engine amendment/termination calculations with supplied retained
+  report versions. Public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass; no claim of a new public same-day contract command journey.
+- Same-day mixtures involving estimates/usage and broader repeated cancellation/re-entry remain
+  open, as does concurrent commit visibility. Continue the October 21 repository-only scope;
+  no deployment or independent accounting sign-off gate.
+
 ## Combined aging public command/report/rerun path — October 21, 2026
 
 - The combined aging feature now has a real command-to-report witness: two seat contracts
@@ -206,29 +225,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Intervening versions before original termination, repeated cancellation/reentry, complex
   same-day entry mixtures, combined-member aging ownership, independent accounting sign-off
   and final-candidate checks remain open. This is not a production-readiness claim.
-
-## Partial-cancellation reporting works before the surviving obligation ends — October 20, 2026
-
-- First-entry and same-version monthly RPO cuts now attribute original partial-termination
-  allocation effects on still-disclosed obligations to CANCELLATIONS, and retain the separate
-  modification/estimate movements. Original explicit state for every termination is required;
-  monthly movements must match dated fixed allocations. New bindings retain
-  rpo_continuing_cancellations_v1; older reports preserve their earlier attribution.
-- Fixed the engine blocker revealed by the cross-month scenario: JET-06 cumulative reclass
-  components have an immutable destination role, so their never-applicable zero-weight role
-  shares no longer collide with another destination's real accumulated balance. Ordinary split
-  targets still retain explicit zero shares needed to reverse prior nonzero contributions.
-- The full-engine witness now covers both same-period and February/March partial/full
-  cancellations. February opening/new/modification/estimate/cancellation/closing lines and March
-  revenue/cancellation lines reconcile. Actual NETTING_RECLASS close-pass lines preserve CA 20
-  reversal and UR 280 reclassification; this is not merely an endpoint-balance assertion.
-- 77 scoped RPO/netting cases, the added close-pass witness, existing public three-view reports
-  and reruns, lint/types, and migration 0253 down/up exact catalogue parity pass. New lifecycle
-  evidence is engine/read-layer coverage, not a new public API lifecycle journey.
-- Mixed later-version changes while an obligation remains active, intervening pre-termination
-  versions, repeated cancellation/reentry and complex same-day entry still require completion.
-  Combined-member aging ownership, independent sign-off and final-candidate checks remain open.
-  No deployment; direct-main publication only.
 
 ## Outstanding release verification
 

@@ -1,5 +1,25 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 21 — original amendments between same-day entry and termination
+
+- RPO now separates original amendments after same-day activation and before termination:
+  an original 100 contract followed by a -20 amendment retains NEW_CONTRACTS 100 and
+  MODIFICATIONS -20, alongside the original revenue and refund/cancellation amounts.
+  Previously the mixed cause set suppressed the original entry entirely.
+- The reader retains admission record sequence from the original bound cause events. Complete
+  amendment boundaries, strictly ordered original records and continuity into termination's
+  before-state are required. Later memo/re-entry versions do not count the amendment again.
+  New bindings retain rpo_same_day_entry_modifications_v1; legacy eligibility is unchanged.
+  Migration 0261 adds the IPE rule.
+- All 76 related cases pass; targeted missing/contradictory admission-order checks also pass.
+  The witnesses use original engine amendment/termination calculations with supplied retained
+  report versions. Public currency/rate rerun, scoped lint/types and reversible migration
+  catalogue parity pass; no claim of a new public same-day contract command journey.
+- Same-day mixtures involving estimates/usage and broader repeated cancellation/re-entry remain
+  open, as does concurrent commit visibility. Continue the October 21 repository-only scope;
+  no deployment or independent accounting sign-off gate.
+
+
 ### October 21 — combined aging public workflow evidence
 
 - The combined aging feature now has a real command-to-report witness: two seat contracts

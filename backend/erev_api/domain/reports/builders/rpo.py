@@ -290,6 +290,7 @@ class _Version:
     modification_events: frozenset[str] = frozenset()
     cancellation_events: frozenset[str] = frozenset()
     estimate_order: tuple[tuple[str, int], ...] = ()
+    entry_order: tuple[tuple[UUID, int], ...] = ()
 
 
 @dataclass(slots=True)
@@ -360,6 +361,7 @@ class Store:
     classify_mixed_continuing_changes: bool = field(default=True, kw_only=True)
     classify_same_day_entry_chains: bool = field(default=True, kw_only=True)
     classify_pretermination_versions: bool = field(default=True, kw_only=True)
+    classify_same_day_entry_modifications: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -467,6 +469,7 @@ def load(
     estimate_order: dict[UUID, int] = {}
     boundary_keys: dict[UUID, str] = {}
     cancellation_keys: dict[UUID, str] = {}
+    entry_sequences: dict[UUID, int] = {}
     entered: dict[UUID, tuple[UUID, date]] = {}  # entry event → (its contract, its date)
     if event_ids:
         for found in session.execute(
@@ -504,6 +507,7 @@ def load(
             if kind in ENTRY_EVENTS and (
                 kind != CRITERIA_MET or found["admitted_book"] == book_code
             ):
+                entry_sequences[UUID(str(found["id"]))] = int(found["record_seq"])
                 entered[UUID(str(found["id"]))] = (
                     UUID(str(found["contract_id"])),
                     found["effective_date"],
@@ -523,11 +527,14 @@ def load(
         if previous:
             effective = max(effective, previous[-1].effective)
         entries: dict[UUID, date] = {}
+        orders: dict[UUID, tuple[date, int]] = {}
         for item in row["cause_event_ids"] or ():
             found_entry = entered.get(UUID(str(item)))
             if found_entry is not None:
                 contract_id, day = found_entry
                 entries[contract_id] = min(entries.get(contract_id, day), day)
+                ordered = (day, entry_sequences[UUID(str(item))])
+                orders[contract_id] = min(orders.get(contract_id, ordered), ordered)
         versions.setdefault(group_id, []).append(
             _Version(
                 id=UUID(str(row["id"])),
@@ -538,6 +545,10 @@ def load(
                 causes=frozenset(kind for kind, _ in causes),
                 known_at=row["known_at"],
                 entries=tuple(sorted(entries.items(), key=lambda pair: str(pair[0]))),
+                entry_order=tuple(
+                    (cid, value[1])
+                    for cid, value in sorted(orders.items(), key=lambda pair: str(pair[0]))
+                ),
                 estimate_events=frozenset(
                     estimate_keys[UUID(str(item))]
                     for item in row["cause_event_ids"] or ()
@@ -1317,6 +1328,40 @@ def _cancelled_changes(
     return modified, estimate
 
 
+def _same_day_entry_modifications(
+    store: Store, version: _Version, ob: _Ob
+) -> frozenset[str] | None:
+    """Original amendments strictly after admission and before same-day termination."""
+    if not store.classify_same_day_entry_modifications or not version.modification_events:
+        return None
+    admission = dict(version.entry_order).get(ob.contract_id)
+    terminal = store.cancellation(ob)
+    if admission is None or terminal is None or terminal.record_seq is None:
+        return None
+    subject = obligation_subject_key(ob.external_id, ob.obligation_key)
+    history = store.boundaries.get(version.id, {})
+    if not rpo_boundary_changes.complete(history, subject, version.modification_events):
+        return None
+    changes = sorted(
+        (item for item in history.get(subject, ()) if item.event in version.modification_events),
+        key=lambda item: (item.record_seq or 0, item.event),
+    )
+    if not changes or any(
+        item.day != terminal.day
+        or item.record_seq is None
+        or not admission < item.record_seq < terminal.record_seq
+        or item.before is None
+        or item.after is None
+        for item in changes
+    ):
+        return None
+    if any(left.after != right.before for left, right in zip(changes, changes[1:], strict=False)):
+        return None
+    if changes[-1].after != terminal.before:
+        return None
+    return frozenset(item.event for item in changes)
+
+
 def _obligation_lines(
     store: Store,
     totals: dict[tuple[str, str], dict[str, Any]],
@@ -1346,6 +1391,7 @@ def _obligation_lines(
     if described is None:
         return
     same_day_entry = None
+    same_day_modifications: frozenset[str] = frozenset()
     if (
         store.classify_same_day_entry_cancellation
         and opening_version is None
@@ -1354,7 +1400,10 @@ def _obligation_lines(
         and moved[0].included
         and {"CONTRACT_ACTIVATED", "CONTRACT_TERMINATED"} <= moved[0].causes
         and moved[0].causes
-        <= {"CONTRACT_BOOKED", "CONTRACT_ACTIVATED", "CONTRACT_TERMINATED", "MEMO_ADDED"}
+        <= (
+            {"CONTRACT_BOOKED", "CONTRACT_ACTIVATED", "CONTRACT_TERMINATED", "MEMO_ADDED"}
+            | ({"CONTRACT_AMENDED"} if store.classify_same_day_entry_modifications else set())
+        )
     ):
         version = moved[0]
         candidate = next(
@@ -1367,7 +1416,8 @@ def _obligation_lines(
         )
         if candidate is not None:
             terminal = store.cancellation(candidate)
-            if (
+            amendments = _same_day_entry_modifications(store, version, candidate)
+            if ("CONTRACT_AMENDED" not in version.causes or amendments is not None) and (
                 terminal is not None
                 and terminal.before is not None
                 and terminal.day == version.effective
@@ -1376,6 +1426,7 @@ def _obligation_lines(
                 and store.at(candidate, end).realised == 0
             ):
                 same_day_entry = candidate
+                same_day_modifications = amendments or frozenset()
     relevant = [
         (version, ob)
         for version in (opening_version, *moved, closing_version)
@@ -1765,7 +1816,14 @@ def _obligation_lines(
                         item.amount
                         for item in boundaries
                         if item.event in version.modification_events
-                        and version.effective < item.day <= end
+                        and (
+                            version.effective < item.day <= end
+                            or (
+                                same_day_entry is not None
+                                and current.version_id == same_day_entry.version_id
+                                and item.event in same_day_modifications
+                            )
+                        )
                         and CAUSE_LINES.get(item.kind) == "MODIFICATIONS"
                     ),
                     ZERO,
