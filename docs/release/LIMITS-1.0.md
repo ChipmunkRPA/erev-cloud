@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Estimate change reporting equivalents — October 21, 2026
+
+- Fixed estimate-change Reporting view returning unconverted native amounts. Original monetary
+  before/after estimates and P&L effects remain visible; added separately labelled reporting
+  equivalents and a reporting P&L control total. Both before/after estimates use the approved
+  average for the listed version's effective period, making the comparison use one rate.
+- Ratio estimates remain dimensionless with no monetary equivalent; unknown effects and absent
+  predecessor values remain empty. Functional/reporting views refuse monetary measures or effects
+  whose source currency differs from entity functional currency. These analytical equivalents are
+  explicitly labelled and are not posted FX amounts. Rate evidence is captured.
+- Necessary verification passed: 18 focused register cases, including mixed USD/EUR-to-GBP,
+  signed effects, ratios and nulls; actual K06 approval/report API and worker convert the EUR 5,750
+  rebate and negative effect to USD 6,900 at approved average 1.20. Scoped lint/types and migration
+  0308 frozen IPE parity passed. No deployment.
+- Remaining: this listing still reads live source records on rerun; foreign-contract functional
+  effects and other documented Reporting gaps remain. This does not claim repository completion.
+
 ## Modification register retained reconstruction — October 21, 2026
 
 - New runs retain modification inputs, original preview hash/file membership, application-version

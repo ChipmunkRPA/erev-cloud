@@ -222,6 +222,53 @@ def test_estimate_change_listing_k06(
     )
     assert functional == rows
 
+    # The effective-period average translates money; original estimates stay in EUR.
+    rate_set = post(
+        app,
+        "/api/v1/fx-rate-sets",
+        maya,
+        {"code": "EST-AVG", "name": "Estimate reporting", "rate_type": "average"},
+    )
+    assert rate_set.status_code == 201, rate_set.text
+    draft = post(
+        app,
+        f"/api/v1/fx-rate-sets/{rate_set.json()['id']}/versions",
+        maya,
+        {
+            "coverage_from": "2026-07-01",
+            "coverage_to": "2026-09-30",
+            "rates": [
+                {
+                    "base_currency": "EUR",
+                    "quote_currency": "USD",
+                    "period_key": f"FY2026-P{month:02d}",
+                    "rate": "1.20",
+                }
+                for month in range(7, 10)
+            ],
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    submitted = post(
+        app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        maya,
+        {"comment": "Estimate effective-period averages"},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert submitted.status_code == 200, submitted.text
+    clock.advance(STEP)
+    decision = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+    assert decision.status_code == 200, decision.text
+    reporting, equivalents = report_run(
+        report, "estimate_change_listing", {**parameters, "currency_view": "reporting"}
+    )
+    converted = keyed(equivalents)[f"estimate:{K06_CONTRACT}:{REBATE}:2"]
+    assert converted["after_value"] == "5750.00"
+    assert converted["after_reporting"] == {"amount": "6900.00", "currency": "USD"}
+    assert converted["pnl_effect_reporting"] == {"amount": "-6900.00", "currency": "USD"}
+    assert reporting["control_totals"]["pnl_effect_reporting_total"] == {"USD": "-6900.00"}
+
 
 @pytest.mark.slow
 def test_estimate_change_listing_k03(k03: K03World, clock: FrozenClock) -> None:

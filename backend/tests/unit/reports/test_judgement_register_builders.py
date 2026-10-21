@@ -384,3 +384,51 @@ def test_scope_register_refuses_a_lock_source() -> None:
     with pytest.raises(Problem) as refused:
         exclusions.build(None, params)  # type: ignore[arg-type]  # refused before any read
     assert refused.value.errors[0].field == "parameters.period_lock_id"
+
+
+def test_estimate_reporting_converts_money_preserves_ratios_and_unknown_effects():
+    from erev_api.domain.reports.reporting_currency import Translation
+
+    monetary = _estimate(pnl_effect=Decimal("-10"))
+    ratio = _estimate(
+        element_code="RATE", measure=estimates.Measure("Rate", None, "0.1", "0.2"), pnl_effect=None
+    )
+    euro = _estimate(
+        element_code="EUR",
+        currency="EUR",
+        functional_currency="EUR",
+        measure=estimates.Measure("Constrained amount", "EUR", None, "100"),
+        pnl_effect=Decimal("20"),
+    )
+    rows, totals = estimates.reporting_rows(
+        [monetary, ratio, euro],
+        NAMES,
+        "GBP",
+        {
+            estimates.row_key(monetary): (
+                MAYA,
+                Translation("GBP", {MAYA: {"base_currency": "USD", "rate": "0.8"}}),
+            ),
+            estimates.row_key(euro): (
+                MAYA,
+                Translation("GBP", {MAYA: {"base_currency": "EUR", "rate": "0.7"}}),
+            ),
+        },
+    )
+    by_element = {row["element_code"]: row for row in rows}
+    assert by_element["EAC"]["after_value"] == "850000.00"
+    assert by_element["EAC"]["before_reporting"] == {"amount": "656000.00", "currency": "GBP"}
+    assert by_element["EAC"]["after_reporting"] == {"amount": "680000.00", "currency": "GBP"}
+    assert by_element["EUR"]["after_reporting"] == {"amount": "70.00", "currency": "GBP"}
+    assert by_element["EUR"]["before_reporting"] is None
+    assert by_element["RATE"]["after_value"] == "0.2"
+    assert by_element["RATE"]["after_reporting"] is None
+    assert by_element["RATE"]["pnl_effect_reporting"] is None
+    assert totals["pnl_effect_reporting_total"] == {"GBP": "6.00"}
+    assert totals["pnl_effect_total"] == {"EUR": "20.00", "USD": "-10.00"}
+    with pytest.raises(Problem):
+        estimates.check_view("unknown", [])
+    with pytest.raises(Problem):
+        estimates.check_view(
+            "reporting", [_estimate(measure=estimates.Measure("Expected total", "EUR", "1", "2"))]
+        )

@@ -31,7 +31,8 @@ element and version; ``row_key`` ``estimate:<contract external id>:<element code
 
 Control totals ``row_count`` and ``pnl_effect_total`` per currency, with the date range applied.
 ``currency_view`` ``transaction`` is served; another view only when every row's currency is its
-entity's functional currency, else refused by name (RPT-14's rule; no FX conversion here).
+entity's functional currency, else refused by name. Reporting adds analytical equivalents at
+the approved average for each estimate effective period; ratio estimates remain dimensionless.
 """
 
 from __future__ import annotations
@@ -57,8 +58,9 @@ from erev_api.db.tables import (
     legal_entity,
     obligation,
     obligation_version,
+    tenant,
 )
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -198,8 +200,12 @@ def attributed_effects(
 def check_view(view: str, found: Iterable[Source]) -> None:
     """``transaction`` always; another view only when every row is in its entity's functional
     currency, else refused by name."""
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid("currency_view", "Unsupported estimate currency view.")
     if view != DEFAULT_CURRENCY_VIEW and any(
-        item.currency != item.functional_currency for item in found
+        item.currency != item.functional_currency
+        or item.measure.currency not in {None, item.functional_currency}
+        for item in found
     ):
         raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
 
@@ -246,6 +252,56 @@ def dataset_rows(
             }
         )
     return rows, {"row_count": len(rows), "pnl_effect_total": tie_outs.by_currency(totals)}
+
+
+REPORTING_COLUMNS: Final = (
+    Column("reporting_currency", "Reporting currency", "code"),
+    Column("before_reporting", "Before, reporting equivalent", "money"),
+    Column("after_reporting", "After, reporting equivalent", "money"),
+    Column("pnl_effect_reporting", "P&L effect, reporting equivalent", "money"),
+    Column("reporting_basis", "Reporting conversion basis", "text"),
+)
+
+
+def reporting_rows(
+    found: Sequence[Source],
+    names: Mapping[UUID, str],
+    target: str,
+    translations: Mapping[str, tuple[UUID, reporting_currency.Translation]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Compare monetary estimates at one effective-period rate, preserving original measures."""
+    check_view("reporting", found)
+    rows, totals = dataset_rows(found, names)
+    inputs = {row_key(item): item for item in found}
+    effects: dict[str, Decimal] = {}
+    for row in rows:
+        item = inputs[row["row_key"]]
+        row["reporting_currency"] = target
+        row["reporting_basis"] = "Equivalent at estimate effective-period average"
+        for source, destination in (
+            (item.measure.before if item.measure.currency else None, "before_reporting"),
+            (item.measure.after if item.measure.currency else None, "after_reporting"),
+            (item.pnl_effect, "pnl_effect_reporting"),
+        ):
+            row[destination] = None
+            if source is None:
+                continue
+            entity_id, rate = translations[row["row_key"]]
+            if (
+                rate.currency != target
+                or rate.rates[entity_id]["base_currency"] != item.functional_currency
+            ):
+                raise tie_outs.invalid(
+                    "currency_view", "Reporting translation requires functional amounts."
+                )
+            amount = rate.amount(entity_id, Decimal(source))
+            row[destination] = tie_outs.money(amount, target)
+            if destination == "pnl_effect_reporting":
+                tie_outs.add(effects, target, amount)
+    totals["pnl_effect_reporting_total"] = tie_outs.by_currency(effects)
+    totals["reporting_currency"] = target
+    totals["translation_basis"] = "estimate_effective_period_average"
+    return rows, totals
 
 
 # --- reads ----------------------------------------------------------------------------------------
@@ -484,11 +540,63 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     found, requests = sources(
         uow, params, first=first, last=last, book_code=tie_outs.book_of(session, params)
     )
-    check_view(str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW), found)
+    view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
+    check_view(view, found)
     names = support.names_of(session, requests, (item.preparer[0] for item in found))
-    rows, totals = dataset_rows(found, names)
+    columns: tuple[Column, ...] = COLUMNS
+    if view == "reporting":
+        target = str(
+            session.execute(
+                select(tenant.c.reporting_currency).where(tenant.c.id == uow.principal.tenant_id)
+            ).scalar_one()
+        ).strip()
+        entities = tie_outs.entities(session, params.entity_ids)
+        by_id = {entity.id: entity for entity in entities}
+        calendars = tie_outs.calendars(session, entities)
+        owners = {
+            str(external): UUID(str(entity_id))
+            for external, entity_id in session.execute(
+                select(contract.c.external_id, contract.c.contracting_entity_id).where(
+                    contract.c.tenant_id == uow.principal.tenant_id,
+                    contract.c.contracting_entity_id.in_(params.entity_ids),
+                    contract.c.external_id.in_({item.contract_external_id for item in found}),
+                )
+            ).all()
+        }
+        rates: dict[tuple[UUID, str], reporting_currency.Translation] = {}
+        translations = {}
+        for item in found:
+            if item.pnl_effect is None and (
+                item.measure.currency is None
+                or (item.measure.before is None and item.measure.after is None)
+            ):
+                continue
+            entity_id = owners[item.contract_external_id]
+            entity = by_id[entity_id]
+            at = calendars[entity_id].holding(item.effective_date)
+            if at is None:
+                raise tie_outs.invalid(
+                    "currency_view", "The estimate effective date has no calendar period."
+                )
+            key = (entity_id, at.key)
+            if key not in rates:
+                rates[key] = reporting_currency.rates_for_period(
+                    session,
+                    params,
+                    tenant_id=uow.principal.tenant_id,
+                    entities=(entity,),
+                    periods={entity_id: at},
+                    rate_type="average",
+                    target_currency=target,
+                    evidence_key=f"estimate_average_v1:{entity_id}:{at.key}",
+                )
+            translations[row_key(item)] = (entity_id, rates[key])
+        rows, totals = reporting_rows(found, names, target, translations)
+        columns = COLUMNS + REPORTING_COLUMNS
+    else:
+        rows, totals = dataset_rows(found, names)
     totals["from_date"], totals["to_date"] = first.isoformat(), last.isoformat()
-    return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
+    return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)
 
 
 __all__ = [

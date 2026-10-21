@@ -20,6 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Estimate change reporting equivalents — October 21, 2026
+
+- Fixed estimate-change Reporting view returning unconverted native amounts. Original monetary
+  before/after estimates and P&L effects remain visible; added separately labelled reporting
+  equivalents and a reporting P&L control total. Both before/after estimates use the approved
+  average for the listed version's effective period, making the comparison use one rate.
+- Ratio estimates remain dimensionless with no monetary equivalent; unknown effects and absent
+  predecessor values remain empty. Functional/reporting views refuse monetary measures or effects
+  whose source currency differs from entity functional currency. These analytical equivalents are
+  explicitly labelled and are not posted FX amounts. Rate evidence is captured.
+- Necessary verification passed: 18 focused register cases, including mixed USD/EUR-to-GBP,
+  signed effects, ratios and nulls; actual K06 approval/report API and worker convert the EUR 5,750
+  rebate and negative effect to USD 6,900 at approved average 1.20. Scoped lint/types and migration
+  0308 frozen IPE parity passed. No deployment.
+- Remaining: this listing still reads live source records on rerun; foreign-contract functional
+  effects and other documented Reporting gaps remain. This does not claim repository completion.
+
 ## Modification register retained reconstruction — October 21, 2026
 
 - New runs retain modification inputs, original preview hash/file membership, application-version
@@ -194,30 +211,6 @@ review and publish changes without PR accumulation, and do not deploy.
   migration parity, 48 focused report/source-binding cases and scoped lint/types passed.
   Remaining: foreign legacy carrying-position sources, Adoption retained same-source replay,
   other documented adapters and final repository verification. No deployment.
-
-## Adoption Bridge functional view — October 21, 2026
-
-- Added Transaction/Functional selection to the public report (migration 0298). Functional
-  revenue uses posted LEGACY amounts and dated primary revenue nodes whose original transaction
-  quantity/currency must reconcile to the stage 09 population. Stage 12 now retains that quantity
-  beside cumulative functional revenue; missing, stale or mismatched foreign evidence is refused.
-  Primary balances use the shared dated member-balance projection, preserving historical layers.
-- Foreign LEGACY liability/unbilled carrying evidence is still absent. Affected contract cells
-  and currency-level comparison totals/effects are unavailable with an explicit basis message
-  and count, rather than substituted transaction amounts, false zeroes or partial totals.
-  Same-currency and transaction-view comparisons retain their complete existing behavior.
-- The full public foreign workflow found and fixed an output-boundary omission: LEGACY
-  BookOutput now preserves JET-15 line rate references, which database persistence requires.
-  Engine-only posting tests had not covered that boundary. A regression now checks assembly,
-  and approved foreign events successfully compute, persist and appear in the report.
-- Necessary validation: public USD/EUR case shows legacy EUR 80,000, primary EUR 176,000,
-  cumulative effect EUR 96,000 and primary liability EUR 64,000; historical legacy positions
-  remain explicitly unavailable. Original transaction disclosure, schema/IPE migration parity,
-  45 focused report/source-binding cases, eight LEGACY cases and scoped lint/types pass.
-- Remaining: foreign legacy carrying-position sources, reporting-currency translation, Adoption
-  same-source reconstruction, other documented report adapters and final repository validation.
-  This completes the usable functional income/primary-balance view, not all multi-currency work.
-  No deployment or real-business migration requirements were added.
 
 ## Outstanding release verification
 

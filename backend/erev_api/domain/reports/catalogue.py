@@ -2104,6 +2104,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_request",
             "approval_decision",
             "file_attachment",
+            "legal_entity",
+            "tenant",
+            "period",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "estimate_version.estimate_id = estimate.id",
@@ -2114,6 +2120,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision.approval_request_id = approval_request.id",
         ),
         filters=(
+            "reporting preserves original measures and adds analytical monetary equivalents at "
+            "the estimate effective-period average; before/after use the same rate, ratios stay "
+            "dimensionless, missing effects stay empty; these are not posted FX amounts",
             _SCOPE,
             "approved versions with effective_date from from_date to to_date inclusive",
             "estimate kind in estimate_kind when given",

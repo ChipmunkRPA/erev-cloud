@@ -538,7 +538,8 @@ _JUDGEMENT_REGISTER_OPEN: Final = (
 )
 _ESTIMATE_CHANGE_LISTING_OPEN: Final = (
     "approved estimate versions with their elements, contracts, predecessors, approval requests / "
-    "decisions, attachments and the catch-up of the contract versions their events caused read "
+    "decisions, attachments, reporting average rates and the catch-up of the contract versions "
+    "their events caused read "
     "live (RPS-11 RPT-29)"
 )
 _SCOPE_EXCLUSION_REGISTER_OPEN: Final = (

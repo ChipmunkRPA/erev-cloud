@@ -11801,3 +11801,27 @@ cleanup in the shared database session kernel was also repaired and regression-t
   dated primary amounts, with a defensible legacy-position basis, plus reporting-currency
   translation and retained reconstruction. This fixes a real foreign-currency posting blocker;
   it does not declare the report's multi-currency work complete.
+
+## Adoption Bridge functional view — October 21, 2026
+
+- Added Transaction/Functional selection to the public report (migration 0298). Functional
+  revenue uses posted LEGACY amounts and dated primary revenue nodes whose original transaction
+  quantity/currency must reconcile to the stage 09 population. Stage 12 now retains that quantity
+  beside cumulative functional revenue; missing, stale or mismatched foreign evidence is refused.
+  Primary balances use the shared dated member-balance projection, preserving historical layers.
+- Foreign LEGACY liability/unbilled carrying evidence is still absent. Affected contract cells
+  and currency-level comparison totals/effects are unavailable with an explicit basis message
+  and count, rather than substituted transaction amounts, false zeroes or partial totals.
+  Same-currency and transaction-view comparisons retain their complete existing behavior.
+- The full public foreign workflow found and fixed an output-boundary omission: LEGACY
+  BookOutput now preserves JET-15 line rate references, which database persistence requires.
+  Engine-only posting tests had not covered that boundary. A regression now checks assembly,
+  and approved foreign events successfully compute, persist and appear in the report.
+- Necessary validation: public USD/EUR case shows legacy EUR 80,000, primary EUR 176,000,
+  cumulative effect EUR 96,000 and primary liability EUR 64,000; historical legacy positions
+  remain explicitly unavailable. Original transaction disclosure, schema/IPE migration parity,
+  45 focused report/source-binding cases, eight LEGACY cases and scoped lint/types pass.
+- Remaining: foreign legacy carrying-position sources, reporting-currency translation, Adoption
+  same-source reconstruction, other documented report adapters and final repository validation.
+  This completes the usable functional income/primary-balance view, not all multi-currency work.
+  No deployment or real-business migration requirements were added.
