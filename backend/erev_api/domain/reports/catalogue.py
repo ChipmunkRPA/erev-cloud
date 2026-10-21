@@ -1741,6 +1741,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "currency_view",
         ),
         overrides={
+            "currency_view": _one_of("functional", "reporting"),
             "status": _any_of(list(ManualAdjustmentStatus)),
             "kind": _any_of(list(ManualAdjustmentKind)),
         },
@@ -1754,6 +1755,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision",
             "file_attachment",
             "lock_snapshot",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "manual_adjustment.contract_id = contract.id",
@@ -1764,6 +1769,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision.approval_request_id = approval_request.id",
         ),
         filters=(
+            "reporting view preserves original functional amounts and adds reporting amounts "
+            "at each posting period's approved average rate; total impact includes all statuses "
+            "while the posted footer includes only POSTED adjustments; "
+            "transaction view is unavailable",
             _SCOPE,
             _BOOK,
             _PERIODS,

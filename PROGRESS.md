@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Manual adjustment reporting-currency comparison — October 21, 2026
+
+- Added Reporting currency to the manual adjustment register. Original functional currency and
+  absolute impact remain visible under explicit functional headings; separate reporting currency
+  and reporting amount columns carry conversion at each adjustment's posting-period average.
+- Reporting totals include all selected statuses; the posted footer includes only POSTED items.
+  Original functional totals remain available, including posted_functional_total. Transaction view
+  remains unsupported because not every adjustment kind has a defined transaction amount; the
+  catalogue now offers only Functional and Reporting. Missing/ambiguous approved rates use the
+  existing shared refusal. Migration 0304 updates the public schema and rate-source metadata.
+- Necessary checks passed: 13 focused register/lock-admission cases, the real rejected schedule
+  override and approved/posted release flow with reporting build, frozen schema/IPE parity and
+  scoped lint/types. A USD/EUR multi-entity case with separate period rates produces GBP 2,045
+  total impact and GBP 125 posted impact while preserving USD/EUR originals. The database flow
+  uses identity USD/USD translation; non-identity arithmetic is covered by the focused case.
+- Remaining: manual adjustment retained same-source inputs and other documented report adapters,
+  plus final repository verification. Historical lock datasets keep their current currency support.
+  No deployment.
+
 ## Out-of-period register retained reconstruction — October 21, 2026
 
 - New runs retain the authorized line population, original transaction and selected effect

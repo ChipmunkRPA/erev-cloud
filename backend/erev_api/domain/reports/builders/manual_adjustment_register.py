@@ -6,11 +6,12 @@ F-CLO).
 One row per manual adjustment (T-SL-05) of the selected entities and book whose POSTING period lies
 in ``from_period_key`` .. ``to_period_key`` (RPT-18: the context period by default), narrowed by
 ``status`` (E-94) and ``kind`` (E-93) when given (default: every value). The amount is the
-adjustment's absolute functional impact (``amount_functional_abs``); the served view is
-``functional`` and a ``transaction`` view is refused by name (T-SL-05 carries no transaction amount
-for every kind); the row's ``currency`` is the entity's FUNCTIONAL currency — the currency of
-``amount_functional_abs`` (T-SL-05's own ``currency`` is the transaction currency the refused view
-would need). Approvals: the preparer is the request's preparer, else the row's creator;
+adjustment's absolute functional impact (``amount_functional_abs``). Functional view is the
+default; reporting view preserves that impact and adds a separately labelled amount translated
+at the posting period average. A ``transaction`` view is refused by name (T-SL-05 carries no
+transaction amount for every kind). The row's ``currency`` remains the entity's functional
+currency, the basis of ``amount_functional_abs``.
+Approvals: the preparer is the request's preparer, else the row's creator;
 ``approvers`` are the APPROVE / AUTO_APPROVE deciders by the cutoff in decision order;
 ``approved_at`` the last such decision; ``decision_comment`` the last decision's comment of any
 kind by the cutoff (a REJECT's comment for a rejected adjustment); ``attachment_count`` counts the
@@ -19,8 +20,10 @@ adjustment's non-voided ``file_attachment`` rows. Historical runs follow REGISTE
 a live run never refuses. The as-locked surface (``period_lock_id``) is the framework's (CLO-8,
 CLO-8b): a lock source here refuses by name, as every register does. Control totals: ``row_count``,
 per currency ``amount_functional_abs_total`` (Σ|amount| over every row — the §15.2.7 pair) and
-``posted_total`` (RPT-18's footer: POSTED adjustments only). Labels are attribute columns; the key
-is (``entity_code``, ``adjustment_no``) — the KeySpec ``close/relock_diff.py`` pins.
+``posted_total`` (RPT-18's footer: POSTED adjustments only). Reporting view adds
+``amount_reporting_abs_total`` and uses reporting amounts for ``posted_total``, preserving the
+original posted amount separately as ``posted_functional_total``. Labels are attribute columns;
+the key is (``entity_code``, ``adjustment_no``) — the KeySpec ``close/relock_diff.py`` pins.
 """
 
 from __future__ import annotations
@@ -46,7 +49,7 @@ from erev_api.db.tables import (
     period,
 )
 from erev_api.domain.platform import approval_queries
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -63,7 +66,7 @@ DEFAULT_CURRENCY_VIEW: Final = "functional"  # SCREENS_B RPT-18 "default functio
 ATTACHMENT_SUBJECT: Final = "manual_adjustment"
 ROW_KEY_PREFIX: Final = "adjustment:"  # RPT-18: row_key `adjustment:<adjustment no>`
 VIEW_UNSUPPORTED: Final = (
-    "The manual adjustment register serves the functional view only: T-SL-05 carries the absolute "
+    "Choose Functional or Reporting currency. T-SL-05 carries the absolute "
     "functional impact of every adjustment and no transaction amount for every kind."
 )
 HISTORY_UNAVAILABLE: Final = (
@@ -148,9 +151,9 @@ def _text(value: object) -> str | None:
 
 
 def check_view(params: ReportParams) -> None:
-    """RPT-18 serves the functional view; any other view is refused by name (no silent fallback)."""
+    """Transaction amounts do not exist for every adjustment kind."""
     view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
-    if view != DEFAULT_CURRENCY_VIEW:
+    if view not in {DEFAULT_CURRENCY_VIEW, "reporting"}:
         raise tie_outs.invalid("currency_view", VIEW_UNSUPPORTED)
 
 
@@ -433,6 +436,53 @@ def sources(
     return found
 
 
+def reporting_data(
+    rows: Sequence[Mapping[str, Any]],
+    translations: Mapping[tuple[str, str], tuple[UUID, reporting_currency.Translation]],
+) -> ReportData:
+    """Keep functional amounts intact and add independently labelled reporting amounts."""
+    result: list[dict[str, Any]] = []
+    every: dict[str, Decimal] = {}
+    posted: dict[str, Decimal] = {}
+    for row in rows:
+        entity_id, translation = translations[(str(row["entity_code"]), str(row["period_key"]))]
+        if str(row["currency"]) != translation.rates[entity_id]["base_currency"]:
+            raise tie_outs.invalid(
+                "currency_view", "Reporting translation requires functional amounts."
+            )
+        value = translation.amount(entity_id, Decimal(str(row["amount_functional_abs"]["amount"])))
+        result.append(
+            {
+                **row,
+                "reporting_currency": translation.currency,
+                "amount_reporting_abs": tie_outs.money(value, translation.currency),
+            }
+        )
+        tie_outs.add(every, translation.currency, value)
+        if row["status"] == ManualAdjustmentStatus.POSTED.value:
+            tie_outs.add(posted, translation.currency, value)
+    totals = control_totals(rows)
+    totals["posted_functional_total"] = totals["posted_total"]
+    totals["posted_total"] = tie_outs.by_currency(posted)
+    totals["amount_reporting_abs_total"] = tie_outs.by_currency(every)
+    totals["currency_view"] = "reporting"
+    totals["translation_basis"] = "posting_period_average"
+    columns = tuple(
+        Column(
+            column.key,
+            "Functional amount" if column.key == "amount_functional_abs" else "Functional currency",
+            column.kind,
+        )
+        if column.key in {"amount_functional_abs", "currency"}
+        else column
+        for column in COLUMNS
+    ) + (
+        Column("reporting_currency", "Reporting currency", "code"),
+        Column("amount_reporting_abs", "Reporting amount", "money"),
+    )
+    return ReportData(columns=columns, rows=tuple(result), control_totals=totals)
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     check_view(params)
@@ -459,6 +509,29 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     rows = dataset_rows(found, names)
     check_key_columns(rows)
+    if params.parameters.get("currency_view") == "reporting":
+        translations: dict[tuple[str, str], tuple[UUID, reporting_currency.Translation]] = {}
+        by_code = {entity.code: entity for entity in entities}
+        target: str | None = None
+        for adjustment in found:
+            key = (adjustment.entity_code, adjustment.period_key)
+            if key in translations:
+                continue
+            entity = by_code[adjustment.entity_code]
+            at = calendars[entity.id].named(adjustment.period_key, "from_period_key")
+            translation = reporting_currency.rates_for_period(
+                session,
+                params,
+                tenant_id=uow.principal.tenant_id,
+                entities=(entity,),
+                periods={entity.id: at},
+                rate_type="average",
+                target_currency=target,
+                evidence_key=f"manual_adjustment_average_v1:{entity.id}:{at.key}",
+            )
+            target = translation.currency
+            translations[key] = (entity.id, translation)
+        return reporting_data(rows, translations)
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=control_totals(rows))
 
 

@@ -167,3 +167,56 @@ def test_historical_refusal_names_the_changed_row() -> None:
     message = register.historical_refusal(rows, cutoff=AT, historical=True)
     assert message is not None and "ADJ-000001" in message and AT.isoformat() in message
     assert register.historical_refusal(rows, cutoff=AT, historical=False) is None
+
+
+def test_reporting_view_preserves_functional_basis_and_uses_each_period_rate():
+    from erev_api.domain.reports.reporting_currency import Translation
+
+    rows = register.dataset_rows(
+        [
+            _source(),
+            _source(
+                adjustment_no="ADJ-2",
+                period_key="FY2026-P08",
+                status="POSTED",
+                amount_functional_abs=Decimal("100"),
+            ),
+            _source(
+                adjustment_no="ADJ-3",
+                entity_code="EU",
+                currency="EUR",
+                status="POSTED",
+                amount_functional_abs=Decimal("50"),
+            ),
+        ],
+        {},
+    )
+    data = register.reporting_data(
+        rows,
+        {
+            ("AVM-US", "FY2026-P09"): (
+                MAYA,
+                Translation("GBP", {MAYA: {"base_currency": "USD", "rate": "0.8"}}),
+            ),
+            ("AVM-US", "FY2026-P08"): (
+                MAYA,
+                Translation("GBP", {MAYA: {"base_currency": "USD", "rate": "0.9"}}),
+            ),
+            ("EU", "FY2026-P09"): (
+                PRIYA,
+                Translation("GBP", {PRIYA: {"base_currency": "EUR", "rate": "0.7"}}),
+            ),
+        },
+    )
+    assert [row["amount_reporting_abs"] for row in data.rows] == [
+        {"amount": "1920.00", "currency": "GBP"},
+        {"amount": "90.00", "currency": "GBP"},
+        {"amount": "35.00", "currency": "GBP"},
+    ]
+    assert data.rows[0]["amount_functional_abs"] == {"amount": "2400.00", "currency": "USD"}
+    assert data.rows[2]["currency"] == "EUR"
+    assert data.control_totals["amount_reporting_abs_total"] == {"GBP": "2045.00"}
+    assert data.control_totals["posted_total"] == {"GBP": "125.00"}
+    assert data.control_totals["posted_functional_total"] == {"EUR": "50.00", "USD": "100.00"}
+    assert data.control_totals["amount_functional_abs_total"] == {"EUR": "50.00", "USD": "2500.00"}
+    assert data.control_totals["translation_basis"] == "posting_period_average"

@@ -537,6 +537,25 @@ def test_manual_adjustment_register(k02: K02World, runtime: JobRuntime, clock: F
     assert data.control_totals["row_count"] == 2
     assert data.control_totals["amount_functional_abs_total"] == {"USD": "2500.00"}
     assert data.control_totals["posted_total"] == {"USD": "100.00"}
+    with k02.place.uow() as uow:
+        translated = manual_register.build(
+            uow,
+            ReportParams(
+                report_code=manual_register.CODE,
+                report_version=1,
+                parameters={
+                    "from_period_key": "FY2026-P09",
+                    "to_period_key": "FY2026-P09",
+                    "currency_view": "reporting",
+                },
+                entity_ids=(k02.entity_id,),
+                known_at=clock.now(),
+            ),
+        )
+    assert translated.control_totals["amount_reporting_abs_total"] == {"USD": "2500.00"}
+    assert translated.control_totals["posted_total"] == {"USD": "100.00"}
+    for translated_row in translated.rows:
+        assert translated_row["amount_reporting_abs"] == translated_row["amount_functional_abs"]
 
 
 # --- BUILD_SPEC RPS-8: je_population, out_of_period_register, late_entry_report (F-RPS-REG) ---
