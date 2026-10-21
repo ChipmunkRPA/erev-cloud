@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Out-of-period register currency effects — October 21, 2026
+
+- Live Functional view now uses the ledger's posted functional amounts and currencies, including
+  FX republication lines with zero transaction amounts. Reporting view translates those effects
+  using each posting period's approved average rate. Origin periods continue to identify the
+  economic event; they do not select the translation rate for posted activity.
+- Attribution still tests original transaction amounts and stored trigger/cause evidence. The
+  display amount never changes FX_REPUBLISH admission. Different effect currencies under the same
+  attribution receive separate row identities and totals. Original event amounts retain their
+  own transaction currency, including computed late events with no posting (whose effects are zero).
+- Migration 0302 documents the rate inputs. Necessary checks: 5 focused currency cases, the public
+  K01 USD late-income flow in all three views, public K07 EUR no-posting event in all three views,
+  frozen catalogue parity and scoped lint/types passed. K07 close setup now publishes approved
+  average/closing EUR/USD rates required by existing foreign reporting snapshots.
+- Remaining: retained same-source reconstruction of this register is still OPEN; historical lock
+  datasets retain their existing currency support. Non-identity reporting conversion uses the
+  shared approved-rate translator; this increment's public nonzero posting case uses USD/USD.
+  Other documented adapters and final repository verification remain. No deployment.
+
 ## Adoption Bridge supplied legacy carrying balances — October 21, 2026
 
 - Added optional per-contract legacy functional liability/unbilled carrying inputs to the public
@@ -190,32 +209,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: book-context/non-policy residual cases and source gaps, Adoption Bridge currency
   support, Intercompany Pairs retained replay, other documented adapters and final repository
   validation. These verified renewal and historical-layer scenarios are no longer outstanding.
-
-## Book Bridge verified phased attribution — October 21, 2026
-
-- Added an authorized worker read/compute/publish path: verify original retained computation
-  outputs and both book monetary endpoints, then run counterfactual ASC606 policy families in
-  driver order using IFRS15 resolved values. Engine calls run outside SQL and heartbeat between
-  evaluations. Publication rechecks complete-group read permission; ordinary narrow report
-  scope does not gain access to a broader computation. Migration 0296 describes this basis.
-- The collectibility phase also exchanges book-scoped Step 1 assessments/criteria events and
-  reviewed collectibility/not-a-contract outcomes in memory. This is necessary because those
-  recorded facts can differ even when policy replacement alone leaves revenue unchanged.
-  Original event records are never edited. Input/output hashes and policy/event references
-  accompany the retained per-contract driver effects.
-- Multiple quantified causes now appear separately, including offsetting effects with a zero
-  net difference. Later phases receive interactions. Proven nonzero effects remain visible
-  beside OTHER; unsupported counterfactual phases leave the unproven remainder in OTHER.
-  Older retained inputs and groups without verified common endpoints retain existing semantics.
-- Necessary checks passed: real engine shipping election attributes USD 50 to FRAMEWORK_ELECTIONS;
-  the public collectibility bridge performs actual replay and retains its expected -3,000 result;
-  foreign functional/reporting views and same-source rerun after later billing pass; mismatched
-  originals/endpoints get no causal labels, unavailable phases preserve the residual, offsetting
-  causes remain visible; 29 focused tests, catalogue parity and scoped lint/types pass.
-- Remaining: dedicated licence-renewal and advance-consideration FX scenarios and any resulting
-  gaps, non-policy/book-context residuals, Adoption Bridge multi-currency, Intercompany Pairs
-  retained replay, other documented adapters and final repository verification. No deployment;
-  this is a concrete attribution increment, not a claim that every book difference is explained.
 
 ## Outstanding release verification
 

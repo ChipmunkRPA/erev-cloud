@@ -75,8 +75,11 @@ is the credit-positive sum of the set's lines on the revenue roles (``REVENUE``,
 credit-positive sum of its lines on the contract-position roles (contract liability, contract
 asset, unbilled receivable, deposit, refund and consideration-payable liabilities, return and
 incentive assets, loss and warranty provisions), so a contract-liability decrease shows in
-parentheses (SCREENS_B RPT-16). Both are typed Money in the line's transaction currency (Codex
-C6-RPT-R1). Control totals: ``row_count``, ``line_count`` and per currency ``revenue_effect_total``
+parentheses (SCREENS_B RPT-16). Transaction view uses original line amounts; functional view
+uses posted functional amounts, including transaction-zero FX effects. Reporting view translates
+functional effects at the posting period average. Event amounts keep their original currency;
+effect currencies never aggregate together. Historical lock datasets retain their original basis.
+Control totals: ``row_count``, ``line_count`` and per currency ``revenue_effect_total``
 / ``balance_effect_total``. Tie-out: none.
 
 Sources (S15-R-18b; REQ-PLT-030; C6-RPT-R4): lines recorded by the run's ``known_at``; a
@@ -88,6 +91,7 @@ event sets through the unit of work.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -108,10 +112,11 @@ from erev_api.db.tables import (
     subledger_line,
     subledger_line_event,
     subledger_posting,
+    tenant,
 )
 from erev_api.domain.contracts import queries as contract_queries
 from erev_api.domain.platform import approval_queries
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, event_provenance
 from erev_api.domain.reports.builders.je_population import LOCKED_SOURCE_PENDING
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -360,9 +365,9 @@ def aggregate(lines: Iterable[Mapping[str, Any]]) -> Aggregation:
     each line enters exactly one row (conservation), the effects are summed per row and the reason
     codes joined with ``|`` in code order; the rows' ``row_key`` carries the three (``row_key``),
     so no two rows share one. Lines with no attribution refuse the whole run by name."""
-    grouped: dict[tuple[str, str, str, tuple[Any, ...]], dict[str, Any]] = {}
-    totals: dict[tuple[str, str, str, tuple[Any, ...]], list[Decimal]] = {}
-    reasons: dict[tuple[str, str, str, tuple[Any, ...]], set[str]] = {}
+    grouped: dict[tuple[str, str, str, tuple[Any, ...], str], dict[str, Any]] = {}
+    totals: dict[tuple[str, str, str, tuple[Any, ...], str], list[Decimal]] = {}
+    reasons: dict[tuple[str, str, str, tuple[Any, ...], str], set[str]] = {}
     missing: list[Mapping[str, Any]] = []
     count = 0
     for line in lines:
@@ -375,17 +380,19 @@ def aggregate(lines: Iterable[Mapping[str, Any]]) -> Aggregation:
         posting_key = str(line["posting_period_key"])
         key_value = found.key
         # grouped by the structural identity (D-98 104); the encoded key orders the rows
-        key = (origin_key, posting_key, key_value, found.identity)
+        currency = str(line.get("effect_currency") or line["txn_currency"]).strip()
+        key = (origin_key, posting_key, key_value, found.identity, currency)
         if key not in grouped:
             grouped[key] = (
                 _row(origin_key, posting_key, key_value, found, line)
                 if found.kind == EVENT_SET
                 else _trigger_row(origin_key, posting_key, found, line)
             )
+            grouped[key]["currency"] = currency
             totals[key] = [ZERO, ZERO]
             reasons[key] = set()
         role = str(line.get("account_role") or "")
-        amount = Decimal(str(line.get("amount_txn") or ZERO))
+        amount = Decimal(str(line.get("effect_amount", line.get("amount_txn")) or ZERO))
         if role in REVENUE_ROLES:
             totals[key][0] -= amount  # credit-positive
         if role in POSITION_ROLES:
@@ -403,6 +410,10 @@ def aggregate(lines: Iterable[Mapping[str, Any]]) -> Aggregation:
         row["balance_effect"] = tie_outs.money(totals[key][1], currency)
         row["reason_code"] = JOINER.join(sorted(reasons[key]))
         rows.append(row)
+    identities = Counter(str(row["row_key"]) for row in rows)
+    for row in rows:
+        if identities[str(row["row_key"])] > 1:
+            row["row_key"] += ":currency:" + encode_component(str(row["currency"]))
     return Aggregation(rows=tuple(rows), line_count=count)
 
 
@@ -523,12 +534,37 @@ def _text(value: object) -> str | None:
     return None if value is None else str(value)
 
 
+def functional_amount(line: Mapping[str, Any], currency: str) -> Decimal:
+    """Read posted carrying amounts; transaction zero can still have an FX effect."""
+    if (
+        str(line.get("functional_currency") or "").strip() != currency
+        or line.get("amount_functional") is None
+    ):
+        raise tie_outs.invalid(
+            "currency_view", "Posted functional amount/currency is missing or inconsistent."
+        )
+    return Decimal(str(line["amount_functional"]))
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     session = uow.session
+    view = str(params.parameters.get("currency_view") or "transaction")
+    if view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid(
+            "currency_view", "Choose Transaction, Functional or Reporting currency."
+        )
     book_code = tie_outs.book_of(session, params)
     found = tie_outs.entities(session, params.entity_ids)
     calendars = tie_outs.calendars(session, found)
+    target = None
+    if view == "reporting":
+        target = str(
+            session.execute(
+                select(tenant.c.reporting_currency).where(tenant.c.id == uow.principal.tenant_id)
+            ).scalar_one()
+        ).strip()
+    effect_currencies = {entity.id: target or entity.functional_currency for entity in found}
     posting_ids: list[UUID] = []
     origin_ids: list[UUID] = []
     origin_key = params.parameters.get("origin_period_key")
@@ -620,6 +656,10 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 subledger_line.c.account_role,
                 subledger_line.c.txn_currency,
                 subledger_line.c.amount_txn,
+                subledger_line.c.amount_functional,
+                subledger_line.c.functional_currency,
+                subledger_line.c.entity_id,
+                subledger_line.c.period_id,
                 approval_request.c.request_no.label("approval_request_no"),
             )
             .select_from(joined)
@@ -690,9 +730,43 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     )
                     record["cause_event_count"] = proofs.get(UUID(str(row["computation_id"])))
             records.append(record)
+    if view != "transaction":
+        entities = {entity.id: entity for entity in found}
+        translations: dict[tuple[UUID, UUID], reporting_currency.Translation] = {}
+        for record in records:
+            entity_id = UUID(str(record["entity_id"]))
+            entity = entities[entity_id]
+            amount = functional_amount(record, entity.functional_currency)
+            currency = entity.functional_currency
+            if view == "reporting":
+                period_id = UUID(str(record["period_id"]))
+                key = (entity_id, period_id)
+                if key not in translations:
+                    at = next(p for p in calendars[entity_id].periods if p.id == period_id)
+                    translations[key] = reporting_currency.rates_for_period(
+                        session,
+                        params,
+                        tenant_id=uow.principal.tenant_id,
+                        entities=(entity,),
+                        periods={entity_id: at},
+                        rate_type="average",
+                        target_currency=target,
+                        evidence_key=f"oop_posting_average_v1:{entity_id}:{at.key}",
+                    )
+                amount = translations[key].amount(entity_id, amount)
+                currency = translations[key].currency
+            record["effect_amount"] = amount
+            record["effect_currency"] = currency
     found_rows = aggregate(records)
     extra = late_rows(
-        uow, params, book_code, records, posting_ids, origin_ids, [entity.id for entity in found]
+        uow,
+        params,
+        book_code,
+        records,
+        posting_ids,
+        origin_ids,
+        [entity.id for entity in found],
+        effect_currencies=effect_currencies if view != "transaction" else None,
     )
     rows_out = tuple(sorted((*found_rows.rows, *extra), key=lambda row: row["row_key"]))
     return ReportData(
@@ -718,6 +792,8 @@ def late_rows(
     posting_ids: Sequence[UUID],
     origin_ids: Sequence[UUID],
     entity_ids: Sequence[UUID],
+    *,
+    effect_currencies: Mapping[UUID, str] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     """R-123(g)(2): stored LATE_EVENT facts without a selected posting attribution.
 
@@ -835,8 +911,10 @@ def late_rows(
         attributed = Attribution(EVENT_SET, events=(fact,), scope=SUBJECT)
         row = _row(origin_key, posting_key, attributed.key, attributed, fact)
         row["reason_code"] = "LATE_EVENT"
-        row["revenue_effect"] = tie_outs.money(ZERO, str(fact["txn_currency"]).strip())
-        row["balance_effect"] = tie_outs.money(ZERO, str(fact["txn_currency"]).strip())
+        if effect_currencies is not None:
+            row["currency"] = effect_currencies[UUID(str(fact["entity_id"]))]
+        row["revenue_effect"] = tie_outs.money(ZERO, str(row["currency"]))
+        row["balance_effect"] = tie_outs.money(ZERO, str(row["currency"]))
         result[row["row_key"]] = row
     return tuple(result.values())
 

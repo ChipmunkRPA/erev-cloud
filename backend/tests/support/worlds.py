@@ -3960,8 +3960,53 @@ def k07_august_locked(
     """``k07_delivered`` with Aug 2026 of AVM-DE locked through the product (``period_locked``)
     on the record-time clock: the PRD J-04 precondition "K-07 delivered with no invoice; Aug 2026
     locked"."""
+    from datetime import timedelta
+
     world = k07_delivered(app, keyring, clock, files)
     report = on_record_clock(world.report, clock)
+    # Foreign-entity close snapshots require approved reporting averages and closing rates.
+    for kind in ("average", "closing"):
+        rate_set = post(
+            app,
+            "/api/v1/fx-rate-sets",
+            report.maya,
+            {
+                "code": f"K07-REPORTING-{kind.upper()}",
+                "name": f"K07 reporting {kind}",
+                "rate_type": kind,
+            },
+        )
+        assert rate_set.status_code == 201, rate_set.text
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{rate_set.json()['id']}/versions",
+            report.maya,
+            {
+                "coverage_from": "2026-01-01",
+                "coverage_to": "2026-09-30",
+                "rates": [
+                    {
+                        "base_currency": "EUR",
+                        "quote_currency": "USD",
+                        "period_key": f"FY2026-P{month:02d}",
+                        "rate": "1.10" if month < 9 else "1.20",
+                    }
+                    for month in range(1, 10)
+                ],
+            },
+        )
+        assert draft.status_code == 201, draft.text
+        submitted = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            report.maya,
+            {"comment": "Reporting period averages"},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert submitted.status_code == 200, submitted.text
+        clock.advance(timedelta(minutes=1))
+        decision = approve(app, submitted.json()["pending_approval_request_id"], report.marcus)
+        assert decision.status_code == 200, decision.text
     run, report = period_locked(report, clock, entity_code=AVM_DE, period_key=AUGUST_2026)
     return dataclasses.replace(world, report=report, august_run=MappingProxyType(run))
 

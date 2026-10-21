@@ -750,6 +750,13 @@ def test_out_of_period_register_k07(
     )
     assert row["event_amount"] == {"amount": "100000.00", "currency": "EUR"}
     assert row["balance_effect"] == {"amount": "0.00", "currency": "EUR"}
+    for view, currency in (("functional", "EUR"), ("reporting", "USD")):
+        _, viewed = worlds.report_run(
+            report, "out_of_period_register", {**parameters, "currency_view": view}
+        )
+        assert viewed[0]["event_amount"] == row["event_amount"]
+        assert viewed[0]["balance_effect"] == {"amount": "0.00", "currency": currency}
+        assert viewed[0]["currency"] == currency
     assert run["control_totals"]["line_count"] == 0
     assert row["revenue_effect"] == {"amount": "0.00", "currency": "EUR"}
     # the user who entered the invoice and the approval that released it (PRD J-04.2, J-04.3)
@@ -1022,6 +1029,19 @@ def test_imported_late_event_names_uploader_and_approval(
     assert (late["event_type"], late["origin"]) == ("PROGRESS_RECORDED|MEMO_UPDATED", "IMPORT|UI")
     assert late["revenue_effect"] == {"amount": "6480.00", "currency": "USD"}
     assert late["balance_effect"] == {"amount": "-6480.00", "currency": "USD"}
+    for view in ("functional", "reporting"):
+        viewed, viewed_rows = worlds.report_run(
+            world,
+            "out_of_period_register",
+            {
+                "entity_codes": [AVM_US],
+                "from_period_key": FEBRUARY_2026,
+                "to_period_key": FEBRUARY_2026,
+                "currency_view": view,
+            },
+        )
+        assert viewed_rows == rows
+        assert viewed["control_totals"] == february["control_totals"]
     # both members name Maya — the uploader of the import and the author of the note — so the
     # row states its recorder; the approval is the upload's (the note has none)
     assert recorder(late) == maya

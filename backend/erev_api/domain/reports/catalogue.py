@@ -1658,6 +1658,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "import_upload",
             "period",
             "lock_snapshot",
+            "legal_entity",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "ENGINE LATE_EVENT exception dedupe key binds contract_event.id",
@@ -1671,6 +1676,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ),
         filters=(
             "stored LATE_EVENT period/book evidence; known_at excludes later findings",
+            "functional effects use posted functional amounts; reporting effects translate each "
+            "posting period's functional activity at its approved average rate; original event "
+            "amounts retain transaction currency; distinct effect currencies never aggregate",
             _SCOPE,
             _BOOK,
             "posting period_key from from_period_key to to_period_key",
