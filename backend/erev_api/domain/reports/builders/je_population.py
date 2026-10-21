@@ -19,9 +19,9 @@ the debit side carries the comparison).
 
 New live runs retain input records, resolved labels and independent run debit totals;
 same-source rebuilds use those inputs through the same render and tie-out logic. Historical
-line membership and run/batch states use original commits. Ancillary approval, posting-ack
-and display-name sources retain their existing read semantics at first generation; retention
-makes subsequent rebuilds stable, not arbitrary historical reconstruction of these sources.
+line membership, run/batch states, approval decisions and posting acknowledgements use original
+commits. Display names retain their current-label semantics at first generation; retention
+makes subsequent rebuilds stable, not arbitrary historical reconstruction of names.
 Record-basis and close-owned DATASET_FREEZE reads preserve transaction-local visibility.
 
 Legacy record-basis sources (S15-R-18b; REQ-PLT-030; C6-RPT-R4; D-98 102 Q3 and Q5).
@@ -567,8 +567,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             },
             key=str,
         )
-        documents = _gl_documents(session, batch_ids, known_at)
-        approvals = _approvals(session, request_ids, known_at)
+        documents = _gl_documents(session, batch_ids, known_at, historical=params.historical)
+        approvals = _approvals(session, request_ids, known_at, historical=params.historical)
         # D-98 102a / 102c: the full transition history of every run in the population,
         # regardless of its current state, over both audit shapes (run and batch roll-up).
         histories = transition_history(
@@ -710,8 +710,10 @@ def _client_names(session: Any, principals: Iterable[tuple[UUID, str]]) -> dict[
     return {UUID(str(client_id)): str(name) for client_id, name in rows.tuples()}
 
 
-def _gl_documents(session: Any, batch_ids: Sequence[UUID], known_at: datetime) -> dict[UUID, str]:
-    """The latest ``gl_document_id`` per batch among the acknowledgements received by the cutoff."""
+def _gl_documents(
+    session: Any, batch_ids: Sequence[UUID], known_at: datetime, *, historical: bool = False
+) -> dict[UUID, str]:
+    """Latest acknowledgement by business time; historical reads also require its commit."""
     if not batch_ids:
         return {}
     rows = session.execute(
@@ -721,8 +723,13 @@ def _gl_documents(session: Any, batch_ids: Sequence[UUID], known_at: datetime) -
         .where(
             posting_ack.c.journal_batch_id.in_(list(batch_ids)),
             posting_ack.c.received_at <= known_at,
+            *(
+                [func.erev.source_commit_time("posting_ack", posting_ack.c.id) <= known_at]
+                if historical
+                else []
+            ),
         )
-        .order_by(posting_ack.c.received_at)
+        .order_by(posting_ack.c.received_at, posting_ack.c.id)
     ).mappings()
     found: dict[UUID, str] = {}
     for row in rows:
@@ -789,10 +796,10 @@ def transition_history(
 
 
 def _approvals(
-    session: Any, request_ids: Sequence[UUID], known_at: datetime
+    session: Any, request_ids: Sequence[UUID], known_at: datetime, *, historical: bool = False
 ) -> dict[UUID, tuple[UUID | None, str]]:
     """The latest approving decision's approver per request (id, principal kind) among the
-    decisions taken by the cutoff."""
+    decisions taken by the cutoff. Historical reads also require the original commit."""
     if not request_ids:
         return {}
     rows = session.execute(
@@ -806,6 +813,14 @@ def _approvals(
             approval_decision.c.approval_request_id.in_(list(request_ids)),
             approval_decision.c.decision.in_(list(APPROVED_DECISIONS)),
             approval_decision.c.decided_at <= known_at,
+            *(
+                [
+                    func.erev.source_commit_time("approval_decision", approval_decision.c.id)
+                    <= known_at
+                ]
+                if historical
+                else []
+            ),
         )
         .order_by(approval_decision.c.decided_at, approval_decision.c.id)
     ).mappings()

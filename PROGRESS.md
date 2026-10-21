@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## JE Population approval and acknowledgement commits — October 21, 2026
+
+- Migration 0282 queues original approval-decision and posting-acknowledgement commits
+  atomically with insertion. The existing tenant recovery worker archives pending commit
+  evidence. Upgrade requires empty decision/ack tables rather than inventing historical
+  timestamps; downgrade refuses retained evidence. Catalogue metadata is synchronized.
+- First-generation historical JE Population filters these ancillary records by actual commit
+  before choosing its approver and GL document. A backdated but late-committed record cannot
+  enter the old cutoff. Record-basis and close-owned reads retain transaction-local behavior;
+  previously retained reports continue to rebuild from their saved inputs.
+- Necessary checks passed: real overlapping decision/ack commits with old/new cutoffs,
+  preceding approver retention, recovery timestamp archival, public JE Population reruns,
+  existing close/reopen population flow, catalogue parity and database architecture; scoped
+  lint/types pass. No deployment.
+- Remaining: first-generation actor/display-name history and broader sample approval-request,
+  audit, event, computation and document histories. This change covers JE Population's
+  decision/ack readers; it does not silently apply a partial cutoff to entire approval packs.
+
 ## Contract sample journal commit evidence — October 21, 2026
 
 - New sample/journals.json v2 excludes journal lines committed after the request cutoff and
@@ -210,26 +228,6 @@ review and publish changes without PR accumulation, and do not deploy.
   clarifies the public mixed-batch limitation without changing production logic. Scoped lint
   passes. Next implementation focus is B4-11 arbitrary historical commit visibility;
   final-candidate checks below remain outstanding. No deployment.
-
-## Performance events in initial RPO eligibility batches — October 21, 2026
-
-- Ordered initial Reporting timelines now admit delivery, actual return, billing and credit
-  events with original before/after monetary evidence. Performance-driven net allocation
-  changes are VC movements while included; changes while excluded enter with the remaining
-  re-entry balance. Retained evidence also separates return-window expiry before a later event
-  from that event's own cause, and measures expiry after the final event through report end.
-- Migration 0273 versions this interpretation for RPO/rollforward. Older bound runs retain
-  their original timeline. Missing required performance positions cannot silently fall back
-  to a date-only timeline that drops those events.
-- Thirty-four scoped original-engine/report cases pass, including twelve actual-return and
-  delivery cases spanning pre/post-exit events, excess/partial expected returns, and expiry
-  before/after the eligibility boundary. All reconcile with zero unexplained movement.
-  Public sequential eligibility/re-entry and bound rerun pass; both catalogue definitions
-  match upgrade/downgrade; scoped lint/types pass. No deployment.
-- Remaining work includes public initial mixed-batch end-to-end coverage, full royalty
-  eligibility lifecycle coverage and B4-11 arbitrary historical commit visibility. Billing
-  and credit event admission is implemented but has no dedicated new mixed-batch witness in
-  this increment. This is feature progress, not a repository-completion claim.
 
 ## Outstanding release verification
 

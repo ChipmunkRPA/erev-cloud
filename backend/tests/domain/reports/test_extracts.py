@@ -825,3 +825,96 @@ def test_sample_journals_use_committed_lines_and_lifecycle(
     assert len(latest["lines"]) == len(original["lines"])
     assert all(row["cancelled_as_of"] for row in latest["lines"])
     assert all(row["run_state_as_of"] == "cancelled" for row in latest["lines"])
+
+
+def test_journal_ancillary_sources_exclude_late_commits(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from erev_api.db import new_id
+    from erev_api.db.tables import (
+        approval_decision,
+        approval_request,
+        approval_step,
+        journal_batch,
+        posting_ack,
+    )
+    from erev_api.domain.journals import commit_evidence
+    from erev_api.domain.reports.builders import je_population
+    from sqlalchemy import insert
+    from support.rows import (
+        approval_decision_values,
+        approval_request_values,
+        approval_step_values,
+        posting_ack_values,
+    )
+    from support.worlds import journal_run
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    journal = journal_run(world)
+    batch_id = world.place.scalar(
+        select(journal_batch.c.id).where(journal_batch.c.journal_run_id == UUID(journal["id"]))
+    )
+    request = approval_request_values(world.place.tenant_id)
+    request_id = request["id"]
+    step = approval_step_values(
+        world.place.tenant_id, approval_request_id=request_id, min_approvers=2
+    )
+    original = approval_decision_values(
+        world.place.tenant_id,
+        approval_request_id=request_id,
+        approval_step_id=step["id"],
+        approver_id=world.priya.member.user_id,
+    )
+    with world.place.uow() as setup:
+        setup.session.execute(insert(approval_request).values(**request))
+        setup.session.execute(insert(approval_step).values(**step))
+        setup.session.execute(insert(approval_decision).values(**original))
+        setup.commit()
+    changed_actor = world.maya.member.user_id
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    decision = {
+        **original,
+        "id": new_id(),
+        "approver_id": changed_actor,
+        "decided_at": stamp,
+        "mfa_verified_at": stamp,
+    }
+    with world.place.uow() as writer:
+        writer.session.execute(insert(approval_decision).values(**decision))
+        ack = posting_ack_values(
+            world.place.tenant_id,
+            batch_id=batch_id,
+            received_at=stamp,
+            gl_document_id="GL-LATE-COMMIT",
+        )
+        writer.session.execute(insert(posting_ack).values(**ack))
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    now = world.place.scalar(select(func.clock_timestamp()))
+    with world.place.uow() as reader:
+        assert (
+            je_population._gl_documents(reader.session, [batch_id], cutoff, historical=True) == {}
+        )
+        assert je_population._gl_documents(reader.session, [batch_id], now, historical=True) == {
+            batch_id: "GL-LATE-COMMIT"
+        }
+        assert je_population._approvals(reader.session, [request_id], cutoff, historical=True) == {
+            request_id: (original["approver_id"], "USER")
+        }
+        assert je_population._approvals(reader.session, [request_id], now, historical=True) == {
+            request_id: (changed_actor, "USER")
+        }
+        assert je_population._gl_documents(reader.session, [batch_id], cutoff) == {
+            batch_id: "GL-LATE-COMMIT"
+        }
+    commit_evidence.recover_pending_sources(world.place.tenant_id)
+    for kind, identity in (("approval_decision", decision["id"]), ("posting_ack", ack["id"])):
+        commit = world.place.scalar(
+            select(historical_source_commit.c.committed_server_at).where(
+                historical_source_commit.c.source_kind == kind,
+                historical_source_commit.c.source_id == identity,
+            )
+        )
+        assert cutoff < commit <= now

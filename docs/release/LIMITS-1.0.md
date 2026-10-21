@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## JE Population approval and acknowledgement commits — October 21, 2026
+
+- Migration 0282 queues original approval-decision and posting-acknowledgement commits
+  atomically with insertion. The existing tenant recovery worker archives pending commit
+  evidence. Upgrade requires empty decision/ack tables rather than inventing historical
+  timestamps; downgrade refuses retained evidence. Catalogue metadata is synchronized.
+- First-generation historical JE Population filters these ancillary records by actual commit
+  before choosing its approver and GL document. A backdated but late-committed record cannot
+  enter the old cutoff. Record-basis and close-owned reads retain transaction-local behavior;
+  previously retained reports continue to rebuild from their saved inputs.
+- Necessary checks passed: real overlapping decision/ack commits with old/new cutoffs,
+  preceding approver retention, recovery timestamp archival, public JE Population reruns,
+  existing close/reopen population flow, catalogue parity and database architecture; scoped
+  lint/types pass. No deployment.
+- Remaining: first-generation actor/display-name history and broader sample approval-request,
+  audit, event, computation and document histories. This change covers JE Population's
+  decision/ack readers; it does not silently apply a partial cutoff to entire approval packs.
+
 ## Contract sample journal commit evidence — October 21, 2026
 
 - New sample/journals.json v2 excludes journal lines committed after the request cutoff and

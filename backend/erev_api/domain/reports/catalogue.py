@@ -1595,8 +1595,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "je_population_inputs_v1 retains input rows, labels and independent run debit totals; "
             "same-source rebuilds recompute rows and controls without querying mutable sources",
             "record basis and DATASET_FREEZE preserve transaction-local journal visibility",
-            "first-generation ancillary approval/ack/name reads retain existing cutoff semantics; "
-            "retention guarantees repeatability, not complete historical reconstruction",
+            "historical approval decisions and GL acknowledgements also require original commits "
+            "by known_at; record basis preserves transaction-local visibility",
+            "first-generation actor names remain current labels; retention freezes consumed labels",
             _as_locked("JE_POPULATION"),
         ),
         tie_outs=("TO_JE_POPULATION_EQ_RUNS",),
