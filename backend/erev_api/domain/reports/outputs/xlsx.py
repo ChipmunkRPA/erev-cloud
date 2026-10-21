@@ -177,7 +177,34 @@ def _exemption_details(sheet: Any, formats: _Formats, row: int, value: Any) -> i
     return row + 2
 
 
+def _exemption_translation(sheet: Any, formats: _Formats, row: int, value: Any) -> int:
+    from . import rpo_exemptions as details
+
+    records = details.translation_records(value)
+    if not records:
+        return row
+    sheet.write_string(row, 0, details.TRANSLATION_TITLE, formats.bold)
+    sheet.write_string(row + 1, 0, details.TRANSLATION_BASIS)
+    row += 2
+    for col, (_, label) in enumerate(details.TRANSLATION_COLUMNS):
+        sheet.write_string(row, col, label, formats.wrapped_bold)
+    for record in records:
+        row += 1
+        for col, (key, _) in enumerate(details.TRANSLATION_COLUMNS):
+            if key in {"movement", "translated_movement"}:
+                currency = record["currency" if key == "movement" else "translated_currency"]
+                _write_money(
+                    sheet, formats, row, col, {"amount": record[key], "currency": currency}
+                )
+            else:
+                sheet.write_string(row, col, guard(str(record[key])), formats.wrapped)
+    sheet.set_column(0, len(details.TRANSLATION_COLUMNS) - 1, 22)
+    return row + 2
+
+
 def _total(sheet: Any, formats: _Formats, row: int, key: str, value: Any) -> int:
+    if key == "exemption_translation":
+        return _exemption_translation(sheet, formats, row, value)
     if key == "exemption_changes":
         return _exemption_details(sheet, formats, row, value)
     sheet.write_string(row, 0, guard(key))

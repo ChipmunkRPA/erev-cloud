@@ -10207,3 +10207,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   metadata checked. Migration 0226 updates the report's IPE explanation. Broader close-pass acceptance, dated
   mixed manual-adjustment projection, independent accounting acceptance and final release
   verification remain open. No deployment.
+
+## Mixed usage manual projection — October 20, 2026
+
+- Historical projections now freeze already-realized PERIOD_VC amounts and replay manual
+  release, deferral and schedule override against the complete original-cut target. Later usage
+  and later adjustments are excluded; changing realized amounts within the frozen horizon
+  retain an explicit refusal rather than becoming a fixed forecast.
+- Fixed-plus-usage overrides exposed an engine defect: after the last listed period, respread
+  discarded the realized consideration and completed at only the fixed allocation. The anchor
+  now includes already-realized consideration; usage realized after that anchor enters revenue
+  immediately through a retained realized_delta parameter (legacy traces default to zero).
+- Three adjustment journeys compare every historical future period with the original schedule,
+  replay every trace node, pass through the contract trace reader, and reconcile to the dated
+  scheduled remainder. Explicit checks preserve 1,200 fixed + 100 original usage at completion
+  and recognize later 400 usage in its own month. Existing dated/fixed/manual paths also pass.
+- 113 scoped engine/reader cases and 7 catalogue cases pass; migration 0227 was applied locally
+  and all three IPE definitions match the catalogue. Lint/types pass. Royalty/netted mixed projections, broader
+  public API lifecycle and close-pass acceptance, independent accounting acceptance and final
+  release checks remain open. Direct main publication; no deployment.

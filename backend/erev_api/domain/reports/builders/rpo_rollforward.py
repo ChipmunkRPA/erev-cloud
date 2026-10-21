@@ -116,8 +116,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params.sources.record_evidence(exemption_evidence, True)
     rates: list[dict[str, Any]] = []
     source_unexplained = False
+    exemption_translation: list[dict[str, str]] = []
+    translation_evidence = "rpo_exemption_translation_v1"
+    include_translation = converted and (
+        params.binding is None or translation_evidence in params.binding.evidence
+    )
+    if include_translation and params.sources is not None:
+        params.sources.record_evidence(translation_evidence, True)
     if converted:
-        items, rates, source_unexplained = rpo_rollforward_currency.project(
+        items, rates, source_unexplained, exemption_translation = rpo_rollforward_currency.project(
             uow, params, store, found, periods, before, applied
         )
     totals: dict[str, dict[str, Decimal]] = {}
@@ -201,6 +208,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 if include_exemptions
                 else {}
             ),
+            **({"exemption_translation": exemption_translation} if include_translation else {}),
             "currency_view": view,
             "translation_basis": "monthly_average_flows_closing_endpoints"
             if converted

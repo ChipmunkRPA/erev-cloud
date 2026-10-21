@@ -966,6 +966,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "estimate causes instead of new contracts; first admission and re-entry keep "
             "admission rules; bindings without rpo_added_obligations_v1 retain their original "
             "classification",
+            "translated RPO exemption details retain each contract-period original movement "
+            "and its monthly-average translated amount; details sum by report currency to "
+            "EXEMPTIONS even when original range endpoints cancel; older bindings keep their "
+            "existing controls",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

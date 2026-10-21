@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — monthly translated exemption movements are reviewable
+
+Converted RPO rollforwards retain contract-period exemption movements in transaction currency and
+the exact translated amounts used in EXEMPTIONS. These details explain nonzero translated flows
+when opposite original movements cancel across the requested range. The viewer, Excel and PDF
+present the monthly bridge; CSV manifests retain the records. Existing obligation-level endpoint
+exclusions remain in their original currency and are not represented as translated amounts.
+
+New bindings carry rpo_exemption_translation_v1; older bindings keep their control shape. The
+witness covers EUR/USD and EUR/USD/GBP translation with opposite 100 original movements, net
+translated movements of 20 USD / 16 GBP, separate FX and zero rounding. This feature explains
+existing arithmetic rather than changing it. Combined-member aging date ownership, missing
+first-batch modification evidence, independent accounting sign-off and final-candidate checks
+remain open. Migration 0238 documents the new evidence. No deployment.
+
+
 ### October 20 — added obligations no longer inflate new-contract RPO
 
 New report runs distinguish a new obligation on an already disclosed contract from a contract

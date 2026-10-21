@@ -84,9 +84,28 @@ def _stamp_lines(data: ReportData, stamp: RunStamp, *, wrapped: bool = False) ->
         *(
             (f"{key}: {total_text(value, style)}", False)
             for key, value in sorted(data.control_totals.items())
-            if key != "exemption_changes"
+            if key not in {"exemption_changes", "exemption_translation"}
         ),
     ]
+    if "exemption_translation" in data.control_totals:
+        translated = rpo_exemptions.translation_records(
+            data.control_totals["exemption_translation"]
+        )
+        if translated:
+            texts.extend(
+                (
+                    (rpo_exemptions.TRANSLATION_TITLE, True),
+                    (rpo_exemptions.TRANSLATION_BASIS, False),
+                )
+            )
+        for record in translated:
+            texts.append((f"{record['contract']} / {record['entity']} / {record['period']}", True))
+            for key, currency_key, label in (
+                ("movement", "currency", "Original movement"),
+                ("translated_movement", "translated_currency", "Translated movement"),
+            ):
+                value = total_text({"amount": record[key], "currency": record[currency_key]}, style)
+                texts.append((f"{label}: {value}", False))
     if "exemption_changes" in data.control_totals:
         details = rpo_exemptions.records(data.control_totals["exemption_changes"])
         if details:

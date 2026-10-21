@@ -25,12 +25,13 @@ def project(
     periods: Mapping[UUID, tuple[tie_outs.PeriodRef, ...]],
     before: Mapping[UUID, tie_outs.PeriodRef | None],
     applied: Mapping[UUID, frozenset[str]],
-) -> tuple[tuple[rpo.ContractLines, ...], list[dict[str, Any]], bool]:
+) -> tuple[tuple[rpo.ContractLines, ...], list[dict[str, Any]], bool, list[dict[str, str]]]:
     session = uow.session
     cache: dict[tuple[UUID, str, UUID, str], tuple[reporting_currency.Translation, ...]] = {}
     evidence: dict[str, dict[str, Any]] = {}
     totals: dict[tuple[str, str, str], rpo.ContractLines] = {}
     source_unexplained = False
+    exemption_translation: list[dict[str, str]] = []
     codes = (*rpo.ROLLFORWARD_LINES, "ROUNDING")
 
     def chain(
@@ -128,6 +129,18 @@ def project(
                     code: convert(entity.id, item.lines[code], average_legs)
                     for code in rpo.ROLLFORWARD_LINES
                 }
+                if item.lines["EXEMPTIONS"] != 0:
+                    exemption_translation.append(
+                        {
+                            "contract": item.external_id,
+                            "entity": entity.code,
+                            "period": period.key,
+                            "currency": item.currency,
+                            "movement": str(item.lines["EXEMPTIONS"]),
+                            "translated_currency": target,
+                            "translated_movement": str(values["EXEMPTIONS"]),
+                        }
+                    )
                 values["OPENING"], values["CLOSING"] = shown_open, shown_close
                 average = factor(entity.id, average_legs)
                 fx = Fraction(raw_close) * (factor(entity.id, close_legs) - average) - Fraction(
@@ -157,4 +170,9 @@ def project(
                     summed[code] += values[code]
                 totals[total_key] = replace(item, currency=target, lines=summed)
             prior = period
-    return tuple(totals[key] for key in sorted(totals)), list(evidence.values()), source_unexplained
+    return (
+        tuple(totals[key] for key in sorted(totals)),
+        list(evidence.values()),
+        source_unexplained,
+        exemption_translation,
+    )

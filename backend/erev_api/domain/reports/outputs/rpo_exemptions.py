@@ -44,3 +44,28 @@ def cell(row: Mapping[str, Any], key: str) -> str:
     if key in {"opening_rule", "closing_rule"}:
         return "Not excluded" if value is None else RULES.get(str(value), str(value))
     return str(value)
+
+
+TRANSLATION_TITLE = "Monthly exemption translation"
+TRANSLATION_BASIS = (
+    "Contract-level exemption movements translated at each period's retained average rates. "
+    "Translated movements sum to the report's Exemptions line by currency."
+)
+TRANSLATION_COLUMNS = (
+    ("contract", "Contract"),
+    ("entity", "Entity"),
+    ("period", "Period"),
+    ("currency", "Transaction currency"),
+    ("movement", "Original movement"),
+    ("translated_currency", "Report currency"),
+    ("translated_movement", "Translated movement"),
+)
+
+
+def translation_records(value: Any) -> tuple[Mapping[str, Any], ...]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("RPO exemption translation must be a list.")
+    for row in value:
+        if not isinstance(row, Mapping) or any(key not in row for key, _ in TRANSLATION_COLUMNS):
+            raise ValueError("RPO exemption translation is incomplete.")
+    return tuple(value)

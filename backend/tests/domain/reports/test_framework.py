@@ -682,11 +682,23 @@ def test_exemption_exports_keep_large_detail_populations_readable() -> None:
         }
         for index in range(120)
     ]
+    translations = [
+        {
+            "contract": "=EXEMPT-0",
+            "entity": "AVM-US",
+            "period": "FY2026-P09",
+            "currency": "EUR",
+            "movement": "-25.50",
+            "translated_currency": "USD",
+            "translated_movement": "-30.60",
+        }
+    ]
     assert len(json.dumps(details)) > 32767  # Excel's single-cell limit.
     data = replace(
         sample_data(),
         control_totals={
             "exemption_changes": details,
+            "exemption_translation": translations,
             "exemption_detail_basis": "transaction_currency_endpoints",
         },
     )
@@ -725,3 +737,15 @@ def test_exemption_exports_keep_large_detail_populations_readable() -> None:
         )
     )
     assert manifest["control_totals"]["exemption_changes"] == details
+    assert manifest["control_totals"]["exemption_translation"] == translations
+    header = next(
+        row
+        for row in range(1, sheet.max_row + 1)
+        if sheet.cell(row, 7).value == "Translated movement"
+    )
+    assert sheet.cell(header + 1, 1).value == "'=EXEMPT-0"
+    assert sheet.cell(header + 1, 5).value == -25.5
+    assert sheet.cell(header + 1, 7).value == -30.6
+    assert sheet.cell(header + 1, 7).data_type == "n"
+    assert "Monthly exemption translation" in texts
+    assert "Translated movement: USD (30.60)" in texts

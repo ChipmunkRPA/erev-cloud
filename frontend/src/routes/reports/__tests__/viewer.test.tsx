@@ -665,6 +665,47 @@ describe("SF-08:report viewer", () => {
     expect(screen.getAllByText("USD 100.00")).toHaveLength(2);
   });
 
+  it("shows monthly exemption translation even when endpoint exclusions cancel", async () => {
+    const definition = { ...RPO, code: "rpo_rollforward", name: "RPO rollforward" };
+    const run = reportRun({
+      report: { code: "rpo_rollforward", version: 1, name: "RPO rollforward" },
+      control_totals: {
+        exemption_changes: [],
+        exemption_translation: [
+          {
+            contract: "C-MONTHLY",
+            entity: "AVM-US",
+            period: "FY2026-P01",
+            currency: "EUR",
+            movement: "-100.00",
+            translated_currency: "USD",
+            translated_movement: "-120.00",
+          },
+          {
+            contract: "C-MONTHLY",
+            entity: "AVM-US",
+            period: "FY2026-P02",
+            currency: "EUR",
+            movement: "100.00",
+            translated_currency: "USD",
+            translated_movement: "140.00",
+          },
+        ],
+      },
+    });
+    serve(definition, { [RUN_ID]: run }, []);
+    renderApp(`/reports/rpo_rollforward?${CONTEXT}&run=${RUN_ID}`, {
+      me: MARCUS,
+      screenRoutes: SCREEN_ROUTES,
+    });
+    fireEvent.click(await screen.findByText("RPO exemption changes"));
+    expect(screen.getByText("Monthly exemption translation")).toBeTruthy();
+    expect(screen.getByText("AVM-US · FY2026-P01")).toBeTruthy();
+    expect(screen.getByText("AVM-US · FY2026-P02")).toBeTruthy();
+    expect(screen.getByText("USD 140.00")).toBeTruthy();
+    expect(screen.getByText(/Contract movements use each period/)).toBeTruthy();
+  });
+
   it("shows GL role differences even when the aggregate difference is zero", async () => {
     const results: TieOutResult[] = [
       {

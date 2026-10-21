@@ -6,6 +6,23 @@
 
 
 
+## Monthly RPO exemption translation details — October 20, 2026
+
+- Converted rollforwards now retain each nonzero contract-period exemption movement in its
+  original currency and the exact translated amount already used by the report. This explains
+  nonzero translated flows even when the full-range original exclusions cancel at the endpoints.
+  Existing obligation endpoint details remain separate; no allocation or FX math is done in UI.
+- The viewer displays the monthly bridge even with no endpoint detail rows. Excel exports
+  numeric source/translated cells with guarded identities; PDF exports readable period and
+  currency amounts; CSV manifests retain the structured records. New bindings record
+  rpo_exemption_translation_v1 and older bindings keep their existing control shape.
+- Focused witnesses cover EUR-to-USD and EUR-to-USD-to-GBP: opposite original 100 movements at
+  different monthly rates produce net 20 USD / 16 GBP, matching EXEMPTIONS with separate FX and
+  zero rounding. Export, viewer, scoped types/lint, public report reruns and migration 0238
+  catalogue parity are the necessary checks. No deployment; direct main publication.
+- Combined-member aging date ownership, missing first-batch boundary histories, independent
+  accounting sign-off and final-candidate verification remain outstanding.
+
 ## RPO obligations added to existing contracts — October 20, 2026
 
 - Fixed a classification defect: an obligation absent from the opening version was always
@@ -215,25 +232,6 @@
   the three IPE definitions match the catalogue. Netted mixed projections, broader public API lifecycle
   and close-pass acceptance, independent accounting acceptance and final release checks remain
   open. Direct main publication; no deployment.
-
-## Mixed usage manual projection — October 20, 2026
-
-- Historical projections now freeze already-realized PERIOD_VC amounts and replay manual
-  release, deferral and schedule override against the complete original-cut target. Later usage
-  and later adjustments are excluded; changing realized amounts within the frozen horizon
-  retain an explicit refusal rather than becoming a fixed forecast.
-- Fixed-plus-usage overrides exposed an engine defect: after the last listed period, respread
-  discarded the realized consideration and completed at only the fixed allocation. The anchor
-  now includes already-realized consideration; usage realized after that anchor enters revenue
-  immediately through a retained realized_delta parameter (legacy traces default to zero).
-- Three adjustment journeys compare every historical future period with the original schedule,
-  replay every trace node, pass through the contract trace reader, and reconcile to the dated
-  scheduled remainder. Explicit checks preserve 1,200 fixed + 100 original usage at completion
-  and recognize later 400 usage in its own month. Existing dated/fixed/manual paths also pass.
-- 113 scoped engine/reader cases and 7 catalogue cases pass; migration 0227 was applied locally
-  and all three IPE definitions match the catalogue. Lint/types pass. Royalty/netted mixed projections, broader
-  public API lifecycle and close-pass acceptance, independent accounting acceptance and final
-  release checks remain open. Direct main publication; no deployment.
 
 ## Outstanding release verification
 
