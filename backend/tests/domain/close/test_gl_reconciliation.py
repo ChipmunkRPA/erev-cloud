@@ -1321,6 +1321,45 @@ def test_explained_then_signed(
     assert latest["result"] == "NOT_APPLICABLE"
     assert latest["details"][0]["source_status"] == "REOPENED"
     assert latest["details"][0]["source_revision_id"] != str(reviewed_revision["id"])
+    # Commit a source change between the identity read and state read. Both must
+    # come from one statement snapshot, even though its insert timestamp predates
+    # this cutoff. This does not assert arbitrary historical commit-time recovery.
+    from sqlalchemy import update
+
+    with tenant_session(context) as writer:
+        writer.execute(
+            update(reconciliation)
+            .where(reconciliation.c.id == UUID(draft["id"]))
+            .values(variance_count=reconciliation.c.variance_count + 1)
+        )
+        capture_at = _rows(tenant_id, select(func.clock_timestamp().label("now")))[0]["now"]
+        with tenant_session(context, read_only=True) as reader:
+            original_execute = reader.execute
+            source_reads = []
+
+            def commit_after_source_read(statement, *args, **kwargs):
+                result = original_execute(statement, *args, **kwargs)
+                if "report_source_revision" in str(statement):
+                    source_reads.append(statement)
+                    if len(source_reads) == 1:
+                        writer.commit()
+                return result
+
+            with monkeypatch.context() as patch:
+                patch.setattr(reader, "execute", commit_after_source_read)
+                stable = rollforward_gl.build(
+                    reader,
+                    replace(params, known_at=capture_at, sources=None),
+                    entities=(entity,),
+                    periods={entity_id: (at,)},
+                    items=(),
+                    book_code="ASC606",
+                    contract_id=None,
+                )
+            assert len(source_reads) == 1
+            assert stable == latest
+    assert comparison(params) == original
+    assert comparison(replace(params, binding=bound, sources=None)) == original
     uncovered = comparison(replace(params, known_at=revisions[0]["recorded_at"], sources=None))
     assert uncovered["result"] == "NOT_APPLICABLE"  # the source had no attached trial balance yet
     # Even a verbatim source document cannot be forged by an application-side insert.

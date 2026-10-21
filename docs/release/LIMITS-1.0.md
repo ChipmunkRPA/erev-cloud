@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## GL source selection uses one database snapshot — October 21, 2026
+
+- GL comparisons now resolve source identities, latest captured states, review status and totals
+  from immutable report_source_revision rows in one SQL statement across all requested entities.
+  The previous current-header query followed by a separate revision query could mix snapshots
+  when an already-inserted source revision committed between those reads. Windowed selection
+  preserves latest-source precedence and requires a source attachment known at the cutoff.
+- New runs retain rollforward_gl_inputs_v6; v1-v5 bound comparisons still rebuild from their
+  original evidence. Migration 0265 updates IPE for contract_balances and
+  contract_balance_rollforward. Uncovered source history remains unavailable.
+- A real two-transaction witness commits a change to a reopened reconciliation after the source
+  statement executes: the comparison retains the pre-commit source revision, performs one source
+  query and preserves the earlier reviewed historical/bound result. The public uploaded-GL
+  report path, 14 GL cases, lint/types and reversible migration/catalogue parity pass.
+- This establishes a consistent GL source-selection statement, not historical commit timestamps
+  or a transaction-wide snapshot for every report source. B4-11 arbitrary historical commit
+  visibility remains open, as do broader RPO mixed-lifecycle journeys. No deployment.
+
+
 ## Public termination controls and same-day usage calculations — October 21, 2026
 
 - The modification form/API now accepts explicit FULL/PARTIAL termination scope and a refund

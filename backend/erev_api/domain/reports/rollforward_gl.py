@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import reconciliation, report_source_revision
+from erev_api.db.tables import report_source_revision
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
@@ -18,7 +19,8 @@ from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 if TYPE_CHECKING:
     from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
 
-EVIDENCE = "rollforward_gl_inputs_v5"
+EVIDENCE = "rollforward_gl_inputs_v6"
+REVISION_EVIDENCE = "rollforward_gl_inputs_v5"
 HISTORICAL_EVIDENCE = "rollforward_gl_inputs_v4"
 REVIEW_EVIDENCE = "rollforward_gl_inputs_v3"
 BRIDGE_EVIDENCE = "rollforward_gl_inputs_v2"
@@ -218,6 +220,91 @@ def compare(
     return result
 
 
+def _captured_sources(
+    session: Session,
+    cutoff: datetime,
+    entities: Sequence[EntityRef],
+    periods: Mapping[UUID, Sequence[PeriodRef]],
+    book_code: str,
+) -> dict[str, Any]:
+    """Resolve all GL identities and states in one MVCC statement from immutable revisions."""
+    targets = {entity.id: periods[entity.id][-1] for entity in entities if periods.get(entity.id)}
+    if not targets:
+        return {}
+    table = report_source_revision
+    attached = or_(
+        table.c.document["source_file_id"].astext.is_not(None),
+        table.c.document["sync_run_id"].astext.is_not(None),
+    )
+    history = (
+        select(
+            table,
+            func.row_number()
+            .over(partition_by=table.c.source_id, order_by=table.c.revision_no.desc())
+            .label("latest"),
+            func.bool_or(attached).over(partition_by=table.c.source_id).label("had_source"),
+        )
+        .where(
+            table.c.source_kind == "gl_reconciliation",
+            table.c.recorded_at <= cutoff,
+            table.c.document["book_code"].astext == book_code,
+            or_(
+                *(
+                    and_(
+                        table.c.entity_id == entity_id,
+                        table.c.document["period_id"].astext == str(period.id),
+                    )
+                    for entity_id, period in targets.items()
+                )
+            ),
+        )
+        .subquery()
+    )
+    rows = (
+        session.execute(select(history).where(history.c.latest == 1, history.c.had_source))
+        .mappings()
+        .all()
+    )
+    chosen: dict[UUID, tuple[tuple[datetime, datetime, str], Mapping[str, Any]]] = {}
+    for revision in rows:
+        original = revision["document"]
+        as_of = datetime.fromisoformat(str(original["as_of_known_at"]))
+        created = datetime.fromisoformat(str(original["created_at"]))
+        if as_of > cutoff or created > cutoff:
+            continue
+        entity_id = revision["entity_id"]
+        rank = (as_of, created, str(revision["source_id"]))
+        if entity_id not in chosen or rank > chosen[entity_id][0]:
+            chosen[entity_id] = (rank, dict(revision))
+    sources = {}
+    for entity_id, (_, held) in chosen.items():
+        original = held["document"]
+        source = {
+            "id": str(held["source_id"]),
+            "period_key": targets[entity_id].key,
+            "book_code": book_code,
+            "source_revision_id": str(held["id"]),
+            "source_recorded_at": held["recorded_at"].isoformat(),
+            **{
+                key: original[key]
+                for key in (
+                    "status",
+                    "period_id",
+                    "as_of_known_at",
+                    "source_file_id",
+                    "sync_run_id",
+                    "totals",
+                )
+            },
+        }
+        if not original["source_file_id"] and not original["sync_run_id"]:
+            source["unavailable_reason"] = (
+                "The GL trial balance was not attached at the report cutoff."
+            )
+        sources[str(entity_id)] = source
+    return sources
+
+
 def build(
     session: Session,
     params: ReportParams,
@@ -242,6 +329,7 @@ def build(
                 key
                 for key in (
                     EVIDENCE,
+                    REVISION_EVIDENCE,
                     HISTORICAL_EVIDENCE,
                     REVIEW_EVIDENCE,
                     BRIDGE_EVIDENCE,
@@ -253,97 +341,8 @@ def build(
         )
         sources = params.binding.evidence.get(evidence_key, {})
     else:
-        sources = {}
         cutoff = tie_outs.cutoff_for(session, params)
-        for entity in entities:
-            selected = periods.get(entity.id, ())
-            if not selected:
-                continue
-            row = (
-                session.execute(
-                    select(reconciliation)
-                    .where(
-                        reconciliation.c.entity_id == entity.id,
-                        reconciliation.c.book_code == book_code,
-                        reconciliation.c.period_id == selected[-1].id,
-                        reconciliation.c.kind == "SUBLEDGER_TO_GL",
-                        reconciliation.c.created_at <= cutoff,
-                        reconciliation.c.as_of_known_at <= cutoff,
-                        or_(
-                            reconciliation.c.source_file_id.is_not(None),
-                            reconciliation.c.sync_run_id.is_not(None),
-                            reconciliation.c.id.in_(
-                                select(report_source_revision.c.source_id).where(
-                                    report_source_revision.c.source_kind == "gl_reconciliation",
-                                    report_source_revision.c.recorded_at <= cutoff,
-                                    or_(
-                                        report_source_revision.c.document[
-                                            "source_file_id"
-                                        ].astext.is_not(None),
-                                        report_source_revision.c.document[
-                                            "sync_run_id"
-                                        ].astext.is_not(None),
-                                    ),
-                                )
-                            ),
-                        ),
-                    )
-                    .order_by(
-                        reconciliation.c.as_of_known_at.desc(),
-                        reconciliation.c.created_at.desc(),
-                        reconciliation.c.id.desc(),
-                    )
-                    .limit(1)
-                )
-                .mappings()
-                .one_or_none()
-            )
-            if row is None:
-                continue
-            identity = {
-                "id": str(row["id"]),
-                "period_key": selected[-1].key,
-                "book_code": book_code,
-            }
-            revision = (
-                session.execute(
-                    select(report_source_revision)
-                    .where(
-                        report_source_revision.c.source_kind == "gl_reconciliation",
-                        report_source_revision.c.source_id == row["id"],
-                        report_source_revision.c.recorded_at <= cutoff,
-                    )
-                    .order_by(report_source_revision.c.revision_no.desc())
-                    .limit(1)
-                )
-                .mappings()
-                .one_or_none()
-            )
-            if revision is None:
-                sources[str(entity.id)] = {
-                    **identity,
-                    "unavailable_reason": (
-                        "No captured GL reconciliation state covers the report cutoff."
-                    ),
-                }
-                continue
-            original = revision["document"]
-            source = {
-                **identity,
-                "source_revision_id": str(revision["id"]),
-                "source_recorded_at": revision["recorded_at"].isoformat(),
-                "status": original["status"],
-                "period_id": original["period_id"],
-                "as_of_known_at": original["as_of_known_at"],
-                "source_file_id": original["source_file_id"],
-                "sync_run_id": original["sync_run_id"],
-                "totals": original["totals"],
-            }
-            if not original["source_file_id"] and not original["sync_run_id"]:
-                source["unavailable_reason"] = (
-                    "The GL trial balance was not attached at the report cutoff."
-                )
-            sources[str(entity.id)] = source
+        sources = _captured_sources(session, cutoff, entities, periods, book_code)
     if params.sources is not None:
         params.sources.record_evidence(evidence_key, sources)
     return compare(
@@ -351,5 +350,6 @@ def build(
         items,
         sources,
         bridge=evidence_key != LEGACY_EVIDENCE,
-        require_review=evidence_key in {EVIDENCE, HISTORICAL_EVIDENCE, REVIEW_EVIDENCE},
+        require_review=evidence_key
+        in {EVIDENCE, REVISION_EVIDENCE, HISTORICAL_EVIDENCE, REVIEW_EVIDENCE},
     )

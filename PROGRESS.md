@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## GL source selection uses one database snapshot — October 21, 2026
+
+- GL comparisons now resolve source identities, latest captured states, review status and totals
+  from immutable report_source_revision rows in one SQL statement across all requested entities.
+  The previous current-header query followed by a separate revision query could mix snapshots
+  when an already-inserted source revision committed between those reads. Windowed selection
+  preserves latest-source precedence and requires a source attachment known at the cutoff.
+- New runs retain rollforward_gl_inputs_v6; v1-v5 bound comparisons still rebuild from their
+  original evidence. Migration 0265 updates IPE for contract_balances and
+  contract_balance_rollforward. Uncovered source history remains unavailable.
+- A real two-transaction witness commits a change to a reopened reconciliation after the source
+  statement executes: the comparison retains the pre-commit source revision, performs one source
+  query and preserves the earlier reviewed historical/bound result. The public uploaded-GL
+  report path, 14 GL cases, lint/types and reversible migration/catalogue parity pass.
+- This establishes a consistent GL source-selection statement, not historical commit timestamps
+  or a transaction-wide snapshot for every report source. B4-11 arbitrary historical commit
+  visibility remains open, as do broader RPO mixed-lifecycle journeys. No deployment.
+
 ## Public termination controls and same-day usage calculations — October 21, 2026
 
 - The modification form/API now accepts explicit FULL/PARTIAL termination scope and a refund
@@ -200,30 +218,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Complex RPO lifecycle attribution, B4-11 concurrent commit visibility, combined-member
   aging ownership, independent accounting sign-off and final-candidate checks remain open.
   This presentation improvement does not close those gaps. Direct main; no deployment.
-
-## Historical GL reports retain original review state and amounts — October 20, 2026
-
-- GL bridge v5 reads database-captured immutable GL reconciliation revisions at the report
-  cutoff, retaining the chosen source's original status, totals, attachment and revision ID.
-  A later reopen or update no longer erases covered historical comparison evidence. The current
-  reopened source remains unavailable; older v1-v4 report bindings keep their original rules.
-- Migration 0257 extends the existing tenant/entity-scoped report_source_revision mechanism.
-  Source triggers capture inserts/updates, validate the original row and assign the revision
-  time/sequence. Baselines attest only to migration-time state; absent older coverage remains
-  unavailable. Downgrade refuses to discard captured GL history. No permission scope is widened.
-- The real GL command journey generates/attaches a trial balance, explains and signs it,
-  then reopens it. Historical comparison and retained rerun preserve the reviewed amounts;
-  current comparison is unavailable. Original unattached state remains unavailable, and a direct
-  application insert of an otherwise identical revision is rejected by the database guard.
-- Viewer shows captured-state time; XLSX standalone/workbook exports retain revision identity
-  and time, with PDF/manifest carrying the same detail fields. Thirteen GL control cases, the
-  public review/reopen journey, two workbook cases, viewer/types/lint and exact IPE catalogue
-  parity pass. Evidence-preserving downgrade refusal was checked in a rolled-back transaction.
-- This supersedes v4's changed-after-cutoff limitation only where captured history exists.
-  Concurrent commit-time visibility remains the separate B4-11 gap; this sequential workflow
-  does not prove that guarantee. RPO complex lifecycle gaps, combined-member aging ownership,
-  independent accounting sign-off and final-candidate checks remain open. No deployment;
-  direct-main publication and no production-readiness claim.
 
 ## Outstanding release verification
 

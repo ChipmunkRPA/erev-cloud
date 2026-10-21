@@ -505,6 +505,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "totals after later changes; migration baselines attest only to capture-time state "
             "and uncovered history is unavailable; original revision identity and amounts are "
             "bound for reruns; retained v1-v4 comparisons keep their prior rules",
+            "GL bridge v6 selects source identities and their latest captured states from "
+            "immutable revisions in one database statement for all requested entities; a "
+            "concurrent source change cannot mix identity and review snapshots; timestamp "
+            "cutoffs still do not reconstruct arbitrary historical commit visibility; "
+            "retained v1-v5 comparisons use their bound evidence unchanged",
         ),
         tie_outs=("TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -653,6 +658,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "totals after later changes; migration baselines attest only to capture-time state "
             "and uncovered history is unavailable; original revision identity and amounts are "
             "bound for reruns; retained v1-v4 comparisons keep their prior rules",
+            "GL bridge v6 selects source identities and their latest captured states from "
+            "immutable revisions in one database statement for all requested entities; a "
+            "concurrent source change cannot mix identity and review snapshots; timestamp "
+            "cutoffs still do not reconstruct arbitrary historical commit visibility; "
+            "retained v1-v5 comparisons use their bound evidence unchanged",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),

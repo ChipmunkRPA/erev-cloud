@@ -110,6 +110,7 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
         rollforward_gl.BRIDGE_EVIDENCE,
         rollforward_gl.REVIEW_EVIDENCE,
         rollforward_gl.EVIDENCE,
+        rollforward_gl.REVISION_EVIDENCE,
         rollforward_gl.HISTORICAL_EVIDENCE,
     ],
 )
@@ -128,6 +129,7 @@ def test_retained_gl_rebuild_never_reads_current_reconciliation(evidence_key: st
             if evidence_key
             in {
                 rollforward_gl.EVIDENCE,
+                rollforward_gl.REVISION_EVIDENCE,
                 rollforward_gl.HISTORICAL_EVIDENCE,
                 rollforward_gl.REVIEW_EVIDENCE,
             }
