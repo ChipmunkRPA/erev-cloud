@@ -1037,6 +1037,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "must precede the unique actual cancellation; the opening plus modifications, "
             "estimates and cross-effects must reproduce its original before amount for mixed "
             "later-version attribution; older bindings retain prior behavior",
+            "rpo_continuing_cancellations_v1 separates original partial-termination allocation "
+            "changes for obligations still disclosed at the period end, in first-entry and "
+            "same-version monthly cuts; every termination must retain explicit original state and "
+            "the continuing obligation must not be cancelled within the cut; monthly fixed "
+            "movements must reconcile to dated allocations; older bindings retain prior "
+            "classification",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

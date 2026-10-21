@@ -1593,6 +1593,17 @@ def _shares(part: PartTarget) -> list[tuple[RoleKey, _Share]]:
         on_debit = index < (1 if debit.selection != "SPLIT" else len(debit.roles))
         side = debit if on_debit else credit
         sign = 1 if on_debit else -1
+        if (
+            part.part == "JET-06 reclass"
+            and side.selection == "SPLIT"
+            and part.component in RECLASS_ROLES
+            and nonzero == [part.component]
+            and line.label != part.component
+        ):
+            # Reclass components are cumulative per immutable destination role.
+            # This component can never contribute to the other debit role; its
+            # zero share must not collide with that role's separate component.
+            continue
         split: Mapping[str, str] | None = None
         if side.selection != "SPLIT":
             inputs = _signed(part.value_inputs, sign)

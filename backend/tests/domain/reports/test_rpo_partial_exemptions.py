@@ -742,21 +742,27 @@ def test_mixed_modification_and_estimate_uses_retained_event_shares(
 
 
 @pytest.mark.parametrize(
-    "with_modification,later_amount,added,same_day,cross_effect",
+    "with_modification,later_amount,added,same_day,cross_effect,across_periods",
     [
-        (False, "200", False, False, False),
-        (False, "-50", False, False, False),
-        (True, "200", False, False, False),
-        (True, "80", False, False, False),
-        (True, "200", True, False, False),
-        (True, "80", True, False, False),
-        (True, "200", False, True, False),
-        (True, "80", False, True, False),
-        (True, "200", False, False, True),
+        (False, "200", False, False, False, False),
+        (False, "-50", False, False, False, False),
+        (True, "200", False, False, False, False),
+        (True, "80", False, False, False, False),
+        (True, "200", True, False, False, False),
+        (True, "80", True, False, False, False),
+        (True, "200", False, True, False, False),
+        (True, "80", False, True, False, False),
+        (True, "200", False, False, True, False),
+        (True, "200", False, False, True, True),
     ],
 )
 def test_first_entry_separates_later_original_estimate_events(
-    later_amount: str, with_modification: bool, added: bool, same_day: bool, cross_effect: bool
+    later_amount: str,
+    with_modification: bool,
+    added: bool,
+    same_day: bool,
+    cross_effect: bool,
+    across_periods: bool,
 ) -> None:
     from erev_api.domain.contracts.to_date import ObligationAt
     from erev_api.domain.reports.rpo_estimate_changes import allocations
@@ -822,7 +828,11 @@ def test_first_entry_separates_later_original_estimate_events(
     )
     book = compute(bundle).books[0]
     vid, cid, eid, gid = (uuid4() for _ in range(4))
-    entry, before, end = date(2026, 1, 1), date(2025, 12, 31), date(2026, 2, 28)
+    entry, before, end = (
+        date(2026, 1, 1),
+        date(2025, 12, 31),
+        date(2026, 3, 31) if across_periods else date(2026, 2, 28),
+    )
     estimates = tuple(
         (event.event_key, event.effective_date)
         for event in bundle.events
@@ -1024,7 +1034,11 @@ def test_first_entry_separates_later_original_estimate_events(
                 lines=termination.lines[:1],
                 chosen_treatments={"B": "PROSPECTIVE"} if cross_effect else {},
             )
-            last_termination = replace(termination, lines=termination.lines[1:])
+            last_termination = replace(
+                termination,
+                lines=termination.lines[1:],
+                effective_date=date(2026, 3, 28) if across_periods else termination.effective_date,
+            )
             events = cpc_worlds.then(
                 list(bundle.events),
                 "CONTRACT_TERMINATED",
@@ -1112,7 +1126,41 @@ def test_first_entry_separates_later_original_estimate_events(
                 for b in terminated.books
             ),
         )
-        terminated_book = compute(terminated).books[0]
+        terminated_output = compute(terminated)
+        terminated_book = terminated_output.books[0]
+        if across_periods:
+            target_values = {node.id: Decimal(node.value) for node in terminated_book.trace.nodes}
+            prefix = "posting_target:K-01/B/NETTING_RECLASS/"
+            # Cumulative reclass retains February's CA 20 and March's UR 280 separately.
+            assert target_values[prefix + "CONTRACT_ASSET:FY2026-P02"] == 20
+            assert target_values[prefix + "CONTRACT_ASSET:FY2026-P03"] == 20
+            assert target_values[prefix + "UNBILLED_RECEIVABLE:FY2026-P03"] == 280
+            assert target_values[prefix + "CONTRACT_LIABILITY:FY2026-P03"] == -300
+            from decimal import localcontext
+
+            from erev_engine.money import DECIMAL_CONTEXT
+            from support import intent_totals
+
+            with localcontext(DECIMAL_CONTEXT):
+                closed = intent_totals.close_pass(
+                    terminated, [terminated_output], "NETTING_RECLASS"
+                )
+            actual_lines = sorted(
+                (
+                    intent.entry_kind,
+                    line.account_role,
+                    line.amount_txn if line.side == "D" else -line.amount_txn,
+                )
+                for intent in closed.books[0].posting_intents
+                if intent.subject_key == "K-01/B" and intent.posting_period_key == "FY2026-P03"
+                for line in intent.lines
+            )
+            assert actual_lines == [
+                ("NETTING_RECLASS", "CONTRACT_LIABILITY", -28000),
+                ("NETTING_RECLASS", "UNBILLED_RECEIVABLE", 28000),
+                ("NETTING_RECLASS_REVERSAL", "CONTRACT_ASSET", -2000),
+                ("NETTING_RECLASS_REVERSAL", "CONTRACT_LIABILITY", 2000),
+            ]
         later_events = frozenset(event for event, day in estimates if day > entry)
         cancelled_version = replace(
             version,
@@ -1260,7 +1308,7 @@ def test_first_entry_separates_later_original_estimate_events(
                 external_ids={cid: "K-01"},
                 as_of=day,
             ).obligations
-            for day in (before, entry, january, end)
+            for day in (before, entry, january, date(2026, 2, 28), end)
         }
         cancelled_store = replace(
             store,
@@ -1355,6 +1403,63 @@ def test_first_entry_separates_later_original_estimate_events(
                 assert result.lines["CANCELLATIONS"] == -refund
                 assert result.lines["REVENUE"] == -(final - refund)
             assert result.lines["UNEXPLAINED"] == 0
+
+        if across_periods:
+            intermediate = date(2026, 2, 28)
+            for start, expected_open, expected_new in ((before, 0, initial), (january, initial, 0)):
+                (partial_row,) = rpo.rollforward_lines(
+                    cancelled_store, ranges={eid: (start, intermediate)}, applied={}
+                )
+                assert partial_row.lines["OPENING"] == expected_open
+                assert partial_row.lines["NEW_CONTRACTS"] == expected_new
+                assert partial_row.lines["MODIFICATIONS"] == modification
+                assert partial_row.lines["VC_ESTIMATE_CHANGES"] == final - initial - modification
+                assert partial_row.lines["CANCELLATIONS"] == -20
+                assert partial_row.lines["REVENUE"] == 0
+                assert partial_row.lines["CLOSING"] == final - 20
+                assert partial_row.lines["UNEXPLAINED"] == 0
+                (legacy_partial,) = rpo.rollforward_lines(
+                    replace(cancelled_store, classify_continuing_cancellations=False),
+                    ranges={eid: (start, intermediate)},
+                    applied={},
+                )
+                assert legacy_partial.lines != partial_row.lines
+            (march,) = rpo.rollforward_lines(
+                cancelled_store, ranges={eid: (intermediate, end)}, applied={}
+            )
+            assert march.lines["OPENING"] == final - 20
+            assert march.lines["CANCELLATIONS"] == -20
+            assert march.lines["REVENUE"] == -(final - 40)
+            assert all(
+                march.lines[key] == 0
+                for key in (
+                    "NEW_CONTRACTS",
+                    "MODIFICATIONS",
+                    "VC_ESTIMATE_CHANGES",
+                    "CLOSING",
+                    "UNEXPLAINED",
+                )
+            )
+            subject = "K-01/B"
+            original_history = cancelled_store.boundaries[vid]
+            missing_state = replace(
+                cancelled_store,
+                boundaries={
+                    vid: {
+                        **original_history,
+                        subject: tuple(
+                            replace(item, cancellation_stated=False)
+                            for item in original_history[subject]
+                        ),
+                    }
+                },
+            )
+            assert (
+                rpo._continuing_cancellations(
+                    missing_state, first_cancelled, subject, january, intermediate
+                )
+                is None
+            )
 
         # A later retained memo must not erase or duplicate that first cancellation.
         later_id = uuid4()

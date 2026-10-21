@@ -2,6 +2,29 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Partial-cancellation reporting works before the surviving obligation ends — October 20, 2026
+
+- First-entry and same-version monthly RPO cuts now attribute original partial-termination
+  allocation effects on still-disclosed obligations to CANCELLATIONS, and retain the separate
+  modification/estimate movements. Original explicit state for every termination is required;
+  monthly movements must match dated fixed allocations. New bindings retain
+  rpo_continuing_cancellations_v1; older reports preserve their earlier attribution.
+- Fixed the engine blocker revealed by the cross-month scenario: JET-06 cumulative reclass
+  components have an immutable destination role, so their never-applicable zero-weight role
+  shares no longer collide with another destination's real accumulated balance. Ordinary split
+  targets still retain explicit zero shares needed to reverse prior nonzero contributions.
+- The full-engine witness now covers both same-period and February/March partial/full
+  cancellations. February opening/new/modification/estimate/cancellation/closing lines and March
+  revenue/cancellation lines reconcile. Actual NETTING_RECLASS close-pass lines preserve CA 20
+  reversal and UR 280 reclassification; this is not merely an endpoint-balance assertion.
+- 77 scoped RPO/netting cases, the added close-pass witness, existing public three-view reports
+  and reruns, lint/types, and migration 0253 down/up exact catalogue parity pass. New lifecycle
+  evidence is engine/read-layer coverage, not a new public API lifecycle journey.
+- Mixed later-version changes while an obligation remains active, intervening pre-termination
+  versions, repeated cancellation/reentry and complex same-day entry still require completion.
+  Combined-member aging ownership, independent sign-off and final-candidate checks remain open.
+  No deployment; direct-main publication only.
+
 ## Partial cancellations attribute allocation effects on other obligations — October 20, 2026
 
 - Original nonzero fixed-allocation changes from earlier partial terminations now enter
@@ -196,22 +219,6 @@
 - Multiple cancellations, first-entry cancellation followed by another retained version in the
   same range, same-day entry/cancellation, realized-usage mixtures and combined-member aging
   ownership remain open. Independent accounting sign-off and final-candidate checks remain open.
-
-## Same-day estimate and cancellation ordering — October 20, 2026
-
-- RPO now loads the immutable contract-event record sequence for estimate causes, using the
-  same (effective date, record sequence, event key) order as the engine. A same-day estimate
-  before the original termination can participate in the reconciled cancellation bridge;
-  missing order or an estimate at/after termination remains unsupported.
-- New bindings retain rpo_cancelled_changes_v2. Existing v1 runs keep their date-only rule and
-  retain v1 again on rerun; older runs without cancellation decomposition remain unchanged.
-  No event is reordered and no engine accounting amount changes.
-- Full-compute positive/negative estimate cases now cover same-day termination, missing order,
-  reversed order and v1 behavior. The eight targeted first-batch cases, public modification
-  reports/reruns in three views, lint/types and migration 0241 down/up catalogue parity pass.
-  No deployment; direct main publication.
-- First-entry cancellation batches, multiple cancellations, usage mixtures, combined-member
-  aging ownership, independent accounting sign-off and final-candidate checks remain open.
 
 ## Outstanding release verification
 

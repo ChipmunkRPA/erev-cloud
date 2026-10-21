@@ -356,6 +356,7 @@ class Store:
     classify_same_day_entry_cancellation: bool = field(default=True, kw_only=True)
     classify_separate_cancellations: bool = field(default=True, kw_only=True)
     classify_cancellation_cross_changes: bool = field(default=True, kw_only=True)
+    classify_continuing_cancellations: bool = field(default=True, kw_only=True)
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -1197,6 +1198,27 @@ def _cancellation_boundary(
     return terminal[0], cross
 
 
+def _continuing_cancellations(
+    store: Store, version: _Version, subject: str, start: date, end: date
+) -> Decimal | None:
+    """Original termination effects while this obligation remains in disclosure."""
+    if not store.classify_continuing_cancellations or not version.cancellation_events:
+        return None
+    changes = [
+        item
+        for item in store.boundaries.get(version.id, {}).get(subject, ())
+        if item.event in version.cancellation_events
+    ]
+    if (
+        len(changes) != len(version.cancellation_events)
+        or {item.event for item in changes} != version.cancellation_events
+        or not all(item.cancellation_stated for item in changes)
+        or any(item.cancelled_on is not None for item in changes if start < item.day <= end)
+    ):
+        return None
+    return sum((item.amount for item in changes if start < item.day <= end), ZERO)
+
+
 def _cancelled_changes(
     store: Store, version: _Version, subject: str, opening: Decimal
 ) -> tuple[Decimal, Decimal] | None:
@@ -1657,6 +1679,14 @@ def _obligation_lines(
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             subject = obligation_subject_key(current.external_id, current.obligation_key)
             boundaries = store.boundaries.get(version.id, {}).get(subject, ())
+            continuing = (
+                _continuing_cancellations(store, version, subject, version.effective, end)
+                if pending_cancellation is None and store.visible(current, end) is not None
+                else None
+            )
+            if continuing is not None:
+                lines["NEW_CONTRACTS"] -= continuing
+                lines["CANCELLATIONS"] += continuing
             if pending_cancellation is current and store.classify_cancellation_cross_changes:
                 boundary = _cancellation_boundary(store, boundaries, version.cancellation_events)
                 if boundary is not None:
@@ -1691,6 +1721,7 @@ def _obligation_lines(
                     (
                         CAUSE_LINES.get(kind) == "CANCELLATIONS"
                         and pending_cancellation is not current
+                        and continuing is None
                     )
                     or (CAUSE_LINES.get(kind) == "MODIFICATIONS" and not complete_boundaries)
                     for kind in version.causes
@@ -1862,7 +1893,10 @@ def _obligation_lines(
                     ),
                     ZERO,
                 )
-                if change + modifications == close_fixed - open_fixed:
+                continuing = _continuing_cancellations(store, opening_version, subject, before, end)
+                cancelled = continuing if continuing is not None else ZERO
+                if change + modifications + cancelled == close_fixed - open_fixed:
+                    lines["CANCELLATIONS"] += cancelled
                     lines["VC_ESTIMATE_CHANGES"] += change
                     lines["MODIFICATIONS"] += modifications
     settle_batch_usage()

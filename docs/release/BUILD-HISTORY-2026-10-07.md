@@ -10489,3 +10489,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - First-entry-and-cancel batches, multiple cancellations, usage-event mixtures and estimates
   on the termination day remain unsupported by this decomposition. Combined-member aging date
   ownership, independent accounting sign-off and final-candidate verification also remain open.
+
+## Same-day estimate and cancellation ordering — October 20, 2026
+
+- RPO now loads the immutable contract-event record sequence for estimate causes, using the
+  same (effective date, record sequence, event key) order as the engine. A same-day estimate
+  before the original termination can participate in the reconciled cancellation bridge;
+  missing order or an estimate at/after termination remains unsupported.
+- New bindings retain rpo_cancelled_changes_v2. Existing v1 runs keep their date-only rule and
+  retain v1 again on rerun; older runs without cancellation decomposition remain unchanged.
+  No event is reordered and no engine accounting amount changes.
+- Full-compute positive/negative estimate cases now cover same-day termination, missing order,
+  reversed order and v1 behavior. The eight targeted first-batch cases, public modification
+  reports/reruns in three views, lint/types and migration 0241 down/up catalogue parity pass.
+  No deployment; direct main publication.
+- First-entry cancellation batches, multiple cancellations, usage mixtures, combined-member
+  aging ownership, independent accounting sign-off and final-candidate checks remain open.
