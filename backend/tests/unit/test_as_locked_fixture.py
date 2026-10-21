@@ -170,6 +170,7 @@ def test_the_table_asks_every_key_of_every_report_that_takes_a_lock(script: Modu
             if key in locked.ADMITTED_KEYS:
                 continue
             if key == "currency_view" and code in {
+                "balance_aging",
                 "revenue_waterfall",
                 "contract_balances",
                 "rpo",

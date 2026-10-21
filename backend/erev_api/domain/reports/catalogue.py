@@ -1922,6 +1922,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract_version",
             "contract_computation",
             "combination_group_member",
+            "lock_snapshot",
         ),
         joins=(
             "fx_layer_movement.contract_version_id = contract_version_balance.contract_version_id",
@@ -1941,6 +1942,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "dates; each member and role must reconcile to dated functional balances; "
             "reporting view uses retained closing rates and cumulative bucket rounding; "
             "legacy bindings retain original behavior",
+            _as_locked("BALANCE_AGING"),
         ),
         tie_outs=("TO_AGING_EQ_BALANCES",),
     ),

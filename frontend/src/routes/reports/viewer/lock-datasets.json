@@ -1,4 +1,5 @@
 {
+  "balance_aging": "BALANCE_AGING",
   "contract_balance_rollforward": "CONTRACT_BALANCE_ROLLFORWARD",
   "contract_balances": "CONTRACT_BALANCES",
   "contract_cost_rollforward": "COST_ROLLFORWARD",

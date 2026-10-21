@@ -2,6 +2,9 @@
 §15.2.7 S15-R-18 to S15-R-20a; design note PRODUCTION-F-RPS-RPS-SNAP-DESIGN.md D1–D8, A1, A2; record
 §50).
 
+New locks also freeze BALANCE_AGING from its original dated layers in all three currency views.
+Historical twelve-kind manifests remain readable without an aging backfill.
+
 F-CLO's ``close/snapshots.py::freeze_datasets`` resolves this module by name (``SNAPSHOT_DATASETS``,
 ``SnapshotScope``) at the PERIOD_LOCK decision and at CLO-20's ``DATASET_FREEZE``, calls one
 ``DatasetBuilder`` per E-64 kind with the lock's ``SnapshotScope`` and stores the returned engine
@@ -70,6 +73,7 @@ from sqlalchemy import select
 from erev_api.db.tables import legal_entity, period
 from erev_api.domain.reports import elections, framework, locked, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
+from erev_api.domain.reports.builders import balance_aging as aging_builder
 from erev_api.domain.reports.builders import contract_balance_rollforward as cbr_builder
 from erev_api.domain.reports.builders import contract_balances as balances_builder
 from erev_api.domain.reports.builders import contract_cost_rollforward as cost_builder
@@ -176,6 +180,7 @@ SNAPSHOT_DEPENDENCIES: Final[Mapping[str, SnapshotDependency]] = MappingProxyTyp
 KEY_COLUMNS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
     {
         "WATERFALL": ("entity_code", "contract_external_id", "obligation_key", "period_key"),
+        "BALANCE_AGING": ("entity_code", "contract_external_id", "balance_role", "currency"),
         "CONTRACT_BALANCES": ("entity_code", "contract_external_id"),
         "CONTRACT_BALANCE_ROLLFORWARD": ("line_code", "contract_external_id", "currency"),
         "RPO": ("entity_code", "contract_external_id", "obligation_key"),
@@ -247,7 +252,7 @@ TOTAL_PREFIX: Final = "TOTAL:"  # presentation totals of the wrapped reports (re
 ROW_KEY_PREFIX: Final = "obligation:"
 _ROW_KEY_JOINER: Final = ":"
 # the reports whose period is one key; the others take a range (from = to = the lock's period)
-_PERIOD_KEY_REPORTS: Final = frozenset({"contract_balances", "rpo"})
+_PERIOD_KEY_REPORTS: Final = frozenset({"balance_aging", "contract_balances", "rpo"})
 # SNAP-2 (design §14): reports selected by a DATE range take the lock period's bounds — its first
 # and last day (`period.start_date` / `period.end_date`) — as `from_date` / `to_date`; F-CTR's
 # `modification_register` filters `modification.effective_date` inclusively on them.
@@ -279,6 +284,13 @@ MULTI_PERIOD: Final = (
 # bands, DISAGGREGATION's `period:` columns → money). An undeclared header is TEXT (guarded).
 _STATIC_COLUMN_KINDS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType(
     {
+        "BALANCE_AGING": MappingProxyType(
+            {
+                **{column.key: column.kind for column in aging_builder.COLUMNS},
+                "functional_currency": "code",
+                "closing_fx_rate": "decimal",
+            }
+        ),
         "CONTRACT_BALANCES": MappingProxyType(
             {
                 "contract_external_id": "code",

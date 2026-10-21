@@ -35,6 +35,7 @@ P09 = uuid5(NAMESPACE_URL, "erev://tests/period/FY2026-P09")
 SCOPE = snapshots.SnapshotScope(entity_id=US01, book_code="ASC606", period_id=P09, known_at=K)
 DEPENDENT: tuple[str, ...] = ()  # twelve of twelve: F-CLO's manual_adjustment_register landed
 ADAPTER_CODES = (
+    "balance_aging",
     "revenue_waterfall",
     "contract_balances",
     "contract_balance_rollforward",
@@ -179,7 +180,7 @@ def test_scope_parameters_equal_the_frameworks_resolution_for_an_in_scope_princi
         period_key="FY2026-P09",
         period_bounds=PERIOD_BOUNDS if code == "modification_register" else None,
     )
-    if code in ("contract_balances", "rpo"):
+    if code in ("balance_aging", "contract_balances", "rpo"):
         assert parameters["period_key"] == "FY2026-P09" and "from_period_key" not in parameters
     elif code == "modification_register":  # SNAP-2: the lock period's first / last day
         assert (parameters["from_date"], parameters["to_date"]) == ("2026-09-01", "2026-09-30")

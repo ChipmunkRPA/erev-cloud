@@ -22450,6 +22450,7 @@ export interface components {
      */
     SnapshotKind:
       | "WATERFALL"
+      | "BALANCE_AGING"
       | "CONTRACT_BALANCES"
       | "CONTRACT_BALANCE_ROLLFORWARD"
       | "RPO"

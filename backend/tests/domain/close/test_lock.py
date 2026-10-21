@@ -721,7 +721,7 @@ def test_lock_writes_certification_and_snapshots(world: CloseWorld, clock: Froze
                 period_state.c.period_end_date == date(2026, 10, 31),
             )
         ).scalar_one()
-    assert len(snapshots) == 12 and sorted(hashes) == sorted(TWELVE_KINDS)
+    assert len(snapshots) == 13 and sorted(hashes) == sorted(TWELVE_KINDS)
     assert lock["snapshot_manifest_sha256"] == _manifest(hashes)
     assert lock["ledger_head_chain_seq"] == head
     assert _state(world)["state"] == PeriodState.CLOSED.value

@@ -109,3 +109,43 @@ def test_relock_reports_alternate_currency_changes_without_mixing_default_amount
     assert result["currency_views"]["functional"]["comparison"]["changed"] is False
     changed = result["currency_views"]["reporting"]["comparison"]["changed_rows"]
     assert changed[0]["columns"]["contract_liability"]["delta"] == "10.00"
+
+
+def test_aging_relock_distinguishes_bucket_migration_from_total_change() -> None:
+    from erev_api.domain.close.relock_diff import DatasetSide, diff_dataset
+    from erev_api.domain.reports import snapshots
+    from erev_api.domain.reports.builders.balance_aging import COLUMNS
+    from erev_api.domain.reports.outputs import ReportData
+
+    def variant(older: bool) -> engine.Encoded:
+        row = {
+            "row_key": "contract:A:CONTRACT_LIABILITY",
+            "entity_code": "US",
+            "contract_external_id": "A",
+            "customer_name": "Customer A",
+            "balance_role": "Contract liability",
+            "currency": "USD",
+            **{
+                column.key: {"amount": "0.00", "currency": "USD"}
+                for column in COLUMNS
+                if column.kind == "money"
+            },
+        }
+        row["total"] = {"amount": "100.00", "currency": "USD"}
+        row["bucket_31_90" if older else "bucket_0_30"] = row["total"]
+        return snapshots.encode_report(
+            "BALANCE_AGING",
+            ReportData(columns=COLUMNS, rows=(row,), control_totals={}),
+            drop_presentation_totals=True,
+        )
+
+    old, new = variant(False), variant(True)
+    result = diff_dataset(
+        "BALANCE_AGING",
+        DatasetSide(old.kind, old.file_sha256, old.row_count, old.content),
+        DatasetSide(new.kind, new.file_sha256, new.row_count, new.content),
+    )
+    changed = result["changed_rows"][0]["columns"]
+    assert changed["bucket_0_30"]["delta"] == "-100.00"
+    assert changed["bucket_31_90"]["delta"] == "100.00"
+    assert "total" not in changed

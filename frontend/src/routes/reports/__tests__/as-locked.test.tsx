@@ -472,6 +472,7 @@ async function expectAsLockedByDefault(code: string, periods: readonly Period[])
   const fields = fieldsOf(bar);
   expect(fields.length > 0).toBe(toolbarKeys(definition).length > 0);
   const currency = [
+    "balance_aging",
     "revenue_waterfall",
     "contract_balances",
     "rpo",
@@ -501,8 +502,8 @@ async function expectAsLockedByDefault(code: string, periods: readonly Period[])
 }
 
 describe("RV-04 on a closed period: the reports with a lock dataset", () => {
-  it("are the twelve of the API's kinds table", () => {
-    expect(WITH_DATASET).toHaveLength(12);
+  it("are the thirteen of the API's kinds table", () => {
+    expect(WITH_DATASET).toHaveLength(13);
     expect([...WITH_DATASET].sort()).toEqual(Object.keys(AS_LOCKED.kinds).sort());
   });
 
@@ -694,12 +695,12 @@ describe("RV-04 on a closed period: the reports with a lock dataset", () => {
 });
 
 describe("RV-04 on a closed period: the reports without a lock dataset", () => {
-  it("are the forty-three other report views", () => {
-    expect(WITHOUT_DATASET).toHaveLength(43);
-    // Sixteen take the lock and the API has no dataset for it; twenty-seven take none.
+  it("are the forty-two other report views", () => {
+    expect(WITHOUT_DATASET).toHaveLength(42);
+    // Fifteen take the lock and the API has no dataset for it; twenty-seven take none.
     expect(
       WITHOUT_DATASET.filter((code) => takes(definitionOf(code), "period_lock_id")),
-    ).toHaveLength(16);
+    ).toHaveLength(15);
   });
 
   it.each(WITHOUT_DATASET)(

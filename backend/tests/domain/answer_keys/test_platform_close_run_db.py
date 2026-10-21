@@ -112,7 +112,7 @@ def test_pos_012_compares_clean_after_the_close_run_of_its_plan(
     assert counts["RELEASE_SCHEDULES"]["lines"] == counts["FX_REMEASUREMENT"]["lines"] == 0
     assert counts["EXPORT"]["batches_exported"] == 0  # the run observes; it exports nothing
     assert counts["GL_TIE_OUT"]["trial_balance_attached"] is False
-    assert counts["DATASET_FREEZE"]["datasets_frozen"] == 12
+    assert counts["DATASET_FREEZE"]["datasets_frozen"] == 13
 
     # What it left. The period is as it was: open, with the transitions the world's setup wrote.
     states = {

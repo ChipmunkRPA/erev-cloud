@@ -133,20 +133,22 @@ def _read_frozen(uow: UnitOfWork, scope: locked.LockScope) -> FrozenClose:
         for row in rows
     ]
     try:
-        manifest_hash = manifest_of(datasets)
+        manifest_hash = manifest_of(datasets, allow_legacy=True)
     except ValueError as error:
         raise Problem(
-            "validation-failed", "The lock does not hold all twelve snapshot kinds."
+            "validation-failed", "The lock does not hold a complete supported snapshot manifest."
         ) from error
     if manifest_hash != lock["snapshot_manifest_sha256"]:
         raise Problem(
             "validation-failed", "The snapshot manifest does not match the selected lock."
         )
     by_kind = {str(row["snapshot_kind"]): row for row in rows}
-    if set(by_kind) != set(locked.SNAPSHOT_KIND_BY_REPORT.values()):
+    if not set(by_kind) <= set(locked.SNAPSHOT_KIND_BY_REPORT.values()):
         raise Problem("validation-failed", "A frozen snapshot has no evidence report mapping.")
     reports = []
     for report_code, kind in sorted(locked.SNAPSHOT_KIND_BY_REPORT.items()):
+        if kind not in by_kind:
+            continue  # A verified historical manifest need not contain a later dataset kind.
         frozen = locked.locked_dataset(uow, report_code=report_code, lock_id=scope.lock_id)
         # Require the same report row-key contract as ordinary as-locked output.
         locked.report_data(frozen)

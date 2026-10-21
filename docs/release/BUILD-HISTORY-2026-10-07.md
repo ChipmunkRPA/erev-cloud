@@ -10122,3 +10122,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Migration 0223 describes this path. Multi-origin split and within-period mixed attribution,
   broader agent close/reversal acceptance and independent accounting sign-off remain open.
   The disclosure's existing gross-control-relief column policy is unchanged. No deployment.
+
+## Mixed-period TIME source amounts — October 20, 2026
+
+- S14 retains per-period transaction and functional TIME deltas from its original cumulative
+  targets, including rounding and role signs. No posting amounts or allocation policy change.
+- Reporting now handles a mixed cumulative input spanning periods/owners when each mixed period
+  has one original provenance. That period's TIME/EVENT amounts use the retained pair, with
+  both-currency total checks. Multiple owners within one mixed period still require finer evidence.
+- Source tests cover signed foreign amounts, changed functional evidence, missing history and
+  ambiguous owners. An original S14 mixed-period output feeds the report reader directly.
+  Uniform-period legacy source ordering is preserved for retained reruns.
+- Scoped source/engine cases, the DB intercompany reversal/public-report rerun journey, lint/types
+  and migrated catalogue checks pass. Migration 0224 documents the two consumers. A dedicated
+  public mixed-period workflow, multi-origin split and independent accounting sign-off remain
+  open. No deployment; direct main publication.

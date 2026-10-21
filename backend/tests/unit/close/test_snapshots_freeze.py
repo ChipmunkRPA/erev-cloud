@@ -45,9 +45,9 @@ def _scope(**values: Any) -> dict[str, Any]:
     return values
 
 
-def test_twelve_kinds_follow_e_64() -> None:
+def test_current_kinds_follow_e_64() -> None:
     assert (
-        len(KINDS) == 12 and KINDS[0] == "WATERFALL" and KINDS[-1] == "MANUAL_ADJUSTMENT_REGISTER"
+        len(KINDS) == 13 and KINDS[0] == "WATERFALL" and KINDS[-1] == "MANUAL_ADJUSTMENT_REGISTER"
     )
 
 
@@ -109,7 +109,7 @@ def test_manifest_uses_the_engine_formula_over_every_kind() -> None:
     assert manifest == "|".join(
         f"{d.kind}:{d.file_sha256}" for d in sorted(datasets, key=lambda d: d.kind)
     )
-    with pytest.raises(ValueError, match="twelve"):
+    with pytest.raises(ValueError, match="every required"):
         snapshots.manifest_of(datasets[:-1], engine=_engine())
 
 
@@ -343,3 +343,17 @@ def test_a_right_media_wrong_name_row_is_refused_too() -> None:
         snapshots.assert_machine_artefact(
             _row(original_filename="JE_POPULATION.snapshot"), "WATERFALL"
         )
+
+
+def test_historical_manifest_compatibility_never_weakens_new_freezes() -> None:
+    from erev_engine.stages.s15_disclosures import snapshots as encoder
+
+    old = tuple(item for item in _datasets() if item.kind != "BALANCE_AGING")
+    with pytest.raises(ValueError, match="every required"):
+        snapshots.manifest_of(old)
+    expected = encoder.manifest_sha256({item.kind: item.file_sha256 for item in old})
+    assert snapshots.manifest_of(old, allow_legacy=True) == expected
+    with pytest.raises(ValueError, match="every required"):
+        snapshots.manifest_of(old[:-1], allow_legacy=True)
+    with pytest.raises(ValueError, match="every required"):
+        snapshots.manifest_of((*old, old[0]), allow_legacy=True)

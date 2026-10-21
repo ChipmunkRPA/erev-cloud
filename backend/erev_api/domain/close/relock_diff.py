@@ -107,6 +107,19 @@ KEY_COLUMNS: Final[Mapping[str, KeySpec]] = {
         measures=("scheduled", "recognised", "awaiting_trigger", "total"),
         measure_patterns=(r"period:.+",),
     ),
+    SnapshotKind.BALANCE_AGING.value: KeySpec(
+        ("entity_code", "contract_external_id", "balance_role", "currency"),
+        "builder",
+        "Original period-end aging by entity, contract, balance role and currency.",
+        measures=(
+            "bucket_0_30",
+            "bucket_31_90",
+            "bucket_91_180",
+            "bucket_181_365",
+            "bucket_over_365",
+            "total",
+        ),
+    ),
     SnapshotKind.CONTRACT_BALANCES.value: KeySpec(
         ("entity_code", "contract_external_id"),
         "builder",

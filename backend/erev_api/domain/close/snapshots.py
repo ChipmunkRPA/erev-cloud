@@ -102,7 +102,7 @@ def freeze_datasets(
     reader: Callable[[UnitOfWork], AbstractContextManager[UnitOfWork]] | None = None,
     currency_variants: bool | None = None,
 ) -> tuple[DatasetFile, ...]:
-    """Freeze the twelve E-64 datasets of the period as of ``known_at`` (S15-R-18); refuse by name
+    """Freeze all current E-64 datasets of the period as of ``known_at`` (S15-R-18); refuse by name
     when the engine, the registry or any kind's builder is absent. ``frozen_at`` is the freeze
     instant for the kinds that cut and reconstruct at the freeze rather than at ``known_at``
     (``JE_POPULATION`` — S15-R-18b Q5; D-98 candidate 139 amendment 3: ``SnapshotScope.frozen_at``,
@@ -186,13 +186,21 @@ def freeze_datasets(
 
 
 def manifest_of(
-    datasets: Sequence[DatasetFile], *, engine: dependencies.SnapshotEngine | None = None
+    datasets: Sequence[DatasetFile],
+    *,
+    engine: dependencies.SnapshotEngine | None = None,
+    allow_legacy: bool = False,
 ) -> str:
     """T-CLS-04 ``snapshot_manifest_sha256``: the engine's S15-R-19 manifest over every kind."""
     engine = engine or dependencies.snapshot_engine()
     kinds = {dataset.kind for dataset in datasets}
-    if kinds != set(engine.kinds) or len(datasets) != len(engine.kinds):
-        raise ValueError("a manifest covers each of the twelve snapshot kinds exactly once")
+    expected = set(engine.kinds)
+    # Read-only compatibility: old authenticated manifests predate aging. New freezes must
+    # include every current kind; a missing aging dataset never gets rebuilt on read.
+    if allow_legacy and "BALANCE_AGING" in expected and kinds == expected - {"BALANCE_AGING"}:
+        expected.remove("BALANCE_AGING")
+    if kinds != expected or len(datasets) != len(expected):
+        raise ValueError("a manifest covers every required snapshot kind exactly once")
     return str(engine.manifest_sha256({dataset.kind: dataset.file_sha256 for dataset in datasets}))
 
 

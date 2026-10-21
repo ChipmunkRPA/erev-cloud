@@ -1021,7 +1021,7 @@ def test_observation_steps_succeed_without_export(
 ) -> None:
     """BUILD_SPEC CLO-20 (BS4-D-03; PRD J-13.7): with the journal run still ``draft``: ``EXPORT``
     "0 batches exported", ``ACKNOWLEDGEMENT_WAIT`` "0 of 1 batches acknowledged", ``GL_TIE_OUT``
-    "No trial balance attached", each ``SUCCEEDED``; ``DATASET_FREEZE`` "12 datasets frozen" with
+    "No trial balance attached", each ``SUCCEEDED``; ``DATASET_FREEZE`` "13 datasets frozen" with
     12 SHA-256 values in ``counts.datasets``; ``LOCK`` ``PENDING``; run ``SUCCEEDED``.
 
     BS4-D-04: the twelve datasets are ``SNAPSHOT_DATASET`` files frozen at one instant of the
@@ -1053,9 +1053,9 @@ def test_observation_steps_succeed_without_export(
     assert runs.summary(run, "INVARIANTS") == "All invariants pass"
 
     freeze = runs.step(run, "DATASET_FREEZE")["counts"]
-    assert runs.summary(run, "DATASET_FREEZE") == "12 datasets frozen"
+    assert runs.summary(run, "DATASET_FREEZE") == "13 datasets frozen"
     datasets = freeze["datasets"]
-    assert sorted(datasets) == sorted(SNAPSHOT_KINDS) and len(datasets) == 12
+    assert sorted(datasets) == sorted(SNAPSHOT_KINDS) and len(datasets) == 13
     assert all(len(value) == 64 and int(value, 16) >= 0 for value in datasets.values())
     assert run["counts"]["datasets"] == datasets
     assert datetime.fromisoformat(freeze["frozen_known_at"]) >= datetime.fromisoformat(
@@ -1278,7 +1278,7 @@ def test_lock_marks_lock_step(
         .select_from(file_object)
         .where(file_object.c.purpose == FilePurpose.SNAPSHOT_DATASET.value),
     )
-    assert stored == 12 + len(moved)
+    assert stored == 13 + len(moved)
 
 
 # --- a sandbox ------------------------------------------------------------------------------------

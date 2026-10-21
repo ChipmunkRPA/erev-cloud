@@ -169,6 +169,7 @@ export function asLockedFindings(
     findings.push({ field: `${PARAMETERS}${key}`, rule_id: rule, message });
   };
   const currencyViews = [
+    "balance_aging",
     "revenue_waterfall",
     "contract_balances",
     "rpo",

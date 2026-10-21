@@ -737,7 +737,7 @@ def test_locks_list_states_what_each_record_certified_and_froze(
     assert [item["snapshot_kind"] for item in lock["snapshots"]] == [
         kind.value for kind in SnapshotKind
     ]
-    assert len(lock["snapshots"]) == 12
+    assert len(lock["snapshots"]) == 13
     assert all(
         set(item) == {"snapshot_kind", "row_count", "file_sha256"} for item in lock["snapshots"]
     )

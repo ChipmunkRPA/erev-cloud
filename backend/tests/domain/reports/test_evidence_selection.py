@@ -342,6 +342,7 @@ def _freeze_for_pack(
     fault: str | None = None,
     formula_cells: bool = False,
     currency_variants: bool = True,
+    legacy_manifest: bool = False,
     certification_rows: list[dict[str, Any]] | None = None,
     audit_head: tuple[int, str | None] | None = None,
 ) -> dict[str, Any]:
@@ -381,7 +382,9 @@ def _freeze_for_pack(
             datasets[0] = replace(datasets[0], file_sha256="0" * 64)
         if fault == "row-count":
             datasets[0] = replace(datasets[0], row_count=datasets[0].row_count + 1)
-        manifest = close_snapshots.manifest_of(datasets)
+        if legacy_manifest:
+            datasets = [item for item in datasets if item.kind != "BALANCE_AGING"]
+        manifest = close_snapshots.manifest_of(datasets, allow_legacy=legacy_manifest)
         if fault == "missing-kind":
             datasets.pop()
         if fault == "manifest":
@@ -410,12 +413,16 @@ def _freeze_for_pack(
 
 
 @pytest.mark.parametrize("currency_variants", [False, True])
+@pytest.mark.parametrize("legacy_manifest", [False, True])
 def test_close_collector_uses_actual_frozen_sources_and_produces_verifiable_archive(
     sources: Sources,
     currency_variants: bool,
+    legacy_manifest: bool,
 ) -> None:
     request = ADAPTER.validate_python(
-        _freeze_for_pack(sources, currency_variants=currency_variants)
+        _freeze_for_pack(
+            sources, currency_variants=currency_variants, legacy_manifest=legacy_manifest
+        )
     )
     with sources.world.place.uow(sources.principal) as uow:
         selection = resolve(uow, request)
@@ -425,8 +432,12 @@ def test_close_collector_uses_actual_frozen_sources_and_produces_verifiable_arch
         payloads = {file.path: file.content for file in files}
         sources_doc = json.loads(payloads["lock/snapshots.json"])
         assert sources_doc["period_lock_id"] == str(selection.lock.lock_id)
-        assert len(sources_doc["snapshots"]) == 12
-        assert len(files) == (26 if currency_variants else 14)
+        assert len(sources_doc["snapshots"]) == (12 if legacy_manifest else 13)
+        assert len(files) == (
+            (26 if currency_variants else 14)
+            if legacy_manifest
+            else (29 if currency_variants else 15)
+        )
         for snapshot in sources_doc["snapshots"]:
             frozen = locked.locked_dataset(
                 uow, report_code=snapshot["report_code"], lock_id=selection.lock.lock_id
@@ -626,7 +637,7 @@ def test_relock_collector_includes_original_diff_and_both_lock_identities(source
         assert diff["certification"]["changed"] == [
             {"gate_check_code": "JE_COMPLETE", "previous_status": None, "current_status": "PASSED"}
         ]
-        assert len(diff["kinds"]) == 12
+        assert len(diff["kinds"]) == 13
         monetary = payloads["relock/frozen_measure_changes.json"]
         assert monetary["from_period_lock_id"] == str(first_id)
         assert monetary["to_period_lock_id"] == body["period_lock_id"]
@@ -693,7 +704,7 @@ def test_variance_frozen_sources_need_report_permission_without_audit_access(
             to_period_lock_id=UUID(body["period_lock_id"]),
             entity_ids=(scope.entity_id,),
         )
-        assert len(pair.earlier.frozen.reports) == len(pair.later.frozen.reports) == 12
+        assert len(pair.earlier.frozen.reports) == len(pair.later.frozen.reports) == 13
         assert pair.required_entity_ids == (scope.entity_id,)
         assert not pair.earlier.computations  # this fixture has no accounting population
         with pytest.raises(Problem) as error:

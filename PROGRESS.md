@@ -6,6 +6,23 @@
 
 
 
+## Locked balance aging — October 20, 2026
+
+- New closes freeze BALANCE_AGING alongside the existing twelve datasets. Original age buckets,
+  transaction/functional/reporting amounts and reporting FX controls are authenticated in the
+  manifest. The viewer supports retained currency selection; CSV exports and close evidence
+  archives read only those bytes. Additional aging filters cannot alter a locked population.
+- Re-lock comparison measures each aging bucket and total by entity, contract, role and currency,
+  including a move between buckets with an unchanged total. Existing twelve-kind manifests remain
+  verifiable/exportable; old locks without aging explicitly refuse that report, with no live backfill.
+- Migration 0234 adds the snapshot enum and IPE metadata. Targeted API read/export, real foreign
+  close-run freeze, public lock, new/legacy evidence archive, re-lock and viewer checks pass.
+  Scoped lint/types and migrated catalogue parity pass. No deployment; direct main publication.
+- This does not fill missing original layer evidence: combined-member functional aging whose
+  owner layers do not reconcile still refuses. A new close now also requires its aging dataset
+  to be reproducible; historical computations missing the required traces can require recompute.
+  Independent accounting sign-off and final-candidate release checks remain open.
+
 ## Priced right-to-invoice advance billing — October 20, 2026
 
 - Fixed the shared RTI source selector: a booked unit price selects delivered quantity even
@@ -222,22 +239,6 @@
 - Remaining live priorities include multi-origin agent split attribution and documented dated
   projection gaps. Independent accounting sign-off and final-candidate checks remain required.
   No deployment. This entry supersedes the earlier public mixed-TIME acceptance task.
-
-
-## Mixed-period TIME source amounts — October 20, 2026
-
-- S14 retains per-period transaction and functional TIME deltas from its original cumulative
-  targets, including rounding and role signs. No posting amounts or allocation policy change.
-- Reporting now handles a mixed cumulative input spanning periods/owners when each mixed period
-  has one original provenance. That period's TIME/EVENT amounts use the retained pair, with
-  both-currency total checks. Multiple owners within one mixed period still require finer evidence.
-- Source tests cover signed foreign amounts, changed functional evidence, missing history and
-  ambiguous owners. An original S14 mixed-period output feeds the report reader directly.
-  Uniform-period legacy source ordering is preserved for retained reruns.
-- Scoped source/engine cases, the DB intercompany reversal/public-report rerun journey, lint/types
-  and migrated catalogue checks pass. Migration 0224 documents the two consumers. A dedicated
-  public mixed-period workflow, multi-origin split and independent accounting sign-off remain
-  open. No deployment; direct main publication.
 
 
 ## Outstanding release verification

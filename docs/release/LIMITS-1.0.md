@@ -1,5 +1,30 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — locked balance aging and historical manifest compatibility
+
+New locks now include BALANCE_AGING in all three currency views. The original period-end
+buckets, amounts and reporting translation controls are frozen together; locked reads, CSV
+exports and close evidence archives cannot re-age balances or re-read rates. Re-lock comparison
+tracks bucket movements separately from changes to totals. The report viewer exposes currency
+selection while keeping the frozen scope fixed. Migration 0234 extends the snapshot kind and
+records its source in the report catalogue.
+
+Old twelve-kind manifests remain verifiable and exportable with their original hashes. They
+have no aging dataset: an aging request against such a lock refuses explicitly. Nothing is
+backfilled from current business data. Current freeze writes still require every current kind.
+
+The original-source limits of functional aging still apply. In particular, combined-member
+owner layers that do not reproduce dated member functional balances are unsupported; the
+builder refuses instead of assigning ages by an invented ratio. Because new closes now freeze
+aging, incomplete original aging evidence can block their dataset freeze. Old computations may
+need recomputation to supply retained aging traces. This change does not claim to resolve those
+underlying ownership gaps or independent accounting acceptance.
+
+Targeted validation covers three-view API reads/CSV exports without live builder calls, a real
+foreign-currency close-run freeze, a public approved lock, old/new evidence archive verification,
+aging bucket re-lock differences, viewer selector restrictions, lint/types and migrated IPE parity.
+No deployment was performed. Final-candidate checks and independent accounting sign-off remain.
+
 ### October 20 — priced RTI advance-billing source defect resolved
 
 The shared right-to-invoice selector now uses delivered quantity times the booked unit price

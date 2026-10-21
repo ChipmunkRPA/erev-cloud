@@ -1088,6 +1088,7 @@
   "close.history.certification.waiver": "Waiver {request}, {waived} at approval",
   "close.history.copied": "{name} copied",
   "close.history.copy": "Copy {name}",
+  "close.history.dataset.BALANCE_AGING": "Balance aging",
   "close.history.dataset.CONTRACT_BALANCES": "Contract balances",
   "close.history.dataset.CONTRACT_BALANCE_ROLLFORWARD": "Contract balance rollforward",
   "close.history.dataset.COST_ROLLFORWARD": "Contract cost rollforward",

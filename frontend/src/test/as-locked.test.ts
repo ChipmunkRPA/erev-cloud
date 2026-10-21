@@ -32,13 +32,13 @@ describe("the fake of an as-locked report run", () => {
     }
   });
 
-  it("the table asks every report that takes a lock, and every key of the twelve with a dataset", () => {
+  it("the table asks every report that takes a lock, and every key of reports with a dataset", () => {
     const taking = AS_LOCKED.definitions.filter((definition) => takes(definition, LOCK_KEY));
     expect(taking).toHaveLength(30);
     expect(new Set(AS_LOCKED.cases.map((row) => row.report))).toEqual(
       new Set(taking.map((definition) => definition.code)),
     );
-    expect(Object.keys(AS_LOCKED.kinds)).toHaveLength(12);
+    expect(Object.keys(AS_LOCKED.kinds)).toHaveLength(13);
     for (const code of Object.keys(AS_LOCKED.kinds)) {
       const properties = Object.keys(definitionOf(code).parameters_schema.properties as object);
       const asked = new Set(

@@ -47,6 +47,7 @@ __all__ = [
 # 04 E-64 ``snapshot_kind``.
 SNAPSHOT_KINDS: Final = (
     "WATERFALL",
+    "BALANCE_AGING",
     "CONTRACT_BALANCES",
     "CONTRACT_BALANCE_ROLLFORWARD",
     "RPO",

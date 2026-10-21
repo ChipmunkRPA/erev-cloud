@@ -163,7 +163,7 @@ def test_s15_r19_manifest_hash() -> None:
         manifest_sha256({"BALANCES": files["RPO"]})
     with pytest.raises(ValueError, match="SHA-256"):
         manifest_sha256({"RPO": "abc"})
-    assert len(SNAPSHOT_KINDS) == 12 and "COST_ROLLFORWARD" in SNAPSHOT_KINDS
+    assert len(SNAPSHOT_KINDS) == 13 and "COST_ROLLFORWARD" in SNAPSHOT_KINDS
 
 
 def _evaluations() -> list[Evaluation]:

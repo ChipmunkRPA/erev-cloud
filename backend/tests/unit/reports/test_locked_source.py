@@ -137,7 +137,7 @@ class _Uow:
 def test_each_snapshot_kind_has_exactly_one_report_in_the_catalogue() -> None:
     kinds = list(locked.SNAPSHOT_KIND_BY_REPORT.values())
     assert sorted(kinds) == sorted(kind.value for kind in SnapshotKind)
-    assert len(kinds) == len(set(kinds)) == 12
+    assert len(kinds) == len(set(kinds)) == 13
     assert set(locked.SNAPSHOT_KIND_BY_REPORT) <= set(DEFINITIONS_BY_CODE)
     assert locked.snapshot_kind_of(CODE) == KIND
     assert locked.snapshot_kind_of("rpo") == SnapshotKind.RPO.value

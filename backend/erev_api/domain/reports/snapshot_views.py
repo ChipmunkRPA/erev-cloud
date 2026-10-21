@@ -18,6 +18,7 @@ from erev_engine.stages.s15_disclosures import snapshots as engine
 KINDS = frozenset(
     {
         "WATERFALL",
+        "BALANCE_AGING",
         "CONTRACT_BALANCES",
         "RPO",
         "CONTRACT_BALANCE_ROLLFORWARD",

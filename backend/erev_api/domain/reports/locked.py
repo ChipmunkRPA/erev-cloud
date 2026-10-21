@@ -61,6 +61,7 @@ FIELD: Final = "parameters.period_lock_id"
 # ENGINE_SPEC_B §15.2.7: snapshot kind → source report code, inverted.
 SNAPSHOT_KIND_BY_REPORT: Final[Mapping[str, str]] = {
     "revenue_waterfall": "WATERFALL",
+    "balance_aging": "BALANCE_AGING",
     "contract_balances": "CONTRACT_BALANCES",
     "contract_balance_rollforward": "CONTRACT_BALANCE_ROLLFORWARD",
     "rpo": "RPO",
@@ -373,7 +374,8 @@ def export_csv(
     text). The header row is
     written in its retained order. Legacy single-view exports match the frozen file when no cell
     needs the guard. Bundles export only the selected retained view, with its own delivered hash;
-    the original whole-file hash remains the source identity. The stored artefact is never altered."""
+    the original whole-file hash remains the source identity. The stored artefact is never altered.
+    """
     verify(dataset)
     headers, rows, _ = currency_rows(dataset, currency_view)
     lines = [",".join(_field(header) for header in headers)]

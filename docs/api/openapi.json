@@ -38023,6 +38023,7 @@
         "description": "E-64 ``snapshot_kind`` (04 §3.4).",
         "enum": [
           "WATERFALL",
+          "BALANCE_AGING",
           "CONTRACT_BALANCES",
           "CONTRACT_BALANCE_ROLLFORWARD",
           "RPO",

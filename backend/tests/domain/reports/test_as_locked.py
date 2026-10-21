@@ -1007,7 +1007,7 @@ def test_as_locked_run_on_the_august_lock_returns_the_wld_x_03_liability(
         }
     # R-4: twelve of twelve through the public path, the rollforwards populated — their line
     # rows (nine and ten) and the by-contract row of the one contract.
-    assert sorted(frozen) == sorted(kind.value for kind in SnapshotKind) and len(frozen) == 12
+    assert sorted(frozen) == sorted(kind.value for kind in SnapshotKind) and len(frozen) == 13
     assert frozen[SnapshotKind.CONTRACT_BALANCE_ROLLFORWARD.value] == (
         len(contract_balance_rollforward.LINES) + 1
     )
@@ -1084,6 +1084,7 @@ def test_as_locked_currency_variants_read_retained_rows_and_export(
 @pytest.mark.parametrize(
     "code,kind",
     [
+        ("balance_aging", "BALANCE_AGING"),
         ("contract_balance_rollforward", "CONTRACT_BALANCE_ROLLFORWARD"),
         ("rpo_rollforward", "RPO_ROLLFORWARD"),
         ("disaggregation", "DISAGGREGATION"),

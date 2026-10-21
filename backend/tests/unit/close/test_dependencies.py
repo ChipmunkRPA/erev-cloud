@@ -37,7 +37,7 @@ def test_snapshot_engine_resolves_or_refuses_by_name() -> None:
         assert value.module == dependencies.SNAPSHOT_ENGINE
         assert "GATE-EDS" in str(value)
     else:
-        assert len(value.kinds) == 12 and callable(value.manifest_sha256)
+        assert len(value.kinds) == 13 and callable(value.manifest_sha256)
 
 
 def test_snapshot_registry_resolves_or_refuses_by_name() -> None:
