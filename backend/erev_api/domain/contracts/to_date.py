@@ -252,6 +252,9 @@ PARAMS: Final = (
     "source_node",
     "realisation_mode",
     "guard",
+    "cut",
+    "period_key",
+    "reason",
 )
 NODES: Final = text(
     "SELECT ct.contract_version_id, node ->> 'id' AS node_id, node ->> 'measure' AS measure, "
@@ -262,7 +265,9 @@ NODES: Final = text(
     "node -> 'params' ->> 'pattern' AS pattern, node -> 'params' ->> 'held' AS held, "
     "node -> 'params' ->> 'source_node' AS source_node, "
     "node -> 'params' ->> 'realisation_mode' AS realisation_mode, "
-    "node -> 'params' ->> 'guard' AS guard, node ->> 'formula_id' AS formula_id "
+    "node -> 'params' ->> 'guard' AS guard, "
+    "node -> 'params' ->> 'cut' AS cut, node -> 'params' ->> 'period_key' AS period_key, "
+    "node -> 'params' ->> 'reason' AS reason, node ->> 'formula_id' AS formula_id "
     "FROM erev.calc_trace ct CROSS JOIN LATERAL jsonb_array_elements(ct.trace -> 'nodes') AS node "
     "WHERE ct.contract_version_id = ANY(:version_ids) "
     "AND node ->> 'measure' = ANY(:measures)"

@@ -20,6 +20,25 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   or resume its paused state; this section records the superseding scope for repository work.
 
+## Public eligibility workflow and historical projection reads — October 21, 2026
+
+- The public reviewed collectibility/re-entry journey exposed two implementation faults.
+  Operational HOLD_APPLIED/HOLD_RELEASED dates could move a June business change into September;
+  RPO now dates versions by their business causes, while retaining each original computation
+  and its dated recognition/hold evidence. Hold-only versions inherit the prior business date.
+  New runs bind rpo_operational_hold_dates_v1; older bindings retain their previous dates.
+- Database trace reads omitted cut, period_key and reason even though the engine retained them.
+  These parameters now reach the existing projection reader: historical fixed schedules can use
+  their original period projections, and unavailable-projection reasons are not silently lost.
+- The public journey reviews a not-probable assessment, appends the significant change and
+  assessment, generates June RPO, then reviews probable collection, submits/approves criteria
+  re-entry and generates July RPO. Eligibility movements reconcile; rerunning June after July
+  preserves its original rows. This closes the public-workflow gap recorded in the 0266 note.
+- Migration 0267 updates both RPO definitions; reversible migration/catalogue parity, 93 dated
+  reader cases, scoped lint/types and the public journey pass. Mixed eligibility exits with
+  amendments/estimates, multiple transitions in one initial computation and B4-11 commit
+  visibility remain open. No deployment or expanded approval requirement.
+
 ## RPO contract eligibility changes — October 21, 2026
 
 - New RPO runs show ELIGIBILITY_CHANGES separately from new contracts, legal termination and
@@ -196,28 +215,6 @@ review and publish changes without PR accumulation, and do not deploy.
   promotion, complete approval coverage, sandbox lock-chain reproduction and independent
   accounting sign-off are not completion gates. Sandbox refresh/isolation and key financial
   controls remain in scope. Preserve noncommercial licensing/publication exclusions; no deployment.
-
-## RPO pre-termination version attribution and requested pause — October 20, 2026
-
-- RPO rollforward carries original pre-termination fixed balances across intervening
-  retained versions. It no longer settles a future cancellation early or loses the original
-  modifications, estimates and cancellation when a memo version precedes termination.
-  A superseding computation determines the pending termination. Competing original modification,
-  estimate and partial-cancellation amounts are separated before the pending cancellation settles.
-- New bindings retain rpo_pretermination_versions_v1; older bindings preserve prior behavior.
-  Original boundary coverage, chronology, fixed amount reconciliation and dated realization
-  guards remain required. Migration 0259 records the rule in the IPE catalogue.
-- All 74 related cases pass, including original engine termination amounts with intervening
-  read-layer memo versions, mixed later-version causes, monthly/range cuts and legacy behavior.
-  Public currency report/retained-rate rerun, scoped lint/types and migration downgrade/upgrade
-  exact catalogue parity pass. Adapted version chains are not new public lifecycle witnesses.
-- Remaining work includes broader repeated cancellation/re-entry and mixed same-day entry,
-  B4-11 concurrent commit visibility, independent accounting sign-off and final-candidate checks.
-  This does not establish production readiness. Direct main; no deployment.
-- Owner decision, October 20: combined-contract aging must retain the original receiving
-  contract's aging and show member allocation adjustments separately. The policy question is
-  resolved; implementation remains outstanding. After this current RPO fix is published,
-  pause development as requested; do not start the aging implementation until resumed.
 
 ## Outstanding release verification
 

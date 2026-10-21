@@ -727,3 +727,111 @@ def test_same_day_usage_termination_public_report(
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == original
+
+
+@pytest.mark.slow
+def test_collectibility_reentry_public_rpo(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reviewed Step 1 exits and re-entry reach the retained RPO calculation."""
+    from support.factories import step1_criteria
+    from support.reference import approve, post
+
+    original_body = worlds.k08_body
+    monkeypatch.setattr(
+        worlds,
+        "k08_body",
+        lambda customer: {**original_body(customer), "document_ref": "AGR-K08"},
+    )
+    world = worlds.k08_ulvane(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    cid = UUID(str(world.contracts[worlds.K08].contract["id"]))
+
+    def reviewed(probable: bool) -> str:
+        topic = "COLLECTIBILITY" if probable else "NOT_A_CONTRACT"
+        record = worlds.judgement_submitted(
+            app,
+            world.maya,
+            {
+                "topic": topic,
+                "subject_type": "contract",
+                "subject_id": str(cid),
+                "book": "ASC606",
+                "conclusion": "Collection reassessed for this contract.",
+                "rationale": "Updated customer credit evidence.",
+                "questionnaire": {
+                    "criteria": step1_criteria(topic),
+                    **({} if probable else {"consideration_nonrefundable": False}),
+                },
+            },
+        )
+        decided = approve(app, record["approval_request_id"], world.marcus)
+        assert decided.status_code == 200, decided.text
+        return record["id"]
+
+    record = reviewed(False)
+    exited = worlds._appended_through_api(
+        world.place,
+        cid,
+        {
+            "event_type": "SIGNIFICANT_CHANGE_FLAGGED",
+            "effective_date": "2026-06-01",
+            "payload": {"description": "Customer entered financial distress."},
+        },
+        {
+            "event_type": "COLLECTIBILITY_ASSESSED",
+            "effective_date": "2026-06-01",
+            "payload": {"book": "ASC606", "is_probable": False, "judgement_record_id": record},
+        },
+    )
+    assert exited["computation"]["status"] == "SUCCEEDED", exited
+    june, june_run = rollforward(world, AVM_US, "FY2026-P06")
+    june_rows = get(app, f"/api/v1/report-runs/{june_run['id']}/data", world.maya).json()["items"]
+    assert june["OPENING"] == Decimal("46904.11"), june  # 80,000 less 151/365 recognized
+    assert june["ELIGIBILITY_CHANGES"] + june["REVENUE"] == -june["OPENING"], june
+    assert june["CLOSING"] == june["NEW_CONTRACTS"] == june["CANCELLATIONS"] == 0, june
+    assert june["UNEXPLAINED"] == 0, june
+
+    clock.advance(timedelta(minutes=1))
+    record = reviewed(True)
+    worlds._appended_through_api(
+        world.place,
+        cid,
+        {
+            "event_type": "COLLECTIBILITY_ASSESSED",
+            "effective_date": "2026-07-01",
+            "payload": {"book": "ASC606", "is_probable": True, "judgement_record_id": record},
+        },
+    )
+    current = get(app, f"/api/v1/contracts/{cid}", world.maya)
+    assert current.status_code == 200, current.text
+    submitted = post(
+        app,
+        f"/api/v1/contracts/{cid}/submit-activation",
+        world.maya,
+        {"comment": "Collection is probable again."},
+        if_match=current.headers["ETag"],
+    )
+    assert submitted.status_code == 200, submitted.text
+    decided = approve(app, submitted.headers["x-erev-approval-request"], world.priya)
+    assert decided.status_code == 200, decided.text
+    july, run = rollforward(world, AVM_US, "FY2026-P07")
+    assert july["OPENING"] == july["NEW_CONTRACTS"] == july["CANCELLATIONS"] == 0, july
+    assert july["CLOSING"] == Decimal("33534.25"), july  # 80,000 less 212/365 recognized
+    assert 0 < july["ELIGIBILITY_CHANGES"] < Decimal("80000"), july
+    assert july["UNEXPLAINED"] == 0, july
+    assert july["ELIGIBILITY_CHANGES"] + july["REVENUE"] == july["CLOSING"], july
+    assert ties(run) == BALANCED
+
+    repeated = post(app, f"/api/v1/report-runs/{june_run['id']}/rerun", world.maya, {})
+    assert repeated.status_code == 202, repeated.text
+    assert worlds.run_now(world, UUID(repeated.json()["id"]))["state"] == "SUCCEEDED"
+    retained = get(
+        app, f"/api/v1/report-runs/{repeated.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert retained.status_code == 200, retained.text
+    assert retained.json()["items"] == june_rows

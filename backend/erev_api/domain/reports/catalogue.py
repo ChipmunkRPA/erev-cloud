@@ -894,6 +894,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "cuts; a single fixed-only first-entry or same-version cancellation separates "
             "original modifications and estimate changes from recognized revenue and cancelled "
             "remainder; traces without cancellation dates retain legacy behavior",
+            "rpo_operational_hold_dates_v1 dates retained RPO versions by business events; "
+            "HOLD_APPLIED and HOLD_RELEASED do not move a business change into the "
+            "operational review month; hold-only computations keep the prior business date "
+            "and original dated projection evidence; older bindings retain their original "
+            "version dates; database trace reads preserve projection cut, period_key and "
+            "refusal reason",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -1114,6 +1120,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "allocation and dated realized evidence are required at exit; re-entry includes "
             "only the remaining balance and excludes prior-segment revenue; old bindings "
             "retain their original classification and report columns",
+            "rpo_operational_hold_dates_v1 dates retained RPO versions by business events; "
+            "HOLD_APPLIED and HOLD_RELEASED do not move a business change into the "
+            "operational review month; hold-only computations keep the prior business date "
+            "and original dated projection evidence; older bindings retain their original "
+            "version dates; database trace reads preserve projection cut, period_key and "
+            "refusal reason",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

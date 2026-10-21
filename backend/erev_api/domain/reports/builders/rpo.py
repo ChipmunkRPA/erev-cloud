@@ -442,6 +442,15 @@ def load(
     With ``params`` (S15-R-24): under a bound run only the bound version ids and the bound
     customer-segment / product-family labels; for a live build the consumed versions and labels
     are recorded into ``params.sources``."""
+    # Keep each computation and its original dated targets. Administrative holds
+    # affect recognition evidence, but their review date is not the business date
+    # of a collectibility reassessment carried by the same computation.
+    hold_dates_key = "rpo_operational_hold_dates_v1"
+    business_dates = (
+        params is None or params.binding is None or hold_dates_key in params.binding.evidence
+    )
+    if business_dates and params is not None and params.sources is not None:
+        params.sources.record_evidence(hold_dates_key, True)
     version_where = (
         []
         if params is None
@@ -537,6 +546,9 @@ def load(
             events[UUID(str(item))]
             for item in row["cause_event_ids"] or ()
             if UUID(str(item)) in events
+            and not (
+                business_dates and events[UUID(str(item))][0] in {"HOLD_APPLIED", "HOLD_RELEASED"}
+            )
         ]
         previous = versions.get(group_id, [])
         effective = max(
