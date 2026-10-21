@@ -1378,6 +1378,17 @@ def test_chain_verification_report(
         ("parameters.from", "Start must be on or before end.")
     ]
 
+    assert run["sources"]["kind"] == "retained"
+    rerun = post(world.app, f"{REPORT_RUNS}/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    rerun_id = rerun.headers[REPORT_RUN_ID_HEADER]
+    repeated = get(world.app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+    shown = get(world.app, f"{REPORT_RUNS}/{rerun_id}", world.maya).json()
+    assert shown["control_totals"] == run["control_totals"]
+
 
 # --- RPT-43 ---------------------------------------------------------------------------------------
 

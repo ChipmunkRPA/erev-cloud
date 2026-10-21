@@ -1,5 +1,26 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Audit chain verification report retained inputs — October 21, 2026
+
+- Historical chain-verification reports now require the original verification transaction to
+  have committed by known_at, in addition to the existing finished-at range. Migration 0291
+  queues commit evidence atomically, reuses the recovery worker and refuses fabricated history
+  on nonempty upgrade or removal of retained commit evidence on downgrade.
+- New reports retain the verification fields consumed by row generation, historical commit
+  evidence and the applied date range. Same-source reruns rebuild collision-safe row keys,
+  verification counts and failure counts without live verification reads. Workspace binding,
+  existing report permission checks and digest-file references remain intact; unused failure
+  payloads are not retained. Old OPEN runs remain labelled as new evaluations on rerun.
+- Necessary checks passed: real overlapping verification commit, old/new populations and FAIL
+  counts, equal-finish-time row keys, input-only rebuild, commit recovery, public rerun after a
+  later failing verification, catalogue parity, database architecture and scoped lint/types.
+- Approval-reference audit completed: the normal submission writer inserts a request and all
+  routed steps in one transaction (`approvals/engine.py`); routing/automatic decisions consume
+  published rule versions. DB-04 permits rule edits only while the parent is DRAFT/TESTED and
+  prevents edits to used published/superseded definitions (`db/migration_ops.py`). The earlier
+  first-step/rule-reference TODO does not require another history subsystem for these flows.
+- Remaining: other OPEN report adapters and final repository validation. No deployment.
+
 ## Approval entity-code history and display semantics — October 21, 2026
 
 - Historical Approvals Register now resolves entity codes from the latest source revision whose

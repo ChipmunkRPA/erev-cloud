@@ -2514,9 +2514,15 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "Audit chain verifications finished in a time range with events checked, result, first "
         "failure and digest (REQ-PLT-020).",
         ("from", "to"),
-        sources=("audit_chain_verification", "file_object"),
+        sources=("audit_chain_verification", "file_object", "historical_source_commit"),
         joins=("audit_chain_verification.digest_file_id = file_object.id",),
-        filters=("audit_chain_verification.finished_at from from to to",),
+        filters=(
+            "audit_chain_verification.finished_at from from to to",
+            "historical basis requires original verification commits by known_at; "
+            "record basis preserves transaction-local visibility",
+            "chain_verification_inputs_v1 retains verification records and date range; "
+            "same-source reruns rebuild rows and failure counts without live reads",
+        ),
     ),
     _definition(
         "extract_contracts",

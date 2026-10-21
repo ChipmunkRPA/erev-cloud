@@ -296,6 +296,7 @@ def test_source_commit_archive_and_catalogue_are_protected(world: K11World) -> N
         "contract_sample_pack",
         "approvals_register",
         "audit_log_export",
+        "chain_verification_report",
     ):
         assert stored_ipe[code] == DEFINITIONS_BY_CODE[code].ipe_logic, code
 
@@ -411,3 +412,82 @@ def test_approval_register_uses_committed_entity_codes(world: K11World) -> None:
             approvals_register.build(reader, replace(params, sources=None, binding=bound)).rows
             == old.rows
         )
+
+
+def test_verification_report_excludes_late_commits_and_retains_inputs(world: K11World) -> None:
+    from types import SimpleNamespace
+
+    from erev_api.db import new_id
+    from erev_api.db.tables import audit_chain_verification
+    from erev_api.domain.reports.builders import RETAINED
+    from erev_api.domain.reports.builders import chain_verification_report as report
+    from sqlalchemy import insert
+
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    values = {
+        "tenant_id": world.place.tenant_id,
+        "id": new_id(),
+        "trigger": "SCHEDULED",
+        "from_chain_seq": 1,
+        "to_chain_seq": 1,
+        "events_checked": 1,
+        "result": "PASS",
+        "digest_last_hmac": "a" * 64,
+        "started_at": stamp,
+        "finished_at": stamp,
+        "created_at": stamp,
+        "created_by": None,
+        "created_by_kind": "SYSTEM",
+    }
+    with world.place.uow() as setup:
+        setup.session.execute(insert(audit_chain_verification).values(**values))
+        setup.commit()
+    late_id = new_id()
+    with world.place.uow() as writer:
+        writer.session.execute(
+            insert(audit_chain_verification).values(
+                **{
+                    **values,
+                    "id": late_id,
+                    "result": "FAIL",
+                    "first_failure_seq": 1,
+                    "digest_last_hmac": None,
+                },
+            )
+        )
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    now = world.place.scalar(select(func.clock_timestamp()))
+    params = ReportParams(
+        report_code=report.CODE,
+        report_version=1,
+        parameters={},
+        entity_ids=(),
+        known_at=cutoff,
+        historical=True,
+        sources=SourceCollector(),
+    )
+    with world.place.uow() as reader:
+        old = report.build(reader, params)
+        latest = report.build(reader, replace(params, known_at=now, sources=None))
+    assert old.control_totals["verification_count"] == 1
+    assert old.control_totals["failure_count"] == 0
+    assert latest.control_totals["verification_count"] == 2
+    assert latest.control_totals["failure_count"] == 1
+    assert latest.rows[1]["row_key"].endswith(":2")
+    assert params.sources is not None
+    binding = params.sources.binding(row_keys=[r["row_key"] for r in old.rows], strategy=RETAINED)
+    assert binding.evidence[report.EVIDENCE]["records"][0]["committed_server_at"]
+    rebuilt = report.build(
+        SimpleNamespace(principal=world.place.principal),
+        replace(params, sources=None, binding=binding, known_at=now),
+    )
+    assert rebuilt.rows == old.rows and rebuilt.control_totals == old.control_totals
+    commit_evidence.recover_pending_sources(world.place.tenant_id)
+    committed = world.place.scalar(
+        select(historical_source_commit.c.committed_server_at).where(
+            historical_source_commit.c.source_kind == "audit_chain_verification",
+            historical_source_commit.c.source_id == late_id,
+        )
+    )
+    assert cutoff < committed <= now

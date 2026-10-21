@@ -11392,3 +11392,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: JE Population complete retained inputs, sample journal evidence and other mutable
   report inputs/configuration still need work. This does not claim all historical sources are
   complete. No deployment or actual-business migration is required or performed.
+
+## JE Population retained inputs — October 21, 2026
+
+- New JE Population reports retain source records, resolved actor/display labels and independent
+  run debit totals. Same-source reruns reconstruct rows, currency controls and the run-total
+  tie-out through the normal builder without querying live sources; entity/book scope remains
+  enforced. This replaces the report's OPEN adapter with retained inputs.
+- Historical populations use original line commits and committed run/batch revisions, including
+  include-cancelled selection. A late-committed cancellation leaves the old cutoff unchanged.
+  Record-basis and close-owned DATASET_FREEZE reads retain transaction-local journal visibility.
+- Old OPEN records remain explicitly OPEN and rerun as new evaluations even after adapter
+  promotion; they are not mistaken for records with complete retained evidence. Migration 0280
+  synchronizes the report's source/retention description with the catalogue.
+- Necessary checks passed: public historical/current/include-cancelled flows, exact rerun after
+  entity rename and cancellation, old OPEN rerun, existing close/reopen population and controls,
+  retained reconstruction without a live session, scope refusal, independent tie-out input,
+  catalogue parity, focused source-binding/export units and scoped lint/types.
+- Remaining historical-source gaps include first-generation approval/ack/name inputs and sample
+  journal evidence. Retention guarantees repeatability of consumed inputs; it does not assert
+  arbitrary historical reconstruction of these ancillary sources. No deployment.

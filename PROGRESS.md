@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Audit chain verification report retained inputs — October 21, 2026
+
+- Historical chain-verification reports now require the original verification transaction to
+  have committed by known_at, in addition to the existing finished-at range. Migration 0291
+  queues commit evidence atomically, reuses the recovery worker and refuses fabricated history
+  on nonempty upgrade or removal of retained commit evidence on downgrade.
+- New reports retain the verification fields consumed by row generation, historical commit
+  evidence and the applied date range. Same-source reruns rebuild collision-safe row keys,
+  verification counts and failure counts without live verification reads. Workspace binding,
+  existing report permission checks and digest-file references remain intact; unused failure
+  payloads are not retained. Old OPEN runs remain labelled as new evaluations on rerun.
+- Necessary checks passed: real overlapping verification commit, old/new populations and FAIL
+  counts, equal-finish-time row keys, input-only rebuild, commit recovery, public rerun after a
+  later failing verification, catalogue parity, database architecture and scoped lint/types.
+- Approval-reference audit completed: the normal submission writer inserts a request and all
+  routed steps in one transaction (`approvals/engine.py`); routing/automatic decisions consume
+  published rule versions. DB-04 permits rule edits only while the parent is DRAFT/TESTED and
+  prevents edits to used published/superseded definitions (`db/migration_ops.py`). The earlier
+  first-step/rule-reference TODO does not require another history subsystem for these flows.
+- Remaining: other OPEN report adapters and final repository validation. No deployment.
+
 ## Approval entity-code history and display semantics — October 21, 2026
 
 - Historical Approvals Register now resolves entity codes from the latest source revision whose
@@ -204,26 +225,6 @@ review and publish changes without PR accumulation, and do not deploy.
   changed after cutoff continue to refuse explicitly. This completes the journal slice, not
   an assertion that every source in the entire evidence pack has historical commit coverage.
   No deployment.
-
-## JE Population retained inputs — October 21, 2026
-
-- New JE Population reports retain source records, resolved actor/display labels and independent
-  run debit totals. Same-source reruns reconstruct rows, currency controls and the run-total
-  tie-out through the normal builder without querying live sources; entity/book scope remains
-  enforced. This replaces the report's OPEN adapter with retained inputs.
-- Historical populations use original line commits and committed run/batch revisions, including
-  include-cancelled selection. A late-committed cancellation leaves the old cutoff unchanged.
-  Record-basis and close-owned DATASET_FREEZE reads retain transaction-local journal visibility.
-- Old OPEN records remain explicitly OPEN and rerun as new evaluations even after adapter
-  promotion; they are not mistaken for records with complete retained evidence. Migration 0280
-  synchronizes the report's source/retention description with the catalogue.
-- Necessary checks passed: public historical/current/include-cancelled flows, exact rerun after
-  entity rename and cancellation, old OPEN rerun, existing close/reopen population and controls,
-  retained reconstruction without a live session, scope refusal, independent tie-out input,
-  catalogue parity, focused source-binding/export units and scoped lint/types.
-- Remaining historical-source gaps include first-generation approval/ack/name inputs and sample
-  journal evidence. Retention guarantees repeatability of consumed inputs; it does not assert
-  arbitrary historical reconstruction of these ancillary sources. No deployment.
 
 ## Outstanding release verification
 

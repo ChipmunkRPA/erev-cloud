@@ -13,8 +13,8 @@ the same instant keep distinct keys: the later one (by start, then id) carries `
 ``digest_last_hmac`` the last chain value the verification confirmed — of the last event for a
 ``PASS``, of the event before the failing one for a ``FAIL`` (empty when the first event fails);
 ``digest_file_id`` the id of the digest file of a ``PASS`` (a ``FAIL`` stores none). T-PLT-23 is
-append-only, so a report as of an earlier ``known_at`` states exactly the verifications finished
-by then.
+append-only; historical reads also require the original transaction commit by known_at.
+Same-source reruns rebuild rows and failure counts from retained verification records.
 
 Control totals ``verification_count``, ``failure_count`` (``FAIL`` rows) and the range applied
 (``from``; ``to`` when given).
@@ -22,12 +22,13 @@ Control totals ``verification_count``, ``failure_count`` (``FAIL`` rows) and the
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timedelta
 from typing import Any, Final
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, func, select
 
 from erev_api.db.tables import audit_chain_verification
 from erev_api.domain.reports import tie_outs
@@ -35,9 +36,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData, utc_text
 from erev_api.enums import ControlResult
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "chain_verification_report"
+EVIDENCE: Final = "chain_verification_inputs_v1"
 ROW_KEY_PREFIX: Final = "verification:"  # RPT-44: row_key `verification:<finished_at ISO>`
 START_AFTER_END: Final = "Start must be on or before end."
 DEFAULT_WINDOW: Final = timedelta(days=30)  # SCREENS_B RPT-44 "30 days before now"
@@ -92,23 +95,55 @@ def dataset_rows(
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
-    session = uow.session
-    cutoff = tie_outs.cutoff_for(session, params)
-    given_from, end = support.instant(params, "from"), support.instant(params, "to")
-    start = params.known_at - DEFAULT_WINDOW if given_from is None else given_from
-    if end is not None and start > end:
-        raise tie_outs.invalid("from", START_AFTER_END)
-    where: list[ColumnElement[bool]] = [
-        audit_chain_verification.c.finished_at >= start,
-        audit_chain_verification.c.finished_at <= cutoff,
-    ]
-    if end is not None:
-        where.append(audit_chain_verification.c.finished_at < end)
-    found = session.execute(select(audit_chain_verification).where(*where)).mappings()
-    rows, totals = dataset_rows(dict(row) for row in found)
-    totals["from"] = utc_text(start)
-    if end is not None:
-        totals["to"] = utc_text(end)
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id):
+            raise Problem(
+                "forbidden", "The retained verification population belongs to another workspace."
+            )
+    else:
+        session = uow.session
+        cutoff = tie_outs.cutoff_for(session, params)
+        given_from, end = support.instant(params, "from"), support.instant(params, "to")
+        start = params.known_at - DEFAULT_WINDOW if given_from is None else given_from
+        if end is not None and start > end:
+            raise tie_outs.invalid("from", START_AFTER_END)
+        table = audit_chain_verification
+        where: list[ColumnElement[bool]] = [
+            table.c.finished_at >= start,
+            table.c.finished_at <= cutoff,
+        ]
+        if end is not None:
+            where.append(table.c.finished_at < end)
+        statement = select(
+            table.c.id, table.c.started_at, *(table.c[column.key] for column in COLUMNS)
+        )
+        if params.historical:
+            committed = func.erev.source_commit_time("audit_chain_verification", table.c.id)
+            statement = statement.add_columns(committed.label("committed_server_at"))
+            where.append(committed <= cutoff)
+        found = session.execute(statement.where(*where)).mappings()
+        retained = json.loads(
+            canonical_bytes(
+                {
+                    "tenant_id": uow.principal.tenant_id,
+                    "records": [dict(row) for row in found],
+                    "from": utc_text(start),
+                    "to": None if end is None else utc_text(end),
+                }
+            )
+        )
+        tie_outs.record_evidence(params, EVIDENCE, retained)
+    restored = []
+    for record in retained["records"]:
+        row = dict(record)
+        for name in ("started_at", "finished_at"):
+            row[name] = datetime.fromisoformat(row[name])
+        restored.append(row)
+    rows, totals = dataset_rows(restored)
+    totals["from"] = retained["from"]
+    if retained["to"] is not None:
+        totals["to"] = retained["to"]
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

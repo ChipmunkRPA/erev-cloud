@@ -547,7 +547,6 @@ _SOD_CONFLICT_REPORT_OPEN: Final = (
     "SoD rule versions, role assignments, role permissions, memberships and SoD exceptions read "
     "live (RPS-10 RPT-25)"
 )
-_CHAIN_VERIFICATION_REPORT_OPEN: Final = "audit chain verification rows read live (RPS-10 RPT-44)"
 _JUDGEMENT_REGISTER_OPEN: Final = (
     "judgement records with their contracts, subjects and display names read live (RPS-11 RPT-28)"
 )
@@ -903,7 +902,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             (_CUTOFF, "redacted audit input events and original commit evidence"),
         ),
         chain_verification_report_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_CHAIN_VERIFICATION_REPORT_OPEN,)
+            RETAINED, (_CUTOFF, "audit chain verification records and applied date range")
         ),
         # RPS-11 (RPT-28 to RPT-30): the registers read live; no source adapter yet.
         judgement_register_builder.CODE: SourceContract(
@@ -2067,7 +2066,13 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
     if kind in (KIND_BOUND, KIND_RETAINED) or (
         kind == KIND_OPEN
         and run.get("report_code")
-        in {"forecast_outputs", "je_population", "audit_log_export", "approvals_register"}
+        in {
+            "forecast_outputs",
+            "je_population",
+            "audit_log_export",
+            "approvals_register",
+            "chain_verification_report",
+        }
     ):
         try:
             binding = SourceBinding.from_stored(run["source_binding"])

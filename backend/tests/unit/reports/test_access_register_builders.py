@@ -93,11 +93,11 @@ def test_rpt_43_columns_are_t_plt_19_in_the_specified_order() -> None:
 
 @pytest.mark.parametrize(("number", "module"), MODULES)
 def test_registration_and_catalogue(number: int, module: Any) -> None:
-    """Audit export and approvals retain inputs; the other registers remain OPEN.
+    """Audit reports and approvals retain inputs; the other registers remain OPEN.
     Each definition's kind and row key still match the specification."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (audit_export, approvals):
+    if module in (audit_export, approvals, verifications):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
