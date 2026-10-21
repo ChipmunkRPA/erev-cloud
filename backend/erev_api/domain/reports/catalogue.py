@@ -323,6 +323,16 @@ SOURCE_COMMIT_INCREMENTAL: Final = (
 )
 
 
+JOURNAL_COMMIT_REPORTS: Final = frozenset(
+    {"extract_journal_lines", "revenue_waterfall", "disaggregation", "bookings_billings_revenue"}
+)
+JOURNAL_COMMIT_NOTE: Final = (
+    "Historical journal populations use original line commits and the latest committed "
+    "journal-run/batch source revision at known_at. New journal incremental extracts use "
+    "line commits in (known_since, known_at]; retained legacy bindings keep their original basis."
+)
+
+
 def _definition(
     code: str,
     name: str,
@@ -354,12 +364,23 @@ def _definition(
                 if code in COMMIT_VISIBILITY_REPORTS or code in RETAINED_COMMIT_REPORTS
                 else []
             )
-            + (["historical_source_commit"] if code in SOURCE_COMMIT_REPORTS else []),
+            + (["historical_source_commit"] if code in SOURCE_COMMIT_REPORTS else [])
+            + (
+                [
+                    name
+                    for name in ("report_source_revision", "historical_source_commit")
+                    if name not in sources
+                    and not (name == "historical_source_commit" and code in SOURCE_COMMIT_REPORTS)
+                ]
+                if code in JOURNAL_COMMIT_REPORTS
+                else []
+            ),
             "joins": list(joins),
             "filters": list(filters)
             + ([COMMIT_VISIBILITY_NOTE] if code in COMMIT_VISIBILITY_REPORTS else [])
             + ([RETAINED_COMMIT_NOTE] if code in RETAINED_COMMIT_REPORTS else [])
-            + ([SOURCE_COMMIT_NOTE] if code in SOURCE_COMMIT_REPORTS else []),
+            + ([SOURCE_COMMIT_NOTE] if code in SOURCE_COMMIT_REPORTS else [])
+            + ([JOURNAL_COMMIT_NOTE] if code in JOURNAL_COMMIT_REPORTS else []),
             "parameters": list(schema["properties"]),
         },
         tie_outs=tuple(tie_outs),

@@ -89,7 +89,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.imports.exceptions import raise_exception_item
 from erev_api.domain.imports.job_items import failed_item
-from erev_api.domain.journals import completeness, ports, validation
+from erev_api.domain.journals import commit_evidence, completeness, ports, validation
 from erev_api.domain.journals.subledger import dimension_set_sha256
 from erev_api.domain.reference.dimensions import UNSTORED_VALUE_DIMENSIONS
 from erev_api.enums import (
@@ -1749,6 +1749,7 @@ def calculate(
     if entry_ids:
         record_facts(uow, action="journal_entry.create", object_type="journal_entry", ids=entry_ids)
         record_facts(uow, action="journal_line.create", object_type="journal_line", ids=line_ids)
+        commit_evidence.retain_sources_after_commit(uow, "journal_line", line_ids)
     return counts
 
 

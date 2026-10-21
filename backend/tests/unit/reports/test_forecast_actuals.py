@@ -82,3 +82,12 @@ def test_later_cancellation_does_not_change_historical_actuals():
 def test_duplicates_and_scope_mismatches_fail_closed(rows):
     with pytest.raises(Problem):
         read(rows)
+
+
+def test_committed_revision_state_is_not_reinterpreted_from_business_clock():
+    rows = read([line(_run_revision_id="revision", run_updated_at=LATE, run_approved_at=LATE)])
+    assert len(rows) == 1
+    assert rows[0]["run_state_at_cutoff"] == "acknowledged"
+    assert (
+        read([line(_run_revision_id="revision", run_state="cancelled", run_updated_at=LATE)]) == []
+    )

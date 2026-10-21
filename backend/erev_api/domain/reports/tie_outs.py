@@ -84,6 +84,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.journals import subledger
 from erev_api.domain.policies.registry_versions import primary_book
+from erev_api.domain.reports import journal_history
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.explain import store
 from erev_api.problems import Problem, ProblemError
@@ -1541,9 +1542,23 @@ def _journal_run_membership(
     periods; Codex 2245 (c)): a recorded member is a run whose revenue lines are in the summed
     population — an eligible run of another period or book is a candidate, not a contributor, and
     is not recorded."""
+    marker = "journal_commit_visibility_v1"
+    commit_visibility = (
+        params is not None
+        and params.historical
+        and (params.binding is None or marker in params.binding.evidence)
+    )
+    line_cutoff = (
+        [func.erev.source_commit_time("journal_line", journal_line.c.id) <= known_at]
+        if commit_visibility
+        else []
+    )
     if params is not None and params.binding is not None:
-        return bound_member_where(params, "journal_run", journal_run.c.id)
-    live = [journal_run.c.state != CANCELLED_RUN, journal_run.c.created_at <= known_at]
+        return [*bound_member_where(params, "journal_run", journal_run.c.id), *line_cutoff]
+    if commit_visibility and params is not None and params.sources is not None:
+        params.sources.record_evidence(marker, True)
+    state = journal_history.run_state_at(known_at) if commit_visibility else journal_run.c.state
+    live = [state != CANCELLED_RUN, journal_run.c.created_at <= known_at, *line_cutoff]
     if params is not None and params.sources is not None:
         consumed = session.execute(
             select(journal_run.c.id)

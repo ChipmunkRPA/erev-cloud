@@ -6,10 +6,10 @@ from decimal import Decimal, localcontext
 from typing import Any, Final
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.db.tables import journal_batch, journal_entry, journal_line, journal_run, period
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import journal_history, tie_outs
 from erev_api.domain.reports.builders import ReportParams, je_population
 from erev_api.domain.reports.builders.register_support import instant
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -19,6 +19,7 @@ from erev_api.uow import UnitOfWork
 
 CODE: Final = "extract_journal_lines"
 EVIDENCE: Final = "extract_journal_lines_v1"
+COMMIT_EVIDENCE: Final = "extract_journal_commit_visibility_v1"
 # Frozen v1 columns: future schema changes must explicitly version the export contract.
 COLUMNS: Final = (
     Column("id", "id", "text"),
@@ -81,7 +82,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid("mode", "Choose Full or Incremental.")
     if mode == "INCREMENTAL" and (since is None or since >= cutoff):
         raise tie_outs.invalid("known_since", "Enter a time before the source time.")
+    commit_visibility = params.binding is None or COMMIT_EVIDENCE in params.binding.evidence
+    if commit_visibility:
+        tie_outs.record_evidence(params, COMMIT_EVIDENCE, True)
     if params.binding is None:
+        committed = func.erev.source_commit_time("journal_line", journal_line.c.id)
         tenant = uow.principal.tenant_id
         query = (
             select(
@@ -90,6 +95,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 journal_run.c.run_no,
                 journal_batch.c.external_id.label("batch_external_id"),
                 period.c.period_key,
+                committed.label("_committed_server_at"),
                 journal_run.c.id.label("run_id"),
                 journal_run.c.state.label("run_state"),
                 *(journal_run.c[key.removeprefix("run_")].label(key) for key in STATE_TIMES[:-1]),
@@ -122,21 +128,18 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 journal_line.c.book_code == params.book_code,
                 journal_line.c.entity_id.in_(params.entity_ids),
                 journal_line.c.created_at <= cutoff,
+                committed <= cutoff,
                 journal_entry.c.created_at <= cutoff,
                 journal_batch.c.created_at <= cutoff,
                 journal_run.c.created_at <= cutoff,
             )
         )
         if mode == "INCREMENTAL":
-            query = query.where(journal_line.c.created_at > since)
+            query = query.where(committed > since)
         found = [dict(row) for row in uow.session.execute(query).mappings()]
-        histories = je_population.transition_history(
-            uow.session,
-            sorted({row["run_id"] for row in found}, key=str),
-            {row["journal_batch_id"]: row["run_id"] for row in found},
-        )
+        found = journal_history.restore(uow.session, found, cutoff, batch_key="journal_batch_id")
         for row in found:
-            row["_transitions"] = [item._asdict() for item in histories.get(row["run_id"], ())]
+            row["_transitions"] = []
         records = json.loads(canonical_bytes(redact_contacts(found)))
         tie_outs.record_evidence(params, EVIDENCE, records)
     else:
@@ -155,7 +158,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             je_population.Transition(datetime.fromisoformat(item["at"]), item["seq"], item["state"])
             for item in record["_transitions"]
         )
-        if je_population.state_as_of(state_input, cutoff, transitions).cancelled:
+        cancelled = (
+            state_input["run_state"] == je_population.CANCELLED
+            if commit_visibility
+            else je_population.state_as_of(state_input, cutoff, transitions).cancelled
+        )
+        if cancelled:
             continue
         row = {col.key: record[col.key] for col in COLUMNS}
         for col in COLUMNS:
@@ -167,10 +175,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 row[col.key] = date.fromisoformat(row[col.key])
             elif col.kind == "decimal":
                 row[col.key] = str(row[col.key])
+        window_stamp = row["created_at"]
+        if commit_visibility:
+            if not record.get("_committed_server_at"):
+                raise Problem("invalid-transition", "Retained journal commit evidence is missing.")
+            window_stamp = datetime.fromisoformat(record["_committed_server_at"])
         if (
-            row["book_code"] != params.book_code
+            window_stamp > cutoff
+            or row["book_code"] != params.book_code
             or row["created_at"] > cutoff
-            or (mode == "INCREMENTAL" and since is not None and row["created_at"] <= since)
+            or (mode == "INCREMENTAL" and since is not None and window_stamp <= since)
         ):
             raise Problem(
                 "invalid-transition", "Retained journal line lies outside the extract window."

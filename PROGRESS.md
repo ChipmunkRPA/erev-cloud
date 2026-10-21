@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Committed journal lifecycle and line availability — October 21, 2026
+
+- Migration 0279 captures immutable journal-run/batch revisions and original journal-line
+  transaction evidence. Ordinary generation archives line commits after commit; the existing
+  recovery worker also covers pending evidence. No invented history: upgrade requires empty
+  journal tables, and retained new evidence prevents downgrade.
+- Journal exports resolve lifecycle revisions by actual commit cutoff, so a cancellation
+  inserted before cutoff but committed afterward cannot remove lines from the old report.
+  Incremental exports use line commits in (known_since, known_at]; public columns stay fixed
+  and older retained bindings preserve their original interpretation.
+- Historical revenue waterfall/disaggregation journal comparisons use committed line
+  populations and run state. BBR journal comparison inherits the export behavior. Production
+  actuals captures consume resolved committed states without reinterpreting application clocks.
+- Necessary checks passed: public JSON/CSV exports and retained reruns, real overlapping
+  cancellation commits, incremental lines, historical/current journal totals, archive guards,
+  catalogue parity, database architecture, focused actuals/catalogue/BBR units, lint/types.
+- Remaining: JE Population complete retained inputs, sample journal evidence and other mutable
+  report inputs/configuration still need work. This does not claim all historical sources are
+  complete. No deployment or actual-business migration is required or performed.
+
 ## Committed GL and contract-source revisions — October 21, 2026
 
 - Migration 0278 extends original transaction evidence to immutable report-source revisions
@@ -212,23 +232,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: public initial mixed-batch end-to-end coverage, return-path positional
   rates/estimates (not substituted), full royalty eligibility lifecycle coverage, and B4-11
   arbitrary historical commit visibility. This increment does not claim repository completion.
-
-## Original event-position amounts for RPO — October 21, 2026
-
-- Stage 09 retains before/after fixed allocation, realized consideration and cumulative
-  revenue at eligibility, amendment, estimate and usage events of collectibility histories.
-  Each point carries the original event key, date, sequence and source role; its trace
-  formula re-evaluates. The report reader rejects changed sources and incomplete triples.
-- Realized royalties now measure the requested date/position independently of frozen
-  recognition. A statement arriving after a same-day eligibility exit increases realized
-  consideration without retrospectively increasing the frozen revenue target.
-- The 34 scoped usage, royalty, eligibility and original-position checks pass; scoped
-  lint/types pass. No schema or report catalogue change in this increment.
-- Reporting does not yet consume these positions: enabling ordered initial-batch attribution
-  and its bound-run compatibility remains next. Return-path positional allocations are
-  intentionally absent until their rates/estimates support the same event cutoff; readers
-  must not substitute date-end amounts. Public mixed-batch and full royalty lifecycle
-  witnesses, plus B4-11 historical commit visibility, remain open. No deployment.
 
 ## Outstanding release verification
 

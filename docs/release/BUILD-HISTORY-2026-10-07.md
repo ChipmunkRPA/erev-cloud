@@ -11162,3 +11162,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   event-position monetary evidence before enabling the currently refused same-day batches.
   Public mixed-batch and full royalty eligibility witnesses and B4-11 historical commit
   visibility remain open. No deployment, schema or expanded approval requirement.
+
+## Original event-position amounts for RPO — October 21, 2026
+
+- Stage 09 retains before/after fixed allocation, realized consideration and cumulative
+  revenue at eligibility, amendment, estimate and usage events of collectibility histories.
+  Each point carries the original event key, date, sequence and source role; its trace
+  formula re-evaluates. The report reader rejects changed sources and incomplete triples.
+- Realized royalties now measure the requested date/position independently of frozen
+  recognition. A statement arriving after a same-day eligibility exit increases realized
+  consideration without retrospectively increasing the frozen revenue target.
+- The 34 scoped usage, royalty, eligibility and original-position checks pass; scoped
+  lint/types pass. No schema or report catalogue change in this increment.
+- Reporting does not yet consume these positions: enabling ordered initial-batch attribution
+  and its bound-run compatibility remains next. Return-path positional allocations are
+  intentionally absent until their rates/estimates support the same event cutoff; readers
+  must not substitute date-end amounts. Public mixed-batch and full royalty lifecycle
+  witnesses, plus B4-11 historical commit visibility, remain open. No deployment.

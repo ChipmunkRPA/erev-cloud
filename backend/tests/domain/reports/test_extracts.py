@@ -595,3 +595,73 @@ def test_contract_source_revisions_are_atomic_and_source_owned(
                 .where(report_source_revision.c.id == before[0]["id"])
                 .values(document={})
             )
+
+
+def test_journal_extract_uses_committed_lifecycle_cutoff(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from erev_api.db.tables import journal_run as runs
+    from erev_api.domain.journals.commands import cancel_run
+    from erev_api.domain.reports import tie_outs
+    from erev_api.domain.reports.builders import ReportParams
+    from erev_api.schemas.journals import JournalRunCancelIn
+    from sqlalchemy import func
+    from support.worlds import journal_run
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    before_creation = world.place.scalar(select(func.clock_timestamp()))
+    journal = journal_run(world)
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp)
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": stamp.isoformat()}
+    original, rows = report_run(world, "extract_journal_lines", params)
+    assert rows
+    _, incremental = report_run(
+        world,
+        "extract_journal_lines",
+        {**params, "mode": "INCREMENTAL", "known_since": before_creation.isoformat()},
+    )
+    assert incremental == rows
+    run = world.place.rows(select(runs).where(runs.c.id == UUID(journal["id"])))[0]
+
+    def revenue(at):
+        report_params = ReportParams(
+            report_code="disaggregation",
+            report_version=1,
+            parameters={},
+            entity_ids=(run["entity_id"],),
+            book_code="ASC606",
+            known_at=at,
+            historical=True,
+        )
+        with world.place.uow() as reader:
+            return tie_outs.journal_revenue(
+                reader.session,
+                entity_ids=report_params.entity_ids,
+                book_code="ASC606",
+                period_ids=[run["period_id"]],
+                known_at=at,
+                params=report_params,
+            )
+
+    expected_revenue = revenue(stamp)
+    assert expected_revenue
+    # The cancellation's business timestamp AND revision insert precede cutoff,
+    # but its transaction becomes visible only afterward.
+    with world.place.uow() as writer:
+        cancel_run(writer, UUID(journal["id"]), JournalRunCancelIn(reason="Cutoff overlap"))
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    _, historical = report_run(
+        world, "extract_journal_lines", {**params, "known_at": cutoff.isoformat()}
+    )
+    assert historical == rows
+    assert revenue(cutoff) == expected_revenue
+    _, latest = report_run(
+        world, "extract_journal_lines", {**params, "known_at": clock.now().isoformat()}
+    )
+    assert latest == []
+    assert revenue(clock.now()) == {}

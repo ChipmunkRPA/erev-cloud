@@ -13,7 +13,7 @@ from uuid import UUID
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.domain.reports import forecast_actual_labels
 from erev_api.domain.reports.builders import ReportParams, SourceCollector, extract_journal_lines
-from erev_api.domain.reports.builders.je_population import Transition, state_as_of
+from erev_api.domain.reports.builders.je_population import AsOfState, Transition, state_as_of
 from erev_api.enums import PrincipalKind, TenantKind
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
@@ -105,7 +105,16 @@ def posted_rows(
             Transition(datetime.fromisoformat(item["at"]), item["seq"], item["state"])
             for item in record["_transitions"]
         )
-        state = state_as_of(state_input, known_at, history)
+        state = (
+            AsOfState(
+                run_state=state_input["run_state"],
+                approved_at=state_input["run_approved_at"],
+                acknowledged_at=state_input["batch_acknowledged_at"],
+                cancelled=state_input["run_state"] == "cancelled",
+            )
+            if record.get("_run_revision_id") is not None
+            else state_as_of(state_input, known_at, history)
+        )
         if state.cancelled or state.acknowledged_at is None:
             continue
         identity = str(record["id"])
