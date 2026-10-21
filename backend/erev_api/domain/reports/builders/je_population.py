@@ -17,8 +17,16 @@ amounts in the line's transaction currency, the functional amounts in its functi
 equals Σ ``journal_run.total_debit_functional`` of the runs it draws on (every entry balances, so
 the debit side carries the comparison).
 
-Sources (S15-R-18b; REQ-PLT-030; C6-RPT-R4; D-98 102 Q3 and Q5). The population is the journal
-lines created by the run's ``known_at`` — under ``DATASET_FREEZE`` the freeze instant, so the
+New live runs retain input records, resolved labels and independent run debit totals;
+same-source rebuilds use those inputs through the same render and tie-out logic. Historical
+line membership and run/batch states use original commits. Ancillary approval, posting-ack
+and display-name sources retain their existing read semantics at first generation; retention
+makes subsequent rebuilds stable, not arbitrary historical reconstruction of these sources.
+Record-basis and close-owned DATASET_FREEZE reads preserve transaction-local visibility.
+
+Legacy record-basis sources (S15-R-18b; REQ-PLT-030; C6-RPT-R4; D-98 102 Q3 and Q5).
+The population is the journal lines created by the run's ``known_at`` — under
+``DATASET_FREEZE`` the freeze instant, so the
 close's own journal runs are part of the frozen dataset — and every mutable value is
 reconstructed as of ``known_at`` (``state_as_of``): a run whose last mutation is at or before the
 cutoff reports its stored state; a run mutated after the cutoff reports its latest transition at
@@ -57,6 +65,7 @@ system principal; an entry of a run no principal requested keeps the entry's own
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -64,7 +73,8 @@ from decimal import Decimal
 from typing import Any, Final, NamedTuple
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from erev_engine.canonical import canonical_bytes
+from sqlalchemy import and_, func, select
 
 from erev_api.db.tables import (
     api_client,
@@ -83,7 +93,7 @@ from erev_api.db.tables import (
     posting_ack,
 )
 from erev_api.domain.platform import approval_queries
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import journal_history, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import ApprovalDecisionKind, JournalState, PrincipalKind
@@ -91,6 +101,7 @@ from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "je_population"
+EVIDENCE: Final = "je_population_inputs_v1"
 TIE_OUT: Final = "TO_JE_POPULATION_EQ_RUNS"
 STATE_UNKNOWN_AS_OF: Final = "JOURNAL_RUN_STATE_UNKNOWN_AS_OF"
 JOURNAL_RUN_OBJECT: Final = "journal_run"  # SOP-7 audit object of approve / cancel (after.state)
@@ -396,8 +407,22 @@ def _text(value: object) -> str | None:
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        retained_records = retained["records"]
+        scope = {str(entity) for entity in params.entity_ids}
+        for row in retained_records:
+            if row["entity_id"] not in scope or (
+                params.book_code is not None and row["book"] != params.book_code
+            ):
+                raise Problem("forbidden", "The retained journal population exceeds report scope.")
+        return _render(
+            retained_records, {key: Decimal(value) for key, value in retained["run_debits"].items()}
+        )
     session = uow.session
     known_at = params.known_at
+    if params.sources is not None:
+        params.sources.record_cutoff(known_at)
     book_code = tie_outs.book_of(session, params)
     include_cancelled = bool(params.parameters.get("include_cancelled"))
     found = tie_outs.entities(session, params.entity_ids)
@@ -474,8 +499,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         # S15-R-18b: lines created by the cutoff (under DATASET_FREEZE the freeze instant, so
         # the close's own journal runs are in the population; D-98 102 Q5).
         in_population = journal_line.c.created_at <= known_at
+        if params.historical:
+            in_population = and_(
+                in_population,
+                func.erev.source_commit_time("journal_line", journal_line.c.id) <= known_at,
+            )
         statement = (
             select(
+                journal_line.c.entity_id,
                 legal_entity.c.code.label("entity_code"),
                 journal_line.c.book_code.label("book"),
                 journal_entry.c.je_no,
@@ -524,7 +555,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 in_population,
             )
         )
-        rows = list(session.execute(statement).mappings())
+        rows = [dict(row) for row in session.execute(statement).mappings()]
+        if params.historical:
+            rows = journal_history.restore(session, rows, known_at, batch_key="batch_id")
         batch_ids = sorted({UUID(str(row["batch_id"])) for row in rows}, key=str)
         request_ids = sorted(
             {
@@ -559,7 +592,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         names |= _client_names(session, preparers.values())
         seen_runs: set[UUID] = set()
         for row in rows:
-            as_of = state_as_of(dict(row), known_at, histories.get(UUID(str(row["run_id"])), ()))
+            as_of = (
+                AsOfState(
+                    run_state=row["run_state"],
+                    approved_at=row["run_approved_at"],
+                    acknowledged_at=row["batch_acknowledged_at"],
+                    cancelled=row["run_state"] == CANCELLED,
+                )
+                if params.historical
+                else state_as_of(row, known_at, histories.get(UUID(str(row["run_id"])), ()))
+            )
             if as_of.cancelled and not include_cancelled:
                 continue
             run_id = UUID(str(row["run_id"]))
@@ -584,7 +626,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             record["run_state"] = as_of.run_state
             record["approved_at"] = as_of.approved_at
             record["acknowledged_at"] = as_of.acknowledged_at
-            record["gl_document_id"] = documents.get(UUID(str(row["batch_id"])))
+            record["gl_document_id"] = (
+                documents.get(UUID(str(row["batch_id"])))
+                if not params.historical or as_of.acknowledged_at is not None
+                else None
+            )
             preparer = (
                 None if row["run_job_id"] is None else preparers.get(UUID(str(row["run_job_id"])))
             )
@@ -603,7 +649,28 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 else approval_queries.actor(approver[0], approver[1], names)
             )
             records.append(record)
-    items = rows_from(records)
+    tie_outs.record_evidence(
+        params,
+        EVIDENCE,
+        json.loads(
+            canonical_bytes(
+                {
+                    "records": records,
+                    "run_debits": run_debits,
+                }
+            )
+        ),
+    )
+    return _render(records, run_debits)
+
+
+def _render(records: Sequence[Mapping[str, Any]], run_debits: Mapping[str, Decimal]) -> ReportData:
+    restored = [dict(row) for row in records]
+    for row in restored:
+        for key in ("created_at", "approved_at", "acknowledged_at"):
+            if isinstance(row.get(key), str):
+                row[key] = datetime.fromisoformat(row[key])
+    items = rows_from(restored)
     return ReportData(
         columns=COLUMNS,
         rows=items,

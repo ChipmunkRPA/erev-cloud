@@ -502,9 +502,6 @@ _OOP_OPEN: Final = (
     "references and whole-group per-book cause proof (missing evidence distinct from a proved "
     "zero), and stored LATE_EVENT findings with event amounts read live; frps3c"
 )
-_JE_POPULATION_OPEN: Final = (
-    "journal population: the independent total side and the history side read live; frps3c"
-)
 _LEGACY_EXPORT_OPEN: Final = (
     "contract / obligation rows incl. predecessor obligation rows of legacy conversions read live; "
     "frps3c"
@@ -870,9 +867,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         ),
         legacy_je_summary_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_LEGACY_JE_OPEN,)),
         migration_reconciliation_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_MIGRATION_OPEN,)),
-        # ENG-C6 (D-98 candidate 85; main 7bf044a5): the two E-64 producers registered after this
-        # slice's design — journal / subledger population readers without a source adapter yet.
-        je_population_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_JE_POPULATION_OPEN,)),
+        je_population_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "journal source records, resolved labels and independent run totals"),
+        ),
         out_of_period_register_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_OOP_OPEN,)),
         # F-CTR CTR-17 slice 1 (D-98 140-A1): the register reads live; no source adapter yet.
         modification_register_builder.CODE: SourceContract(
@@ -1947,7 +1945,11 @@ def rerun(uow: UnitOfWork, run_id: UUID) -> tuple[UUID, JobOut]:
     # An OPEN-strategy builder has no same-source support: its rerun is a NEW live evaluation
     # (labelled so; the new run captures its own record), never a reproduction claim.
     contract = SOURCE_CONTRACTS[str(original["report_code"])]
-    copied = None if contract.strategy == OPEN else original["source_binding"]
+    copied = (
+        None
+        if contract.strategy == OPEN or run_kind(original) == KIND_OPEN
+        else original["source_binding"]
+    )
     resolved = _Resolved(
         parameters=dict(original["parameters"]),
         entity_ids=tuple(UUID(str(value)) for value in original["entity_ids"]),
@@ -2064,7 +2066,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
     ``kind``; ``bound: false`` with the kind for an as-locked, pending, failed or legacy run."""
     kind = run_kind(run)
     if kind in (KIND_BOUND, KIND_RETAINED) or (
-        kind == KIND_OPEN and run.get("report_code") == "forecast_outputs"
+        kind == KIND_OPEN and run.get("report_code") in {"forecast_outputs", "je_population"}
     ):
         try:
             binding = SourceBinding.from_stored(run["source_binding"])

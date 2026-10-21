@@ -290,6 +290,17 @@ def test_sources_out_summarises_a_bound_run_and_classifies_every_other_lifecycle
         )
     )
     assert (opened.bound, opened.kind, opened.strategy) == (False, framework.KIND_OPEN, OPEN)
+    legacy_je = framework.sources_out(
+        _row(
+            report_code="je_population",
+            source_binding=replace(BINDING, strategy=OPEN, versions={}).to_stored(),
+        )
+    )
+    assert (legacy_je.bound, legacy_je.kind, legacy_je.strategy) == (
+        False,
+        framework.KIND_OPEN,
+        OPEN,
+    )
 
 
 def test_every_registered_live_builder_states_its_source_contract() -> None:
@@ -300,7 +311,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     assert len(framework.REGISTERED_REPORTS) == 59
     assert len(framework.BUILDERS) == 55
     for code in (
-        "je_population",
         "out_of_period_register",
         "modification_register",
         "ai_call_log_export",
@@ -316,6 +326,7 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     assert {"rpo", "revenue_waterfall", "contract_history", "rpo_rollforward"} <= adapters
     assert {"period_evidence_pack", "contract_sample_pack"} <= adapters
     assert framework.SOURCE_CONTRACTS["api_client_inventory"].strategy == RETAINED
+    assert framework.SOURCE_CONTRACTS["je_population"].strategy == RETAINED
     # ENG-C4's eighteenth builder is an adapter: the bound cutoff, its selected versions and its
     # historical membership candidates; open = the reference-line population (frps3c-1 retained
     # the configuration, so that qualification is gone).
@@ -330,7 +341,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "legacy_latest_contract_export",
         "legacy_je_summary",
         "migration_reconciliation",
-        "je_population",
         "out_of_period_register",
         "modification_register",  # F-CTR CTR-17 slice 1 (D-98 140-A1): reads live, no adapter yet
         "manual_adjustment_register",  # F-CLO RPS-8 RPT-18 (S15-R-20d): reads live, no adapter yet

@@ -204,7 +204,12 @@ def test_source_commit_archive_and_catalogue_are_protected(world: K11World) -> N
         )
     from erev_api.domain.reports.catalogue import JOURNAL_COMMIT_REPORTS
 
-    for code in (*SOURCE_COMMIT_REPORTS, *JOURNAL_COMMIT_REPORTS, "extract_contracts"):
+    for code in (
+        *SOURCE_COMMIT_REPORTS,
+        *JOURNAL_COMMIT_REPORTS,
+        "extract_contracts",
+        "je_population",
+    ):
         assert stored_ipe[code] == DEFINITIONS_BY_CODE[code].ipe_logic, code
 
 

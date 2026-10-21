@@ -1089,3 +1089,38 @@ def test_the_row_key_is_injective_over_its_three_components() -> None:
     assert key("A:B", "C", "event:K:1:SUBJECT") != key("A", "B:C", "event:K:1:SUBJECT")
     assert key("A:B", "C", "event:K:1:SUBJECT") == "A%3AB:C:event:K:1:SUBJECT"
     assert key("P1", "P2", "trigger:RESTATE:c0ffee") == "P1:P2:trigger:RESTATE:c0ffee"
+
+
+def test_retained_population_rebuilds_controls_without_live_reads() -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+
+    entity = UUID(int=1)
+    record = _je_record(entity_id=str(entity))
+    for key in ("created_at", "approved_at", "acknowledged_at"):
+        record[key] = T0.isoformat()
+    binding = SourceBinding(
+        cutoff=T0,
+        versions={},
+        labels={},
+        row_keys=frozenset(),
+        strategy=RETAINED,
+        evidence={je_population.EVIDENCE: {"records": [record], "run_debits": {"USD": "1300.00"}}},
+    )
+    params = ReportParams(
+        report_code="je_population",
+        report_version=1,
+        parameters={},
+        entity_ids=(entity,),
+        known_at=T0,
+        binding=binding,
+    )
+    # No unit of work is available: a same-source rebuild must not query live data.
+    rebuilt = je_population.build(None, params)
+    assert rebuilt.rows[0]["created_at"] == T0
+    assert rebuilt.control_totals["row_count"] == 1
+    assert rebuilt.tie_out_results == (je_population.tie_out(rebuilt.rows, {"USD": D("1300.00")}),)
+    assert rebuilt.tie_out_results != (je_population.tie_out(rebuilt.rows, {"USD": D("1200.00")}),)
+    with pytest.raises(Problem):
+        je_population.build(None, replace(params, entity_ids=(UUID(int=2),)))

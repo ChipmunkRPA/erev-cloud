@@ -665,3 +665,94 @@ def test_journal_extract_uses_committed_lifecycle_cutoff(
     )
     assert latest == []
     assert revenue(clock.now()) == {}
+
+
+def test_je_population_retains_inputs_and_committed_cancellation(
+    app: FastAPI,
+    app_settings: Settings,
+    clock: FrozenClock,
+    keyring: KeyRing,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from erev_api.db.tables import journal_run as runs
+    from erev_api.db.tables import legal_entity, period
+    from erev_api.domain.journals.commands import cancel_run
+    from erev_api.schemas.journals import JournalRunCancelIn
+    from sqlalchemy import update
+    from support.worlds import journal_run
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    journal = journal_run(world)
+    period_key = world.place.scalar(
+        select(period.c.period_key)
+        .join(runs, (runs.c.period_id == period.c.id) & (runs.c.tenant_id == period.c.tenant_id))
+        .where(runs.c.id == UUID(journal["id"]))
+    )
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp)
+    params = {
+        "entity_codes": [AVM_US],
+        "book": "ASC606",
+        "from_period_key": period_key,
+        "to_period_key": period_key,
+        "known_at": stamp.isoformat(),
+        "known_at_basis": "historical",
+    }
+    original, rows = report_run(world, "je_population", params)
+    assert rows
+    assert {row["run_state"] for row in rows} == {"draft"}
+    data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
+    with world.place.uow() as writer:
+        cancel_run(writer, UUID(journal["id"]), JournalRunCancelIn(reason="Retained population"))
+        cutoff = world.place.scalar(select(func.clock_timestamp()))
+        writer.commit()
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    _, historical = report_run(world, "je_population", {**params, "known_at": cutoff.isoformat()})
+    assert historical == rows
+    _, current = report_run(world, "je_population", {**params, "known_at": clock.now().isoformat()})
+    assert current == []
+    _, included = report_run(
+        world,
+        "je_population",
+        {**params, "known_at": clock.now().isoformat(), "include_cancelled": True},
+    )
+    assert len(included) == len(rows)
+    assert {row["run_state"] for row in included} == {"cancelled"}
+    with world.place.uow() as writer:
+        writer.session.execute(
+            update(legal_entity)
+            .where(legal_entity.c.code == AVM_US)
+            .values(code="AVM-RENAMED", updated_at=clock.now())
+        )
+        writer.commit()
+    rerun = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == data
+    )
+
+    # A pre-adapter OPEN record must still rerun as a new evaluation, not attempt
+    # to rebuild from retained input records it never captured.
+    from erev_api.domain.reports import framework
+
+    original_reader = framework.run_row
+
+    def legacy_reader(*args, **kwargs):
+        row = dict(original_reader(*args, **kwargs))
+        row["source_binding"] = {**row["source_binding"], "strategy": "open", "evidence": {}}
+        return row
+
+    with monkeypatch.context() as patch:
+        patch.setattr(framework, "run_row", legacy_reader)
+        legacy = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert legacy.status_code == 202, legacy.text
+    assert run_now(world, UUID(legacy.json()["id"]))["state"] == "SUCCEEDED"
+    legacy_data = get(
+        app, f"{REPORT_RUNS}/{legacy.headers['x-erev-report-run-id']}/output", world.maya
+    ).json()
+    assert legacy_data != data
+    assert {row["entity_code"] for row in legacy_data["rows"]} == {"AVM-RENAMED"}

@@ -1573,6 +1573,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract",
             "obligation",
             "lock_snapshot",
+            "report_source_revision",
+            "historical_source_commit",
         ),
         joins=(
             "journal_line.journal_entry_id = journal_entry.id",
@@ -1589,6 +1591,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _BOOK,
             _PERIODS,
             "include_cancelled false: runs not cancelled",
+            "historical basis: original line commits and committed run/batch revisions by known_at",
+            "je_population_inputs_v1 retains input rows, labels and independent run debit totals; "
+            "same-source rebuilds recompute rows and controls without querying mutable sources",
+            "record basis and DATASET_FREEZE preserve transaction-local journal visibility",
+            "first-generation ancillary approval/ack/name reads retain existing cutoff semantics; "
+            "retention guarantees repeatability, not complete historical reconstruction",
             _as_locked("JE_POPULATION"),
         ),
         tie_outs=("TO_JE_POPULATION_EQ_RUNS",),
