@@ -535,7 +535,9 @@ def test_contract_source_revisions_are_atomic_and_source_owned(
         {
             **params,
             "mode": "INCREMENTAL",
-            "known_since": max(r["recorded_at"] for r in before).isoformat(),
+            "known_since": world.place.scalar(
+                select(func.erev.source_commit_time("report_source_revision", before[-1]["id"]))
+            ).isoformat(),
         },
     )
     assert incremental == []

@@ -6,7 +6,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.db.tables import report_source_revision as revision
 from erev_api.domain.reports import tie_outs
@@ -19,6 +19,7 @@ from erev_api.uow import UnitOfWork
 
 CODE: Final = "extract_contracts"
 EVIDENCE: Final = "extract_contracts_v1"
+COMMIT_EVIDENCE: Final = "extract_contracts_commit_visibility_v1"
 # Frozen v1 columns; schema evolution requires an explicit dataset version change.
 COLUMNS: Final = (
     Column("id", "id", "text"),
@@ -73,12 +74,18 @@ def _latest(
     uow: UnitOfWork, kind: str, cutoff: datetime, ids: list[UUID]
 ) -> dict[str, dict[str, Any]]:
     query = (
-        select(revision)
+        select(
+            revision,
+            func.erev.source_commit_time("report_source_revision", revision.c.id).label(
+                "_committed_server_at"
+            ),
+        )
         .where(
             revision.c.tenant_id == uow.principal.tenant_id,
             revision.c.source_kind == kind,
             revision.c.source_id.in_(ids),
             revision.c.recorded_at <= cutoff,
+            func.erev.source_commit_time("report_source_revision", revision.c.id) <= cutoff,
         )
         .distinct(revision.c.source_id)
         .order_by(revision.c.source_id, revision.c.revision_no.desc())
@@ -98,12 +105,20 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid("mode", "Choose Full or Incremental.")
     if mode == "INCREMENTAL" and (since is None or since >= cutoff):
         raise tie_outs.invalid("known_since", "Enter a time before the source time.")
+    commit_visibility = params.binding is None or COMMIT_EVIDENCE in params.binding.evidence
+    if commit_visibility:
+        tie_outs.record_evidence(params, COMMIT_EVIDENCE, True)
     if params.binding is None:
         # First revisions distinguish a genuinely later creation from an imported baseline
         # whose earlier header is unknown. Never silently omit an uncovered old contract.
         first = (
             uow.session.execute(
-                select(revision).where(
+                select(
+                    revision,
+                    func.erev.source_commit_time("report_source_revision", revision.c.id).label(
+                        "_committed_server_at"
+                    ),
+                ).where(
                     revision.c.tenant_id == uow.principal.tenant_id,
                     revision.c.source_kind == "contract",
                     revision.c.entity_id.in_(params.entity_ids),
@@ -115,20 +130,17 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
         ids = []
         for initial in first:
-            if initial["recorded_at"] > cutoff:
-                if datetime.fromisoformat(initial["document"]["created_at"]) <= cutoff:
+            if initial["_committed_server_at"] is None or initial["_committed_server_at"] > cutoff:
+                if initial["is_baseline"] and (
+                    datetime.fromisoformat(initial["document"]["created_at"]) <= cutoff
+                ):
                     raise Problem(
                         "invalid-transition", "Contract history does not cover source time."
                     )
                 continue
             ids.append(initial["source_id"])
         headers = _latest(uow, "contract", cutoff, ids)
-        selected = [
-            r
-            for r in headers.values()
-            if mode == "FULL"
-            or (since is not None and datetime.fromisoformat(r["document"]["created_at"]) > since)
-        ]
+        selected = list(headers.values())
         customers = _latest(
             uow, "customer_code", cutoff, [UUID(r["document"]["customer_id"]) for r in selected]
         )
@@ -147,6 +159,13 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 raise Problem(
                     "invalid-transition", "Contract label history does not cover source time."
                 )
+            committed = max(
+                item["_committed_server_at"],
+                customer["_committed_server_at"],
+                entity["_committed_server_at"],
+            )
+            if mode == "INCREMENTAL" and since is not None and committed <= since:
+                continue
             records.append(
                 json.loads(
                     canonical_bytes(
@@ -156,6 +175,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                                 "customer_code": customer["document"]["code"],
                                 "contracting_entity_code": entity["document"]["code"],
                                 "_revision_at": item["recorded_at"],
+                                "_committed_server_at": committed,
                             }
                         )
                     )
@@ -177,8 +197,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 row[col.key] = datetime.fromisoformat(row[col.key])
             elif col.kind == "date":
                 row[col.key] = date.fromisoformat(row[col.key])
-        if datetime.fromisoformat(record["_revision_at"]) > cutoff or (
-            mode == "INCREMENTAL" and since is not None and row["created_at"] <= since
+        window_stamp = row["created_at"]
+        if commit_visibility:
+            if not record.get("_committed_server_at"):
+                raise Problem("invalid-transition", "Retained contract commit evidence is missing.")
+            window_stamp = datetime.fromisoformat(record["_committed_server_at"])
+        if (
+            window_stamp > cutoff
+            or datetime.fromisoformat(record["_revision_at"]) > cutoff
+            or (mode == "INCREMENTAL" and since is not None and window_stamp <= since)
         ):
             raise Problem("invalid-transition", "Retained contract lies outside extract window.")
         for key in ("custom_attributes", "activation_checklist"):

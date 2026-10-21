@@ -20,6 +20,31 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Committed GL and contract-source revisions — October 21, 2026
+
+- Migration 0278 extends original transaction evidence to immutable report-source revisions
+  (GL reconciliation state, contract headers and customer/entity code labels). Source triggers
+  queue evidence atomically; the existing minute recovery archives it. Existing revision
+  history is not assigned invented commits: upgrade requires an empty revision table, and
+  retained revision-commit evidence prevents downgrade.
+- GL bridge v7 filters revision commits before ranking source identity and review state in
+  its single snapshot query. A change inserted before a report cutoff but committed afterward
+  no longer replaces the original reviewed/reopened state on a later historical read.
+  Revision identity, insertion time and actual commit time are retained. Bound v1-v6
+  comparisons keep their original evidence and control rules.
+- Contract exports resolve header and code-label revisions at committed cutoffs. New
+  incremental exports return the latest contract when its header or customer/entity code
+  changed in (known_since, known_at], covering updates and late commits as well as new rows.
+  This remains an upsert dataset, not a deletion feed. Columns are unchanged; old bound
+  extracts preserve their original creation-time interpretation and retained labels.
+- Necessary checks pass: public reviewed GL/reopen flow with a real overlapping commit and
+  subsequent historical replay, old-v6 GL binding, source-owned contract revisions, late
+  header updates, code-only incremental changes, new/legacy extract bindings, archive guards
+  and catalogue parity. Scoped lint/types pass. No deployment.
+- Remaining historical work includes journal-run state and other mutable memberships,
+  configuration and report-specific inputs. These changes cover retained GL and contract
+  revisions; they do not claim arbitrary reconstruction for every mutable source.
+
 ## Contract event and version commit visibility — October 21, 2026
 
 - Original contract-event and computed-version transactions now have database-controlled
@@ -204,27 +229,6 @@ review and publish changes without PR accumulation, and do not deploy.
   intentionally absent until their rates/estimates support the same event cutoff; readers
   must not substitute date-end amounts. Public mixed-batch and full royalty lifecycle
   witnesses, plus B4-11 historical commit visibility, remain open. No deployment.
-
-## Ordered Step 1 recognition freezes — October 21, 2026
-
-- The engine now preserves each actual Step 1 transition's original event order in its
-  internal contract state, alongside the existing date history. Recognition at an event
-  position observes only preceding status transitions. Once eligibility is lost, fixed,
-  usage and royalty recognition freeze immediately before that status event, excluding
-  later changes even when they share its date.
-- Same-day post-exit estimates retain a zero catch-up with explicit frozen evidence; a later
-  same-day criteria re-entry cannot retrospectively change that earlier estimate position.
-  The newer allocation remains available when recognition resumes. Date-only legacy
-  internal states preserve their earlier behavior. Book memo rebinding and original-cut
-  manual projection snapshots retain/filter the corresponding ordered history.
-- Four original-engine witnesses distinguish pre/post-exit usage, amendments and estimates
-  and a later same-day re-entry. The 91 scoped recognition, eligibility, estimate and book
-  checks pass, including existing memo reuse. Scoped lint/types pass. Public sequential
-  eligibility/rerun regression also passes.
-- This fixes the engine's frozen recognition semantics; Reporting still needs original
-  event-position monetary evidence before enabling the currently refused same-day batches.
-  Public mixed-batch and full royalty eligibility witnesses and B4-11 historical commit
-  visibility remain open. No deployment, schema or expanded approval requirement.
 
 ## Outstanding release verification
 

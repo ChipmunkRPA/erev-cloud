@@ -558,6 +558,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract_version.contract_computation_id = contract_computation.id",
         ),
         filters=(
+            "GL bridge v7 selects only source revisions committed at or before known_at, "
+            "then ranks source identities and states in one statement; original commit time "
+            "is retained with the revision; retained v1-v6 comparisons keep their original rules",
             _SCOPE,
             _BOOK,
             "per contract, the last contract_version known at known_at along the contract's chain "
@@ -651,6 +654,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract.customer_id = customer.id",
         ),
         filters=(
+            "GL bridge v7 selects only source revisions committed at or before known_at, "
+            "then ranks source identities and states in one statement; original commit time "
+            "is retained with the revision; retained v1-v6 comparisons keep their original rules",
             _SCOPE,
             _BOOK,
             _PERIODS,
@@ -2476,17 +2482,19 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "Contract rows in scope as a CSV dataset with a JSON manifest (REQ-RPT-028).",
         ("mode", "entity_codes", "period_lock_id", "known_at", "known_since"),
         overrides=_EXTRACT_MODE,
-        sources=("report_source_revision",),
+        sources=("report_source_revision", "historical_source_commit"),
         joins=(
             "captured contract customer_id and contracting_entity_id to latest captured "
             "code labels at known_at",
         ),
         filters=(
             _SCOPE,
-            "latest database-captured revision at known_at; "
+            "latest committed database-captured revision at known_at; "
             "uncovered migration-era history refuses",
-            "mode INCREMENTAL: contract created_at after known_since; "
-            "not an update or deletion feed",
+            "mode INCREMENTAL: latest contract when its header or customer/entity code label "
+            "committed after known_since and at or before known_at; not a deletion feed; "
+            "extract_contracts_commit_visibility_v1 retains this basis and commit times; "
+            "older bound extracts keep their original creation-time basis",
             "lock datasets unsupported",
         ),
     ),

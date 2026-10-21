@@ -11141,3 +11141,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Same-day monetary events after a status transition, multiple transitions on a monetary date,
   the public mixed-batch witness, full royalty eligibility witness and B4-11 historical commit
   visibility remain open. No deployment.
+
+## Ordered Step 1 recognition freezes — October 21, 2026
+
+- The engine now preserves each actual Step 1 transition's original event order in its
+  internal contract state, alongside the existing date history. Recognition at an event
+  position observes only preceding status transitions. Once eligibility is lost, fixed,
+  usage and royalty recognition freeze immediately before that status event, excluding
+  later changes even when they share its date.
+- Same-day post-exit estimates retain a zero catch-up with explicit frozen evidence; a later
+  same-day criteria re-entry cannot retrospectively change that earlier estimate position.
+  The newer allocation remains available when recognition resumes. Date-only legacy
+  internal states preserve their earlier behavior. Book memo rebinding and original-cut
+  manual projection snapshots retain/filter the corresponding ordered history.
+- Four original-engine witnesses distinguish pre/post-exit usage, amendments and estimates
+  and a later same-day re-entry. The 91 scoped recognition, eligibility, estimate and book
+  checks pass, including existing memo reuse. Scoped lint/types pass. Public sequential
+  eligibility/rerun regression also passes.
+- This fixes the engine's frozen recognition semantics; Reporting still needs original
+  event-position monetary evidence before enabling the currently refused same-day batches.
+  Public mixed-batch and full royalty eligibility witnesses and B4-11 historical commit
+  visibility remain open. No deployment, schema or expanded approval requirement.

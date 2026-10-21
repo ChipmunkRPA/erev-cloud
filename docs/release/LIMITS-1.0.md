@@ -1,5 +1,30 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Committed GL and contract-source revisions — October 21, 2026
+
+- Migration 0278 extends original transaction evidence to immutable report-source revisions
+  (GL reconciliation state, contract headers and customer/entity code labels). Source triggers
+  queue evidence atomically; the existing minute recovery archives it. Existing revision
+  history is not assigned invented commits: upgrade requires an empty revision table, and
+  retained revision-commit evidence prevents downgrade.
+- GL bridge v7 filters revision commits before ranking source identity and review state in
+  its single snapshot query. A change inserted before a report cutoff but committed afterward
+  no longer replaces the original reviewed/reopened state on a later historical read.
+  Revision identity, insertion time and actual commit time are retained. Bound v1-v6
+  comparisons keep their original evidence and control rules.
+- Contract exports resolve header and code-label revisions at committed cutoffs. New
+  incremental exports return the latest contract when its header or customer/entity code
+  changed in (known_since, known_at], covering updates and late commits as well as new rows.
+  This remains an upsert dataset, not a deletion feed. Columns are unchanged; old bound
+  extracts preserve their original creation-time interpretation and retained labels.
+- Necessary checks pass: public reviewed GL/reopen flow with a real overlapping commit and
+  subsequent historical replay, old-v6 GL binding, source-owned contract revisions, late
+  header updates, code-only incremental changes, new/legacy extract bindings, archive guards
+  and catalogue parity. Scoped lint/types pass. No deployment.
+- Remaining historical work includes journal-run state and other mutable memberships,
+  configuration and report-specific inputs. These changes cover retained GL and contract
+  revisions; they do not claim arbitrary reconstruction for every mutable source.
+
 ## Contract event and version commit visibility — October 21, 2026
 
 - Original contract-event and computed-version transactions now have database-controlled

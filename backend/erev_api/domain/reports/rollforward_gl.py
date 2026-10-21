@@ -19,7 +19,8 @@ from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 if TYPE_CHECKING:
     from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
 
-EVIDENCE = "rollforward_gl_inputs_v6"
+EVIDENCE = "rollforward_gl_inputs_v7"
+SNAPSHOT_EVIDENCE = "rollforward_gl_inputs_v6"
 REVISION_EVIDENCE = "rollforward_gl_inputs_v5"
 HISTORICAL_EVIDENCE = "rollforward_gl_inputs_v4"
 REVIEW_EVIDENCE = "rollforward_gl_inputs_v3"
@@ -59,7 +60,13 @@ def compare(
             "reconciliation_id": source["id"],
             **{
                 key: source[key]
-                for key in ("book_code", "period_key", "source_revision_id", "source_recorded_at")
+                for key in (
+                    "book_code",
+                    "period_key",
+                    "source_revision_id",
+                    "source_recorded_at",
+                    "source_committed_at",
+                )
                 if source.get(key)
             },
             **({"source_status": source["status"]} if "status" in source else {}),
@@ -232,6 +239,7 @@ def _captured_sources(
     if not targets:
         return {}
     table = report_source_revision
+    committed = func.erev.source_commit_time("report_source_revision", table.c.id)
     attached = or_(
         table.c.document["source_file_id"].astext.is_not(None),
         table.c.document["sync_run_id"].astext.is_not(None),
@@ -239,6 +247,7 @@ def _captured_sources(
     history = (
         select(
             table,
+            committed.label("committed_server_at"),
             func.row_number()
             .over(partition_by=table.c.source_id, order_by=table.c.revision_no.desc())
             .label("latest"),
@@ -247,6 +256,7 @@ def _captured_sources(
         .where(
             table.c.source_kind == "gl_reconciliation",
             table.c.recorded_at <= cutoff,
+            committed <= cutoff,
             table.c.document["book_code"].astext == book_code,
             or_(
                 *(
@@ -285,6 +295,7 @@ def _captured_sources(
             "book_code": book_code,
             "source_revision_id": str(held["id"]),
             "source_recorded_at": held["recorded_at"].isoformat(),
+            "source_committed_at": held["committed_server_at"].isoformat(),
             **{
                 key: original[key]
                 for key in (
@@ -329,6 +340,7 @@ def build(
                 key
                 for key in (
                     EVIDENCE,
+                    SNAPSHOT_EVIDENCE,
                     REVISION_EVIDENCE,
                     HISTORICAL_EVIDENCE,
                     REVIEW_EVIDENCE,
@@ -351,5 +363,5 @@ def build(
         sources,
         bridge=evidence_key != LEGACY_EVIDENCE,
         require_review=evidence_key
-        in {EVIDENCE, REVISION_EVIDENCE, HISTORICAL_EVIDENCE, REVIEW_EVIDENCE},
+        in {EVIDENCE, SNAPSHOT_EVIDENCE, REVISION_EVIDENCE, HISTORICAL_EVIDENCE, REVIEW_EVIDENCE},
     )

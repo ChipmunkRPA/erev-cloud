@@ -5,7 +5,7 @@ from datetime import date
 from uuid import UUID
 
 import pytest
-from erev_api.db.tables import contract, contract_version, historical_source_commit
+from erev_api.db.tables import contract, contract_version, customer, historical_source_commit
 from erev_api.domain.contracts import bundles, computation
 from erev_api.domain.journals import commit_evidence
 from erev_api.domain.reports import tie_outs
@@ -14,6 +14,7 @@ from erev_api.domain.reports.builders import (
     SourceCollector,
     bbr_sources,
     extract_contract_versions,
+    extract_contracts,
     extract_events,
     rpo,
 )
@@ -98,6 +99,27 @@ def test_late_event_and_version_commit_keeps_previous_historical_version(world: 
             uow, replace(params, sources=None), period_ids={line["period_id"] for line in lines}
         )
         assert str(appended[0]["id"]) not in {row["id"] for row in sources["events"]}
+        header_params = replace(
+            params, report_code=extract_contracts.CODE, sources=SourceCollector()
+        )
+        original_headers = extract_contracts.build(uow, header_params)
+        assert (
+            next(row for row in original_headers.rows if row["id"] == str(cid))[
+                "head_stream_version"
+            ]
+            == head
+        )
+        changed_headers = extract_contracts.build(
+            uow,
+            replace(
+                header_params,
+                known_at=end,
+                sources=None,
+                parameters={"mode": "INCREMENTAL", "known_since": cutoff.isoformat()},
+            ),
+        )
+        assert {row["id"] for row in changed_headers.rows} == {str(cid)}
+        assert changed_headers.rows[0]["head_stream_version"] == head + 1
         for builder, expected in (
             (extract_events, appended[0]["id"]),
             (extract_contract_versions, later),
@@ -146,10 +168,15 @@ def test_late_event_and_version_commit_keeps_previous_historical_version(world: 
         ).all()
     # Activation uses a delegated SYSTEM unit in the outer transaction. Its durable queue
     # is recovered by the minute worker even when that delegated unit does not run hooks.
-    assert [(row.source_kind, row.event_type) for row in pending] == [
-        ("contract_event", "CONTRACT_ACTIVATED")
-    ]
-    assert commit_evidence.recover_pending_sources(world.place.tenant_id, batch_size=1) == (1, 0)
+    assert [
+        (row.source_kind, row.event_type)
+        for row in pending
+        if row.source_kind != "report_source_revision"
+    ] == [("contract_event", "CONTRACT_ACTIVATED")]
+    assert commit_evidence.recover_pending_sources(world.place.tenant_id, batch_size=1) == (
+        len(pending),
+        0,
+    )
     assert commit_evidence.recover_pending_sources(world.place.tenant_id) == (0, 0)
 
 
@@ -175,5 +202,64 @@ def test_source_commit_archive_and_catalogue_are_protected(world: K11World) -> N
                 text("SELECT code, ipe_logic FROM erev.report_definition WHERE version=1")
             ).all()
         )
-    for code in SOURCE_COMMIT_REPORTS:
+    for code in (*SOURCE_COMMIT_REPORTS, "extract_contracts"):
         assert stored_ipe[code] == DEFINITIONS_BY_CODE[code].ipe_logic, code
+
+
+def test_contract_incremental_export_includes_committed_label_changes(world: K11World) -> None:
+    _posted(world)
+    cutoff = world.place.scalar(select(func.clock_timestamp()))
+    params = ReportParams(
+        report_code=extract_contracts.CODE,
+        report_version=1,
+        parameters={},
+        entity_ids=(world.entity_id,),
+        known_at=cutoff,
+        sources=SourceCollector(),
+    )
+    with world.place.uow() as uow:
+        original = extract_contracts.build(uow, params)
+    assert original.rows
+    with world.place.uow() as uow:
+        uow.session.execute(
+            update(customer)
+            .where(customer.c.id == world.customer_id)
+            .values(code="COMMIT-CUSTOMER")
+        )
+        uow.commit()
+    end = world.place.scalar(select(func.clock_timestamp()))
+    with world.place.uow() as uow:
+        delta = extract_contracts.build(
+            uow,
+            replace(
+                params,
+                sources=None,
+                known_at=end,
+                parameters={"mode": "INCREMENTAL", "known_since": cutoff.isoformat()},
+            ),
+        )
+        assert {row["id"] for row in delta.rows} == {row["id"] for row in original.rows}
+        assert {row["customer_code"] for row in delta.rows} == {"COMMIT-CUSTOMER"}
+        assert params.sources is not None
+        bound = params.sources.binding(row_keys=[row["row_key"] for row in original.rows])
+        assert (
+            extract_contracts.build(uow, replace(params, binding=bound, sources=None)).rows
+            == original.rows
+        )
+        legacy = dict(bound.evidence)
+        legacy.pop(extract_contracts.COMMIT_EVIDENCE)
+        legacy[extract_contracts.EVIDENCE] = [
+            {key: value for key, value in row.items() if key != "_committed_server_at"}
+            for row in legacy[extract_contracts.EVIDENCE]
+        ]
+        assert (
+            extract_contracts.build(
+                uow,
+                replace(
+                    params,
+                    binding=replace(bound, evidence=legacy),
+                    sources=None,
+                ),
+            ).rows
+            == original.rows
+        )

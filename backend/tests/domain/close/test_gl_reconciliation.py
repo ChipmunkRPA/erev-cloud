@@ -1289,7 +1289,14 @@ def test_explained_then_signed(
         1,
         {},
         (entity_id,),
-        reviewed_revision["recorded_at"],
+        _rows(
+            tenant_id,
+            select(
+                func.erev.source_commit_time(
+                    "report_source_revision", reviewed_revision["id"]
+                ).label("committed")
+            ),
+        )[0]["committed"],
         historical=True,
         sources=sources,
     )
@@ -1312,10 +1319,19 @@ def test_explained_then_signed(
     assert original["details"][0]["source_status"] == "REVIEWED"
     assert original["details"][0]["source_revision_id"] == str(reviewed_revision["id"])
     bound = sources.binding(row_keys=())
+    legacy_sources = {
+        key: {name: value for name, value in source.items() if name != "source_committed_at"}
+        for key, source in bound.evidence[rollforward_gl.EVIDENCE].items()
+    }
+    legacy_bound = replace(bound, evidence={rollforward_gl.SNAPSHOT_EVIDENCE: legacy_sources})
+    legacy_original = comparison(replace(params, binding=legacy_bound, sources=None))
+    assert legacy_original["result"] == "FAIL"
+    assert legacy_original["details"][0]["source_revision_id"] == str(reviewed_revision["id"])
     reopened = recon.reopen(app, priya, draft["id"], "Review the attached trial balance again.")
     assert reopened.status_code == 200, reopened.text
     assert comparison(params) == original
     assert comparison(replace(params, binding=bound, sources=None)) == original
+    assert comparison(replace(params, binding=legacy_bound, sources=None)) == legacy_original
     now = _rows(tenant_id, select(func.clock_timestamp().label("now")))[0]["now"]
     latest = comparison(replace(params, known_at=now, sources=None))
     assert latest["result"] == "NOT_APPLICABLE"
@@ -1323,7 +1339,7 @@ def test_explained_then_signed(
     assert latest["details"][0]["source_revision_id"] != str(reviewed_revision["id"])
     # Commit a source change between the identity read and state read. Both must
     # come from one statement snapshot, even though its insert timestamp predates
-    # this cutoff. This does not assert arbitrary historical commit-time recovery.
+    # this cutoff. A later historical query must also retain this same source revision.
     from sqlalchemy import update
 
     with tenant_session(context) as writer:
@@ -1358,8 +1374,13 @@ def test_explained_then_signed(
                 )
             assert len(source_reads) == 1
             assert stable == latest
+    assert comparison(replace(params, known_at=capture_at, sources=None)) == stable
+    after_commit = _rows(tenant_id, select(func.clock_timestamp().label("now")))[0]["now"]
+    changed = comparison(replace(params, known_at=after_commit, sources=None))
+    assert changed["details"][0]["source_revision_id"] != stable["details"][0]["source_revision_id"]
     assert comparison(params) == original
     assert comparison(replace(params, binding=bound, sources=None)) == original
+    assert comparison(replace(params, binding=legacy_bound, sources=None)) == legacy_original
     uncovered = comparison(replace(params, known_at=revisions[0]["recorded_at"], sources=None))
     assert uncovered["result"] == "NOT_APPLICABLE"  # the source had no attached trial balance yet
     # Even a verbatim source document cannot be forged by an application-side insert.
