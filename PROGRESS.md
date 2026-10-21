@@ -20,6 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Return-path original event positions — October 21, 2026
+
+- Return estimate pins now carry their original applying-event order from stage 04.
+  Recognition selects both the estimate and the allocation unit rate at the requested
+  event position. Actual returns after an estimate consume its remaining expected units,
+  including later returns on the same date; stage 04 pricing and stage 09 recognition
+  now use the same ordering rule.
+- RPO event-position evidence now includes return-path net fixed allocations using that
+  same cutoff for the segment rate, expected units and actual returns. A later estimate
+  or price change cannot rewrite an earlier eligibility exit. Legacy internal pins
+  without event-order metadata remain excluded from positional evidence.
+- Seventy-seven scoped pricing, returns, disclosure and ordered-eligibility cases pass,
+  including original pricing-to-recognition same-day return consumption, frozen recognition
+  across later estimate/price changes, and positional trace re-evaluation. Scoped lint/types
+  pass. No schema/catalogue change; existing bound runs retain their original trace.
+- Still open: initial Reporting timelines that include actual return/delivery causes,
+  public mixed-batch end-to-end coverage, full royalty eligibility lifecycle coverage and
+  B4-11 arbitrary historical commit visibility. This fixes positional return amounts; it
+  does not claim every return lifecycle is enabled in the report. No deployment.
+
 ## Ordered initial-batch RPO attribution — October 21, 2026
 
 - Reporting now consumes original event-position amounts for initial computations containing
@@ -213,24 +233,6 @@ review and publish changes without PR accumulation, and do not deploy.
   computation containing every event, or repeated termination/re-entry. No calculation change
   was needed for this sequence. All eight targeted journeys and scoped lint pass; broader
   lifecycle and B4-11 gaps remain open. No deployment.
-
-## GL source selection uses one database snapshot — October 21, 2026
-
-- GL comparisons now resolve source identities, latest captured states, review status and totals
-  from immutable report_source_revision rows in one SQL statement across all requested entities.
-  The previous current-header query followed by a separate revision query could mix snapshots
-  when an already-inserted source revision committed between those reads. Windowed selection
-  preserves latest-source precedence and requires a source attachment known at the cutoff.
-- New runs retain rollforward_gl_inputs_v6; v1-v5 bound comparisons still rebuild from their
-  original evidence. Migration 0265 updates IPE for contract_balances and
-  contract_balance_rollforward. Uncovered source history remains unavailable.
-- A real two-transaction witness commits a change to a reopened reconciliation after the source
-  statement executes: the comparison retains the pre-commit source revision, performs one source
-  query and preserves the earlier reviewed historical/bound result. The public uploaded-GL
-  report path, 14 GL cases, lint/types and reversible migration/catalogue parity pass.
-- This establishes a consistent GL source-selection statement, not historical commit timestamps
-  or a transaction-wide snapshot for every report source. B4-11 arbitrary historical commit
-  visibility remains open, as do broader RPO mixed-lifecycle journeys. No deployment.
 
 ## Outstanding release verification
 

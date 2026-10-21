@@ -31,6 +31,7 @@ from erev_engine.stages.state import (
     EstimatePins,
     EventView,
     Finding,
+    OrderKey,
     Quota1,
     ReturnPath,
     ReturnPin,
@@ -113,10 +114,12 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
         raise ValueError(f"{ob.subject_key}: a returnable obligation has quantity 0")
     key = item.estimate_keys[0] if item.estimate_keys else ""
     versions = {
-        applied.version.version_key: applied.version
+        applied.version.version_key: applied
         for applied in st.identified.canonical.estimates.pins.get(key, ())
     }
-    ordered = sorted(versions.values(), key=lambda v: (v.effective_date, v.version_no))
+    ordered = sorted(
+        versions.values(), key=lambda v: (v.version.effective_date, v.version.version_no)
+    )
     policy = {
         code: value
         for code in (MODEL, REVERSAL, SCOPE)
@@ -124,7 +127,7 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
     }
     return ReturnPath(
         estimate_key=key,
-        pins=tuple(_pin(version) for version in ordered),
+        pins=tuple(_pin(applied.version, applied.event_order_key) for applied in ordered),
         r=(),
         p_ref=ob.stated_price / ob.quantity,
         policy=MappingProxyType(dict(sorted(policy.items()))),
@@ -172,7 +175,8 @@ def measure(
 
     Y = units returned by ``RETURN_RECORDED`` events to the position; E = the pinned
     ``expected_quantity`` (a portfolio pin without it: ``rate`` × units transferred, PT-06) less
-    units returned after the pin's effective date, never below 0, and 0 from ``window_end_date``
+    units returned after the pin's original applying event, never below 0, and 0 from
+    ``window_end_date``
     (the right expires at the end of that day, so E counts while ``at`` < window end; D-87
     L6-5-Q-25), under ``ACTUAL_RETURNS_ONLY`` or without a pin. The reduction is
     −round(r × (Y + E)).
@@ -202,8 +206,14 @@ def measure(
                     base = to_fraction(pin.rate) * transferred
                 else:
                     raise ValueError(f"{pin.version_key}: RETURN_RATE needs expected_quantity")
+                applied_order = next(
+                    applied.event_order_key
+                    for versions in pins.pins.values()
+                    for applied in versions
+                    if applied.version.version_key == pin.version_key
+                )
                 after = sum(
-                    (q for ev, q in returns if ev.effective_date > pin.effective_date),
+                    (q for ev, q in returns if ev.order_key > applied_order),
                     Fraction(0),
                 )
                 expected = max(Fraction(0), base - after)
@@ -252,7 +262,7 @@ def emit(
     )
 
 
-def _pin(version: EstimateVersionInput) -> ReturnPin:
+def _pin(version: EstimateVersionInput, event_order_key: OrderKey) -> ReturnPin:
     params = version.parameters
     quantity = version.expected_quantity
     # A portfolio pin that states only the rate carries it, so stage 09 measures E on the units
@@ -266,6 +276,7 @@ def _pin(version: EstimateVersionInput) -> ReturnPin:
         recovery_cost_per_unit=payload_fraction(params, "recovery_cost_per_unit"),
         window_end_date=payload_date(params, "window_end_date"),
         rate=rate,
+        event_order_key=event_order_key,
     )
 
 

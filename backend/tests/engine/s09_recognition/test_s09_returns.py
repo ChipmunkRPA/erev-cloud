@@ -1322,3 +1322,120 @@ def test_d91_stage09_units_billed_matches_stage10_attributed_invoices() -> None:
         8,
         usd("800.00"),
     )
+
+
+def test_return_positions_keep_estimate_rate_and_quantity_on_the_same_cutoff() -> None:
+    """Same-day estimate and price changes cannot leak backward through an eligibility exit."""
+    from erev_api.domain.reports.rpo_positions import history
+
+    st = _chk_029_state([_pin(1, TRANSFER, 3), _pin(2, RETURNED, 5)], [(2, RETURNED)])
+    pins = tuple(
+        dataclasses.replace(
+            pin,
+            event_order_key=next(
+                event.order_key
+                for event in st.events
+                if event.payload.get("estimate_version_id") == pin.version_key
+            ),
+        )
+        for pin in st.return_paths[O_RET].pins
+    )
+    exit_event = event_view(
+        C_RET, 7, "COLLECTIBILITY_ASSESSED", RETURNED, {"book": "ASC606", "is_probable": False}
+    )
+    price = event_view(C_RET, 9, "CONTRACT_AMENDED", RETURNED, {})
+    original = st.obligations[0]
+    revised = dataclasses.replace(
+        original.segments[0],
+        effective_date=RETURNED,
+        event_key=price.event_key,
+        cause=SegmentCause.TP_CHANGE,
+        x_exact=Fraction(12000),
+        a_posted=1200000,
+    )
+    ob = dataclasses.replace(original, segments=(*original.segments, revised))
+    contract = dataclasses.replace(
+        st.contracts[0],
+        status_in_book={"ASC606": ((TRANSFER, "ACTIVE"), (RETURNED, "NOT_A_CONTRACT"))},
+        status_positions={
+            "ASC606": (
+                ((TRANSFER, 0, ""), "ACTIVE"),
+                (exit_event.order_key, "NOT_A_CONTRACT"),
+            )
+        },
+    )
+    events = tuple(
+        sorted(
+            [event for event in st.events if event.event_type != "CREDIT_MEMO_RECORDED"]
+            + [exit_event, price],
+            key=lambda event: event.order_key,
+        )
+    )
+    st = dataclasses.replace(
+        st,
+        obligations=(ob,),
+        contracts=(contract,),
+        events=events,
+        measure_events=tuple(
+            event
+            for event in events
+            if event.event_type
+            in {
+                "DELIVERY_RECORDED",
+                "RETURN_RECORDED",
+                "BILLING_RECORDED",
+            }
+        ),
+        return_paths={O_RET: dataclasses.replace(st.return_paths[O_RET], pins=pins)},
+    )
+    estimate = next(event for event in events if event.order_key == pins[1].event_order_key)
+    evaluator = components.Evaluator(CTX, st, ob)
+    for event, inclusive, expected, rate, net in (
+        (estimate, False, 1, 100, 9700),
+        (estimate, True, 5, 100, 9300),
+        (price, False, 5, 100, 9300),
+        (price, True, 5, 120, 11160),
+    ):
+        position = progress_events.Position(event.order_key, inclusive=inclusive)
+        seg = components.active_segment(ob, "FIXED", RETURNED, st=st, position=position)
+        state = returns.return_state(CTX, st, contract, ob, seg, RETURNED, position=position)
+        assert state.Y == 2 and state.E == expected
+        assert (
+            returns.unit_rate(st.return_paths[O_RET], ob, RETURNED, st=st, position=position)
+            == rate
+        )
+        assert (
+            schedule._allocation(CTX, st, ob, evaluator, seg, RETURNED, position=position)[0]
+            == net * 100
+        )
+        assert evaluator.posted(RETURNED, position).value == 970000
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    schedule._emit_rpo_event_positions(CTX, st, tb, evaluator)
+    trace = tb.build(root_measures={})
+    points = history(trace)[O_RET]
+    assert points[exit_event.event_key, "after"].fixed == Decimal(9700)
+    assert points[price.event_key, "after"].fixed == Decimal(11160)
+    assert points[price.event_key, "after"].revenue == Decimal(9700)
+    assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+
+
+def test_same_day_return_after_estimate_reduces_its_remaining_expected_units() -> None:
+    st = _chk_029_state([_pin(1, TRANSFER, 3), _pin(2, RETURNED, 5)], [(2, RETURNED)])
+    path = st.return_paths[O_RET]
+    # Move the estimate before the return on the same date; five expected less two actual.
+    estimate_order = (RETURNED, 5, f"{C_RET}/ESTIMATE")
+    path = dataclasses.replace(
+        path,
+        pins=(
+            path.pins[0],
+            dataclasses.replace(
+                path.pins[1],
+                event_order_key=estimate_order,
+            ),
+        ),
+    )
+    st = dataclasses.replace(st, return_paths={O_RET: path})
+    result = returns.expected_units(
+        CTX, st, st.obligations[0], RETURNED, kept=Fraction(98), transferred=Fraction(100)
+    )
+    assert result.value == 3

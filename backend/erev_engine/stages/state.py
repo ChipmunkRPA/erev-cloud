@@ -798,6 +798,7 @@ class ReturnPin:
     window_end_date: date | None
     # A portfolio pin without expected_quantity: E = rate × units transferred (S04-R-08; PT-06)
     rate: Fraction | None = None
+    event_order_key: OrderKey | None = None
 
 
 @dataclass(frozen=True, slots=True)

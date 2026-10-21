@@ -391,6 +391,7 @@ def test_ex_04_g_expected_returns() -> None:
     ctx, priced, allocated, nodes = fold(chk_029(ssp=True))
     assert priced.findings == ()
     assert priced.returns_pending and priced.return_paths[O_RET].r == ()
+    assert all(pin.event_order_key is not None for pin in priced.return_paths[O_RET].pins)
     assert allocated is not None and allocated.findings == ()
     (tp,) = allocated.tp_history
     assert (tp.expected_returns.posted, tp.total.posted, tp.allocation_basis.posted) == (
@@ -423,7 +424,13 @@ def test_ex_04_g_expected_returns() -> None:
     )
     assert path.pins == (
         ReturnPin(
-            TRANSFER, f"{C_RET}/RET-JAN@v1", Fraction(3), Fraction(60), Fraction(0), WINDOW_END
+            TRANSFER,
+            f"{C_RET}/RET-JAN@v1",
+            Fraction(3),
+            Fraction(60),
+            Fraction(0),
+            WINDOW_END,
+            event_order_key=(TRANSFER, 3, f"{C_RET}/EV-000003"),
         ),
     )
     assert (path.policy["returns.model"], path.policy["returns.returned_units_scope"]) == (
@@ -881,3 +888,25 @@ def test_s04_r21_unconstrained_view() -> None:
     assert [build.at for build in view] == [CALENDAR, date(2026, 6, 30)]
     assert view.at(date(2026, 3, 31)).total.posted == 265_500_000
     assert view.at(date(2026, 7, 1)).total.posted == 200_000_000  # 605-35-25-46A: lower wins
+
+
+def test_same_day_actual_return_consumes_the_original_estimate_in_price_and_revenue() -> None:
+    from erev_engine import ENGINE_VERSION
+    from erev_engine.stages.s09_recognition import run
+    from erev_engine.trace import TraceBuilder
+
+    bundle = chk_029(returned=True, ssp=True)
+    events = tuple(
+        dataclasses.replace(event, effective_date=TRANSFER)
+        if event.event_type == "RETURN_RECORDED"
+        else event
+        for event in bundle.events
+    )
+    bundle = dataclasses.replace(bundle, events=events)
+    ctx, _, allocated, _ = fold(bundle)
+    assert allocated is not None
+    assert allocated.tp_history[-1].expected_returns.posted == -30000
+    # Two returned plus one still expected: 100 × (100 - 2 - 1) = 9,700.
+    recognition = run(ctx, allocated, TraceBuilder(engine_version=ENGINE_VERSION))
+    ob = recognition.obligation_measures[O_RET]
+    assert ob.revenue_cum == ob.allocated_amount == 970000

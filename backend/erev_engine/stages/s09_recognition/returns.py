@@ -240,16 +240,28 @@ def policy(ctx: BookContext, st: AllocatedState, ob: ObligationState, code: str)
     return value
 
 
-def pin_at(path: ReturnPath, d: date) -> ReturnPin | None:
-    """The ``RETURN_RATE`` pin with the greatest effective date on or before ``d``."""
+def pin_at(path: ReturnPath, d: date, position: Position | None = None) -> ReturnPin | None:
+    """Latest RETURN_RATE pin admitted by the date and original event position.
+
+    Legacy internal pins without order metadata retain their date-only behavior.
+    """
     found: ReturnPin | None = None
     for pin in path.pins:
-        if pin.effective_date <= d:
+        if pin.effective_date <= d and (
+            position is None or pin.event_order_key is None or position.admits(pin.event_order_key)
+        ):
             found = pin
     return found
 
 
-def unit_rate(path: ReturnPath, ob: ObligationState, d: date) -> Fraction:
+def unit_rate(
+    path: ReturnPath,
+    ob: ObligationState,
+    d: date,
+    *,
+    st: AllocatedState | None = None,
+    position: Position | None = None,
+) -> Fraction:
     """r = X ÷ Q of the ``FIXED`` segment in force at ``d`` (ALG-06 §2.7.1; D-88 L7-5-Q-1).
 
     The latest ``FIXED`` segment of ``ob`` with effective date on or before ``d``, in segment
@@ -258,9 +270,16 @@ def unit_rate(path: ReturnPath, ob: ObligationState, d: date) -> Fraction:
     inception publication ``path.r`` applies only when no ``FIXED`` segment is in force or Q = 0.
     """
     if ob.quantity != 0:
-        in_force = [
-            seg for seg in ob.segments if seg.component == "FIXED" and seg.effective_date <= d
-        ]
+        in_force = []
+        for seg in ob.segments:
+            if seg.component != "FIXED" or seg.effective_date > d:
+                continue
+            if position is not None and seg.event_key is not None:
+                if st is None:
+                    raise ValueError("a return-rate position requires the original event state")
+                if not position.admits(progress_events.boundary_key(st, ob, seg)):
+                    continue
+            in_force.append(seg)
         if in_force:
             return in_force[-1].x_exact / ob.quantity
     found: Fraction | None = None
@@ -301,7 +320,7 @@ def expected_units(
     before the expiry and carries param ``expiry_pending`` (D-87 L6-5-Q-25).
     """
     path = st.return_paths.get(ob.subject_key)
-    pin = None if path is None else pin_at(path, d)
+    pin = None if path is None else pin_at(path, d, position)
     params: dict[str, str] = {
         "as_of": d.isoformat(),
         "kept": rational_param(kept),
@@ -315,7 +334,11 @@ def expected_units(
         (
             progress_events.quantity(ev, ob)
             for ev in _returns(st, ob, d, position)
-            if ev.effective_date > pin.effective_date
+            if (
+                ev.order_key > pin.event_order_key
+                if pin.event_order_key is not None
+                else ev.effective_date > pin.effective_date
+            )
         ),
         Fraction(0),
     )
@@ -385,7 +408,7 @@ def target(
             "returned": rational_param(counts.returned),
             "scope": REDUCE,
             "transferred": rational_param(counts.counted),
-            "unit_rate": rational_param(unit_rate(path, ob, d)),
+            "unit_rate": rational_param(unit_rate(path, ob, d, st=st, position=position)),
         }
     )
     exact = _evaluate(ob, TARGET_FORMULA, (expected.value,), params)
@@ -710,7 +733,7 @@ def return_state(
     expired = window_end is not None and (d > window_end or (d == window_end and position is None))
     effect = 0
     if expired and seg is not None and policy(ctx, st, ob, SCOPE_POLICY) == REDUCE:
-        rate = unit_rate(path, ob, d)
+        rate = unit_rate(path, ob, d, st=st, position=position)
         effect = _posted(ctx, seg, rate * (kept - expected.value)) - _posted(
             ctx, seg, rate * (kept - expected.unexpired)
         )
@@ -888,7 +911,14 @@ def emit(
 
 
 def reduction_from_state(
-    path: ReturnPath, ob: ObligationState, state: ReturnState, d: date, mu: int
+    path: ReturnPath,
+    ob: ObligationState,
+    state: ReturnState,
+    d: date,
+    mu: int,
+    *,
+    st: AllocatedState | None = None,
+    position: Position | None = None,
 ) -> int:
     """ρ(d) = round(r × (Y + E)) of a ``ReturnState`` measured at ``d``, in minor units (S09-R-23).
 
@@ -896,7 +926,9 @@ def reduction_from_state(
     period ends through this function (ENGINE_SPEC_B S15-R-12 basis; D-91). No formula id: it
     derives values the ``return_expected_units`` and segment nodes already trace.
     """
-    return money.round_half_up(unit_rate(path, ob, d) * (state.Y + state.E), mu)
+    return money.round_half_up(
+        unit_rate(path, ob, d, st=st, position=position) * (state.Y + state.E), mu
+    )
 
 
 def reduction(
@@ -921,4 +953,4 @@ def reduction(
     if path is None or seg is None or policy(ctx, st, ob, SCOPE_POLICY) != REDUCE:
         return 0
     state = return_state(ctx, st, contract, ob, seg, d, position=position)
-    return reduction_from_state(path, ob, state, d, _minor_unit(ctx))
+    return reduction_from_state(path, ob, state, d, _minor_unit(ctx), st=st, position=position)

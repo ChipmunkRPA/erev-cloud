@@ -231,6 +231,8 @@ def _allocation(
     evaluator: components.Evaluator,
     seg: AllocationSegment | None,
     v: date,
+    *,
+    position: Position | None = None,
 ) -> tuple[int, Fraction]:
     """A and X of the ``FIXED`` component at ``v``; less round(r × (Y + E)) under REDUCE (S09-R-23)
     when the obligation has a return path."""
@@ -239,9 +241,11 @@ def _allocation(
     path = st.return_paths.get(ob.subject_key)
     if path is None or returns.policy(ctx, st, ob, returns.SCOPE_POLICY) != returns.REDUCE:
         return seg.a_posted, seg.x_exact
-    state = returns.return_state(ctx, st, evaluator.contract, ob, seg, v)
-    exact = returns.unit_rate(path, ob, v) * (state.Y + state.E)
-    posted = returns.reduction_from_state(path, ob, state, v, evaluator.mu)  # S09-R-23; D-91
+    state = returns.return_state(ctx, st, evaluator.contract, ob, seg, v, position=position)
+    exact = returns.unit_rate(path, ob, v, st=st, position=position) * (state.Y + state.E)
+    posted = returns.reduction_from_state(
+        path, ob, state, v, evaluator.mu, st=st, position=position
+    )  # S09-R-23; D-91
     return seg.a_posted - posted, seg.x_exact - exact
 
 
@@ -1759,12 +1763,13 @@ def _emit_rpo_event_positions(
 
     Like activity measures, the sources name derived values at an original event,
     rather than pretending those values are payload fields. Return-path allocations
-    need their own positional rate/estimate handling and are deliberately absent.
+    use the same event cutoff for their rate, estimate and returned quantities.
     Readers must not fill absent positions from a day or period-end balance.
     """
     ob = evaluator.ob
-    if ob.subject_key in st.return_paths:
-        return
+    path = st.return_paths.get(ob.subject_key)
+    if path is not None and any(pin.event_order_key is None for pin in path.pins):
+        return  # Legacy internal pins have no original event-order evidence.
     events = tuple(event for event in st.events if event.contract_key == ob.contract_key)
     if not any(event.event_type == "COLLECTIBILITY_ASSESSED" for event in events):
         return
@@ -1785,7 +1790,7 @@ def _emit_rpo_event_positions(
             segment = components.active_segment(ob, "FIXED", day, st=st, position=position)
             evaluation = evaluator.posted(day, position)
             amounts = {
-                "fixed": 0 if segment is None else segment.a_posted,
+                "fixed": _allocation(ctx, st, ob, evaluator, segment, day, position=position)[0],
                 "realised": realised_at(ctx, st, ob, day, position=position),
                 "revenue": evaluation.value,
             }
