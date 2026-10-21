@@ -40,19 +40,24 @@ whose pre-standard revenue stands against no ``ASC606`` version in the disclosur
 not a contract under Topic 606) has no billed amount to read and is not listed; the control totals
 ``legacy_only_contract_count`` and ``legacy_only_revenue`` state what stays outside the bridge.
 
+Same-source runs retain per-contract comparison inputs, final legacy-only membership, currency
+basis, date and source/rate evidence. Bound runs rebuild sections and totals without live reads.
+
 The report posts nothing: the cumulative-effect adjustment is exported for a manually approved
 journal and no 1.0 posting uses the ``RETAINED_EARNINGS`` role (D-14a; REQ-BK-007).
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize.convert import obligation_subject_key
 from erev_engine.trace import Trace
 from sqlalchemy import and_, func, select
@@ -73,9 +78,11 @@ from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, BalanceRow, EntityRef, PeriodRef
 from erev_api.enums import BookCode
 from erev_api.explain import store
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "adoption_bridge"
+EVIDENCE: Final = "adoption_bridge_inputs_v1"
 PRIMARY: Final = BookCode.ASC606.value
 LEGACY: Final = BookCode.LEGACY.value
 PRE_STANDARD_ROLE: Final = "PRE_STANDARD_REVENUE"  # E-01; JET-15 debit (S13-R-08)
@@ -341,6 +348,7 @@ def _legacy_revenue(
             customer.c.name.label("customer_name"),
             currency.label("currency"),
             amount,
+            func.array_agg(subledger_line.c.id).label("line_ids"),
         )
         .select_from(
             subledger_line.join(
@@ -383,6 +391,11 @@ def _legacy_revenue(
     if contract_id is not None:
         statement = statement.where(subledger_line.c.contract_id == contract_id)
     rows = session.execute(statement).mappings().all()
+    tie_outs.record_members(
+        params,
+        "adoption_legacy_subledger_lines",
+        (line_id for row in rows for line_id in row["line_ids"]),
+    )
     if functional and any(
         str(row["currency"]).strip() != entity.functional_currency for row in rows
     ):
@@ -720,6 +733,29 @@ def reporting_sources(
     )
 
 
+def restore_sources(records: Sequence[Mapping[str, Any]]) -> list[Source]:
+    amounts = (
+        "revenue_legacy",
+        "revenue_asc606",
+        "billed",
+        "contract_liability",
+        "contract_asset",
+        "unbilled_receivable",
+        "cost_assets",
+    )
+    found: list[Source] = []
+    for record in records:
+        values = dict(record)
+        for key in amounts:
+            values[key] = Decimal(values[key])
+        position = values.get("legacy_position_values")
+        values["legacy_position_values"] = (
+            None if position is None else (Decimal(position[0]), Decimal(position[1]))
+        )
+        found.append(Source(**values))
+    return found
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     view = str(params.parameters.get("currency_view") or "transaction")
@@ -727,37 +763,72 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid(
             "currency_view", "Choose Transaction, Functional or Reporting currency."
         )
-    session = uow.session
-    entities = tie_outs.entities(session, params.entity_ids, params=params)
-    if len(entities) != 1:
-        raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
-    (entity,) = entities
-    kept = _kept_books(session, entity)
-    if LEGACY not in kept or PRIMARY not in kept:
-        raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
-    calendar = tie_outs.calendars(session, entities, params=params)[entity.id]
-    first = next(item for item in calendar.periods if item.id == kept[PRIMARY])
-    day, at = application_date(
-        params.parameters.get(DATE_KEY), first_asc606=first, periods=calendar.periods
-    )
-    contract_id = tie_outs.contract_named(session, params)
-    found: list[Source] = []
-    legacy_only: list[Source] = []
-    if at is not None:  # a date that opens the calendar has no day before it: nothing to date
-        if view == "reporting":
-            found, legacy_only = reporting_sources(
-                uow,
-                params,
-                entity,
-                at=at,
-                periods=calendar.periods,
-                contract_id=contract_id,
+    selection = {key: params.parameters.get(key) for key in (DATE_KEY, "contract_external_id")}
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity) for entity in params.entity_ids
+        }:
+            raise Problem("forbidden", "The retained adoption population exceeds report scope.")
+        if retained["currency_view"] != view:
+            raise tie_outs.invalid(
+                "currency_view", "The retained bridge uses another currency view."
             )
-        else:
-            found, legacy_only = sources(session, params, entity, at=at, contract_id=contract_id)
-    rows, totals = dataset_rows(found, legacy_only)
-    totals[DATE_KEY] = day.isoformat()
-    totals["as_of"] = None if at is None else at.end.isoformat()
+        if retained["selection"] != selection:
+            raise tie_outs.invalid(
+                DATE_KEY, "The retained bridge uses another date or contract selection."
+            )
+    else:
+        session = uow.session
+        entities = tie_outs.entities(session, params.entity_ids, params=params)
+        if len(entities) != 1:
+            raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
+        (entity,) = entities
+        kept = _kept_books(session, entity)
+        if LEGACY not in kept or PRIMARY not in kept:
+            raise tie_outs.invalid("entity_codes", ENTITY_REQUIRED)
+        calendar = tie_outs.calendars(session, entities, params=params)[entity.id]
+        first = next(item for item in calendar.periods if item.id == kept[PRIMARY])
+        day, at = application_date(
+            params.parameters.get(DATE_KEY), first_asc606=first, periods=calendar.periods
+        )
+        contract_id = tie_outs.contract_named(session, params)
+        found: list[Source] = []
+        legacy_only: list[Source] = []
+        if at is not None:  # a date that opens the calendar has no day before it: nothing to date
+            if view == "reporting":
+                found, legacy_only = reporting_sources(
+                    uow,
+                    params,
+                    entity,
+                    at=at,
+                    periods=calendar.periods,
+                    contract_id=contract_id,
+                )
+            else:
+                found, legacy_only = sources(
+                    session, params, entity, at=at, contract_id=contract_id
+                )
+        retained = json.loads(
+            canonical_bytes(
+                {
+                    "tenant_id": uow.principal.tenant_id,
+                    "entity_ids": params.entity_ids,
+                    "currency_view": view,
+                    "selection": selection,
+                    DATE_KEY: day.isoformat(),
+                    "as_of": None if at is None else at.end.isoformat(),
+                    "sources": [asdict(item) for item in found],
+                    "legacy_only": [asdict(item) for item in legacy_only],
+                }
+            )
+        )
+        tie_outs.record_evidence(params, EVIDENCE, retained)
+    rows, totals = dataset_rows(
+        restore_sources(retained["sources"]), restore_sources(retained["legacy_only"])
+    )
+    totals[DATE_KEY] = retained[DATE_KEY]
+    totals["as_of"] = retained["as_of"]
     columns = COLUMNS + (
         (Column("legacy_position_basis", "Legacy position basis", "text"),)
         if view != "transaction"

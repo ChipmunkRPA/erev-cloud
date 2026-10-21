@@ -20,6 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Adoption Bridge retained same-source replay — October 21, 2026
+
+- New transaction, functional and reporting runs retain per-contract comparison inputs,
+  final legacy-only population, selected/resolved application date, currency basis and source/FX
+  evidence. Bound reruns reconstruct sections, position comparisons, missing-position messages,
+  membership counts and totals without consulting current books, labels, ledgers, traces or rates.
+- Retained input admission checks tenant, entity set, currency view, requested date and contract
+  selection. Decimal amounts and separately translated legacy positions are restored before
+  aggregation. Legacy ledger line IDs are captured alongside the selected primary versions.
+  Migration 0300 describes the retained basis; older OPEN runs keep new-evaluation semantics.
+- Public verification: append another USD 1,000 of December 2025 legacy revenue through the
+  normal event API and recompute; fresh transaction, functional and reporting rows all change.
+  All three original runs then rebuild identical rows and output hashes. Input-only tests have
+  no database session, recompute totals after a retained amount changes, preserve legacy-only
+  counts/unknown positions/closing-translated positions and reject scope/selection mismatches.
+- Necessary checks: 51 focused report/source-binding tests, public foreign replay, original
+  transaction disclosure, catalogue migration parity and scoped lint/types passed. No deployment.
+- Remaining: historical foreign legacy carrying-position inputs, other documented report
+  adapters and final repository verification. Adoption same-source replay is now implemented;
+  foreign legacy positions are still unavailable when their historical carrying evidence is absent.
+
 ## Adoption Bridge reporting-currency view — October 21, 2026
 
 - Added Reporting currency to the public report and frozen migration 0299. The builder reads
@@ -195,25 +216,6 @@ review and publish changes without PR accumulation, and do not deploy.
   unreproduced residual rather than labelling an entire difference from a historical event flag.
 - Also remaining: Adoption Bridge currency support, Intercompany Pairs retained input replay
   and residual attribution, other documented adapters and final repository validation.
-
-## Intercompany Pairs functional and reporting currencies — October 21, 2026
-
-- Functional view now reads the posted functional amount/currency of each entity's lines.
-  Different functional currencies remain separate: an incomparable counterpart and unmatched
-  amount are empty, not zero or a false break. Contract-detail keys distinguish split currency
-  and entity-pair rows without changing existing unambiguous transaction-view keys.
-- Reporting view translates each entity's posted period activity using the approved period
-  average into the tenant reporting currency, with rate/version/cutoff evidence. This is the
-  existing period-activity report, not a new cumulative closing-balance report. Translation
-  residuals remain visible and can fail the tie-out; no artificial elimination is inserted.
-- Necessary validation passed: public K04 transaction and functional/reporting runs, comparison
-  to posted USD due-from amounts and GBP due-to translated at September 1.28, single-entity
-  permission scope, existing CSV/XLSX/PDF output, seven focused row/tie-out tests, migration
-  0294 catalogue parity and scoped lint/types. No deployment.
-- Remaining: Intercompany Pairs same-source retention and finer residual attribution; Adoption
-  Bridge is explicitly transaction-only and needs a separate cumulative adoption-date currency
-  design. Book Bridge granular causal attribution/retention and other documented Reporting
-  gaps remain open. This feature does not claim overall repository completion.
 
 ## Outstanding release verification
 

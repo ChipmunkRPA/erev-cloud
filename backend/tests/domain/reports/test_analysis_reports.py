@@ -370,6 +370,46 @@ def test_adoption_bridge_foreign_functional(
     assert translated["contract_liability_legacy"] is None
     assert reporting["control_totals"]["legacy_position_unavailable_contract_count"] == 1
 
+    from support.reference import get
+    from support.worlds import REPORT_RUN_ID_HEADER, _appended_through_api, run_now
+
+    parameters = {"entity_codes": [US01], "date_of_initial_application": "2026-01-01"}
+    transaction, transaction_rows = report_run(world, "adoption_bridge", parameters)
+    clock.advance(timedelta(minutes=1))
+    changed = _appended_through_api(
+        world.place,
+        UUID(str(world.contracts[C_ADOPT].contract["id"])),
+        {
+            "event_type": "PRE_STANDARD_REVENUE_RECORDED",
+            "effective_date": "2025-12-31",
+            "payload": {
+                "obligation_key": "L1-LIC",
+                "amount": {"amount": "1000.00", "currency": "USD"},
+            },
+        },
+    )
+    assert changed["computation"]["status"] == "SUCCEEDED", changed["computation"]
+    for view, original, original_rows in (
+        ("transaction", transaction, transaction_rows),
+        ("functional", run, rows),
+        ("reporting", reporting, reporting_rows),
+    ):
+        _, current = report_run(world, "adoption_bridge", {**parameters, "currency_view": view})
+        assert current != original_rows
+        started = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        data = get(
+            app,
+            f"{REPORT_RUNS}/{started.headers[REPORT_RUN_ID_HEADER]}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert data.status_code == 200, data.text
+        assert data.json()["items"] == original_rows
+
 
 def test_adoption_bridge_s11_modretro_own(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore

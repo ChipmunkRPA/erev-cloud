@@ -2248,6 +2248,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         filters=(
             "one entity of entity_codes keeping the LEGACY book",
             "ASC606 and LEGACY figures at date_of_initial_application",
+            "same-source reruns reconstruct sections, membership counts and totals from retained "
+            "per-contract adoption inputs, date and currency basis without live source or "
+            "rate reads",
             _CONTRACT,
             "functional view uses posted legacy revenue and reconciled dated primary revenue "
             "and balances; foreign legacy positions without historical carrying evidence are "

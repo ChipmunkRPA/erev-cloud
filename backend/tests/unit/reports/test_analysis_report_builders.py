@@ -69,11 +69,7 @@ def test_columns_are_the_specification_grid(number: int, module: Any) -> None:
 def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (bridge, pairs):
-        assert contract.strategy == "retained_inputs" and not contract.open
-    else:
-        assert contract.strategy == "open" and len(contract.open) == 1
-        assert f"RPT-{number}" in contract.open[0]
+    assert contract.strategy == "retained_inputs" and not contract.open
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -1014,3 +1010,76 @@ def test_adoption_reporting_requires_dated_opening_income(opening: int) -> None:
             adoption.require_dated_revenue(trace, ["C/O1"], "FY2026-P01")
     else:
         adoption.require_dated_revenue(trace, ["C/O1"], "FY2026-P01")
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_adoption_retained_inputs_rebuild_without_live_reads(view: str) -> None:
+    import json
+    from dataclasses import asdict, replace
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    tenant, entity = UUID(int=1), UUID(int=2)
+    item = adoption.Source(
+        "C",
+        "Original customer",
+        "USD",
+        revenue_legacy=D("100"),
+        revenue_asc606=D("150"),
+        billed=D("300"),
+        legacy_position_available=view != "functional",
+        legacy_position_values=(D("600"), D("0")) if view == "reporting" else None,
+    )
+    outside = adoption.Source("OUTSIDE", None, "USD", revenue_legacy=D("50"))
+    selection = {adoption.DATE_KEY: "2026-01-01", "contract_external_id": None}
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": tenant,
+                "entity_ids": [entity],
+                "currency_view": view,
+                "selection": selection,
+                adoption.DATE_KEY: "2026-01-01",
+                "as_of": "2025-12-31",
+                "sources": [asdict(item)],
+                "legacy_only": [asdict(outside)],
+            }
+        )
+    )
+    at = datetime(2026, 9, 30, tzinfo=UTC)
+    params = ReportParams(
+        report_code=adoption.CODE,
+        report_version=1,
+        entity_ids=(entity,),
+        parameters={**selection, "currency_view": view},
+        known_at=at,
+        binding=SourceBinding(
+            cutoff=at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={adoption.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant))
+    data = adoption.build(uow, params)  # deliberately no session
+    expected, totals = adoption.dataset_rows([item], [outside])
+    totals.update({adoption.DATE_KEY: "2026-01-01", "as_of": "2025-12-31"})
+    assert data.rows == tuple(expected)
+    assert data.control_totals == totals
+    retained["sources"][0]["revenue_asc606"] = "175"
+    assert adoption.build(uow, params).control_totals["cumulative_effect_total"] == {"USD": "75.00"}
+    for changed in (
+        replace(params, entity_ids=(UUID(int=3),)),
+        replace(params, parameters={**params.parameters, "currency_view": "invalid"}),
+        replace(params, parameters={**params.parameters, adoption.DATE_KEY: "2026-02-01"}),
+        replace(params, parameters={**params.parameters, "contract_external_id": "OTHER"}),
+    ):
+        with pytest.raises(Problem):
+            adoption.build(uow, changed)
+    with pytest.raises(Problem):
+        adoption.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=UUID(int=4))), params)

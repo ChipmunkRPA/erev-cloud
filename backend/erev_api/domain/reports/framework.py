@@ -564,11 +564,6 @@ _BOOK_BRIDGE_OPEN: Final = (
     "presented balances of each book's latest contract versions at the range end, the contract "
     "versions' status history and the IFRS 15 impairment-reversal lines read live (RPS-12 RPT-33)"
 )
-_ADOPTION_BRIDGE_OPEN: Final = (
-    "the entity's kept books, the PRE_STANDARD_REVENUE subledger lines of the LEGACY book by "
-    "origin period, and the revenue, billed and balance nodes of the latest ASC 606 contract "
-    "versions at the period end before the date of initial application read live (RPS-12 RPT-34)"
-)
 _LATE_ENTRY_REPORT_OPEN: Final = (
     "contract events of the run's entities with their contracts, approval requests and "
     "recording principals, and the first lock record of each entity's period read live "
@@ -922,7 +917,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         book_bridge_builder.CODE: SourceContract(
             RETAINED, (_CUTOFF, "per-contract book amounts, currency basis and driver facts")
         ),
-        adoption_bridge_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_ADOPTION_BRIDGE_OPEN,)),
+        adoption_bridge_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "per-contract adoption inputs, date, currency basis and FX evidence"),
+        ),
         intercompany_pairs_builder.CODE: SourceContract(
             RETAINED, (_CUTOFF, "intercompany line inputs, entity/currency scope and FX evidence")
         ),
@@ -2072,6 +2070,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "chain_verification_report",
             "book_bridge",
             "intercompany_pairs",
+            "adoption_bridge",
         }
     ):
         try:
