@@ -57,3 +57,17 @@ signs, distinct owners/layers, reversal coefficients and both currency views; th
 engine example verifies TIME/MIXED/EVENT period metadata and historical cutoff. Existing DB
 intercompany reversal compatibility passes; full public multi-period mixed acceptance remains
 open. Migration 0220 records this scope. No deployment.
+
+
+Split-role reader foundation: the original role-target formula can now be replayed in both
+currencies for one uniquely owned revenue input. Retained weights, role index, side sign and
+minor-unit rounding must reproduce the original transaction and functional role amounts.
+TIME/EVENT amounts reconcile to the retained role classification, and source ownership is
+preserved. Multiple origins and non-revenue inputs remain unavailable.
+
+This is not complete agent reporting: `revenue_attribution.for_control` still requires a
+one-to-one revenue/control counterpart. Agent gross control relief also includes the supplier
+leg, and the current close-pass revenue paid population contains REVENUE and INTERCOMPANY_DUE_TO,
+not AP_SUPPLIER. The next integration must retain/verify that supplier history and distinguish
+net revenue from gross control relief without relaxing entry reconciliation. No public agent
+report acceptance is claimed by the scoped formula checks.

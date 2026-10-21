@@ -310,6 +310,102 @@ class RevenueTarget:
     source_ids: tuple[UUID, ...]
 
 
+def split_role_target(
+    trace: Trace,
+    node_id: str,
+    movements: Sequence[Mapping[Any, Any]],
+    *,
+    currency: str,
+    txn_scale: int,
+    functional_scale: int,
+    view: str,
+) -> RevenueTarget:
+    """Replay the original split formula; attribute only a uniquely owned revenue input."""
+    from erev_engine.formulas import FORMULAS
+
+    nodes = {node.id: node for node in trace.nodes}
+    node = nodes[node_id]
+    if node.formula_id != "post.role_target.v1" or len(node.inputs) != 1:
+        raise InvalidRevenueTrace("Split revenue requires one original revenue input.")
+    child = node.inputs[0]
+    if not isinstance(child, str) or not child.startswith("revenue_cum:") or child not in nodes:
+        raise InvalidRevenueTrace("Split revenue requires its original cumulative input.")
+    functional = child.replace("revenue_cum:", "revenue_functional:", 1)
+    sources = project(trace, functional, movements, currency=currency)
+    if (
+        len(
+            {
+                (
+                    item.contract_id,
+                    item.layer_key,
+                    item.movement_kind,
+                    item.effective_date,
+                    item.source_key,
+                )
+                for item in sources
+            }
+        )
+        != 1
+    ):
+        raise InvalidRevenueTrace("Split revenue requires unique original source attribution.")
+    raw = {item["id"]: item for item in movements}
+    transaction = sum(
+        (item.coefficient * Fraction(raw[item.movement_id]["amount_txn"]) for item in sources),
+        Fraction(0),
+    )
+    if transaction != Fraction(nodes[child].value):
+        raise InvalidRevenueTrace("Split revenue transaction sources do not reconcile.")
+    functional_total = sum((item.amount for item in sources), Fraction(0))
+    try:
+        if int(node.params["minor_unit"]) != txn_scale:
+            raise ValueError("Wrong transaction scale.")
+        formula = FORMULAS["post.role_target.v1"]
+        transaction_share = formula([transaction], node.params)
+        functional_share = formula(
+            [functional_total],
+            {
+                **node.params,
+                "minor_unit": str(functional_scale),
+            },
+        )
+        if (
+            transaction_share != Fraction(node.value)
+            or functional_share != Fraction(node.params["amount_functional"]) / 10**functional_scale
+        ):
+            raise ValueError("Split amounts do not reproduce.")
+        time_txn = Fraction(node.params["time"]) / 10**txn_scale
+        time_functional = Fraction(node.params["time_functional"]) / 10**functional_scale
+        (classification,) = input_classes(node.params, 1, transaction_share, time_txn)
+        if classification is not None:
+            if (time_txn, time_functional) != (
+                (transaction_share, functional_share)
+                if classification
+                else (Fraction(0), Fraction(0))
+            ):
+                raise ValueError("Split TIME classification differs from its target.")
+        else:
+            retained_txn, retained_functional = input_time(node.params, 1, 0)
+            if (time_txn, time_functional) != (
+                Fraction(retained_txn, 10**txn_scale),
+                Fraction(retained_functional, 10**functional_scale),
+            ):
+                raise ValueError("Split TIME amounts differ from their retained input.")
+    except (KeyError, ValueError, ZeroDivisionError) as error:
+        raise InvalidRevenueTrace(
+            "Original split revenue formula or TIME evidence does not reconcile."
+        ) from error
+    if view not in {"transaction", "functional"}:
+        raise InvalidRevenueTrace("Invalid split revenue currency view.")
+    amount = transaction_share if view == "transaction" else functional_share
+    time = time_txn if view == "transaction" else time_functional
+    return RevenueTarget(
+        amount,
+        time,
+        split_single_origin(sources, total=amount, time=time),
+        tuple(sorted((item.movement_id for item in sources), key=str)),
+    )
+
+
 def posting_delta(
     current: RevenueTarget,
     previous: RevenueTarget | None,

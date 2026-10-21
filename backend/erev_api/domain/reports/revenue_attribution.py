@@ -41,7 +41,8 @@ def read(
 ) -> Attribution:
     """Authorize each original computation and recurse through its sealed cutoff.
 
-    Unsplit revenue and contracting-entity due-to targets are supported. Mixed targets
+    Revenue and contracting-entity due-to targets retain original source attribution.
+    Split role targets require one uniquely owned revenue input. Mixed targets
     require retained TIME/EVENT classes for each original input; internally mixed inputs
     still require finer source evidence. Close histories must retain their
     original revenue paid population.
@@ -176,10 +177,27 @@ def read(
                 "input_time_functional",
                 "amount_functional",
                 "minor_unit",
+                "weights",
+                "keys",
+                "index",
+                "side",
             }
             or node.currency != str(line["txn_currency"]).strip()
         ):
-            raise ValueError("Revenue requires an unsplit original role target.")
+            raise ValueError("Revenue requires an original supported role target.")
+        split_params = {"weights", "keys", "index", "side"}
+        if split_params.intersection(node.params):
+            if not split_params.issubset(node.params):
+                raise ValueError("Revenue split metadata is incomplete.")
+            return revenue_trace.split_role_target(
+                trace,
+                key,
+                raw,
+                currency=currency,
+                txn_scale=txn_scale,
+                functional_scale=scale,
+                view=view,
+            )
         amount = Fraction(node.params["amount_functional"]) / (10**scale)
         txn = Fraction(node.value)
         if view == "transaction":

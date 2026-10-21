@@ -316,3 +316,132 @@ def test_mixed_period_sources_preserve_distinct_owners(view: str, sign: int) -> 
         split(held=(replace(sources[0], source_key="another@P1"), *sources[1:]))
     with pytest.raises(InvalidRevenueTrace, match="retained period"):
         split(config={})
+
+
+@pytest.mark.parametrize("view", ["transaction", "functional"])
+@pytest.mark.parametrize("classification", ["TIME", "EVENT", "MIXED"])
+def test_split_role_replays_original_rounding_and_preserves_source(
+    view: str, classification: str
+) -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports.revenue_trace import split_role_target
+
+    original = {
+        "id": UUID(int=1),
+        "contract_id": UUID(int=9),
+        "layer_key": "original-layer",
+        "balance_role": "CONTRACT_LIABILITY",
+        "movement_kind": "LIABILITY_LAYER_CONSUMED",
+        "trace_node_id": "relief",
+        "functional_currency": "GBP",
+        "amount_txn": Decimal("100.01"),
+        "amount_functional": Decimal("80.00"),
+        "source_key": "ob@P1",
+    }
+    time_txn, time_fn = {"TIME": (-3334, -2667), "EVENT": (0, 0), "MIXED": (-1000, -800)}[
+        classification
+    ]
+    params = {
+        "signs": "1",
+        "minor_unit": "2",
+        "weights": "1/3|2/3",
+        "keys": "REVENUE|SUPPLIER",
+        "index": "0",
+        "side": "-1",
+        "amount_functional": "-2667",
+        "time": str(time_txn),
+        "time_functional": str(time_fn),
+        "input_classes": classification,
+        "input_time_txn": str(time_txn),
+        "input_time_functional": str(time_fn),
+    }
+    nodes = (
+        TraceNode(
+            "revenue_cum:ob:P1",
+            "revenue_cum",
+            "100.01",
+            "USD",
+            "input.echo.v1",
+            (),
+            {},
+            "0",
+            "input.echo",
+        ),
+        TraceNode(
+            "relief",
+            "fx_layer_consumed",
+            "80.00",
+            "GBP",
+            "fx.layer.consume.fifo.v1",
+            (),
+            {},
+            "0",
+            "fx.layer.consume.fifo",
+        ),
+        TraceNode(
+            "revenue_functional:ob:P1",
+            "revenue_functional",
+            "80.00",
+            "GBP",
+            "fx.revenue_functional.v1",
+            ("relief",),
+            {"signs": "1"},
+            "0",
+            "fx.revenue_functional",
+        ),
+        TraceNode(
+            "split",
+            "posting_target",
+            "-33.34",
+            "USD",
+            "post.role_target.v1",
+            ("revenue_cum:ob:P1",),
+            params,
+            "0",
+            "post.role_target",
+        ),
+    )
+
+    def read(held=nodes, rows=(original,)):
+        return split_role_target(
+            Trace(1, "test", tuple(held), {}),
+            "split",
+            rows,
+            currency="GBP",
+            txn_scale=2,
+            functional_scale=2,
+            view=view,
+        )
+
+    result = read()
+    assert result.amount == Fraction("-33.34" if view == "transaction" else "-26.67")
+    assert result.time_amount == Fraction(time_txn if view == "transaction" else time_fn, 100)
+    assert sum(item.amount for item in result.movements) == result.amount
+    assert {item.contract_id for item in result.movements} == {UUID(int=9)}
+    assert {item.layer_key for item in result.movements} == {"original-layer"}
+    assert result.source_ids == (UUID(int=1),)
+    split_sources = (
+        nodes[0],
+        replace(nodes[1], value="40.00"),
+        replace(nodes[1], id="relief-two", value="40.00"),
+        replace(nodes[2], inputs=("relief", "relief-two"), params={"signs": "1|1"}),
+        nodes[3],
+    )
+    split_rows = (
+        {**original, "amount_txn": "50.00", "amount_functional": "40.00"},
+        {
+            **original,
+            "id": UUID(int=2),
+            "layer_key": "other-layer",
+            "trace_node_id": "relief-two",
+            "amount_txn": "50.01",
+            "amount_functional": "40.00",
+        },
+    )
+    with pytest.raises(InvalidRevenueTrace, match="unique original source"):
+        read(split_sources, split_rows)
+    with pytest.raises(InvalidRevenueTrace, match="formula or TIME"):
+        read((*nodes[:-1], replace(nodes[-1], params={**params, "amount_functional": "-2666"})))
+    with pytest.raises(InvalidRevenueTrace, match="transaction sources"):
+        read(rows=({**original, "amount_txn": "100.00"},))

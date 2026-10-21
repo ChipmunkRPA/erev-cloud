@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — split-role formula reader; agent integration still open
+
+The internal revenue reader can replay a split role target for a single uniquely owned revenue
+input, checking original weights/index/sign and minor-unit rounding in both currencies, plus
+retained TIME/EVENT amounts. Scoped formula/source checks pass. This does not make the complete
+agent report path available: its control-to-revenue entry matcher still requires equal gross
+relief and net revenue, and retained revenue history does not yet include the AP_SUPPLIER leg.
+Supplier history and explicit gross/net component reconciliation remain required before public
+agent workflow acceptance. Multi-origin split inputs and independent sign-off remain open.
+No deployment.
+
+
 ### October 20 — readable exemption export details
 
 XLSX and PDF now present retained RPO exemption facts as readable records with original

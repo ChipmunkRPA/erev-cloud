@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Split-role revenue source reader foundation — October 20, 2026
+
+- The retained revenue reader now replays the original split role formula for a single uniquely
+  owned revenue input. Both currency shares must match original weights, role index, side sign
+  and minor-unit rounding. TIME/EVENT amounts and provenance remain independently checked.
+- 36 scoped role-template/source cases and lint/types pass, including split rounding, mixed
+  TIME amounts, changed transaction evidence and changed functional role amounts.
+- Agent report integration is NOT complete: for_control still requires net revenue to equal
+  gross control relief. Supplier history is absent from the close-pass revenue paid population.
+  Next work must retain/verify AP_SUPPLIER and reconcile the separate gross/net components;
+  removing the equality check alone would be incorrect. No public agent acceptance is claimed.
+- Multiple-origin split inputs, other mixed-source gaps and independent sign-off remain open.
+  Direct main publication only; no deployment.
+
+
 ## Readable RPO exemption exports — October 20, 2026
 
 - XLSX exports now render retained exemption facts as rows with readable policy names, wrapped
@@ -238,25 +253,6 @@
   movement/retained-rate test pass; Ruff and targeted mypy pass. Migration 0208 aligns the
   calculation description. No deployment or accounting sign-off.
 
-
-## RPO exemption eligibility transitions — October 20, 2026
-
-- Rollforward opening and closing now use their own retained versions for full exemption
-  eligibility. A newly exempt closing cannot erase a disclosed opening; leaving an exemption
-  is attributed to EXEMPTIONS. Obligations fully exempt throughout remain omitted.
-- Four targeted cases cover entering, leaving, unelected and continuing right-to-invoice
-  exemptions; endpoint balances agree with standalone RPO. Partial VC exclusions and original
-  term evidence remain unchanged. Ten focused exemption tests and seven catalogue tests pass;
-  backend lint/type checks pass. The database RPO rollforward tie-out test passes after migration
-  0207, which aligns the stored report calculation description.
-- This covers changes present in retained obligation versions, not historical policy-election
-  changes or every public amendment workflow. Independent accounting acceptance remains open.
-
-## Retained TIME/EVENT input classes — October 20, 2026
-
-- Engine traces retain each input's class and functional TIME total; reporting verifies
-  both currencies before attribution. Internally mixed inputs remain unsupported.
-- See [scope and verification](docs/release/REPORTING-SOURCE-CLASSES-2026-10-20.md).
 
 ## Outstanding release verification
 

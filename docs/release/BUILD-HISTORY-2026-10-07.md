@@ -9835,3 +9835,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   acceptance; the detailed scenario limitations and independent accounting review remain open.
 - Necessary verification: two focused GL backend tests and the offsetting-role viewer test
   passed; backend lint/type checking and frontend TypeScript checking passed. No deployment.
+
+
+## Retained TIME/EVENT input classes — October 20, 2026
+
+- Engine traces retain each input's class and functional TIME total; reporting verifies
+  both currencies before attribution. Internally mixed inputs remain unsupported.
+- See [scope and verification](docs/release/REPORTING-SOURCE-CLASSES-2026-10-20.md).
+
+
+## RPO exemption eligibility transitions — October 20, 2026
+
+- Rollforward opening and closing now use their own retained versions for full exemption
+  eligibility. A newly exempt closing cannot erase a disclosed opening; leaving an exemption
+  is attributed to EXEMPTIONS. Obligations fully exempt throughout remain omitted.
+- Four targeted cases cover entering, leaving, unelected and continuing right-to-invoice
+  exemptions; endpoint balances agree with standalone RPO. Partial VC exclusions and original
+  term evidence remain unchanged. Ten focused exemption tests and seven catalogue tests pass;
+  backend lint/type checks pass. The database RPO rollforward tie-out test passes after migration
+  0207, which aligns the stored report calculation description.
+- This covers changes present in retained obligation versions, not historical policy-election
+  changes or every public amendment workflow. Independent accounting acceptance remains open.
