@@ -172,6 +172,20 @@ def line_recorded_by(params: ReportParams, known_at: datetime | None = None) -> 
     )
 
 
+def version_commit_where(
+    params: ReportParams | None, cutoff: datetime
+) -> list[ColumnElement[bool]]:
+    """New historical populations exclude versions committed after their exact cutoff.
+
+    Bound runs retain the original version identities, including pre-commit-evidence runs.
+    """
+    if params is None or params.binding is not None or not params.historical:
+        return []
+    if params.sources is not None:
+        params.sources.record_evidence("historical_source_commit_v1", True)
+    return [func.erev.source_commit_time("contract_version", contract_version.c.id) <= cutoff]
+
+
 def minor_unit(currency: str) -> int:
     spec = ISO_4217.get(currency)
     if spec is None:
@@ -540,7 +554,12 @@ def versions_for(
     ids = tuple(
         UUID(str(value))
         for value in session.execute(
-            latest_versions(session, book_code=book_code, cutoff=cutoff)
+            latest_versions(
+                session,
+                book_code=book_code,
+                cutoff=cutoff,
+                commit_cutoff=cutoff if params.historical else None,
+            )
         ).scalars()
     )
     if params.sources is not None:
@@ -572,6 +591,7 @@ def rows_read(
         version_id,
         book_code=book_code,
         cutoff=cutoff,
+        commit_cutoff=cutoff if params.historical and params.binding is None else None,
         versions=consumed if params.binding is not None else None,
         only_contract=only_contract,
     )
@@ -882,6 +902,7 @@ def chain_versions(
     book_code: str,
     cutoff: datetime | None,
     created_cutoff: datetime | None = None,
+    commit_cutoff: datetime | None = None,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
 ) -> Select[Any]:
@@ -912,6 +933,11 @@ def chain_versions(
         conditions.append(version.c.known_at <= cutoff)
     if created_cutoff is not None:
         conditions.append(version.c.created_at <= created_cutoff)
+    visibility_cutoff = commit_cutoff or (created_cutoff if versions is None else None)
+    if visibility_cutoff is not None:
+        conditions.append(
+            func.erev.source_commit_time("contract_version", version.c.id) <= visibility_cutoff
+        )
     if versions is not None:
         conditions.append(in_versions(version.c.id, versions))
     if only_contract is not None:
@@ -948,6 +974,7 @@ def chain_latest(
     book_code: str,
     cutoff: datetime | None,
     created_cutoff: datetime | None = None,
+    commit_cutoff: datetime | None = None,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
 ) -> Select[Any]:
@@ -961,6 +988,7 @@ def chain_latest(
         book_code=book_code,
         cutoff=cutoff,
         created_cutoff=created_cutoff,
+        commit_cutoff=commit_cutoff,
         versions=versions,
         only_contract=only_contract,
     ).subquery("on_chain")
@@ -978,6 +1006,7 @@ def recorded_latest(
     book_code: str,
     cutoff: datetime | None,
     created_cutoff: datetime | None = None,
+    commit_cutoff: datetime | None = None,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
 ) -> Select[Any]:
@@ -998,6 +1027,11 @@ def recorded_latest(
         conditions.append(version.c.known_at <= cutoff)
     if created_cutoff is not None:
         conditions.append(version.c.created_at <= created_cutoff)
+    visibility_cutoff = commit_cutoff or (created_cutoff if versions is None else None)
+    if visibility_cutoff is not None:
+        conditions.append(
+            func.erev.source_commit_time("contract_version", version.c.id) <= visibility_cutoff
+        )
     if versions is not None:
         conditions.append(in_versions(version.c.id, versions))
     if only_contract is not None:
@@ -1038,6 +1072,7 @@ def read_from(
     book_code: str,
     cutoff: datetime | None,
     created_cutoff: datetime | None = None,
+    commit_cutoff: datetime | None = None,
     statuses: Iterable[str] | None = INCLUDED_STATUSES,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
@@ -1063,6 +1098,7 @@ def read_from(
         book_code=book_code,
         cutoff=cutoff,
         created_cutoff=created_cutoff,
+        commit_cutoff=commit_cutoff,
         versions=versions,
         only_contract=only_contract,
     ).cte()
@@ -1070,6 +1106,7 @@ def read_from(
         book_code=book_code,
         cutoff=cutoff,
         created_cutoff=created_cutoff,
+        commit_cutoff=commit_cutoff,
         versions=versions,
         only_contract=only_contract,
     ).cte()
@@ -1087,7 +1124,9 @@ def read_from(
     )
 
 
-def latest_versions(session: Session, *, book_code: str, cutoff: datetime) -> Select[Any]:
+def latest_versions(
+    session: Session, *, book_code: str, cutoff: datetime, commit_cutoff: datetime | None = None
+) -> Select[Any]:
     """Ids of the versions of ``book_code`` read at ``cutoff`` whose status in the book enters
     the disclosures: the version each contract is read from (``chain_latest``) and the versions
     read as recorded (``recorded_latest``). A contract is read once, from the last version along
@@ -1100,8 +1139,12 @@ def latest_versions(session: Session, *, book_code: str, cutoff: datetime) -> Se
     combination was recorded reads the former group. The rows of these versions are read with
     ``read_from``, which keeps each contract to its own version."""
     included = sorted(INCLUDED_STATUSES)
-    pairs = chain_latest(book_code=book_code, cutoff=cutoff).subquery("chain_latest")
-    recorded = recorded_latest(book_code=book_code, cutoff=cutoff).subquery("recorded_versions")
+    pairs = chain_latest(book_code=book_code, cutoff=cutoff, commit_cutoff=commit_cutoff).subquery(
+        "chain_latest"
+    )
+    recorded = recorded_latest(
+        book_code=book_code, cutoff=cutoff, commit_cutoff=commit_cutoff
+    ).subquery("recorded_versions")
     read = union(
         select(pairs.c.id).where(pairs.c.status_in_book.in_(included)),
         select(recorded.c.id).where(recorded.c.status_in_book.in_(included)),

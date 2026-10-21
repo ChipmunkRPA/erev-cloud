@@ -346,6 +346,7 @@ def _versions(
             obligation_version.c.book_code == book_code,
             obligation_version.c.contracting_entity_id.in_(list(params.entity_ids)),
             contract_version.c.known_at <= cutoff,
+            *tie_outs.version_commit_where(params, cutoff),
             contract_version.c.status_in_book.in_(sorted(tie_outs.INCLUDED_STATUSES)),
         )
         .order_by(contract_version.c.known_at, obligation_version.c.version_no)

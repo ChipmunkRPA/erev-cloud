@@ -114,6 +114,7 @@ from erev_api.domain.contracts import (
     upgrade_persistence,
 )
 from erev_api.domain.journals import subledger
+from erev_api.domain.journals.commit_evidence import retain_sources_after_commit
 from erev_api.enums import (
     ComputationStatus,
     ComputationTrigger,
@@ -757,6 +758,7 @@ def _persist_book(
     }
     row = _row(contract_version, columns, fixed, minor_unit=lambda _: minor)
     session.execute(insert(contract_version).values(**row))
+    retain_sources_after_commit(uow, "contract_version", [version_id])
     _insert_rows(session, obligation_version, obligation_rows)
     balance_rows = _balance_rows(
         uow, bundle, found, book_output, version_id=version_id, obligation_rows=obligation_rows

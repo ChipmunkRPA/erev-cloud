@@ -9,13 +9,13 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import contract_event
+from erev_api.db.tables import contract_event, historical_source_commit
 from erev_api.domain.reports.builders.extract_events import COLUMNS
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from erev_api.redaction import CONTACT_FIELDS
 from fastapi import FastAPI
-from sqlalchemy import select
+from sqlalchemy import func, select
 from support.db import TestDatabase
 from support.reference import get, post
 from support.worlds import (
@@ -38,7 +38,7 @@ def test_event_extract_delivery_and_incremental(
 ) -> None:
     world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
     events = world.place.rows(select(contract_event).order_by(contract_event.c.recorded_at))
-    cutoff = max(row["recorded_at"] for row in events)
+    cutoff = world.place.scalar(select(func.clock_timestamp()))
     clock.set(cutoff)
     world = resigned(world)
     params = {"entity_codes": [AVM_US], "known_at": cutoff.isoformat()}
@@ -53,7 +53,15 @@ def test_event_extract_delivery_and_incremental(
     assert output["schema_version"] == 1
     assert output["mode"] == "FULL"
     assert output["row_count"] == len(events)
-    since = events[0]["recorded_at"]
+    commits = {
+        row["source_id"]: row["committed_server_at"]
+        for row in world.place.rows(
+            select(historical_source_commit).where(
+                historical_source_commit.c.source_kind == "contract_event"
+            )
+        )
+    }
+    since = min(commits[row["id"]] for row in events)
     _, incremental = report_run(
         world,
         "extract_events",
@@ -64,7 +72,7 @@ def test_event_extract_delivery_and_incremental(
         },
     )
     assert {row["id"] for row in incremental} == {
-        str(row["id"]) for row in events if row["recorded_at"] > since
+        str(row["id"]) for row in events if commits[row["id"]] > since
     }
     for known_since in (None, cutoff.isoformat()):
         invalid = post(
@@ -106,7 +114,7 @@ def test_contract_version_extract_delivery(
     versions = world.place.rows(
         select(contract_version).where(contract_version.c.book_code == "ASC606")
     )
-    cutoff = max(max(row["created_at"], row["known_at"]) for row in versions)
+    cutoff = world.place.scalar(select(func.clock_timestamp()))
     clock.set(cutoff)
     world = resigned(world)
     params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": cutoff.isoformat()}
@@ -126,7 +134,15 @@ def test_contract_version_extract_delivery(
         assert json.loads(row["contract_external_ids"]) == sorted(
             item["external_id"] for item in contracts
         )
-    since = min(row["created_at"] for row in versions)
+    commits = {
+        row["source_id"]: row["committed_server_at"]
+        for row in world.place.rows(
+            select(historical_source_commit).where(
+                historical_source_commit.c.source_kind == "contract_version"
+            )
+        )
+    }
+    since = min(commits[row["id"]] for row in versions)
     if since == cutoff:
         since -= timedelta(microseconds=1)
     _, incremental = report_run(
@@ -139,7 +155,7 @@ def test_contract_version_extract_delivery(
         },
     )
     assert {row["id"] for row in incremental} == {
-        str(row["id"]) for row in versions if row["created_at"] > since
+        str(row["id"]) for row in versions if commits[row["id"]] > since
     }
     original = get(app, f"{REPORT_RUNS}/{run['id']}/output", world.maya).json()
     assert original["schema_version"] == 1

@@ -424,6 +424,7 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "schedule_line": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "calc_trace": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "subledger_posting": _regenerated(_K.DERIVED, "released postings after replay (SBX-04)"),
+        "historical_source_commit": _regenerated(_K.DERIVED, "commit evidence of sandbox sources"),
         "subledger_posting_commit": _regenerated(_K.DERIVED, "commit evidence of sandbox postings"),
         "subledger_posting_seal": _regenerated(_K.DERIVED, "seals of the sandbox's postings"),
         "ledger_chain_head": _regenerated(_K.DERIVED, "the sandbox's own ledger chain"),

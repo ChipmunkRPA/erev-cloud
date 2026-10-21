@@ -354,6 +354,7 @@ def latest_where(
     recorded = [
         obligation_version.c.book_code == book_code,
         contract_version.c.known_at <= cutoff,
+        *tie_outs.version_commit_where(params, cutoff),
         *tie_outs.bound_version_where(params, contract_version.c.id, book_code),
     ]
     per_version = (
@@ -539,6 +540,7 @@ def population(
             obligation_version.c.book_code == book_code,
             obligation_version.c.contracting_entity_id.in_(list(params.entity_ids)),
             contract_version.c.known_at <= tie_outs.cutoff_for(session, params),
+            *tie_outs.version_commit_where(params, tie_outs.cutoff_for(session, params)),
             *tie_outs.bound_version_where(params, contract_version.c.id, book_code),
             *where,
         )

@@ -216,6 +216,7 @@ def test_minute_sweep_isolates_commit_recovery_tenant_failures(
     recovery = Mock(side_effect=[RuntimeError("database unavailable"), (2, 0)])
     monkeypatch.setattr(sweeper, "_directory", lambda _: ([first, second], frozenset()))
     monkeypatch.setattr(sweeper, "recover_pending", recovery)
+    monkeypatch.setattr(sweeper, "recover_pending_sources", lambda _: (0, 0))
     requeue = Mock(return_value=1)
     monkeypatch.setattr(sweeper, "_requeue", requeue)
     monkeypatch.setattr(sweeper, "_redispatch_stranded", lambda *args: 0)

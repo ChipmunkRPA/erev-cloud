@@ -83,6 +83,9 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                 contract_event.c.record_seq,
                 contract_event.c.recorded_at,
                 contract_event.c.created_at,
+                func.erev.source_commit_time("contract_event", contract_event.c.id).label(
+                    "committed_server_at"
+                ),
                 contract_event.c.payload,
                 contract_event.c.supersedes_event_id,
             )
@@ -92,6 +95,7 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                 contract_event.c.event_type.in_(EVENT_TYPES),
                 contract_event.c.recorded_at <= cutoff,
                 contract_event.c.created_at <= cutoff,
+                func.erev.source_commit_time("contract_event", contract_event.c.id) <= cutoff,
             )
             .order_by(contract_event.c.record_seq, contract_event.c.id)
         )
@@ -153,6 +157,7 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                     {
                         "book_code": params.book_code,
                         "commit_visibility": True,
+                        "event_commit_visibility": True,
                         "period_ids": wanted_periods,
                         "events": event_rows,
                         "modification_booking_ids": modification_bookings,
@@ -175,6 +180,11 @@ def validate(
     for row in source["events"]:
         if row["contracting_entity_id"] not in scope:
             raise Problem("forbidden", "Retained billing sources exceed the report entity scope.")
+        if source.get("event_commit_visibility") and (
+            not row.get("committed_server_at")
+            or datetime.fromisoformat(row["committed_server_at"]) > cutoff
+        ):
+            raise Problem("invalid-transition", "Retained event commit exceeds the cutoff.")
         if any(datetime.fromisoformat(row[k]) > cutoff for k in ("recorded_at", "created_at")):
             raise Problem("invalid-transition", "Retained event exceeds the source cutoff.")
     for row in source["revenue"]:

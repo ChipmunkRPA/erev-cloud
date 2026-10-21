@@ -48,6 +48,7 @@ from sqlalchemy.orm import Session
 from erev_api.audit import writer as audit_writer
 from erev_api.db import new_id
 from erev_api.db.tables import combination_group, contract, contract_event, obligation
+from erev_api.domain.journals.commit_evidence import retain_sources_after_commit
 from erev_api.enums import ContractEventType, ContractStatus
 from erev_api.events.payloads import (
     LATEST_SCHEMA_VERSION,
@@ -455,6 +456,7 @@ def append_events(
 
     _mark_dirty(uow, group_id)
     rows = list(inserted.values())
+    retain_sources_after_commit(uow, "contract_event", [row["id"] for row in rows])
     audit_writer.record_facts(
         uow,
         action=APPEND_ACTION,

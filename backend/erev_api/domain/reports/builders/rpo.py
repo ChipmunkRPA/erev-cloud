@@ -510,6 +510,7 @@ def load(
             .where(
                 contract_version.c.book_code == book_code,
                 contract_version.c.known_at <= cutoff,
+                *tie_outs.version_commit_where(params, cutoff),
                 *version_where,
             )
             .order_by(contract_version.c.combination_group_id, contract_version.c.version_no)

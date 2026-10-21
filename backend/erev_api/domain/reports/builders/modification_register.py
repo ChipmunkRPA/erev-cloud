@@ -520,6 +520,7 @@ def _applied_measures(
     book_code: str,
     rows: Sequence[Mapping[str, Any]],
     cutoff: datetime,
+    params: ReportParams | None = None,
 ) -> dict[UUID, tuple[Decimal | None, dict[str, Decimal]]]:
     """Per APPLIED modification: (``tp_change``, catch-up per obligation key) from the run's
     book as of ``cutoff`` — the application version bound deterministically
@@ -547,6 +548,7 @@ def _applied_measures(
             ).where(
                 contract_version.c.book_code == book_code,
                 contract_version.c.known_at <= cutoff,
+                *tie_outs.version_commit_where(params, cutoff),
                 contract_version.c.cause_event_ids.overlap(sorted(events, key=str)),
             )
         ).mappings()
@@ -768,7 +770,9 @@ def sources(
             .where(contract_event.c.id.in_(event_ids))
         ):
             event_owners[UUID(str(event_id))] = (str(external_id), int(stream_version))
-    applied = _applied_measures(session, book_code=book_code, rows=rows, cutoff=cutoff)
+    applied = _applied_measures(
+        session, book_code=book_code, rows=rows, cutoff=cutoff, params=params
+    )
     names = approval_queries.display_names(
         session,
         [

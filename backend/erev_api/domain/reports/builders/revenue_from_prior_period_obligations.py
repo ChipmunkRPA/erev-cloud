@@ -741,6 +741,7 @@ def _selected_versions(
         ).where(
             contract_version.c.id.in_(ids),
             contract_version.c.known_at <= cutoff,
+            *tie_outs.version_commit_where(params, cutoff),
             *tie_outs.bound_version_where(params, contract_version.c.id, book_code),
         )
     ).tuples()

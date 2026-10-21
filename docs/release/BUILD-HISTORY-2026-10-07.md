@@ -11099,3 +11099,45 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Initial batches mixing these status transitions with monetary events remain unfinished.
   A public batch-to-report witness remains to verify; the public regression above is sequential.
   Arbitrary historical commit visibility (B4-11) also remains open. No deployment.
+
+## Monetary events in initial eligibility batches — October 21, 2026
+
+- Initial RPO eligibility timelines now retain dated amendment and estimate slices, using
+  original event-specific allocation shares. Changes before exit are separately classified;
+  changes while excluded are included in the remaining re-entry balance, not NEW_CONTRACTS
+  or in-scope modification/VC lines. Original computation IDs and amounts remain unchanged.
+- The dated reader now exposes the fixed-allocation measurement date separately from revenue.
+  A frozen revenue target may be dated at the exit while allocation still measures month-end.
+  Lifecycle cuts remove later same-period changes using complete original boundaries/shares,
+  preventing an excluded-period amendment from being included in the earlier exit balance.
+- Fixed an engine invariant failure on estimates during a Step 1 revenue freeze. Matching
+  frozen before/after targets retain a zero catch-up with the freeze date and S02-R-05 guard;
+  the new allocation remains available for subsequent re-entry. Other segment checks remain.
+- New reports retain rpo_initial_monetary_timeline_v1; older bindings retain their prior
+  timeline. Migration 0270 updates both RPO definitions. Eight original-engine scenarios cover
+  price/estimate/both at exit and during exclusion, final included/excluded states and four
+  report start positions. The 132 scoped engine/reader/report cases, public sequential
+  eligibility/rerun regression, lint/types and reversible migration/catalogue parity pass.
+- Initial usage/royalty batches, monetary changes after a same-day status transition, and
+  multiple transitions on a monetary-event date still need ordered amount evidence. The public
+  batch-to-report witness and B4-11 historical commit visibility remain open. No deployment.
+
+## Original-date usage across initial eligibility batches — October 21, 2026
+
+- Stage 09 now retains realized allocation at original contract-event dates for usage/royalty
+  components, using the same realization calculation as its retained period/version amounts.
+  A dedicated reader validates these dated trace values; missing dates are not inferred from
+  month-end values. Recognition and realization remain distinct.
+- Initial usage timelines now use these exact dates at admission, eligibility exit and re-entry.
+  Fees realized before exit are VC movements; fees realized while excluded enter with the
+  remaining re-entry balance. Old report bindings keep the previous timeline. Migration 0271
+  adds rpo_initial_usage_timeline_v1 to both RPO definitions.
+- Two original-engine usage journeys cover fees before exit and while excluded within the
+  same month. Opening/closing, VC, eligibility and zero unexplained movement reconcile;
+  missing original date evidence is refused. The 43 scoped usage/royalty/eligibility checks,
+  public initial-usage and sequential eligibility/rerun regressions, lint/types and reversible
+  migration/catalogue parity pass. The royalty checks cover the existing engine behavior,
+  not a complete royalty eligibility journey.
+- Same-day monetary events after a status transition, multiple transitions on a monetary date,
+  the public mixed-batch witness, full royalty eligibility witness and B4-11 historical commit
+  visibility remain open. No deployment.

@@ -282,6 +282,47 @@ RETAINED_COMMIT_NOTE: Final = (
 )
 
 
+SOURCE_COMMIT_REPORTS: Final = (
+    "adoption_bridge",
+    "allocations_by_ssp_version",
+    "balance_aging",
+    "book_bridge",
+    "bookings_billings_revenue",
+    "contract_balance_rollforward",
+    "contract_balances",
+    "contract_cost_rollforward",
+    "contract_history",
+    "estimate_change_listing",
+    "extract_balances",
+    "extract_contract_versions",
+    "extract_events",
+    "extract_obligations",
+    "extract_schedule_lines",
+    "latest_contract_status",
+    "loss_provision_register",
+    "modification_register",
+    "revenue_from_opening_liability",
+    "revenue_from_prior_period_obligations",
+    "revenue_waterfall",
+    "rpo",
+    "rpo_rollforward",
+    "scope_exclusion_register",
+    "ssp_override_listing",
+)
+SOURCE_COMMIT_NOTE: Final = (
+    "historical_source_commit_v1 retains original event and contract-version "
+    "transaction commits; new event/version extracts and BBR event sources use "
+    "commit cutoffs; historical version populations exclude later commits before "
+    "latest selection; bound inputs keep their original interpretation"
+)
+
+SOURCE_COMMIT_INCREMENTAL: Final = (
+    "mode INCREMENTAL: original source transaction committed after known_since and "
+    "at or before known_at; old bound extracts preserve their original record or "
+    "creation time basis"
+)
+
+
 def _definition(
     code: str,
     name: str,
@@ -312,11 +353,13 @@ def _definition(
                 ["subledger_posting_commit"]
                 if code in COMMIT_VISIBILITY_REPORTS or code in RETAINED_COMMIT_REPORTS
                 else []
-            ),
+            )
+            + (["historical_source_commit"] if code in SOURCE_COMMIT_REPORTS else []),
             "joins": list(joins),
             "filters": list(filters)
             + ([COMMIT_VISIBILITY_NOTE] if code in COMMIT_VISIBILITY_REPORTS else [])
-            + ([RETAINED_COMMIT_NOTE] if code in RETAINED_COMMIT_REPORTS else []),
+            + ([RETAINED_COMMIT_NOTE] if code in RETAINED_COMMIT_REPORTS else [])
+            + ([SOURCE_COMMIT_NOTE] if code in SOURCE_COMMIT_REPORTS else []),
             "parameters": list(schema["properties"]),
         },
         tie_outs=tuple(tie_outs),
@@ -2481,7 +2524,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "Every original member contracting entity must be in the report scope",
             _BOOK,
             "version known_at and created_at at or before known_at source time; lock unsupported",
-            _INCREMENTAL,
+            SOURCE_COMMIT_INCREMENTAL,
         ),
     ),
     _definition(
@@ -2593,7 +2636,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _SCOPE,
             "contract_event.recorded_at at or before the source time",
             _SOURCE_TIME,
-            _INCREMENTAL,
+            SOURCE_COMMIT_INCREMENTAL,
         ),
     ),
     _definition(

@@ -464,6 +464,7 @@ def _step1_differs(
             contract.c.id.in_(sorted(contracts, key=str)),
             contract_version.c.book_code.in_(list(BOOKS)),
             contract_version.c.known_at <= cutoff,
+            *tie_outs.version_commit_where(params, cutoff),
         )
         .order_by(contract.c.id, contract_version.c.book_code, contract_version.c.version_no)
     )

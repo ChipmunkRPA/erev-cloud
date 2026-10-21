@@ -192,6 +192,7 @@ from erev_api.db.tables.source import (  # noqa: E402
     source_usage,
 )
 from erev_api.db.tables.subledger import (  # noqa: E402
+    historical_source_commit,
     journal_batch,
     journal_entry,
     journal_line,
@@ -366,6 +367,7 @@ __all__ = [
     "subledger_posting",
     "subledger_posting_seal",
     "subledger_posting_commit",
+    "historical_source_commit",
     "support_grant",
     "sync_run",
     "tenant",

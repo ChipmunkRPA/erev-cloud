@@ -41,7 +41,7 @@ from sqlalchemy.orm import Session
 from erev_api.clock import Clock
 from erev_api.db.session import DbContext, platform_session, tenant_session
 from erev_api.db.tables.platform import job, tenant
-from erev_api.domain.journals.commit_evidence import recover_pending
+from erev_api.domain.journals.commit_evidence import recover_pending, recover_pending_sources
 from erev_api.enums import JobState
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import (
@@ -216,6 +216,8 @@ def sweep(runtime: JobRuntime, *, request_id: str = "job-sweeper") -> tuple[int,
     for tenant_id in tenant_ids:
         with isolated(SWEEP_FAILED, tenant_id=str(tenant_id)):
             recover_pending(tenant_id)
+        with isolated(SWEEP_FAILED, tenant_id=str(tenant_id)):
+            recover_pending_sources(tenant_id)
         requeued += _requeue(tenant_id, now)
         requeued += _redispatch_stranded(tenant_id, runtime, stalled_tasks)
         stalled += _fail_stalled(tenant_id, runtime)

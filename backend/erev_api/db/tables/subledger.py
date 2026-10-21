@@ -387,3 +387,14 @@ posting_ack: Final = Table(
     _timestamp("received_at", nullable=False, now_default=True),
     *_sc_c(),
 )
+
+
+historical_source_commit: Final = Table(
+    "historical_source_commit",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("source_kind", Text(), primary_key=True),
+    Column("source_id", Uuid(), primary_key=True),
+    Column("source_transaction", Text(), nullable=False),
+    Column("committed_server_at", DateTime(timezone=True), nullable=True),
+)

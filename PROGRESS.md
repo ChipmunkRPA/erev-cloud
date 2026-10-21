@@ -20,6 +20,36 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Contract event and version commit visibility — October 21, 2026
+
+- Original contract-event and computed-version transactions now have database-controlled
+  commit evidence, queued atomically with each source and archived after ordinary writes.
+  The minute worker also recovers pending source evidence in isolated keyset batches.
+  Delegated SYSTEM activation units are covered by that durable recovery path; read-only
+  queries can resolve the real timestamp before archival. Archived evidence is immutable.
+- Shared historical version selection excludes late commits before choosing the latest
+  candidate, retaining the preceding version correctly. RPO history and the touched history,
+  book-bridge, prior-obligation, SSP/allocation, modification and estimate readers use the
+  same cutoff protection. Explicitly bound original version identities remain compatible.
+- New event/version extracts and BBR event inputs retain their actual commit timestamps.
+  Incremental event/version exports use (known_since, known_at] in commit time, so backdated
+  events and computations committed after a prior export are picked up in the next window.
+  Published columns are unchanged; old bound extracts retain their original input basis.
+- Migration 0277 adds tenant-isolated evidence, pending indexes and synchronized metadata
+  for the affected report definitions. It requires empty contract-event/version tables,
+  refusing existing history rather than fabricating timestamps. Sandbox evidence regenerates
+  with its own copied/recomputed sources; no production transaction identity is reused.
+- Verified a real append/recompute transaction committed after an independent cutoff: the
+  prior version and RPO history remain selected, BBR excludes the late event, both next-window
+  exports include the new data, and new/legacy bindings reproduce. Public event/version and
+  three latest-version extracts, archive immutability, catalogue parity and snapshot inventory
+  checks pass, with scoped lint/types. No deployment.
+- B4-11 remains open for mutable journal/GL revisions, membership/configuration state and
+  report-specific source readers not covered here (including full historical modification
+  state). Commit evidence alone does not reconstruct prior values of mutable rows. The wider
+  final-candidate verification list remains outstanding; independent accounting sign-off and
+  migration-to-live work remain outside the owner's development scope.
+
 ## Retained ledger source and incremental export windows — October 21, 2026
 
 - New subledger extracts and bookings/billings/revenue ledger contributions exclude postings
@@ -195,48 +225,6 @@ review and publish changes without PR accumulation, and do not deploy.
   event-position monetary evidence before enabling the currently refused same-day batches.
   Public mixed-batch and full royalty eligibility witnesses and B4-11 historical commit
   visibility remain open. No deployment, schema or expanded approval requirement.
-
-## Original-date usage across initial eligibility batches — October 21, 2026
-
-- Stage 09 now retains realized allocation at original contract-event dates for usage/royalty
-  components, using the same realization calculation as its retained period/version amounts.
-  A dedicated reader validates these dated trace values; missing dates are not inferred from
-  month-end values. Recognition and realization remain distinct.
-- Initial usage timelines now use these exact dates at admission, eligibility exit and re-entry.
-  Fees realized before exit are VC movements; fees realized while excluded enter with the
-  remaining re-entry balance. Old report bindings keep the previous timeline. Migration 0271
-  adds rpo_initial_usage_timeline_v1 to both RPO definitions.
-- Two original-engine usage journeys cover fees before exit and while excluded within the
-  same month. Opening/closing, VC, eligibility and zero unexplained movement reconcile;
-  missing original date evidence is refused. The 43 scoped usage/royalty/eligibility checks,
-  public initial-usage and sequential eligibility/rerun regressions, lint/types and reversible
-  migration/catalogue parity pass. The royalty checks cover the existing engine behavior,
-  not a complete royalty eligibility journey.
-- Same-day monetary events after a status transition, multiple transitions on a monetary date,
-  the public mixed-batch witness, full royalty eligibility witness and B4-11 historical commit
-  visibility remain open. No deployment.
-
-## Monetary events in initial eligibility batches — October 21, 2026
-
-- Initial RPO eligibility timelines now retain dated amendment and estimate slices, using
-  original event-specific allocation shares. Changes before exit are separately classified;
-  changes while excluded are included in the remaining re-entry balance, not NEW_CONTRACTS
-  or in-scope modification/VC lines. Original computation IDs and amounts remain unchanged.
-- The dated reader now exposes the fixed-allocation measurement date separately from revenue.
-  A frozen revenue target may be dated at the exit while allocation still measures month-end.
-  Lifecycle cuts remove later same-period changes using complete original boundaries/shares,
-  preventing an excluded-period amendment from being included in the earlier exit balance.
-- Fixed an engine invariant failure on estimates during a Step 1 revenue freeze. Matching
-  frozen before/after targets retain a zero catch-up with the freeze date and S02-R-05 guard;
-  the new allocation remains available for subsequent re-entry. Other segment checks remain.
-- New reports retain rpo_initial_monetary_timeline_v1; older bindings retain their prior
-  timeline. Migration 0270 updates both RPO definitions. Eight original-engine scenarios cover
-  price/estimate/both at exit and during exclusion, final included/excluded states and four
-  report start positions. The 132 scoped engine/reader/report cases, public sequential
-  eligibility/rerun regression, lint/types and reversible migration/catalogue parity pass.
-- Initial usage/royalty batches, monetary changes after a same-day status transition, and
-  multiple transitions on a monetary-event date still need ordered amount evidence. The public
-  batch-to-report witness and B4-11 historical commit visibility remain open. No deployment.
 
 ## Outstanding release verification
 

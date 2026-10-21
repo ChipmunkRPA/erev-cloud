@@ -10,7 +10,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import Text, cast, select
+from sqlalchemy import Text, cast, func, select
 
 from erev_api.db.tables import contract, contract_computation, contract_version
 from erev_api.domain.reports import tie_outs
@@ -23,6 +23,7 @@ from erev_api.uow import UnitOfWork
 
 CODE: Final = "extract_contract_versions"
 EVIDENCE: Final = "extract_contract_versions_v1"
+COMMIT_EVIDENCE: Final = "extract_versions_commit_visibility_v1"
 # Explicit order freezes v1 independently of future table additions.
 KEYS: Final = (
     "id",
@@ -94,7 +95,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     if mode == "INCREMENTAL" and (since is None or since >= cutoff):
         raise tie_outs.invalid("known_since", "Enter a time before the source time.")
     scope = {str(entity) for entity in params.entity_ids}
+    commit_visibility = params.binding is None or COMMIT_EVIDENCE in params.binding.evidence
+    if commit_visibility:
+        tie_outs.record_evidence(params, COMMIT_EVIDENCE, True)
     if params.binding is None:
+        committed = func.erev.source_commit_time("contract_version", contract_version.c.id)
         tenant = uow.principal.tenant_id
         relevant = (
             select(contract.c.id)
@@ -110,6 +115,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             select(
                 *(contract_version.c[key] for key in KEYS),
                 contract_computation.c.stream_heads,
+                committed.label("_committed_server_at"),
             )
             .join(
                 contract_computation,
@@ -123,11 +129,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 contract_version.c.book_code == params.book_code,
                 contract_version.c.known_at <= cutoff,
                 contract_version.c.created_at <= cutoff,
+                committed <= cutoff,
                 relevant,
             )
         )
         if mode == "INCREMENTAL":
-            query = query.where(contract_version.c.created_at > since)
+            query = query.where(committed > since)
         found = uow.session.execute(query).mappings().all()
         member_ids = {UUID(key) for source in found for key in source["stream_heads"]}
         members_by_id = (
@@ -152,6 +159,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             if len(contracts) != len(members) or not entities <= scope:
                 raise Problem("forbidden", "Select every entity of the combined contract version.")
             record = {key: source[key] for key in KEYS}
+            record["_committed_server_at"] = source["_committed_server_at"]
             record["contract_external_ids"] = sorted(row["external_id"] for row in contracts)
             record["entity_ids"] = sorted(entities)
             records.append(json.loads(canonical_bytes(redact_contacts(record))))
@@ -165,11 +173,17 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         row = {column.key: record[column.key] for column in COLUMNS}
         for key in ("known_at", "created_at"):
             row[key] = datetime.fromisoformat(row[key])
+        window_stamp = row["created_at"]
+        if commit_visibility:
+            if not record.get("_committed_server_at"):
+                raise Problem("invalid-transition", "Retained version commit evidence is missing.")
+            window_stamp = datetime.fromisoformat(record["_committed_server_at"])
         if (
-            row["book_code"] != params.book_code
+            window_stamp > cutoff
+            or row["book_code"] != params.book_code
             or row["known_at"] > cutoff
             or row["created_at"] > cutoff
-            or (mode == "INCREMENTAL" and since is not None and row["created_at"] <= since)
+            or (mode == "INCREMENTAL" and since is not None and window_stamp <= since)
         ):
             raise Problem("invalid-transition", "Retained version lies outside the extract window.")
         for key in JSON_FIELDS:

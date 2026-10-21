@@ -168,6 +168,7 @@ def sources(uow: UnitOfWork, params: ReportParams, *, cutoff: datetime) -> list[
     scope = (
         obligation_version.c.contracting_entity_id.in_(list(params.entity_ids)),
         contract_version.c.known_at <= cutoff,
+        *tie_outs.version_commit_where(params, cutoff),
     )
     overridden = (
         select(obligation_version.c.obligation_id)

@@ -313,7 +313,12 @@ def _versions(
 
 
 def _effects(
-    session: Session, rows: Sequence[Mapping[str, Any]], *, book_code: str, cutoff: datetime
+    session: Session,
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    book_code: str,
+    cutoff: datetime,
+    params: ReportParams | None = None,
 ) -> dict[UUID, Decimal]:
     """``attributed_effects`` over the contract versions of the book that the versions' applied
     events caused by the cutoff."""
@@ -328,6 +333,7 @@ def _effects(
             select(contract_version.c.id, contract_version.c.cause_event_ids).where(
                 contract_version.c.book_code == book_code,
                 contract_version.c.known_at <= cutoff,
+                *tie_outs.version_commit_where(params, cutoff),
                 contract_version.c.cause_event_ids.op("&&")(literal(events, type_=ARRAY(Uuid()))),
             )
         )
@@ -429,7 +435,7 @@ def sources(
                 select(estimate_version).where(estimate_version.c.id.in_(earlier))
             ).mappings()
         }
-    effects = _effects(session, kept, book_code=book_code, cutoff=cutoff)
+    effects = _effects(session, kept, book_code=book_code, cutoff=cutoff, params=params)
     attachments = _attachments(session, [UUID(str(row["id"])) for row in kept], cutoff=cutoff)
     found: list[Source] = []
     for row in kept:
