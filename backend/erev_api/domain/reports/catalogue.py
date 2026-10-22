@@ -1478,6 +1478,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract_version.contract_computation_id = contract_computation.id",
         ),
         filters=(
+            "same-source runs retain selected version values and resolved as-of cuts; rebuild "
+            "figures and deduplicated balances without live contract reads",
             _SCOPE,
             _BOOK,
             "per contract, the latest contract version with effective_date on or before as_of "

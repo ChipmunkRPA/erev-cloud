@@ -344,7 +344,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     assert opened == {
         "ai_call_log_export",
         "legacy_contract_history_export",
-        "latest_contract_status",
         "legacy_latest_contract_export",
         "legacy_je_summary",
         "migration_reconciliation",

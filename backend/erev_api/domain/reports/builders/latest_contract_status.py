@@ -35,12 +35,15 @@ count is the number of obligations (SCREENS_B RPT-11 sample: 17 rows).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -52,9 +55,11 @@ from erev_api.domain.reports.builders import contract_history as history
 from erev_api.domain.reports.legacy_columns import decimal_text
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, add
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "latest_contract_status"
+EVIDENCE: Final = "latest_status_inputs_v1"
 MONEY: Final = (
     "allocated_amount",
     "revenue_cum",
@@ -162,7 +167,18 @@ def _balances(
     return balances
 
 
-def _at_as_of(row: Mapping[str, Any], at: to_date.ObligationAt) -> dict[str, Decimal]:
+@dataclass(frozen=True, slots=True)
+class StatusCut:
+    revenue: Decimal
+    billed: Decimal
+    delta: Decimal
+    shift: Decimal
+    scheduled: Decimal
+    awaiting: Decimal
+    satisfaction_status: str
+
+
+def _at_as_of(row: Mapping[str, Any], at: to_date.ObligationAt | StatusCut) -> dict[str, Decimal]:
     """The money columns of a row at the cut (module docstring "One date"; 04 API-C-10)."""
     moved = at.delta + at.shift
     return {
@@ -176,27 +192,103 @@ def _at_as_of(row: Mapping[str, Any], at: to_date.ObligationAt) -> dict[str, Dec
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key) for key in ("book", "as_of", "contract_external_id")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained latest-status inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("as_of", "Retained inputs use another latest-status selection.")
+        return data_from_inputs(retained)
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     as_of = as_of_date(session, params)
     rows = latest_rows(session, params, book_code=book_code, entered=True)
-    found = cuts.load(
-        session, {UUID(str(row["contract_version_id"])) for row in rows}, (as_of,), balances=True
-    )
+    version_ids = {UUID(str(row["contract_version_id"])) for row in rows}
+    found = cuts.load(session, version_ids, (as_of,), balances=True)
     balances = _balances(found, rows, _balance_rows(session, rows), as_of)
-    cut: dict[UUID, Mapping[UUID, to_date.ObligationAt]] = {}
+    cut = {version_id: found.at(version_id, as_of) for version_id in version_ids}
+    inputs = []
+    for row in rows:
+        at = cut[UUID(str(row["contract_version_id"]))][UUID(str(row["id"]))]
+        inputs.append(
+            {
+                "row": {
+                    key: row[key]
+                    for key in (
+                        "id",
+                        "contract_version_id",
+                        "contract_id",
+                        "contracting_entity_id",
+                        "txn_currency",
+                        "contract_external_id",
+                        "obligation_key",
+                        "product_code",
+                        "entity_code",
+                        "chain_version_no",
+                        "effective_date",
+                        "remaining_quantity",
+                        "allocated_amount",
+                        "remaining_allocation",
+                    )
+                },
+                "cut": {
+                    key: getattr(at, key)
+                    for key in (
+                        "revenue",
+                        "billed",
+                        "delta",
+                        "shift",
+                        "scheduled",
+                        "awaiting",
+                        "satisfaction_status",
+                    )
+                },
+                "balances": balances.get(_balance_key(row), (ZERO, ZERO)),
+            }
+        )
+    tie_outs.record_members(params, "latest_status_contract_versions", version_ids)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "as_of": as_of,
+                "inputs": inputs,
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    """Rebuild figures and totals from original version values and resolved as-of cuts."""
+    as_of = date.fromisoformat(retained["as_of"])
     items: list[dict[str, Any]] = []
     totals: dict[str, dict[str, Decimal]] = {}
     counted: set[BalanceKey] = set()
-    for row in rows:
+    for entry in retained["inputs"]:
+        row = entry["row"]
         currency = str(row["txn_currency"]).strip()
         external_id = str(row["contract_external_id"])
         key = _balance_key(row)
-        liability, asset = balances.get(key, (ZERO, ZERO))
-        version_id = UUID(str(row["contract_version_id"]))
-        if version_id not in cut:
-            cut[version_id] = found.at(version_id, as_of)
-        at = cut[version_id][UUID(str(row["id"]))]
+        liability, asset = (Decimal(value) for value in entry["balances"])
+        original = entry["cut"]
+        at = StatusCut(
+            revenue=Decimal(original["revenue"]),
+            billed=Decimal(original["billed"]),
+            delta=Decimal(original["delta"]),
+            shift=Decimal(original["shift"]),
+            scheduled=Decimal(original["scheduled"]),
+            awaiting=Decimal(original["awaiting"]),
+            satisfaction_status=original["satisfaction_status"],
+        )
         figures = _at_as_of(row, at)
         items.append(
             {
@@ -206,10 +298,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "product_code": str(row["product_code"]),
                 "entity_code": str(row["entity_code"]),
                 "version_no": int(row["chain_version_no"]),
-                "effective_date": row["effective_date"],
+                "effective_date": date.fromisoformat(row["effective_date"]),
                 "currency": currency,
                 **{name: tie_outs.money(figures[name], currency) for name in MONEY},
-                "remaining_quantity": decimal_text(row["remaining_quantity"]),
+                "remaining_quantity": decimal_text(
+                    None
+                    if row["remaining_quantity"] is None
+                    else Decimal(row["remaining_quantity"])
+                ),
                 "contract_liability": tie_outs.money(liability, currency),
                 "contract_asset_and_unbilled": tie_outs.money(asset, currency),
                 "satisfaction_status": history.status_text(at.satisfaction_status),

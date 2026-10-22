@@ -788,9 +788,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             OPEN, _OPEN_ONLY, (_LEGACY_EXPORT_OPEN,)
         ),
         latest_contract_status_builder.CODE: SourceContract(
-            OPEN,
-            _OPEN_ONLY,
-            ("latest contract-status rows (contract / version / status reads) read live; frps3c",),
+            RETAINED, (_CUTOFF, "latest contract versions and original as-of calculation inputs"),
         ),
         legacy_latest_contract_export_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_LEGACY_EXPORT_OPEN,)
@@ -2059,6 +2057,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "config_change_register",
             "user_access_listing",
             "sod_conflict_report",
+            "latest_contract_status",
         }
     ):
         try:

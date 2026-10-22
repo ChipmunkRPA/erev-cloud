@@ -247,6 +247,21 @@ def test_tc_rep_03_latest_status(shipped: ParityScenario) -> None:
     assert legacy["row_count"] == 16
     _legacy_shape(exported)
 
+    world = shipped.world
+    started = post(world.app, f"{REPORT_RUNS}/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    run_import_job(world.imports, UUID(str(started.json()["id"])))
+    rerun_id = started.headers[REPORT_RUN_ID_HEADER]
+    shown = get(world.app, f"{REPORT_RUNS}/{rerun_id}", world.maya)
+    assert shown.status_code == 200, shown.text
+    assert shown.json()["status"] == "SUCCEEDED", shown.text
+    finished = get(world.app, f"/api/v1/jobs/{started.json()['id']}", world.maya)
+    assert finished.status_code == 200, finished.text
+    assert finished.json()["result"]["output_sha256_equal"] is True
+    restored = get(world.app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == rows
+
 
 @pytest.mark.parametrize("code", [HISTORY, LEGACY_HISTORY])
 def test_tc_rep_04_injection_name(shipped: ParityScenario, code: str) -> None:
