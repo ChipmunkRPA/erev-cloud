@@ -11986,3 +11986,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Functional/Reporting continue to refuse when contract currency differs from functional currency.
   Retained same-source reconstruction, other documented adapters and final repository verification
   also remain. Historical lock support is unchanged. No deployment.
+
+## Modification register retained reconstruction — October 21, 2026
+
+- New runs retain modification inputs, original preview hash/file membership, application-version
+  provenance, resolved dates, actor display values and effective-period reporting rates. Same-source
+  reruns validate tenant/entity scope and filters, then rebuild typed rows and control totals without
+  consulting current modification, approval, version or FX state.
+- This supersedes the preceding live-source limitation. Previously saved OPEN runs keep their
+  original new-evaluation behavior. Ad-hoc historical queries still refuse unavailable mutable-row
+  history; foreign-contract functional TP/catch-up support and lock support are unchanged.
+- Necessary validation passed: 34 focused register/source-binding cases; actual API/worker runs
+  across SUBMITTED-to-APPLIED approval in all three currency views. Fresh runs show APPLIED while
+  saved runs reproduce SUBMITTED rows and identical output hashes. Applied-upgrade reporting,
+  scoped lint/types and migration 0307 frozen-IPE parity also passed. No deployment.

@@ -343,8 +343,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     opened = {code for code, c in framework.SOURCE_CONTRACTS.items() if c.strategy == OPEN}
     assert opened == {
         "ai_call_log_export",
-        "legacy_contract_history_export",
-        "legacy_latest_contract_export",
         "legacy_je_summary",
         "migration_reconciliation",
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet

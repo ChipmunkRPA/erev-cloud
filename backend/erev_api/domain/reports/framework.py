@@ -497,10 +497,6 @@ _LEGACY_JE_OPEN: Final = (
     "subledger-line population (GROSS / DELTA applicability; enabled LEGACY books) "
     "read live; frps3c"
 )
-_LEGACY_EXPORT_OPEN: Final = (
-    "contract / obligation rows incl. predecessor obligation rows of legacy conversions read live; "
-    "frps3c"
-)
 _MIGRATION_OPEN: Final = (
     "migration reconciliation, profile and exception mappings read live; frps3c"
 )
@@ -785,13 +781,16 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         # No source adapter yet (frps3c): the cutoff is recorded, nothing else is bound; a rerun
         # is a NEW live evaluation labelled `open` — never a reproduction claim (Codex 2202 / 2225).
         legacy_contract_history_export_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_LEGACY_EXPORT_OPEN,)
+            RETAINED,
+            (_CUTOFF, "legacy current/predecessor versions and verified exact source texts"),
         ),
         latest_contract_status_builder.CODE: SourceContract(
-            RETAINED, (_CUTOFF, "latest contract versions and original as-of calculation inputs"),
+            RETAINED,
+            (_CUTOFF, "latest contract versions and original as-of calculation inputs"),
         ),
         legacy_latest_contract_export_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_LEGACY_EXPORT_OPEN,)
+            RETAINED,
+            (_CUTOFF, "legacy current/predecessor versions and verified exact source texts"),
         ),
         legacy_je_summary_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_LEGACY_JE_OPEN,)),
         migration_reconciliation_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_MIGRATION_OPEN,)),
@@ -2058,6 +2057,8 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "user_access_listing",
             "sod_conflict_report",
             "latest_contract_status",
+            "legacy_contract_history_export",
+            "legacy_latest_contract_export",
         }
     ):
         try:

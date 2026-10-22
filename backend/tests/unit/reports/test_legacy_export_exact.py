@@ -660,8 +660,20 @@ def test_export_builders_refuse_the_whole_run_and_write_no_file(
     )
     monkeypatch.setattr(contract_history, "population", lambda *_a, **_k: [dict(r) for r in rows])
     monkeypatch.setattr(contract_history, "previous_versions", lambda *_a, **_k: {})
-    uow = cast(Any, SimpleNamespace(session=object()))
-    params = cast(ReportParams, SimpleNamespace(entity_ids=(UUID(int=1),)))
+    uow = cast(Any, SimpleNamespace(session=object(), principal=SimpleNamespace(tenant_id=V1)))
+    params = ReportParams(
+        report_code=export.CODE,
+        report_version=1,
+        entity_ids=(UUID(int=1),),
+        parameters={},
+        known_at=datetime(2026, 9, 21, tzinfo=UTC),
+    )
+    saved = {}
+    from erev_api.domain.reports import tie_outs
+
+    monkeypatch.setattr(
+        tie_outs, "record_evidence", lambda _params, key, value: saved.update({key: value})
+    )
     traces = {V1: _full_trace("0.00109018830525")}  # V2 has no stored trace
     monkeypatch.setattr(export.exact_sources.store, "load_trace", lambda _s, v: traces.get(v))
     with pytest.raises(Problem) as refused:
@@ -683,6 +695,36 @@ def test_export_builders_refuse_the_whole_run_and_write_no_file(
         ACTIVITY_TEXT,
         "unavailable",
     ]
+
+    from dataclasses import replace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding, legacy_contract_inputs
+
+    bound = replace(
+        params,
+        binding=SourceBinding(
+            cutoff=params.known_at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence=saved,
+        ),
+    )
+    no_session = cast(Any, SimpleNamespace(principal=uow.principal))
+    assert export.build(no_session, bound) == data
+    with pytest.raises(Problem):
+        export.build(no_session, replace(bound, entity_ids=()))
+    with pytest.raises(Problem):
+        export.build(no_session, replace(bound, parameters={"contract_external_id": "another"}))
+    with pytest.raises(Problem):
+        export.build(cast(Any, SimpleNamespace(principal=SimpleNamespace(tenant_id=V2))), bound)
+    saved[legacy_contract_inputs.EVIDENCE]["inputs"][0]["current"]["values"][
+        "remaining_quantity"
+    ] = "2"
+    saved[legacy_contract_inputs.EVIDENCE]["inputs"][0]["current"]["values"]["unit_ssp"] = "7.125"
+    rebuilt = export.build(no_session, bound)
+    assert rebuilt.rows[0]["Current Remaining SSP"] == "14.25"
 
 
 def test_attach_refuses_a_node_whose_currency_is_not_the_versions() -> None:

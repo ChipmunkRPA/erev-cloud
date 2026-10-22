@@ -16,11 +16,12 @@ and no tie-out.
 
 from __future__ import annotations
 
-from typing import Any, Final
+from typing import Final
 
 from erev_api.domain.reports import exact_sources, legacy_columns
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_history as history
+from erev_api.domain.reports.builders import legacy_contract_inputs as retained
 from erev_api.domain.reports.outputs import ReportData
 from erev_api.uow import UnitOfWork
 
@@ -28,6 +29,9 @@ CODE: Final = "legacy_contract_history_export"
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    bound = retained.bound_data(uow, params)
+    if bound is not None:
+        return bound
     session = uow.session
     from_date, to_date = history.date_range(session, params, year=True)
     rows = history.population(
@@ -42,22 +46,6 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     # `unavailable` literal), from each row's OWN contract version's stored trace (previous rows
     # included); any missing source refuses the whole run by name
     exact_sources.attach_exact_texts(session, [*rows, *previous.values()])
-    items: list[dict[str, Any]] = [
-        {
-            "row_key": (
-                f"version:{row['contract_external_id']}:{row['chain_version_no']}"
-                f":{row['obligation_key']}"
-            ),
-            **legacy_columns.legacy_row(row, history.previous_of(previous, row)),
-        }
-        for row in rows
-    ]
-    return ReportData(
-        columns=legacy_columns.COLUMNS,
-        rows=tuple(items),
-        control_totals={
-            "row_count": len(items),
-            "from_date": from_date.isoformat(),
-            "to_date": to_date.isoformat(),
-        },
+    return retained.retain(
+        uow, params, rows, previous, {"from_date": from_date, "to_date": to_date}
     )

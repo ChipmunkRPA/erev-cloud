@@ -1442,6 +1442,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract_version.contract_computation_id = contract_computation.id",
         ),
         filters=(
+            "same-source runs retain current/predecessor version inputs and verified exact "
+            "texts; rebuild the 71 columns without live contract or trace reads",
             _SCOPE,
             "book fixed to ASC606",
             "04 §17.1 rules 1 to 6 over obligation versions effective from from_date to to_date",
@@ -1506,6 +1508,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "migrated_legacy_row.contract_id = contract.id",
         ),
         filters=(
+            "same-source runs retain current/predecessor version inputs and verified exact "
+            "texts; rebuild the 71 columns without live contract or trace reads",
             _SCOPE,
             "book fixed to ASC606",
             "the RPT-11 row rule at as_of",

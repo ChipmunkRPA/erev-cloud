@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Legacy contract exports retained reconstruction — October 22, 2026
+
+- Both legacy contract history and latest-contract exports now retain current/predecessor
+  obligation-version inputs, original labels and the verified exact trace texts used by the
+  71-column format. Shared reconstruction restores source dates/timestamps and reruns the legacy
+  column calculations without reading current contracts or trace storage.
+- Tenant/entity scope, report identity and date/book/contract selection are checked. Current and
+  predecessor obligation IDs are retained as source membership. Exact-text refusals still apply
+  when the original run reads its trace; unavailable activity remains explicitly unavailable.
+  Older OPEN runs keep their original behavior. Migration 0321 freezes both IPE definitions.
+- Necessary verification passed: 32 focused exact-export/source-binding cases, including
+  database-free reconstruction, scope refusals and recalculated remaining SSP. Actual API/worker
+  runs of both 71-column exports and latest-status reproduce original rows/output hashes; scoped
+  lint/types and both metadata checks passed. No deployment. Legacy JE summary, other documented
+  gaps and final repository verification remain outside this completed batch.
+
+
 ## Latest contract status retained reconstruction — October 22, 2026
 
 - New latest-status runs retain selected contract-version inputs, original contract/product/entity

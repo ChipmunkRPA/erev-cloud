@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Legacy contract exports retained reconstruction — October 22, 2026
+
+- Both legacy contract history and latest-contract exports now retain current/predecessor
+  obligation-version inputs, original labels and the verified exact trace texts used by the
+  71-column format. Shared reconstruction restores source dates/timestamps and reruns the legacy
+  column calculations without reading current contracts or trace storage.
+- Tenant/entity scope, report identity and date/book/contract selection are checked. Current and
+  predecessor obligation IDs are retained as source membership. Exact-text refusals still apply
+  when the original run reads its trace; unavailable activity remains explicitly unavailable.
+  Older OPEN runs keep their original behavior. Migration 0321 freezes both IPE definitions.
+- Necessary verification passed: 32 focused exact-export/source-binding cases, including
+  database-free reconstruction, scope refusals and recalculated remaining SSP. Actual API/worker
+  runs of both 71-column exports and latest-status reproduce original rows/output hashes; scoped
+  lint/types and both metadata checks passed. No deployment. Legacy JE summary, other documented
+  gaps and final repository verification remain outside this completed batch.
+
 ## Latest contract status retained reconstruction — October 22, 2026
 
 - New latest-status runs retain selected contract-version inputs, original contract/product/entity
@@ -220,20 +236,6 @@ review and publish changes without PR accumulation, and do not deploy.
   0308 frozen IPE parity passed. No deployment.
 - Remaining: this listing still reads live source records on rerun; foreign-contract functional
   effects and other documented Reporting gaps remain. This does not claim repository completion.
-
-## Modification register retained reconstruction — October 21, 2026
-
-- New runs retain modification inputs, original preview hash/file membership, application-version
-  provenance, resolved dates, actor display values and effective-period reporting rates. Same-source
-  reruns validate tenant/entity scope and filters, then rebuild typed rows and control totals without
-  consulting current modification, approval, version or FX state.
-- This supersedes the preceding live-source limitation. Previously saved OPEN runs keep their
-  original new-evaluation behavior. Ad-hoc historical queries still refuse unavailable mutable-row
-  history; foreign-contract functional TP/catch-up support and lock support are unchanged.
-- Necessary validation passed: 34 focused register/source-binding cases; actual API/worker runs
-  across SUBMITTED-to-APPLIED approval in all three currency views. Fresh runs show APPLIED while
-  saved runs reproduce SUBMITTED rows and identical output hashes. Applied-upgrade reporting,
-  scoped lint/types and migration 0307 frozen-IPE parity also passed. No deployment.
 
 ## Outstanding release verification
 
