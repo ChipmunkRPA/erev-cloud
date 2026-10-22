@@ -329,6 +329,7 @@ def legacy_view(
     *,
     known_at: datetime | None = None,
     historical: bool = False,
+    retained_inputs: list[dict[str, Any]] | None = None,
 ) -> LegacyView:
     """The legacy gross (``GROSS``) or adjustment (``DELTA``) journal view (module docstring).
 
@@ -348,8 +349,7 @@ def legacy_view(
             raise _invalid("book", RULE_DELTA, DELTA_OF_LEGACY)
         _require_legacy_book(session, entities)
         signs[BookCode.LEGACY.value] = 1  # primary + LEGACY (S14-R-23; D-89 L7-6-Q-8)
-    nets: dict[tuple[str, str, str, str], Decimal] = {}
-    for row in _consolidated(
+    source_rows = _consolidated(
         session,
         entity_ids=entities,
         books=tuple(signs),
@@ -357,7 +357,32 @@ def legacy_view(
         to_date=to_date,
         known_at=known_at,
         historical=historical,
-    ):
+        include_sources=retained_inputs is not None,
+    )
+    if retained_inputs is not None:
+        retained_inputs.extend(source_rows)
+    return from_consolidated(
+        source_rows, tuple(entities.values()), book.value, from_date, to_date, view_mode.value
+    )
+
+
+def from_consolidated(
+    source_rows: Sequence[dict[str, Any]],
+    entity_codes: Sequence[str],
+    book_code: str,
+    from_date: date,
+    to_date: date,
+    mode: str,
+) -> LegacyView:
+    """Recalculate the gross/delta view and all subtotals from original book aggregates."""
+    book, view_mode = _book(book_code), _mode(mode)
+    signs = {book.value: 1}
+    if view_mode is JournalRunMode.DELTA:
+        if book is BookCode.LEGACY:
+            raise _invalid("book", RULE_DELTA, DELTA_OF_LEGACY)
+        signs[BookCode.LEGACY.value] = 1
+    nets: dict[tuple[str, str, str, str], Decimal] = {}
+    for row in source_rows:
         currency = str(row["txn_currency"]).strip()
         item = (str(row["entity_code"]), str(row["legacy_key"]), str(row["account"]), currency)
         sign = signs[str(getattr(row["book_code"], "value", row["book_code"]))]
@@ -379,7 +404,7 @@ def legacy_view(
     return LegacyView(
         mode=view_mode.value,
         book_code=book.value,
-        entity_codes=tuple(sorted(entities.values())),
+        entity_codes=tuple(sorted(entity_codes)),
         from_date=from_date,
         to_date=to_date,
         line_items=line_items,

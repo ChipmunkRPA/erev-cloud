@@ -1533,6 +1533,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "subledger_line.contract_id = contract.id",
         ),
         filters=(
+            "same-source runs retain original per-book journal aggregates and source line IDs; "
+            "recalculate gross/delta nets and currency totals without live ledger reads",
             _SCOPE,
             "book fixed to ASC606",
             "subledger_line.effective_date from from_date to to_date inclusive",

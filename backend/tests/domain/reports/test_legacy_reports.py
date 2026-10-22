@@ -381,6 +381,24 @@ def _by_account(rows: Rows) -> list[tuple[str, str, str]]:
     ]
 
 
+def _rerun_journal(world: LegacyWorld, original: dict[str, Any], expected: Rows) -> None:
+    started = post(world.app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    run_import_job(world.imports, UUID(str(started.json()["id"])))
+    finished = get(world.app, f"/api/v1/jobs/{started.json()['id']}", world.maya)
+    assert finished.status_code == 200, finished.text
+    assert finished.json()["state"] == "SUCCEEDED", finished.text
+    assert finished.json()["result"]["output_sha256_equal"] is True
+    restored = get(
+        world.app,
+        f"{REPORT_RUNS}/{started.headers[REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == expected
+
+
 def test_legacy_je_summary_january_gross(shipped: ParityScenario) -> None:
     run, rows = _run(shipped.world, JE_SUMMARY, {**JANUARY, "mode": "GROSS"})
     assert _by_account(rows) == [
@@ -407,6 +425,7 @@ def test_legacy_je_summary_january_gross(shipped: ParityScenario) -> None:
     items = {row["row_key"]: row["amount"]["amount"] for row in _section(rows, "line_items")}
     assert items[f"item:{C1}:21001"] == "295.69"
     assert items[f"item:{C2} POB #1 Hardware 1:5001"] == "-58.85"
+    _rerun_journal(shipped.world, run, rows)
 
 
 def test_legacy_je_summary_january_delta(shipped: ParityScenario) -> None:
@@ -424,3 +443,4 @@ def test_legacy_je_summary_january_delta(shipped: ParityScenario) -> None:
         {"USD": "240.22"},
         {"USD": "240.22"},
     )
+    _rerun_journal(shipped.world, run, rows)

@@ -20,6 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Legacy journal summary retained reconstruction — October 22, 2026
+
+- New GROSS/DELTA summary runs retain original per-book aggregates, resolved entity/account/key
+  labels, window and source line/partition/posting references. Shared pure view calculation
+  rebuilds line nets, debit/credit sides, entity balances and currency totals. Bound reruns
+  validate tenant/entity scope and mode/book/date selection without current ledger reads.
+- DELTA keeps the existing primary-plus-LEGACY convention. Current book-enable validation applies
+  to original runs; reconstruction uses their retained inputs. Source membership includes original
+  subledger line IDs. Older explicit OPEN bindings keep their original semantics. Migration 0322
+  freezes the report IPE; this does not change journal posting or add financial-currency views.
+- Necessary verification passed: 18 focused reconstruction/source-binding cases, including
+  USD/EUR, same key across entities and sign changes that recalculate debit/credit totals.
+  Actual GROSS and DELTA API/worker runs reproduce rows and output hashes. Scoped lint/types and
+  migration metadata parity passed. No deployment; final repository verification remains open.
+
 ## Legacy contract exports retained reconstruction — October 22, 2026
 
 - Both legacy contract history and latest-contract exports now retain current/predecessor
@@ -219,23 +234,6 @@ review and publish changes without PR accumulation, and do not deploy.
   approved EUR/USD average 1.20 with 1.30 changes fresh P&L equivalents from USD -6,900 to -7,475;
   saved transaction and reporting runs reproduce their original rows and identical output hashes.
   Scoped lint/types and migration 0309 frozen IPE parity passed. No deployment.
-
-## Estimate change reporting equivalents — October 21, 2026
-
-- Fixed estimate-change Reporting view returning unconverted native amounts. Original monetary
-  before/after estimates and P&L effects remain visible; added separately labelled reporting
-  equivalents and a reporting P&L control total. Both before/after estimates use the approved
-  average for the listed version's effective period, making the comparison use one rate.
-- Ratio estimates remain dimensionless with no monetary equivalent; unknown effects and absent
-  predecessor values remain empty. Functional/reporting views refuse monetary measures or effects
-  whose source currency differs from entity functional currency. These analytical equivalents are
-  explicitly labelled and are not posted FX amounts. Rate evidence is captured.
-- Necessary verification passed: 18 focused register cases, including mixed USD/EUR-to-GBP,
-  signed effects, ratios and nulls; actual K06 approval/report API and worker convert the EUR 5,750
-  rebate and negative effect to USD 6,900 at approved average 1.20. Scoped lint/types and migration
-  0308 frozen IPE parity passed. No deployment.
-- Remaining: this listing still reads live source records on rerun; foreign-contract functional
-  effects and other documented Reporting gaps remain. This does not claim repository completion.
 
 ## Outstanding release verification
 

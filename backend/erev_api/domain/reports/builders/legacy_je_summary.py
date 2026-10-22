@@ -28,9 +28,14 @@ enabled Legacy book) end the run FAILED with the view's problem (RV-14).
 
 from __future__ import annotations
 
+import json
 from collections import Counter
+from collections.abc import Mapping
+from datetime import date
 from decimal import Decimal
 from typing import Any, Final
+
+from erev_engine.canonical import canonical_bytes
 
 from erev_api.domain.journals import views
 from erev_api.domain.reports import tie_outs
@@ -38,9 +43,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_history as history
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import BookCode, JournalRunMode
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "legacy_je_summary"
+EVIDENCE: Final = "legacy_je_inputs_v1"
 BY_ACCOUNT: Final = "by_account"
 BY_ENTITY: Final = "by_entity"
 LINE_ITEMS: Final = "line_items"
@@ -64,12 +71,25 @@ def _row(section: str, row_key: str, **values: Any) -> dict[str, Any]:
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key) for key in ("book", "mode", "from_date", "to_date")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained journal inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("mode", "Retained inputs use another journal selection.")
+        return data_from_inputs(retained)
     session = uow.session
     book_code = str(params.book_code or params.parameters.get("book") or BookCode.ASC606.value)
     mode = str(params.parameters.get("mode") or JournalRunMode.GROSS.value)
     from_date, to_date = history.date_range(session, params, year=False)
     codes = [entity.code for entity in tie_outs.entities(session, params.entity_ids)]
-    view = views.legacy_view(
+    inputs: list[dict[str, Any]] = []
+    views.legacy_view(
         uow,
         codes,
         book_code,
@@ -78,6 +98,44 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         mode,
         known_at=params.known_at,
         historical=params.historical,
+        retained_inputs=inputs,
+    )
+    tie_outs.record_members(
+        params,
+        "legacy_je_subledger_lines",
+        (source["line_id"] for row in inputs for source in row["source_rows"]),
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "entity_codes": codes,
+                "book": book_code,
+                "mode": mode,
+                "from_date": from_date,
+                "to_date": to_date,
+                "inputs": inputs,
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    from_date, to_date = (
+        date.fromisoformat(retained["from_date"]),
+        date.fromisoformat(retained["to_date"]),
+    )
+    view = views.from_consolidated(
+        retained["inputs"],
+        retained["entity_codes"],
+        retained["book"],
+        from_date,
+        to_date,
+        retained["mode"],
     )
     several = len(view.totals) > 1
     rows: list[dict[str, Any]] = []

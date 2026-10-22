@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Legacy journal summary retained reconstruction — October 22, 2026
+
+- New GROSS/DELTA summary runs retain original per-book aggregates, resolved entity/account/key
+  labels, window and source line/partition/posting references. Shared pure view calculation
+  rebuilds line nets, debit/credit sides, entity balances and currency totals. Bound reruns
+  validate tenant/entity scope and mode/book/date selection without current ledger reads.
+- DELTA keeps the existing primary-plus-LEGACY convention. Current book-enable validation applies
+  to original runs; reconstruction uses their retained inputs. Source membership includes original
+  subledger line IDs. Older explicit OPEN bindings keep their original semantics. Migration 0322
+  freezes the report IPE; this does not change journal posting or add financial-currency views.
+- Necessary verification passed: 18 focused reconstruction/source-binding cases, including
+  USD/EUR, same key across entities and sign changes that recalculate debit/credit totals.
+  Actual GROSS and DELTA API/worker runs reproduce rows and output hashes. Scoped lint/types and
+  migration metadata parity passed. No deployment; final repository verification remains open.
+
+
 ## Legacy contract exports retained reconstruction — October 22, 2026
 
 - Both legacy contract history and latest-contract exports now retain current/predecessor

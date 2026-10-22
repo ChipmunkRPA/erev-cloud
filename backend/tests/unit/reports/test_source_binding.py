@@ -343,7 +343,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     opened = {code for code, c in framework.SOURCE_CONTRACTS.items() if c.strategy == OPEN}
     assert opened == {
         "ai_call_log_export",
-        "legacy_je_summary",
         "migration_reconciliation",
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet
         # BUILD_SPEC RPS-10 (lane F-RPS-REG): the access, configuration, approvals and audit
@@ -397,7 +396,7 @@ def test_an_unbound_live_run_is_refused_by_name_on_rerun_and_explain() -> None:
     assert framework.run_kind({**row, "status": "RUNNING"}) == framework.KIND_PENDING
     # A legacy run of an OPEN-strategy builder reruns as a NEW live evaluation: not refused.
     framework.require_bound(
-        {**row, "report_code": "legacy_je_summary"}, framework.RERUN_UNBOUND, "invalid-transition"
+        {**row, "report_code": "ai_call_log_export"}, framework.RERUN_UNBOUND, "invalid-transition"
     )
     # A binding this release cannot read refuses by name too (implementation contract).
     with pytest.raises(Problem) as incompatible:

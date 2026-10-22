@@ -493,10 +493,6 @@ _BILLING_EVENTS: Final = (
 )
 # Codex 2301 (b): the open declarations name each builder's ACTUAL input families (the frps3c
 # baseline map) — a rebuild is from those, never from substituted journal lines.
-_LEGACY_JE_OPEN: Final = (
-    "subledger-line population (GROSS / DELTA applicability; enabled LEGACY books) "
-    "read live; frps3c"
-)
 _MIGRATION_OPEN: Final = (
     "migration reconciliation, profile and exception mappings read live; frps3c"
 )
@@ -792,7 +788,9 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             RETAINED,
             (_CUTOFF, "legacy current/predecessor versions and verified exact source texts"),
         ),
-        legacy_je_summary_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_LEGACY_JE_OPEN,)),
+        legacy_je_summary_builder.CODE: SourceContract(
+            RETAINED, (_CUTOFF, "original per-book legacy journal aggregates and source lines")
+        ),
         migration_reconciliation_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_MIGRATION_OPEN,)),
         je_population_builder.CODE: SourceContract(
             RETAINED,
@@ -2059,6 +2057,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "latest_contract_status",
             "legacy_contract_history_export",
             "legacy_latest_contract_export",
+            "legacy_je_summary",
         }
     ):
         try:
