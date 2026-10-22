@@ -2011,6 +2011,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_delegation.delegator_membership_id = tenant_membership.id",
         ),
         filters=(
+            "same-source runs retain scoped rule functions, held permissions, delegations and "
+            "exception inputs; recalculate conflicts and coverage without live access reads",
             "memberships holding permissions of both functions of a published sod_rule at as_of",
             "exception status at as_of",
             "assignments whose entity scope includes an entity of entity_codes",

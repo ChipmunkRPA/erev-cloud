@@ -38,12 +38,14 @@ refused by name (REGISTER-CUTOFF-1); a live run never refuses.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -65,9 +67,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData, utc_text
 from erev_api.enums import ConfigStatus, GrantStatus
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "sod_conflict_report"
+EVIDENCE: Final = "sod_inputs_v1"
 ROW_KEY_PREFIX: Final = "sod:"  # RPT-25: row_key `sod:<email>:<rule code>`
 NONE: Final = "None"
 COVERING: Final = GrantStatus.APPROVED.value
@@ -387,7 +391,13 @@ def _exceptions(
     return found
 
 
-def conflicts(uow: UnitOfWork, params: ReportParams, *, at: datetime) -> list[Conflict]:
+def conflicts(
+    uow: UnitOfWork,
+    params: ReportParams,
+    *,
+    at: datetime,
+    retained_inputs: list[dict[str, Any]] | None = None,
+) -> list[Conflict]:
     """The conflicts at ``at`` with member, rule name, held roles, delegations and cover (module
     docstring)."""
     session = uow.session
@@ -418,6 +428,49 @@ def conflicts(uow: UnitOfWork, params: ReportParams, *, at: datetime) -> list[Co
     found: list[Conflict] = []
     for membership_id, conflict in reported:
         member = members[membership_id]
+        if retained_inputs is not None:
+            retained_inputs.append(
+                {
+                    "email": str(member["email"]),
+                    "display_name": str(member["display_name"]),
+                    "rule_code": conflict.rule_code,
+                    "rule_name": names[
+                        (
+                            conflict.rule_code,
+                            conflict.function_a_permissions,
+                            conflict.function_b_permissions,
+                        )
+                    ],
+                    "function_a": sorted(conflict.function_a_permissions),
+                    "function_b": sorted(conflict.function_b_permissions),
+                    "held": [
+                        {"role_name": item.role_name, "permissions": sorted(item.permissions)}
+                        for item in held.get(membership_id, ())
+                    ],
+                    "delegated": [
+                        {
+                            "delegator_name": item.delegator_name,
+                            "valid_to": item.valid_to,
+                            "permissions": sorted(item.permissions),
+                        }
+                        for item in delegated.get(membership_id, ())
+                    ],
+                    "exceptions": [
+                        {
+                            key: row[key]
+                            for key in (
+                                "id",
+                                "compensating_control",
+                                "approved_at",
+                                "revoked_at",
+                                "valid_from",
+                                "valid_to",
+                            )
+                        }
+                        for row in exceptions.get((membership_id, conflict.rule_code), ())
+                    ],
+                }
+            )
         cover = covering(exceptions.get((membership_id, conflict.rule_code), ()), at)
         found.append(
             Conflict(
@@ -449,8 +502,85 @@ def conflicts(uow: UnitOfWork, params: ReportParams, *, at: datetime) -> list[Co
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {"as_of": params.parameters.get("as_of")}
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained SoD inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("as_of", "Retained inputs use another SoD selection.")
+        return data_from_inputs(retained)
     at = support.as_of_instant(params)
-    rows, totals = dataset_rows(conflicts(uow, params, at=at))
+    inputs: list[dict[str, Any]] = []
+    conflicts(uow, params, at=at, retained_inputs=inputs)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "as_of": at,
+                "candidates": inputs,
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    """Re-evaluate scoped conflicts and exception coverage without current access reads."""
+    at = datetime.fromisoformat(retained["as_of"].replace("Z", "+00:00"))
+    found = []
+    for record in retained["candidates"]:
+        held = tuple(
+            Held(item["role_name"], frozenset(item["permissions"])) for item in record["held"]
+        )
+        delegated = tuple(
+            Delegated(
+                item["delegator_name"],
+                datetime.fromisoformat(item["valid_to"].replace("Z", "+00:00")),
+                frozenset(item["permissions"]),
+            )
+            for item in record["delegated"]
+        )
+        function_a, function_b = frozenset(record["function_a"]), frozenset(record["function_b"])
+        if not in_conflict(held, function_a, function_b, delegated):
+            continue
+        exceptions = []
+        for stored in record["exceptions"]:
+            row = dict(stored)
+            for key in ("approved_at", "revoked_at", "valid_from", "valid_to"):
+                row[key] = (
+                    None
+                    if row[key] is None
+                    else datetime.fromisoformat(row[key].replace("Z", "+00:00"))
+                )
+            exceptions.append(row)
+        cover = covering(exceptions, at)
+        found.append(
+            Conflict(
+                email=record["email"],
+                display_name=record["display_name"],
+                rule_code=record["rule_code"],
+                rule_name=record["rule_name"],
+                function_a=function_a,
+                function_b=function_b,
+                held=held,
+                delegated=delegated,
+                cover=None
+                if cover is None
+                else Cover(
+                    UUID(str(cover["id"])),
+                    str(cover["compensating_control"]),
+                    cover["valid_from"],
+                    cover["valid_to"],
+                ),
+            )
+        )
+    rows, totals = dataset_rows(found)
     totals["as_of"] = utc_text(at)
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 

@@ -1,5 +1,19 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## SoD conflict retained reconstruction — October 22, 2026
+
+- New runs retain the original scoped conflict population, rule functions, held role permissions,
+  delegation permissions/names/end dates and candidate exception approval/revocation/validity
+  inputs. Same-source reruns validate tenant/entity scope and as-of selection, recalculate
+  conflict predicates and exception coverage, and rebuild rows/totals without live access reads.
+- Necessary verification passed: 61 focused access/source-binding cases plus the actual report
+  API/worker exception-revocation flow. Fresh reports show an uncovered conflict; saved covered
+  and empty runs reproduce identical rows/output hashes. Scoped lint/types and migration 0319
+  catalogue parity passed. Original historical-cutoff limits and older OPEN-run behavior remain.
+- This preserves selected report inputs; it does not add role-permission history or expand
+  approvals. Saved-run access still uses current authorization. No deployment.
+
+
 ## User access retained reconstruction — October 22, 2026
 
 - New runs retain member names/status, role/entity grants, MFA state, last login, grantor,

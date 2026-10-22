@@ -958,6 +958,23 @@ def test_sod_conflict_report(access: AccessWorld, clock: FrozenClock) -> None:
         direct(world, "sod_conflict_report", {"as_of": utc(clock.now() + MINUTE)})
     assert future.value.errors[0].message == "Enter a time that is not in the future."
 
+    from support import worlds
+
+    for original, expected in ((empty, none), (run, rows)):
+        started = post(app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        restored = get(
+            app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == expected
+
 
 @pytest.mark.control("CTL-034")
 def test_sod_conflict_report_names_the_delegations_a_conflict_is_held_through(

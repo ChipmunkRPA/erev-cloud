@@ -97,7 +97,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     Each definition's kind and row key still match the specification."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (audit_export, approvals, verifications, changes, access):
+    if module in (audit_export, approvals, verifications, changes, access, conflicts):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -1473,3 +1473,82 @@ def test_access_retained_members_rebuild_without_live_reads():
             access.build(uow, invalid)
     with pytest.raises(Problem):
         access.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+
+
+def test_sod_retained_permissions_and_exceptions_recalculate_without_live_reads():
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    candidate = {
+        "email": "member@example.test",
+        "display_name": "Original member",
+        "rule_code": "SoD-3",
+        "rule_name": "Prepare and approve",
+        "function_a": ["contract.write"],
+        "function_b": ["contract.approve"],
+        "held": [{"role_name": "Preparer", "permissions": ["contract.write"]}],
+        "delegated": [
+            {
+                "delegator_name": "Original delegator",
+                "valid_to": AT + timedelta(days=1),
+                "permissions": ["contract.approve"],
+            }
+        ],
+        "exceptions": [
+            {
+                "id": MARCUS,
+                "compensating_control": "Independent review",
+                "approved_at": AT,
+                "revoked_at": None,
+                "valid_from": AT,
+                "valid_to": AT + timedelta(days=1),
+            }
+        ],
+    }
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "selection": {"as_of": None},
+                "as_of": AT,
+                "candidates": [candidate],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=conflicts.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={conflicts.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = conflicts.build(uow, params)
+    assert data.rows[0]["sod_exception_id"] == str(MARCUS)
+    assert "Original delegator" in data.rows[0]["delegations"]
+    assert data.control_totals["uncovered_conflict_count"] == 0
+    retained["candidates"][0]["exceptions"][0]["revoked_at"] = retained["as_of"]
+    assert conflicts.build(uow, params).control_totals["uncovered_conflict_count"] == 1
+    retained["candidates"][0]["delegated"] = []
+    assert conflicts.build(uow, params).control_totals["conflict_count"] == 0
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"as_of": "2020-01-01T00:00:00Z"}),
+    ):
+        with pytest.raises(Problem):
+            conflicts.build(uow, invalid)
+    with pytest.raises(Problem):
+        conflicts.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+    assert framework.SOURCE_CONTRACTS[conflicts.CODE].strategy == RETAINED

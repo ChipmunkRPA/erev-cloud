@@ -20,6 +20,19 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## SoD conflict retained reconstruction — October 22, 2026
+
+- New runs retain the original scoped conflict population, rule functions, held role permissions,
+  delegation permissions/names/end dates and candidate exception approval/revocation/validity
+  inputs. Same-source reruns validate tenant/entity scope and as-of selection, recalculate
+  conflict predicates and exception coverage, and rebuild rows/totals without live access reads.
+- Necessary verification passed: 61 focused access/source-binding cases plus the actual report
+  API/worker exception-revocation flow. Fresh reports show an uncovered conflict; saved covered
+  and empty runs reproduce identical rows/output hashes. Scoped lint/types and migration 0319
+  catalogue parity passed. Original historical-cutoff limits and older OPEN-run behavior remain.
+- This preserves selected report inputs; it does not add role-permission history or expand
+  approvals. Saved-run access still uses current authorization. No deployment.
+
 ## User access retained reconstruction — October 22, 2026
 
 - New runs retain member names/status, role/entity grants, MFA state, last login, grantor,
@@ -207,25 +220,6 @@ review and publish changes without PR accumulation, and do not deploy.
   across SUBMITTED-to-APPLIED approval in all three currency views. Fresh runs show APPLIED while
   saved runs reproduce SUBMITTED rows and identical output hashes. Applied-upgrade reporting,
   scoped lint/types and migration 0307 frozen-IPE parity also passed. No deployment.
-
-## Modification register reporting equivalents — October 21, 2026
-
-- Fixed Reporting view returning unchanged transaction figures when contract and functional
-  currencies match. It now preserves original TP-change/catch-up values and adds separately
-  labelled reporting equivalents using approved averages for the modification effective period.
-  Each row states that analytical conversion basis; these columns are not posted FX amounts.
-- Empty measures remain empty. Catch-up signs are preserved and TP-change totals count each
-  modification once even when several obligation rows repeat its price change. Empty-measure
-  modifications do not require an FX rate. Unsupported currency-view values are refused even for
-  empty populations. Rate evidence is captured; the register still declares live-source behavior.
-- Necessary checks passed: 15 focused modification cases, actual K02 applied upgrade with reporting
-  build, frozen IPE parity and scoped lint/types. The pure USD/EUR-to-GBP case verifies separate
-  rates, multi-line TP deduplication, positive/negative catch-ups and draft nulls. The database
-  case uses USD/USD. Migration 0306 documents the analytical basis and source tables.
-- Remaining: foreign-contract functional TP/catch-up evidence is not supplied by this feature;
-  Functional/Reporting continue to refuse when contract currency differs from functional currency.
-  Retained same-source reconstruction, other documented adapters and final repository verification
-  also remain. Historical lock support is unchanged. No deployment.
 
 ## Outstanding release verification
 
