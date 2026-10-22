@@ -1937,6 +1937,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "audit_event.approval_request_id = approval_request.id",
         ),
         filters=(
+            "same-source runs retain configuration approvals, subject/actor inputs and "
+            "evidence counts; "
+            "recompute author separation and rows without live reads",
             "approval_request.subject_type in subject_types (configuration subjects of E-08)",
             "decided from from_date to to_date inclusive",
             "requests whose every entity is in entity_codes, and tenant-level requests; a request "

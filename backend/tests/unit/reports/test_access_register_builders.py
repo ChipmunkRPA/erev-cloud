@@ -97,7 +97,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     Each definition's kind and row key still match the specification."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (audit_export, approvals, verifications):
+    if module in (audit_export, approvals, verifications, changes):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -1337,3 +1337,65 @@ def test_retained_approval_inputs_rebuild_names_steps_rules_and_totals() -> None
         approvals.build(uow, replace(params, entity_ids=()))
     with pytest.raises(Problem, match="exceeds report scope"):
         approvals.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+
+
+def test_retained_config_inputs_recompute_author_separation_without_database():
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    source = changes.Source(
+        _request("APR-001", _decision(1, approver=PRIYA)),
+        changes.Subject("Original mapping", date(2026, 1, 1), (MAYA, "USER")),
+        3,
+        2,
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "selection": {"from_date": None, "to_date": None, "subject_types": None},
+                "from_date": "2026-01-01",
+                "to_date": "2026-12-31",
+                "sources": [asdict(source)],
+                "names": {str(k): v for k, v in NAMES.items()},
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=changes.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={changes.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = changes.build(uow, params)
+    assert data.rows[0]["author_differs"] is True
+    assert data.rows[0]["effective_from"] == date(2026, 1, 1)
+    assert data.rows[0]["changed_field_count"] == 3
+    retained["sources"][0]["subject"]["author"] = [str(PRIYA), "USER"]
+    assert changes.build(uow, params).rows[0]["author_differs"] is False
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"subject_types": ["SSP_BOOK_VERSION"]}),
+        replace(params, parameters={"to_date": "2026-08-31"}),
+    ):
+        with pytest.raises(Problem):
+            changes.build(uow, invalid)
+    with pytest.raises(Problem):
+        changes.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+    retained["sources"][0]["request"]["status"] = "PENDING"
+    assert changes.build(uow, params).rows == ()

@@ -36,12 +36,14 @@ subject's name, version number and effective date are fixed once it is submitted
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import Select, Table, and_, func, select
 from sqlalchemy.orm import Session
 
@@ -70,9 +72,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import ApprovalRequestStatus, ApprovalSubjectType, AuditOutcome, RegistryScope
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "config_change_register"
+EVIDENCE: Final = "config_change_inputs_v1"
 ROW_KEY_PREFIX: Final = "change:"  # RPT-23: row_key `change:<request no>`
 SUBJECT_TYPES: Final = tuple(item.value for item in catalogue.CONFIGURATION_SUBJECTS)
 DECIDED: Final = (ApprovalRequestStatus.APPROVED.value, ApprovalRequestStatus.REJECTED.value)
@@ -451,6 +455,18 @@ def sources(
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key) for key in ("from_date", "to_date", "subject_types")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained configuration inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("subject_types", "Retained inputs use another filter selection.")
+        return data_from_inputs(retained)
     session = uow.session
     first, last = support.date_range(session, params, today=True)
     given = params.parameters.get("subject_types")
@@ -465,8 +481,48 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         (item.request for item in found),
         (item.subject.author[0] for item in found if item.subject and item.subject.author),
     )
+    tie_outs.record_members(params, "configuration_requests", (item.request.id for item in found))
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "from_date": first,
+                "to_date": last,
+                "sources": [asdict(item) for item in found],
+                "names": {str(key): value for key, value in names.items()},
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    bounds = support.instants(
+        date.fromisoformat(retained["from_date"]), date.fromisoformat(retained["to_date"])
+    )
+    found = []
+    for record in retained["sources"]:
+        values = dict(record)
+        values["request"] = support.request_from_inputs(values["request"])
+        if values["subject"] is not None:
+            subject = dict(values["subject"])
+            subject["effective_from"] = (
+                None
+                if subject["effective_from"] is None
+                else date.fromisoformat(subject["effective_from"])
+            )
+            if subject["author"] is not None:
+                subject["author"] = (support.uuid_of(subject["author"][0]), subject["author"][1])
+            values["subject"] = Subject(**subject)
+        item = Source(**values)
+        if item.request.status in DECIDED and support.within(item.request.decided_at, bounds):
+            found.append(item)
+    names = {UUID(key): value for key, value in retained["names"].items()}
     rows, totals = dataset_rows(found, names)
-    totals["from_date"], totals["to_date"] = first.isoformat(), last.isoformat()
+    totals["from_date"], totals["to_date"] = retained["from_date"], retained["to_date"]
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

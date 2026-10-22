@@ -557,6 +557,26 @@ def test_config_change_register_author_differs(
     )
     assert earlier == []
 
+    from support import worlds
+
+    fresh, fresh_rows = report_run(
+        world, "config_change_register", {"from_date": "2026-01-01", "to_date": "2026-09-30"}
+    )
+    assert len(fresh_rows) == len(rows) + 1
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == rows
+
 
 # --- RPT-24 ---------------------------------------------------------------------------------------
 

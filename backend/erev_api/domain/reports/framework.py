@@ -508,10 +508,6 @@ _MIGRATION_OPEN: Final = (
 # adapter yet — each names its actual input families.
 
 
-_CONFIG_CHANGE_REGISTER_OPEN: Final = (
-    "decided configuration approval requests with their decisions, subject versions, audit "
-    "events (the recorded field diffs) and example cases read live (RPS-10 RPT-23)"
-)
 _USER_ACCESS_LISTING_OPEN: Final = (
     "memberships with their people, role assignments, roles, granting approval decisions, MFA "
     "factors, entity codes and the audit events of invitations read live (RPS-10 RPT-24)"
@@ -850,7 +846,8 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         ),
         # RPS-10 (RPT-23 to RPT-26, RPT-43, RPT-44): the registers read live; no source adapter yet.
         config_change_register_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_CONFIG_CHANGE_REGISTER_OPEN,)
+            RETAINED,
+            (_CUTOFF, "configuration approvals, subjects, actor names and evidence counts"),
         ),
         user_access_listing_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_USER_ACCESS_LISTING_OPEN,)
@@ -2069,6 +2066,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "ssp_change_log",
             "ssp_override_listing",
             "allocations_by_ssp_version",
+            "config_change_register",
         }
     ):
         try:

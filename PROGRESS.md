@@ -20,6 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Configuration change retained reconstruction — October 22, 2026
+
+- New runs retain configuration subjects, approval requests/decisions, actor identities/names,
+  changed-field and test-evidence counts, simulation flags and resolved dates. Bound reruns
+  validate scope/filters, restore typed inputs and recompute author/approver separation and
+  displayed rows without current source reads. Request membership is captured.
+- Necessary verification passed: 56 focused access/source-binding cases and actual configuration
+  approval/report API and worker flow. A later rejected SSP request adds a fresh report row;
+  the saved report preserves its original three rows and identical output hash. Scoped lint/types
+  and migration 0317 IPE parity passed. Older OPEN runs retain new-evaluation behavior.
+- Three older permission tests fail because they assume the old report inventory/SQL shape
+  (test_the_reports_declare_their_permissions, test_a_declared_permission_is_held_at_its_scope,
+  test_a_run_is_visible_under_the_run_permission_of_its_report). All three also fail when executing
+  the preceding committed framework, so this feature does not introduce them. They remain an
+  explicit verification cleanup item; the full access test file is not claimed green.
+  No deployment; other documented Reporting/repository gaps remain.
+
 ## Allocation lineage retained reconstruction — October 22, 2026
 
 - New allocations-by-SSP-version runs retain each segment's first/latest obligation-version
@@ -211,25 +228,6 @@ review and publish changes without PR accumulation, and do not deploy.
   parity and scoped lint/types. Input-only reconstruction tests need no session and recompute
   approval displays, attachment counts, posted totals and rate changes.
 - Remaining: other documented report adapters and final repository verification. No deployment.
-
-## Manual adjustment reporting-currency comparison — October 21, 2026
-
-- Added Reporting currency to the manual adjustment register. Original functional currency and
-  absolute impact remain visible under explicit functional headings; separate reporting currency
-  and reporting amount columns carry conversion at each adjustment's posting-period average.
-- Reporting totals include all selected statuses; the posted footer includes only POSTED items.
-  Original functional totals remain available, including posted_functional_total. Transaction view
-  remains unsupported because not every adjustment kind has a defined transaction amount; the
-  catalogue now offers only Functional and Reporting. Missing/ambiguous approved rates use the
-  existing shared refusal. Migration 0304 updates the public schema and rate-source metadata.
-- Necessary checks passed: 13 focused register/lock-admission cases, the real rejected schedule
-  override and approved/posted release flow with reporting build, frozen schema/IPE parity and
-  scoped lint/types. A USD/EUR multi-entity case with separate period rates produces GBP 2,045
-  total impact and GBP 125 posted impact while preserving USD/EUR originals. The database flow
-  uses identity USD/USD translation; non-identity arithmetic is covered by the focused case.
-- Remaining: manual adjustment retained same-source inputs and other documented report adapters,
-  plus final repository verification. Historical lock datasets keep their current currency support.
-  No deployment.
 
 ## Outstanding release verification
 
