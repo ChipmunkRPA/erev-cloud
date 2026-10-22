@@ -935,6 +935,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "schedule_line.period_id = period.id",
         ),
         filters=(
+            "same-source runs retain the original entity/period revenue-line version references; "
+            "version selection and trace attribution do not rediscover current ledger references",
             _SCOPE,
             _BOOK,
             _PERIODS,

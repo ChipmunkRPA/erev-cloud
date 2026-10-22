@@ -332,12 +332,11 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     assert {"period_evidence_pack", "contract_sample_pack"} <= adapters
     assert framework.SOURCE_CONTRACTS["api_client_inventory"].strategy == RETAINED
     assert framework.SOURCE_CONTRACTS["je_population"].strategy == RETAINED
-    # ENG-C4's eighteenth builder is an adapter: the bound cutoff, its selected versions and its
-    # historical membership candidates; open = the reference-line population (frps3c-1 retained
-    # the configuration, so that qualification is gone).
+    # Prior-period attribution binds configuration, selected versions, historical membership
+    # and the original entity/period reference population.
     c4 = framework.SOURCE_CONTRACTS["revenue_from_prior_period_obligations"]
-    assert c4.strategy == ADAPTER and len(c4.open) == 1
-    assert c4.open[0].startswith("subledger-line REFERENCE population")
+    assert c4.strategy == ADAPTER and not c4.open
+    assert any("reference population" in item for item in c4.bound)
     opened = {code for code, c in framework.SOURCE_CONTRACTS.items() if c.strategy == OPEN}
     assert opened == {
         "migration_reconciliation",

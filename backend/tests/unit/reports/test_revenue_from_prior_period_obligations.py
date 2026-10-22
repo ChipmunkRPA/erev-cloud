@@ -840,3 +840,48 @@ def test_a_contract_stated_elsewhere_is_not_read_from_this_version(
     assert (found.identity, found.reads, found.sum_nodes) == ((), (), {})
     kept = pp.read_trace(book.trace, refs, [FEBRUARY], scope, {}, frozenset({("OTHER", FEBRUARY)}))
     assert len(kept.identity) == 1 and len(kept.reads) == 2
+
+
+def test_retained_references_do_not_rediscover_new_ledger_versions(monkeypatch):
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports import tie_outs
+    from erev_api.domain.reports.builders import ADAPTER, SourceBinding
+
+    entity, period, original, later = (UUID(int=i) for i in range(1, 5))
+    at = datetime(2026, 10, 1, tzinfo=UTC)
+    params = ReportParams(
+        report_code=pp.CODE, report_version=1, entity_ids=(entity,), parameters={}, known_at=at
+    )
+    periods = {entity: (SimpleNamespace(id=period),)}
+    saved = {}
+    monkeypatch.setattr(
+        tie_outs, "record_evidence", lambda _params, key, value: saved.update({key: value})
+    )
+    rows = [(entity, period, original)]
+    session = SimpleNamespace(execute=lambda _statement: SimpleNamespace(tuples=lambda: rows))
+    args = {"book_code": "ASC606", "periods": periods, "known_at": at}
+    assert pp._references(session, params=params, **args) == {(entity, period): {original}}
+    binding = SourceBinding(
+        cutoff=at,
+        versions={},
+        labels={},
+        row_keys=frozenset(),
+        strategy=ADAPTER,
+        evidence=dict(saved),
+    )
+    bound = replace(params, binding=binding)
+    rows.append((entity, period, later))
+    assert pp._references(None, params=bound, **args) == {(entity, period): {original}}
+    assert pp._references(session, params=params, **args) == {(entity, period): {original, later}}
+    with pytest.raises(Problem):
+        pp._references(None, params=bound, **{**args, "book_code": "IFRS15"})
+    with pytest.raises(Problem):
+        pp._references(None, params=bound, **{**args, "periods": {}})
+    with pytest.raises(Problem):
+        pp._references(None, params=replace(bound, binding=replace(binding, evidence={})), **args)
+    legacy = replace(binding, evidence={}, open=("original live reference qualification",))
+    assert pp._references(session, params=replace(bound, binding=legacy), **args) == {
+        (entity, period): {original, later}
+    }

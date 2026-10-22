@@ -12033,3 +12033,33 @@ cleanup in the shared database session kernel was also repaired and regression-t
   approved EUR/USD average 1.20 with 1.30 changes fresh P&L equivalents from USD -6,900 to -7,475;
   saved transaction and reporting runs reproduce their original rows and identical output hashes.
   Scoped lint/types and migration 0309 frozen IPE parity passed. No deployment.
+
+## Scope exclusion reporting and retained inputs — October 21, 2026
+
+- Reporting now preserves original out-of-scope amounts and adds explicitly labelled equivalents
+  at each entity's selected report-period closing rate, with a separate reporting control total.
+  These are analytical equivalents, not carrying balances. Missing per-line amounts remain empty;
+  shared exclusions are not apportioned. Foreign-contract functional conversion remains refused.
+- New runs retain scope amounts, judgement numbers/rationales, source version membership, resolved
+  as-of date and reporting rates. Bound reruns validate tenant/entity scope and filters, then rebuild
+  typed rows and totals without current source reads. Older OPEN runs keep new-evaluation behavior.
+- Necessary checks passed: 40 focused register/source-binding cases, including USD-to-GBP and
+  retained reconstruction in all three views; actual BR06 report API/worker flow before and after
+  judgement approval. Fresh rows show the new rationale while all three saved views reproduce
+  original rows and identical hashes. Scoped lint/types and migration 0310 frozen IPE parity pass.
+  Lock-source and ad-hoc historical limitations remain unchanged. No deployment.
+
+## Judgement register retained reconstruction — October 21, 2026
+
+- New runs retain judgement source records, subject/actor labels, conclusions, references,
+  reviewer timestamps, supersession labels, resolved dates and withheld-population counts.
+  Same-source reruns validate tenant/entity scope and book/date/topic/status selection, then
+  rebuild typed rows and totals without current judgement, subject or user reads.
+- Captures judgement-record membership. Withheld combination proposals contribute only the
+  original count, not restricted record details. Older OPEN runs keep new-evaluation behavior;
+  ad-hoc historical queries still refuse unavailable mutable-state history.
+- Necessary verification passed: 41 focused register/source-binding cases and actual report
+  API/worker flow across SUBMITTED-to-REVIEWED approval. Fresh judgement rows show the reviewer;
+  the saved run rebuilds the original SUBMITTED row with identical output hash. No-session tests
+  cover typed values, names, counts and scope/filter refusal. Scoped lint/types and migration 0311
+  frozen IPE parity passed. No deployment.

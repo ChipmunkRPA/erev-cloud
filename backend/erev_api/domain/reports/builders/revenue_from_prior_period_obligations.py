@@ -106,6 +106,7 @@ from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "revenue_from_prior_period_obligations"
+REFERENCES: Final = "prior_period_references_v1"
 KEY_COLUMNS: Final = ("entity_code", "contract_external_id", "obligation_key")
 CAUSE_FIELDS: Final = (
     "from_price_changes",
@@ -691,7 +692,25 @@ def _references(
 ) -> dict[tuple[UUID, UUID], set[UUID]]:
     """(entity, period) → the contract versions the range's REVENUE lines reference."""
     wanted = {(entity_id, item.id) for entity_id, items in periods.items() for item in items}
+    scope = sorted([str(entity_id), str(period_id)] for entity_id, period_id in wanted)
+    if params.binding is not None and (
+        REFERENCES in params.binding.evidence or not params.binding.open
+    ):
+        retained = tie_outs.bound_evidence(params, REFERENCES)
+        if retained["book"] != book_code or retained["scope"] != scope:
+            raise tie_outs.invalid("book", "Retained prior-period references use another scope.")
+        return {
+            (UUID(item["entity_id"]), UUID(item["period_id"])): {
+                UUID(value) for value in item["versions"]
+            }
+            for item in retained["references"]
+        }
+    # Older bindings explicitly qualified this reference population as live. Preserve their
+    # semantics; modern bindings missing their evidence fail above rather than querying today.
     if not wanted:
+        tie_outs.record_evidence(
+            params, REFERENCES, {"book": book_code, "scope": scope, "references": []}
+        )
         return {}
     statement = (
         select(
@@ -714,6 +733,24 @@ def _references(
         key = (UUID(str(entity_id)), UUID(str(period_id)))
         if key in wanted:
             found.setdefault(key, set()).add(UUID(str(version_id)))
+    tie_outs.record_evidence(
+        params,
+        REFERENCES,
+        {
+            "book": book_code,
+            "scope": scope,
+            "references": [
+                {
+                    "entity_id": str(key[0]),
+                    "period_id": str(key[1]),
+                    "versions": sorted(str(value) for value in versions),
+                }
+                for key, versions in sorted(
+                    found.items(), key=lambda item: (str(item[0][0]), str(item[0][1]))
+                )
+            ],
+        },
+    )
     return found
 
 

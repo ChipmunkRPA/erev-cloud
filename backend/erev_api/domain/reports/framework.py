@@ -748,6 +748,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             (
                 _CUTOFF,
                 "contract versions selected per (group, period) — the consumed ids",
+                "original entity/period revenue-line version reference population",
                 "stored traces, obligation rows and contract events (children of the bound "
                 "versions)",
                 "combination-group membership as of the bound cutoff (historical identities; the "
@@ -755,10 +756,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 "sum-node identity checks re-run on the rebuilt read (S15-R-13)",
                 _CONFIGURATION,
             ),
-            (
-                "subledger-line REFERENCE population (read live by the selected time basis; the "
-                "bound version ids fix the selection; frps3c)",
-            ),
+            (),
         ),
         # Codex 2202 / 2225: no contract version binds the inventory; its live build records the
         # consumed client rows — each with the grant of its scopes (ruling R-38 (iii)) — entity

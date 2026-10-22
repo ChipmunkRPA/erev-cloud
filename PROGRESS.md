@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Prior-period attribution reference population — October 22, 2026
+
+- New prior-period revenue reports retain the original entity/period-to-contract-version
+  reference population, including empty selections. Bound runs use those references before
+  selecting their original versions and replaying trace attribution/identity checks, rather than
+  rediscovering current revenue-line references. Book and period/entity scope must match.
+- Modern bindings missing reference evidence fail explicitly. Older bindings that declared their
+  reference population live retain that qualified behavior. Migration 0324 documents the source
+  contract. Migration reconciliation is now the only wholly OPEN report strategy and remains
+  outside the owner-authorized migration-to-live completion scope; this is not a claim that
+  every Reporting business gap is closed.
+- Necessary verification passed: 44 focused prior-period/source-binding cases including native
+  attribution traces, later reference additions, scope mismatch and old/new binding behavior;
+  actual K01 API/worker empty-report rerun with matching rows/hash. Scoped lint/types and frozen
+  metadata parity passed. Foreign-contract modification functional TP/catch-up evidence remains
+  a separate unresolved business gap; no ordinary FX conversion has replaced those amounts.
+  No deployment; final repository verification remains open.
+
 ## AI call export retained reconstruction — October 22, 2026
 
 - New call-log exports retain only the disclosed AIModelLogOut evidence and original requester
@@ -204,36 +222,6 @@ review and publish changes without PR accumulation, and do not deploy.
   two minutes, making the lock appear later than subsequent database-recorded events. Removing
   that advance restores the intended chronology without changing production lock behavior.
   No deployment; other documented Reporting and repository gaps remain.
-
-## Judgement register retained reconstruction — October 21, 2026
-
-- New runs retain judgement source records, subject/actor labels, conclusions, references,
-  reviewer timestamps, supersession labels, resolved dates and withheld-population counts.
-  Same-source reruns validate tenant/entity scope and book/date/topic/status selection, then
-  rebuild typed rows and totals without current judgement, subject or user reads.
-- Captures judgement-record membership. Withheld combination proposals contribute only the
-  original count, not restricted record details. Older OPEN runs keep new-evaluation behavior;
-  ad-hoc historical queries still refuse unavailable mutable-state history.
-- Necessary verification passed: 41 focused register/source-binding cases and actual report
-  API/worker flow across SUBMITTED-to-REVIEWED approval. Fresh judgement rows show the reviewer;
-  the saved run rebuilds the original SUBMITTED row with identical output hash. No-session tests
-  cover typed values, names, counts and scope/filter refusal. Scoped lint/types and migration 0311
-  frozen IPE parity passed. No deployment.
-
-## Scope exclusion reporting and retained inputs — October 21, 2026
-
-- Reporting now preserves original out-of-scope amounts and adds explicitly labelled equivalents
-  at each entity's selected report-period closing rate, with a separate reporting control total.
-  These are analytical equivalents, not carrying balances. Missing per-line amounts remain empty;
-  shared exclusions are not apportioned. Foreign-contract functional conversion remains refused.
-- New runs retain scope amounts, judgement numbers/rationales, source version membership, resolved
-  as-of date and reporting rates. Bound reruns validate tenant/entity scope and filters, then rebuild
-  typed rows and totals without current source reads. Older OPEN runs keep new-evaluation behavior.
-- Necessary checks passed: 40 focused register/source-binding cases, including USD-to-GBP and
-  retained reconstruction in all three views; actual BR06 report API/worker flow before and after
-  judgement approval. Fresh rows show the new rationale while all three saved views reproduce
-  original rows and identical hashes. Scoped lint/types and migration 0310 frozen IPE parity pass.
-  Lock-source and ad-hoc historical limitations remain unchanged. No deployment.
 
 ## Outstanding release verification
 

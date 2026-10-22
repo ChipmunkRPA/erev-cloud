@@ -59,3 +59,22 @@ def test_prior_period_report_k01_september_2026_is_empty(world: ReportWorld) -> 
         "prior_period_sum_total": {},
     }
     assert run["tie_out_results"] == []
+
+    from uuid import UUID
+
+    from support import worlds
+    from support.reference import get, post
+
+    started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        world.app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == rows
