@@ -413,6 +413,13 @@ def test_override_listing(k02: K02World, runtime: JobRuntime, clock: FrozenClock
     _, none = report_run(world, "ssp_override_listing", {"entity_codes": [AVM_US]})
     assert none == []
 
+    original_allocation, original_allocation_rows = report_run(
+        world,
+        "allocations_by_ssp_version",
+        {"entity_codes": [AVM_US], "from_date": "2026-01-01", "to_date": "2026-09-30"},
+    )
+    assert original_allocation_rows[0]["is_override"] is False
+
     second_half = approved_version(
         world.app,
         maya,
@@ -494,7 +501,12 @@ def test_override_listing(k02: K02World, runtime: JobRuntime, clock: FrozenClock
     from support import worlds
     from support.reference import get
 
-    for original, original_rows in ((pending_run, pending), (run, rows)):
+    assert allocations != original_allocation_rows
+    for original, original_rows in (
+        (pending_run, pending),
+        (run, rows),
+        (original_allocation, original_allocation_rows),
+    ):
         started = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", maya, {})
         assert started.status_code == 202, started.text
         finished = worlds.run_now(world, UUID(str(started.json()["id"])))

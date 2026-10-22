@@ -508,11 +508,6 @@ _MIGRATION_OPEN: Final = (
 # adapter yet — each names its actual input families.
 
 
-_ALLOCATIONS_BY_SSP_VERSION_OPEN: Final = (
-    "obligation versions (the allocation lineage) of the run's book with their contract versions, "
-    "cause events, contracts and SSP book versions read live (RPS-9 RPT-21)"
-)
-
 _CONFIG_CHANGE_REGISTER_OPEN: Final = (
     "decided configuration approval requests with their decisions, subject versions, audit "
     "events (the recorded field diffs) and example cases read live (RPS-10 RPT-23)"
@@ -848,7 +843,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             RETAINED, (_CUTOFF, "selected SSP comparison versions and full entry/range inputs")
         ),
         allocations_by_ssp_version_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_ALLOCATIONS_BY_SSP_VERSION_OPEN,)
+            RETAINED, (_CUTOFF, "allocation segment versions, cause dates and chain numbers")
         ),
         ssp_override_listing_builder.CODE: SourceContract(
             RETAINED, (_CUTOFF, "SSP override version labels, requests, decisions and actor names")
@@ -2073,6 +2068,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "ssp_version_diff",
             "ssp_change_log",
             "ssp_override_listing",
+            "allocations_by_ssp_version",
         }
     ):
         try:

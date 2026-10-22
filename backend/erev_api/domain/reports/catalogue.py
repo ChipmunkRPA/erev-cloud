@@ -1876,6 +1876,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "obligation_version.ssp_range_id = ssp_range.id",
         ),
         filters=(
+            "same-source runs retain allocation segment versions, cause dates and chain numbers; "
+            "rebuild lineage amounts, range checks and totals without live reads",
             _SCOPE,
             _BOOK,
             "obligation versions of an allocation event effective from from_date to to_date",

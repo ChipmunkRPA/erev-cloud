@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Allocation lineage retained reconstruction — October 22, 2026
+
+- New allocations-by-SSP-version runs retain each segment's first/latest obligation-version
+  inputs, cause, allocation date and contract-chain number, with version membership. Bound reruns
+  validate tenant/entity scope and book/date/SSP selection, then recalculate original or remaining
+  SSP lineage, range status, adjustments, currency totals and TOTAL rows without live reads.
+- Necessary validation passed: 45 focused SSP/source-binding cases; actual override approval,
+  recomputation and report API/worker flow. Fresh allocation rows use the corrected SSP pin and
+  override flag, while the saved report reproduces the original allocation rows and identical
+  output hash. No-session checks cover chain numbering, amount/adjustment/total recalculation,
+  date selection and scope refusal. Scoped lint/types and migration 0316 IPE parity passed.
+- All four SSP reports now support retained same-source reconstruction for new runs. Older OPEN
+  runs keep their original behavior. This report remains transaction-currency-only as specified;
+  the change does not add functional allocation measures. Other documented Reporting/repository
+  gaps remain open. No deployment.
+
 ## SSP override retained reconstruction — October 22, 2026
 
 - New runs retain obligation/product identifiers, original default/override version labels,
@@ -214,24 +230,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Remaining: manual adjustment retained same-source inputs and other documented report adapters,
   plus final repository verification. Historical lock datasets keep their current currency support.
   No deployment.
-
-## Out-of-period register retained reconstruction — October 21, 2026
-
-- New runs retain the authorized line population, original transaction and selected effect
-  amounts/currencies, ordered event sets, subject/group scope, trigger/cause proof, actor/approval
-  displays and selected late-event findings. Line and finding IDs are recorded as membership.
-- Bound reruns require matching tenant, entity set, requested book/period filters and currency
-  view. They restore input dates, rebuild attribution, suppress late events already represented
-  by postings, and recompute rows, line counts and currency totals without database reads.
-  Changing retained amounts changes totals; removing a retained posting restores its selected
-  zero-posting event row. This is input reconstruction, not a saved output-file return.
-- Migration 0303 describes the retained basis. Older OPEN runs keep their original new-evaluation
-  behavior; historical lock datasets keep their existing support.
-- Necessary verification passed: 24 focused currency/source-binding cases, public K01 all-view
-  reruns after an approved progress change from 40% to 60% (fresh rows change, original rows and
-  output hashes remain equal), K07 no-posting event flow, frozen catalogue parity and scoped
-  lint/types. The register's same-source adapter is now implemented. Other documented adapters
-  and final repository verification remain; no deployment.
 
 ## Outstanding release verification
 

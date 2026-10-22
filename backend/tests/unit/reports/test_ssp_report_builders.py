@@ -77,11 +77,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     what it reads; each definition's kind and row key are the specification's."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (version_diff, change_log, overrides):
-        assert contract.strategy == "retained_inputs" and not contract.open
-    else:
-        assert contract.strategy == "open" and len(contract.open) == 1
-        assert f"RPT-{number}" in contract.open[0]
+    assert contract.strategy == "retained_inputs" and not contract.open
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -795,3 +791,71 @@ def test_override_retained_approval_and_labels_without_database():
         overrides.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
     retained["sources"][0]["request"]["status"] = "PENDING"
     assert overrides.build(uow, params).rows == ()
+
+
+def test_retained_allocation_recomputes_amounts_range_and_totals_without_database():
+    import json
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    raw = _obligation_version(1)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "selection": {
+                    key: None for key in ("book", "from_date", "to_date", "ssp_book_version_id")
+                },
+                "from_date": "2026-01-01",
+                "to_date": "2026-09-30",
+                "segments": [
+                    {
+                        "first": raw,
+                        "latest": raw,
+                        "cause": allocations.INCEPTION,
+                        "created": True,
+                        "allocation_date": "2026-09-01",
+                        "chain_no": 4,
+                    }
+                ],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=allocations.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={allocations.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = allocations.build(uow, params)
+    assert data.rows[0]["row_key"] == "allocation:SF-ORD-20417:O1:4"
+    assert data.rows[0]["allocation_date"] == date(2026, 9, 1)
+    retained["segments"][0]["latest"]["original_allocated_amount"] = "100000"
+    changed = allocations.build(uow, params)
+    assert changed.rows[0]["allocation_adjustment"] == {"amount": "4000.00", "currency": "USD"}
+    assert changed.control_totals["allocated_amount_total"] == {"USD": "100000.00"}
+    assert changed.rows[-1]["allocated_amount"] == {"amount": "100000.00", "currency": "USD"}
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"book": "IFRS15"}),
+        replace(params, parameters={"ssp_book_version_id": str(H2)}),
+    ):
+        with pytest.raises(Problem):
+            allocations.build(uow, invalid)
+    with pytest.raises(Problem):
+        allocations.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+    retained["segments"][0]["allocation_date"] = "2026-10-01"
+    assert allocations.build(uow, params).rows == ()

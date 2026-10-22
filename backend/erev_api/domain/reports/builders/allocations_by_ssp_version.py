@@ -50,6 +50,7 @@ version of a group that a contract joined after it had been computed in its own 
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -57,6 +58,7 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -73,9 +75,11 @@ from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams, contract_history
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "allocations_by_ssp_version"
+EVIDENCE: Final = "ssp_allocation_inputs_v1"
 ROW_KEY_PREFIX: Final = "allocation:"
 TOTAL_PREFIX: Final = "TOTAL:"
 INCEPTION: Final = "Inception"  # SCREENS_B RPT-21 ``cause``
@@ -369,7 +373,13 @@ def _modification_dates(session: Session, event_ids: Iterable[UUID]) -> dict[UUI
     return {UUID(str(event_id)): day for event_id, day in session.execute(statement)}
 
 
-def allocations(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> list[Allocation]:
+def allocations(
+    uow: UnitOfWork,
+    params: ReportParams,
+    *,
+    book_code: str,
+    retained_segments: list[dict[str, Any]] | None = None,
+) -> list[Allocation]:
     """Every allocation event in scope by the cutoff, before the date and version filters."""
     session = uow.session
     cutoff = tie_outs.cutoff_for(session, params)
@@ -404,23 +414,83 @@ def allocations(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> lis
             day = max(caused) if caused else segment.first["effective_date"]
         read = segment.latest
         version = (UUID(str(read["contract_id"])), UUID(str(read["contract_version_id"])))
+        if retained_segments is not None:
+            retained_segments.append(
+                {
+                    "first": dict(segment.first),
+                    "latest": dict(segment.latest),
+                    "cause": segment.cause,
+                    "created": segment.created,
+                    "allocation_date": day,
+                    "chain_no": numbers.get(version),
+                }
+            )
         found.append(allocation(segment, allocation_date=day, chain_no=numbers.get(version)))
     return found
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key)
+        for key in ("book", "from_date", "to_date", "ssp_book_version_id")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained SSP allocation inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("book", "Retained inputs use another allocation selection.")
+        return data_from_inputs(retained)
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     first, last = support.date_range(session, params)
-    version_id = support.uuid_of(params.parameters.get("ssp_book_version_id"))
-    found = [
-        item
-        for item in allocations(uow, params, book_code=book_code)
-        if first <= item.allocation_date <= last
-        and (version_id is None or item.ssp_book_version_id == version_id)
-    ]
+    segments: list[dict[str, Any]] = []
+    allocations(uow, params, book_code=book_code, retained_segments=segments)
+    tie_outs.record_members(
+        params,
+        "allocation_obligation_versions",
+        (item[side]["id"] for item in segments for side in ("first", "latest")),
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "from_date": first,
+                "to_date": last,
+                "segments": segments,
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    first, last = date.fromisoformat(retained["from_date"]), date.fromisoformat(retained["to_date"])
+    version_id = support.uuid_of(retained["selection"]["ssp_book_version_id"])
+    found = []
+    for record in retained["segments"]:
+        segment = Segment(
+            first=record["first"],
+            latest=record["latest"],
+            cause=record["cause"],
+            created=record["created"],
+        )
+        item = allocation(
+            segment,
+            allocation_date=date.fromisoformat(record["allocation_date"]),
+            chain_no=record["chain_no"],
+        )
+        if first <= item.allocation_date <= last and (
+            version_id is None or item.ssp_book_version_id == version_id
+        ):
+            found.append(item)
     rows, control = dataset_rows(found)
-    control["from_date"], control["to_date"] = first.isoformat(), last.isoformat()
+    control["from_date"], control["to_date"] = retained["from_date"], retained["to_date"]
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=control)
 
 

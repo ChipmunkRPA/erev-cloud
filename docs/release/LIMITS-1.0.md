@@ -1,5 +1,21 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Allocation lineage retained reconstruction — October 22, 2026
+
+- New allocations-by-SSP-version runs retain each segment's first/latest obligation-version
+  inputs, cause, allocation date and contract-chain number, with version membership. Bound reruns
+  validate tenant/entity scope and book/date/SSP selection, then recalculate original or remaining
+  SSP lineage, range status, adjustments, currency totals and TOTAL rows without live reads.
+- Necessary validation passed: 45 focused SSP/source-binding cases; actual override approval,
+  recomputation and report API/worker flow. Fresh allocation rows use the corrected SSP pin and
+  override flag, while the saved report reproduces the original allocation rows and identical
+  output hash. No-session checks cover chain numbering, amount/adjustment/total recalculation,
+  date selection and scope refusal. Scoped lint/types and migration 0316 IPE parity passed.
+- All four SSP reports now support retained same-source reconstruction for new runs. Older OPEN
+  runs keep their original behavior. This report remains transaction-currency-only as specified;
+  the change does not add functional allocation measures. Other documented Reporting/repository
+  gaps remain open. No deployment.
+
 ## SSP override retained reconstruction — October 22, 2026
 
 - New runs retain obligation/product identifiers, original default/override version labels,
