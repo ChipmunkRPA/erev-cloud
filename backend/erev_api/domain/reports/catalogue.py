@@ -3028,14 +3028,21 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         version=1,
         name="AI call log export",
         kind="EXTRACT",
-        description="Current authorized call evidence; reruns are new live evaluations.",
+        description=(
+            "Authorized call evidence retained for same-source reconstruction "
+            "with current access checks."
+        ),
         parameters_schema={"type": "object", "properties": {}, "additionalProperties": False},
         output_formats=("CSV", "XLSX"),
         ipe_logic={
             "version": 1,
             "source_tables": ["ai_model_log"],
             "joins": [],
-            "filters": ["Original requester scope and current source/export permissions"],
+            "filters": [
+                "Original requester scope and current source/export permissions",
+                "Same-source runs retain only disclosed API evidence, rebuild usage totals "
+                "and recheck the original requester before reading retained content",
+            ],
             "parameters": [],
         },
     ),
@@ -3120,12 +3127,11 @@ SEED_COLUMNS: Final = (
 
 
 def canonical_json(value: Mapping[str, Any]) -> str:
-    """Sorted, compact UTF-8 JSON: the seed literal of a jsonb value. Characters are not escaped,
-    so the revision's Python literal holds no backslash sequence."""
-    rendered = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    if "\\" in rendered:
-        raise ValueError("a seeded JSON value holds no backslash")
-    return rendered
+    """Sorted, compact UTF-8 JSON, preserving required JSON escapes such as regex backslashes.
+
+    SQL literal quoting belongs to insert_rows_sql; historical migration seeds remain frozen.
+    """
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def _text_array(values: Sequence[str]) -> str:

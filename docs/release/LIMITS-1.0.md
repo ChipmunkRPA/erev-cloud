@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## AI call export retained reconstruction — October 22, 2026
+
+- New call-log exports retain only the disclosed AIModelLogOut evidence and original requester
+  scope. Rebuilds reauthorize the original actor before accessing retained content, refuse scope
+  or identity substitution, and recalculate known/unknown usage totals. Promotion to administrator
+  cannot widen an original OWN export. Original call IDs are captured as membership.
+- Original reads still use current authorized visibility; callers cannot supply entity, actor,
+  scope or historical filters. Retention adds no prompt/response body fields. Older explicit
+  OPEN bindings keep their prior live-evaluation semantics. Migration 0323 updates description/IPE.
+- Necessary verification passed: 24 focused catalogue/source-binding cases and database export
+  visibility/CSV/XLSX safeguards, including new-log insertion, no-live-read reconstruction,
+  promotion, revocation and actor/scope substitution. Scoped types/lint and metadata parity passed.
+- Fixed a pre-existing current-catalogue seed helper failure reproduced against committed main:
+  valid JSON regex/text escapes are now preserved, with JSON round-trip coverage. The historical
+  migration seed remains byte-for-byte frozen. No deployment; final release verification remains.
+
+
 ## Legacy journal summary retained reconstruction — October 22, 2026
 
 - New GROSS/DELTA summary runs retain original per-book aggregates, resolved entity/account/key

@@ -32,7 +32,10 @@ def dataset(ctx: RequestContext) -> ReportData:
 
 
 def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
-    committed_db: TestDatabase, keyring: KeyRing, clock: FrozenClock
+    committed_db: TestDatabase,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     owner = member(keyring, clock)
     peer = colleague(owner.tenant_id, "export_peer")
@@ -169,4 +172,66 @@ def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
     with pytest.raises(Problem):
         require_access(
             replace(ctx, principal=replace(principal, permissions=frozenset({"ai.use"}))), retained
+        )
+
+    from types import SimpleNamespace
+
+    from erev_api.domain.ai import log_export
+    from erev_api.domain.reports import tie_outs
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+
+    saved = {}
+    monkeypatch.setattr(
+        tie_outs, "record_evidence", lambda _params, key, value: saved.update({key: value})
+    )
+    params = ReportParams(
+        report_code="ai_call_log_export",
+        report_version=1,
+        entity_ids=(),
+        parameters={},
+        known_at=clock.now(),
+        requester=ctx,
+        access_binding=retained.model_dump(mode="json"),
+    )
+    original = log_export.build(SimpleNamespace(), params)
+    with tenant_session(DbContext(owner.tenant_id, owner.user_id, "*")) as session:
+        extra = ai_model_log_row(RowContext(owner.tenant_id, owner.user_id), session)
+        extra.update(created_by=owner.user_id, created_by_kind="USER", created_at=clock.now())
+        session.execute(insert(ai_model_log).values(**extra))
+    assert dataset(ctx).row_count == original.row_count + 1
+    bound = replace(
+        params,
+        binding=SourceBinding(
+            cutoff=params.known_at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence=saved,
+        ),
+    )
+
+    def no_live_reads(*args, **kwargs):
+        raise AssertionError("Retained call evidence must not query live logs")
+
+    monkeypatch.setattr(log_export, "tenant_session", no_live_reads)
+    rebuilt = log_export.build(SimpleNamespace(), bound)
+    assert rebuilt == original
+    assert log_export.build(SimpleNamespace(), replace(bound, requester=promoted_ctx)) == original
+    assert render_csv(rebuilt) == render_csv(original)
+    assert set(saved[log_export.EVIDENCE]["inputs"][0]) == set(
+        log_export.AIModelLogOut.model_fields
+    )
+    for changed in (
+        replace(ctx, principal=replace(principal, permissions=frozenset())),
+        replace(ctx, principal=replace(principal, id=peer.user_id)),
+    ):
+        with pytest.raises(Problem):
+            log_export.build(SimpleNamespace(), replace(bound, requester=changed))
+    with pytest.raises(Problem):
+        log_export.build(
+            SimpleNamespace(),
+            replace(
+                bound, requester=promoted_ctx, access_binding=wide_access.model_dump(mode="json")
+            ),
         )

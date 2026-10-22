@@ -4,6 +4,8 @@ Read using the caller's current context, never a worker's unrestricted system pr
 No public export route or retained-file authorization is implied by this builder.
 """
 
+import json
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
@@ -16,6 +18,7 @@ from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_model_log
 from erev_api.domain.ai.queries import model_log_statement
 from erev_api.domain.platform import actors
+from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import PrincipalKind
 from erev_api.problems import Problem
@@ -25,6 +28,8 @@ if TYPE_CHECKING:
     from erev_api.domain.reports.builders import ReportParams
     from erev_api.uow import UnitOfWork
 
+
+EVIDENCE: Final = "ai_call_inputs_v1"
 
 COLUMNS: Final = (
     Column("id", "Call id", "code"),
@@ -118,7 +123,12 @@ def require_access(ctx: RequestContext, access: ExportAccess) -> None:
     _require_export_permission(ctx, workspace_wide=access.scope == "TENANT")
 
 
-def dataset(ctx: RequestContext, access: ExportAccess) -> ReportData:
+def dataset(
+    ctx: RequestContext,
+    access: ExportAccess,
+    *,
+    retained_inputs: list[dict[str, Any]] | None = None,
+) -> ReportData:
     """One statement snapshot, newest first, with the same owner/tenant visibility as the API.
 
     Unknown counters are empty values, with an explicit usage-known column. Control totals
@@ -135,8 +145,7 @@ def dataset(ctx: RequestContext, access: ExportAccess) -> ReportData:
             ai_model_log.c.created_by == access.actor_id,
             ai_model_log.c.created_by_kind == access.actor_kind,
         )
-    rows: list[dict[str, Any]] = []
-    unknown = input_tokens = output_tokens = 0
+    inputs: list[dict[str, Any]] = []
     with tenant_session(ctx.principal.db_context, read_only=True) as session:
         for record in session.execute(statement).mappings():
             value = dict(record)
@@ -145,17 +154,29 @@ def dataset(ctx: RequestContext, access: ExportAccess) -> ReportData:
             )
             # Explicit API schema strips storage-only fields and preserves its evidence contract.
             evidence = AIModelLogOut.model_validate(value)
-            row = evidence.model_dump()
-            row["id"] = str(evidence.id)
-            row["row_key"] = "ai-call:" + str(evidence.id)
-            row["parameters"] = canonical_bytes(evidence.parameters).decode("utf-8")
-            if evidence.usage_known:
-                input_tokens += evidence.input_tokens
-                output_tokens += evidence.output_tokens
-            else:
-                unknown += 1
-                row["input_tokens"] = row["output_tokens"] = None
-            rows.append(row)
+            inputs.append(evidence.model_dump(mode="json"))
+    if retained_inputs is not None:
+        retained_inputs.extend(inputs)
+    return data_from_inputs(inputs)
+
+
+def data_from_inputs(inputs: Sequence[Mapping[str, Any]]) -> ReportData:
+    """Rebuild disclosed columns and known/unknown usage totals from approved API evidence."""
+    rows: list[dict[str, Any]] = []
+    unknown = input_tokens = output_tokens = 0
+    for value in inputs:
+        evidence = AIModelLogOut.model_validate(value)
+        row = evidence.model_dump()
+        row["id"] = str(evidence.id)
+        row["row_key"] = "ai-call:" + str(evidence.id)
+        row["parameters"] = canonical_bytes(evidence.parameters).decode("utf-8")
+        if evidence.usage_known:
+            input_tokens += evidence.input_tokens
+            output_tokens += evidence.output_tokens
+        else:
+            unknown += 1
+            row["input_tokens"] = row["output_tokens"] = None
+        rows.append(row)
     return ReportData(
         columns=COLUMNS,
         rows=tuple(rows),
@@ -172,4 +193,26 @@ def build(uow: "UnitOfWork", params: "ReportParams") -> ReportData:
     """Registered report builder; the worker must supply its reauthorized requester context."""
     if params.requester is None or params.access_binding is None:
         raise Problem("forbidden", "Call export requires a reauthorized requester.")
-    return dataset(params.requester, ExportAccess.model_validate(params.access_binding))
+    access = ExportAccess.model_validate(params.access_binding)
+    require_access(params.requester, access)
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["access"] != access.model_dump(mode="json") or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained call evidence exceeds the original request scope.")
+        return data_from_inputs(retained["inputs"])
+    inputs: list[dict[str, Any]] = []
+    data = dataset(params.requester, access, retained_inputs=inputs)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "access": access.model_dump(mode="json"),
+                "entity_ids": params.entity_ids,
+                "inputs": inputs,
+            }
+        )
+    )
+    tie_outs.record_members(params, "ai_model_logs", (value["id"] for value in inputs))
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data

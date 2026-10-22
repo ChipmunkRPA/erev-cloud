@@ -195,3 +195,13 @@ def test_upgrade_validation_requires_attempt_identity(parameters: dict[str, obje
         DEFINITIONS_BY_CODE["upgrade_validation"].parameters_schema, parameters
     )
     assert errors and errors[0].field == "parameters.release_validation_attempt_id"
+
+
+def test_current_seed_json_preserves_regex_and_text_escapes() -> None:
+    import json
+
+    from erev_api.domain.reports.catalogue import canonical_json
+
+    value = {"pattern": r"^\d+\.\d{2}$", "description": 'A "quoted" line\nwith a backslash \\'}
+    assert json.loads(canonical_json(value)) == value
+    assert len(seed_statement().splitlines()) == 1 + len(DEFINITIONS)

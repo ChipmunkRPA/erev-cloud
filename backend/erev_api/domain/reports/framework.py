@@ -602,9 +602,8 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             RETAINED, ("Frozen validation dataset file, digest, attempt and entity population",), ()
         ),
         export_visibility.CODE: SourceContract(
-            OPEN,
-            _OPEN_ONLY,
-            ("Current authorized call log population; a rerun is a new live evaluation.",),
+            RETAINED,
+            ("Original requester binding and disclosed API call evidence",),
         ),
         rpo_builder.CODE: SourceContract(
             ADAPTER,
@@ -2058,6 +2057,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "legacy_contract_history_export",
             "legacy_latest_contract_export",
             "legacy_je_summary",
+            "ai_call_log_export",
         }
     ):
         try:

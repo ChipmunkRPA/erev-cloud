@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## AI call export retained reconstruction — October 22, 2026
+
+- New call-log exports retain only the disclosed AIModelLogOut evidence and original requester
+  scope. Rebuilds reauthorize the original actor before accessing retained content, refuse scope
+  or identity substitution, and recalculate known/unknown usage totals. Promotion to administrator
+  cannot widen an original OWN export. Original call IDs are captured as membership.
+- Original reads still use current authorized visibility; callers cannot supply entity, actor,
+  scope or historical filters. Retention adds no prompt/response body fields. Older explicit
+  OPEN bindings keep their prior live-evaluation semantics. Migration 0323 updates description/IPE.
+- Necessary verification passed: 24 focused catalogue/source-binding cases and database export
+  visibility/CSV/XLSX safeguards, including new-log insertion, no-live-read reconstruction,
+  promotion, revocation and actor/scope substitution. Scoped types/lint and metadata parity passed.
+- Fixed a pre-existing current-catalogue seed helper failure reproduced against committed main:
+  valid JSON regex/text escapes are now preserved, with JSON round-trip coverage. The historical
+  migration seed remains byte-for-byte frozen. No deployment; final release verification remains.
+
 ## Legacy journal summary retained reconstruction — October 22, 2026
 
 - New GROSS/DELTA summary runs retain original per-book aggregates, resolved entity/account/key
@@ -218,22 +234,6 @@ review and publish changes without PR accumulation, and do not deploy.
   judgement approval. Fresh rows show the new rationale while all three saved views reproduce
   original rows and identical hashes. Scoped lint/types and migration 0310 frozen IPE parity pass.
   Lock-source and ad-hoc historical limitations remain unchanged. No deployment.
-
-## Estimate change retained reconstruction — October 21, 2026
-
-- New estimate-change runs retain selected version inputs, predecessor measures, attributed P&L
-  effects, approval actors/timestamps, attachment counts, resolved dates and reporting rates.
-  Same-source reruns validate tenant/entity scope and filters, restore typed source values and
-  rebuild rows and totals without live estimate, approval, attachment, actor or FX reads.
-- Captures estimate-version membership. Older OPEN runs keep their original new-evaluation
-  behavior. This supersedes the preceding live-rerun limitation; ad-hoc historical queries still
-  cannot reconstruct mutable state without evidence. Foreign-contract functional effects remain
-  outside this change; analytical reporting equivalents remain explicitly labelled.
-- Necessary verification passed: 37 focused register/source-binding cases (all three currency
-  views reconstruct without a database); real K06 approval/report API and worker flows. Replacing
-  approved EUR/USD average 1.20 with 1.30 changes fresh P&L equivalents from USD -6,900 to -7,475;
-  saved transaction and reporting runs reproduce their original rows and identical output hashes.
-  Scoped lint/types and migration 0309 frozen IPE parity passed. No deployment.
 
 ## Outstanding release verification
 
