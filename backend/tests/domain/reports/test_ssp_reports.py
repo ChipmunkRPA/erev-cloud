@@ -515,6 +515,9 @@ def test_draft_ssp_diff_rerun_keeps_original_entries(publication: SspPublication
     params = {"ssp_book_version_id": draft.json()["id"], "against_version_id": publication.h1["id"]}
     original, rows = report_run(world, "ssp_version_diff", params)
     assert rows == []
+    saved_log, saved_log_rows = report_run(world, "ssp_change_log", {})
+    draft_row = next(row for row in saved_log_rows if row["version_label"] == "Draft-comparison")
+    assert draft_row["entry_count"] == 7
     entry_id = next(
         item["id"] for item in stored.json()["entries"] if item["product_code"] == "AVM-PLAT-100"
     )
@@ -523,6 +526,24 @@ def test_draft_ssp_diff_rerun_keeps_original_entries(publication: SspPublication
     fresh, changed = report_run(world, "ssp_version_diff", params)
     assert fresh["control_totals"]["removed"] == 1
     assert changed[0]["change"] == "Removed"
+    _, fresh_log = report_run(world, "ssp_change_log", {})
+    assert (
+        next(row for row in fresh_log if row["version_label"] == "Draft-comparison")["entry_count"]
+        == 6
+    )
+    log_started = post(world.app, f"/api/v1/report-runs/{saved_log['id']}/rerun", world.maya, {})
+    assert log_started.status_code == 202, log_started.text
+    log_finished = worlds.run_now(world, UUID(str(log_started.json()["id"])))
+    assert log_finished["state"] == "SUCCEEDED", log_finished
+    assert log_finished["result"]["output_sha256_equal"] is True
+    log_restored = get(
+        world.app,
+        f"/api/v1/report-runs/{log_started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert log_restored.status_code == 200, log_restored.text
+    assert log_restored.json()["items"] == saved_log_rows
     started = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
     assert started.status_code == 202, started.text
     finished = worlds.run_now(world, UUID(str(started.json()["id"])))

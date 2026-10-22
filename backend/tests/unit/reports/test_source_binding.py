@@ -349,7 +349,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "legacy_je_summary",
         "migration_reconciliation",
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet
-        "ssp_change_log",
         "allocations_by_ssp_version",
         "ssp_override_listing",
         # BUILD_SPEC RPS-10 (lane F-RPS-REG): the access, configuration, approvals and audit

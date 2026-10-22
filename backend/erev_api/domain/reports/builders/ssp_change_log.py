@@ -32,12 +32,14 @@ is refused by name (REGISTER-CUTOFF-1); a live run never refuses.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -53,9 +55,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import ApprovalSubjectType, ConfigStatus, FilePurpose
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "ssp_change_log"
+EVIDENCE: Final = "ssp_change_inputs_v1"
 ROW_KEY_PREFIX: Final = "ssp:"  # RPT-19: row_key `ssp:<book code>:<version no>`
 SUBJECT_TYPE: Final = ApprovalSubjectType.SSP_BOOK_VERSION.value
 STUDY_SUBJECT: Final = "ssp_book_version"  # file_attachment.subject_type of a version's study
@@ -275,6 +279,7 @@ def sources(uow: UnitOfWork, params: ReportParams) -> list[Source]:
     if not rows:
         return []
     ids = [UUID(str(row["id"])) for row in rows]
+    tie_outs.record_members(params, "ssp_book_versions", ids)
     approvals = support.requests_of_subjects(session, SUBJECT_TYPE, ids, cutoff=cutoff)
     following = successors(rows)
     counts = _entry_counts(session, ids)
@@ -323,6 +328,18 @@ def sources(uow: UnitOfWork, params: ReportParams) -> list[Source]:
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key) for key in ("ssp_book_code", "from_date", "to_date")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained SSP change inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("ssp_book_code", "Retained inputs use another filter selection.")
+        return data_from_inputs(retained)
     first, last = support.date_range(uow.session, params, today=True)
     bounds = support.instants(first, last)
     found = [item for item in sources(uow, params) if in_range(item, bounds)]
@@ -331,8 +348,51 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         (request for item in found for request in item.requests),
         (item.created_by[0] for item in found),
     )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "from_date": first,
+                "to_date": last,
+                "sources": [asdict(item) for item in found],
+                "names": {str(key): value for key, value in names.items()},
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    found = []
+    bounds = support.instants(
+        date.fromisoformat(retained["from_date"]), date.fromisoformat(retained["to_date"])
+    )
+    for record in retained["sources"]:
+        values = dict(record)
+        for key in ("effective_from_date", "effective_to_date"):
+            values[key] = None if values[key] is None else date.fromisoformat(values[key])
+        for key in ("created_at", "superseded_at"):
+            values[key] = (
+                None
+                if values[key] is None
+                else datetime.fromisoformat(values[key].replace("Z", "+00:00"))
+            )
+        values["created_by"] = (support.uuid_of(values["created_by"][0]), values["created_by"][1])
+        values["requests"] = tuple(support.request_from_inputs(item) for item in values["requests"])
+        values["study_file_names"] = tuple(values["study_file_names"])
+        source = Source(**values)
+        if in_range(source, bounds):
+            found.append(source)
+    names = {UUID(key): value for key, value in retained["names"].items()}
     rows = dataset_rows(found, names)
-    totals = {"row_count": len(rows), "from_date": first.isoformat(), "to_date": last.isoformat()}
+    totals = {
+        "row_count": len(rows),
+        "from_date": retained["from_date"],
+        "to_date": retained["to_date"],
+    }
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 

@@ -1821,6 +1821,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision.approval_request_id = approval_request.id",
         ),
         filters=(
+            "same-source runs retain SSP lifecycle, approval, actor and study inputs; "
+            "rebuild rows and lifecycle date selection without live reads",
             "a lifecycle transition of the version from from_date to to_date inclusive",
             "ssp_book.code = ssp_book_code when given",
             "books of the entities in entity_codes and tenant-wide books",

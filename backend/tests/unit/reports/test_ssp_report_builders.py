@@ -77,7 +77,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     what it reads; each definition's kind and row key are the specification's."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module is version_diff:
+    if module in (version_diff, change_log):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -677,3 +677,63 @@ def test_retained_ssp_diff_recomputes_from_entries_without_database():
             version_diff.build(uow, invalid)
     with pytest.raises(Problem):
         version_diff.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=uuid4())), params)
+
+
+def test_ssp_log_retained_lifecycle_and_approvals_rebuild_without_database():
+    import json
+    from dataclasses import asdict
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "selection": {"ssp_book_code": None, "from_date": None, "to_date": None},
+                "from_date": "2026-01-01",
+                "to_date": "2026-09-30",
+                "sources": [asdict(_version())],
+                "names": {str(k): v for k, v in NAMES.items()},
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=change_log.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={change_log.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = change_log.build(uow, params)
+    assert data.rows[0]["approved_at"] == AT
+    assert data.rows[0]["approvers"] == "Priya Raman, Marcus Webb"
+    assert data.rows[0]["effective_from_date"] == date(2026, 10, 1)
+    retained["sources"][0]["entry_count"] = 6
+    retained["sources"][0]["study_file_names"] = ["original-study.pdf"]
+    changed = change_log.build(uow, params)
+    assert changed.rows[0]["entry_count"] == 6
+    assert changed.rows[0]["study_file_name"] == "original-study.pdf"
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"ssp_book_code": "OTHER"}),
+        replace(params, parameters={"to_date": "2026-08-31"}),
+    ):
+        with pytest.raises(Problem):
+            change_log.build(uow, invalid)
+    with pytest.raises(Problem):
+        change_log.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+    retained["from_date"] = "2027-01-01"
+    retained["to_date"] = "2027-12-31"
+    assert change_log.build(uow, params).rows == ()

@@ -20,6 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## SSP change-log retained reconstruction — October 22, 2026
+
+- New runs retain version lifecycle/status inputs, effective dates, entry counts, diff summaries,
+  successor labels, study filenames, full approval requests/decisions and original actor names.
+  Same-source reruns validate tenant/entity scope and filters, restore typed inputs, reapply the
+  lifecycle-date selection and rebuild rows without live reads. Source version IDs are captured.
+- Approval restoration preserves decision IDs, actor identities, timestamps, flags and amounts;
+  no current approval or user lookup is used. Older OPEN runs keep new-evaluation behavior.
+- Necessary validation passed: 43 focused SSP/source-binding cases and actual draft SSP/report
+  API and worker flow. Removing a draft entry changes the fresh log count from seven to six;
+  the saved log reproduces seven and identical rows/output hash. No-session checks cover approval
+  display, timestamps, studies, date selection and scope/filter refusal. Scoped lint/types and
+  migration 0314 frozen IPE parity passed. Ad-hoc historical mutable-state limitations remain.
+  No deployment; remaining SSP and other documented Reporting gaps are still open.
+
 ## SSP version diff retained reconstruction — October 22, 2026
 
 - New SSP-diff runs retain the resolved chosen/comparison version IDs and complete entries/ranges
@@ -202,25 +217,6 @@ review and publish changes without PR accumulation, and do not deploy.
   output hashes remain equal), K07 no-posting event flow, frozen catalogue parity and scoped
   lint/types. The register's same-source adapter is now implemented. Other documented adapters
   and final repository verification remain; no deployment.
-
-## Out-of-period register currency effects — October 21, 2026
-
-- Live Functional view now uses the ledger's posted functional amounts and currencies, including
-  FX republication lines with zero transaction amounts. Reporting view translates those effects
-  using each posting period's approved average rate. Origin periods continue to identify the
-  economic event; they do not select the translation rate for posted activity.
-- Attribution still tests original transaction amounts and stored trigger/cause evidence. The
-  display amount never changes FX_REPUBLISH admission. Different effect currencies under the same
-  attribution receive separate row identities and totals. Original event amounts retain their
-  own transaction currency, including computed late events with no posting (whose effects are zero).
-- Migration 0302 documents the rate inputs. Necessary checks: 5 focused currency cases, the public
-  K01 USD late-income flow in all three views, public K07 EUR no-posting event in all three views,
-  frozen catalogue parity and scoped lint/types passed. K07 close setup now publishes approved
-  average/closing EUR/USD rates required by existing foreign reporting snapshots.
-- Remaining: retained same-source reconstruction of this register is still OPEN; historical lock
-  datasets retain their existing currency support. Non-identity reporting conversion uses the
-  shared approved-rate translator; this increment's public nonzero posting case uses USD/USD.
-  Other documented adapters and final repository verification remain. No deployment.
 
 ## Outstanding release verification
 

@@ -11892,3 +11892,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: other documented report adapters and final repository verification. This completes
   the carrying-position input path; the system does not obtain or independently certify the
   referenced external historical balance evidence. No deployment.
+
+## Out-of-period register currency effects — October 21, 2026
+
+- Live Functional view now uses the ledger's posted functional amounts and currencies, including
+  FX republication lines with zero transaction amounts. Reporting view translates those effects
+  using each posting period's approved average rate. Origin periods continue to identify the
+  economic event; they do not select the translation rate for posted activity.
+- Attribution still tests original transaction amounts and stored trigger/cause evidence. The
+  display amount never changes FX_REPUBLISH admission. Different effect currencies under the same
+  attribution receive separate row identities and totals. Original event amounts retain their
+  own transaction currency, including computed late events with no posting (whose effects are zero).
+- Migration 0302 documents the rate inputs. Necessary checks: 5 focused currency cases, the public
+  K01 USD late-income flow in all three views, public K07 EUR no-posting event in all three views,
+  frozen catalogue parity and scoped lint/types passed. K07 close setup now publishes approved
+  average/closing EUR/USD rates required by existing foreign reporting snapshots.
+- Remaining: retained same-source reconstruction of this register is still OPEN; historical lock
+  datasets retain their existing currency support. Non-identity reporting conversion uses the
+  shared approved-rate translator; this increment's public nonzero posting case uses USD/USD.
+  Other documented adapters and final repository verification remain. No deployment.

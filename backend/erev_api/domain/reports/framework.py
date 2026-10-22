@@ -506,10 +506,7 @@ _MIGRATION_OPEN: Final = (
 )
 # BUILD_SPEC RPS-9 to RPS-12 (lane F-RPS-REG): the registers and listings read live; no source
 # adapter yet — each names its actual input families.
-_SSP_CHANGE_LOG_OPEN: Final = (
-    "SSP book versions with their books, entry counts, study attachments and approval requests / "
-    "decisions read live (RPS-9 RPT-19)"
-)
+
 
 _ALLOCATIONS_BY_SSP_VERSION_OPEN: Final = (
     "obligation versions (the allocation lineage) of the run's book with their contract versions, "
@@ -847,7 +844,9 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             ),
         ),
         # RPS-9 (RPT-19 to RPT-22): the SSP reports read live; no source adapter yet.
-        ssp_change_log_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_SSP_CHANGE_LOG_OPEN,)),
+        ssp_change_log_builder.CODE: SourceContract(
+            RETAINED, (_CUTOFF, "SSP lifecycle, approvals, actor names and study inputs")
+        ),
         ssp_version_diff_builder.CODE: SourceContract(
             RETAINED, (_CUTOFF, "selected SSP comparison versions and full entry/range inputs")
         ),
@@ -2075,6 +2074,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "judgement_register",
             "late_entry_report",
             "ssp_version_diff",
+            "ssp_change_log",
         }
     ):
         try:

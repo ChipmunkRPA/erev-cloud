@@ -265,6 +265,40 @@ class Request:
         return found
 
 
+def request_from_inputs(record: Mapping[str, Any]) -> Request:
+    """Restore an approval request captured with canonical JSON, including decision identities."""
+    values = dict(record)
+    for key in ("id", "subject_id", "entity_id", "preparer_id"):
+        values[key] = uuid_of(values[key])
+    for key in ("submitted_at", "decided_at"):
+        values[key] = (
+            None
+            if values[key] is None
+            else datetime.fromisoformat(values[key].replace("Z", "+00:00"))
+        )
+    values["amount_functional"] = (
+        None if values["amount_functional"] is None else Decimal(values["amount_functional"])
+    )
+    values["flags"] = tuple(values["flags"])
+    decisions = []
+    for item in values["decisions"]:
+        decision = dict(item)
+        for key in (
+            "id",
+            "approver_id",
+            "on_behalf_of_id",
+            "auto_rule_id",
+            "auto_rule_set_version_id",
+        ):
+            decision[key] = uuid_of(decision[key])
+        decision["decided_at"] = datetime.fromisoformat(
+            decision["decided_at"].replace("Z", "+00:00")
+        )
+        decisions.append(Decision(**decision))
+    values["decisions"] = tuple(decisions)
+    return Request(**values)
+
+
 def status_at(row: Mapping[str, Any], cutoff: datetime) -> tuple[str, datetime | None]:
     """(E-05 status, terminal decision instant) of a request row as of ``cutoff``: the stored
     status once its ``decided_at`` or ``voided_at`` is by the cutoff, ``PENDING`` before. Pure."""
