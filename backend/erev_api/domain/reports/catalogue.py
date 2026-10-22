@@ -1840,6 +1840,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "ssp_range of each ssp_entry (T-REF-31)",
         ),
         filters=(
+            "same-source runs retain selected comparison version IDs and complete entry/range "
+            "inputs; "
+            "recalculate changes and ratios without live reads",
             "entry keys present in either version",
             "against_version_id: a version of the same book, by default the prior approved version",
             "only_changes true: added, removed and changed entries only",

@@ -510,9 +510,7 @@ _SSP_CHANGE_LOG_OPEN: Final = (
     "SSP book versions with their books, entry counts, study attachments and approval requests / "
     "decisions read live (RPS-9 RPT-19)"
 )
-_SSP_VERSION_DIFF_OPEN: Final = (
-    "the entries and ranges of both SSP book versions read live (RPS-9 RPT-20)"
-)
+
 _ALLOCATIONS_BY_SSP_VERSION_OPEN: Final = (
     "obligation versions (the allocation lineage) of the run's book with their contract versions, "
     "cause events, contracts and SSP book versions read live (RPS-9 RPT-21)"
@@ -850,7 +848,9 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         ),
         # RPS-9 (RPT-19 to RPT-22): the SSP reports read live; no source adapter yet.
         ssp_change_log_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_SSP_CHANGE_LOG_OPEN,)),
-        ssp_version_diff_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_SSP_VERSION_DIFF_OPEN,)),
+        ssp_version_diff_builder.CODE: SourceContract(
+            RETAINED, (_CUTOFF, "selected SSP comparison versions and full entry/range inputs")
+        ),
         allocations_by_ssp_version_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_ALLOCATIONS_BY_SSP_VERSION_OPEN,)
         ),
@@ -2074,6 +2074,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "scope_exclusion_register",
             "judgement_register",
             "late_entry_report",
+            "ssp_version_diff",
         }
     ):
         try:

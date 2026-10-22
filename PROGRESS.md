@@ -20,6 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## SSP version diff retained reconstruction — October 22, 2026
+
+- New SSP-diff runs retain the resolved chosen/comparison version IDs and complete entries/ranges
+  from both sides. Same-source reruns validate tenant/entity scope and comparison filters, then
+  recompute entry classification, exact values, mid-change ratios and totals without live reads.
+  Default prior-version selection is resolved once. Older OPEN runs keep new-evaluation behavior.
+- Necessary verification passed: 42 focused SSP/source-binding cases; actual draft SSP API and
+  report worker workflow. Deleting AVM-PLAT-100 from the draft produces Removed in a fresh report;
+  the saved comparison reproduces its original no-difference rows and identical output hash.
+  No-session tests verify ratios recalculate when retained values change, removed-entry counts
+  and scope/filter refusal. Scoped lint/types and migration 0313 frozen IPE parity passed.
+- Ad-hoc historical reads of editable draft entries still require evidence and retain their
+  existing refusal. Remaining SSP registers and other documented Reporting gaps remain open.
+  No deployment.
+
 ## Late-entry retained reconstruction — October 21, 2026
 
 - New runs retain event inputs and import/uploader provenance, entity period boundaries, first-lock
@@ -206,27 +221,6 @@ review and publish changes without PR accumulation, and do not deploy.
   datasets retain their existing currency support. Non-identity reporting conversion uses the
   shared approved-rate translator; this increment's public nonzero posting case uses USD/USD.
   Other documented adapters and final repository verification remain. No deployment.
-
-## Adoption Bridge supplied legacy carrying balances — October 21, 2026
-
-- Added optional per-contract legacy functional liability/unbilled carrying inputs to the public
-  report API and an editable row-based UI. Each row requires a source reference, prior period-end
-  date and entity functional currency. These are explicitly labelled supplied report evidence,
-  retained with the run; they do not post or change the LEGACY ledger.
-- Inputs must identify distinct contracts within the authorized endpoint population. Invalid dates,
-  currencies, negative/nonfinite/overprecision amounts, missing references, unknown nested fields
-  and simultaneous positive net liability/unbilled positions are rejected. Transaction currency
-  refuses functional inputs. Uncovered foreign contracts and their affected totals remain unknown.
-- Reporting translates supplied positions independently at the closing rate, preserving historical
-  income translation. The UI can reopen saved structured parameters; retained reruns preserve
-  values, source references and output hashes after later revenue events.
-- Necessary verification passed: 61 focused builder/source-binding cases, 6 toolbar cases, public
-  foreign functional/reporting/replay flow, original transaction disclosures, migration metadata
-  parity, scoped lint and types. EUR 123,456.78 at closing 3 yields USD 370,370.34; supplied balances
-  remain distinct from billed-less-revenue estimates. Migration 0301 adds the public schema.
-- Remaining: other documented report adapters and final repository verification. This completes
-  the carrying-position input path; the system does not obtain or independently certify the
-  referenced external historical balance evidence. No deployment.
 
 ## Outstanding release verification
 

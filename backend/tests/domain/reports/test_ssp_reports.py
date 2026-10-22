@@ -490,3 +490,49 @@ def test_override_listing(k02: K02World, runtime: JobRuntime, clock: FrozenClock
         {"entity_codes": [AVM_US], "from_date": "2026-10-01", "to_date": "2026-10-31"},
     )
     assert outside == []
+
+
+def test_draft_ssp_diff_rerun_keeps_original_entries(publication: SspPublicationWorld):
+    from support import worlds
+    from support.reference import delete, get
+
+    world = publication.report
+    draft = post(
+        world.app,
+        f"/api/v1/ssp-books/{publication.book_id}/versions",
+        world.maya,
+        {
+            "effective_from_date": "2027-01-01",
+            "legacy_version_label": "Draft-comparison",
+            "methodology_label": "Observed prices",
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    path = f"/api/v1/ssp-book-versions/{draft.json()['id']}/entries"
+    entries = [dict(item) for item in US_LIST_H1_ENTRIES]
+    stored = post(world.app, path, world.maya, {"entries": entries})
+    assert stored.status_code == 200, stored.text
+    params = {"ssp_book_version_id": draft.json()["id"], "against_version_id": publication.h1["id"]}
+    original, rows = report_run(world, "ssp_version_diff", params)
+    assert rows == []
+    entry_id = next(
+        item["id"] for item in stored.json()["entries"] if item["product_code"] == "AVM-PLAT-100"
+    )
+    deleted = delete(world.app, f"{path}/{entry_id}", world.maya)
+    assert deleted.status_code == 204, deleted.text
+    fresh, changed = report_run(world, "ssp_version_diff", params)
+    assert fresh["control_totals"]["removed"] == 1
+    assert changed[0]["change"] == "Removed"
+    started = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        world.app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == rows

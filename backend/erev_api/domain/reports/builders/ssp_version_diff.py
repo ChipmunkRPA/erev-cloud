@@ -32,12 +32,14 @@ refuses.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -49,9 +51,11 @@ from erev_api.domain.reports.builders.out_of_period_register import encode_compo
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.ssp import books, queries
 from erev_api.enums import ConfigStatus, SspValueBasis
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "ssp_version_diff"
+EVIDENCE: Final = "ssp_diff_inputs_v1"
 ROW_KEY_PREFIX: Final = "entry:"
 ADDED: Final = "Added"
 REMOVED: Final = "Removed"
@@ -247,6 +251,21 @@ def compared_versions(
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {
+        key: params.parameters.get(key)
+        for key in ("ssp_book_version_id", "against_version_id", "only_changes")
+    }
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained SSP inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid(
+                "ssp_book_version_id", "Retained inputs use another comparison selection."
+            )
+        return data_from_inputs(retained)
     session = uow.session
     cutoff = tie_outs.cutoff_for(session, params)
     chosen, other = compared_versions(
@@ -269,10 +288,34 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     ),
                 )
     only_changes = params.parameters.get("only_changes")
+    tie_outs.record_members(
+        params, "ssp_book_versions", (row["id"] for row in (chosen, other) if row is not None)
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "chosen_version_id": chosen["id"],
+                "against_version_id": None if other is None else other["id"],
+                "entries": queries.entries_of(session, UUID(str(chosen["id"]))),
+                "against": []
+                if other is None
+                else queries.entries_of(session, UUID(str(other["id"]))),
+                "only_changes": ONLY_CHANGES_DEFAULT
+                if only_changes is None
+                else bool(only_changes),
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
     rows, totals = dataset_rows(
-        queries.entries_of(session, UUID(str(chosen["id"]))),
-        [] if other is None else queries.entries_of(session, UUID(str(other["id"]))),
-        only_changes=ONLY_CHANGES_DEFAULT if only_changes is None else bool(only_changes),
+        retained["entries"], retained["against"], only_changes=retained["only_changes"]
     )
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 

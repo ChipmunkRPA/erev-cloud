@@ -77,8 +77,11 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     what it reads; each definition's kind and row key are the specification's."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    assert contract.strategy == "open" and len(contract.open) == 1
-    assert f"RPT-{number}" in contract.open[0]
+    if module is version_diff:
+        assert contract.strategy == "retained_inputs" and not contract.open
+    else:
+        assert contract.strategy == "open" and len(contract.open) == 1
+        assert f"RPT-{number}" in contract.open[0]
     definition = DEFINITIONS_BY_CODE[module.CODE]
     section = report_specs.section(number, module.CODE)
     assert f"| Kind, formats | `{definition.kind}`;" in section
@@ -613,3 +616,64 @@ def test_a_given_start_after_its_end_is_refused() -> None:
     with pytest.raises(Problem) as refused:
         support.date_range(None, params)  # type: ignore[arg-type]
     assert refused.value.errors[0].message == "Start date must be on or before end date."
+
+
+def test_retained_ssp_diff_recomputes_from_entries_without_database():
+    import json
+    from dataclasses import replace
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    tenant_id, entity_id = uuid4(), uuid4()
+    at = datetime(2026, 9, 1, tzinfo=UTC)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": tenant_id,
+                "entity_ids": [entity_id],
+                "selection": {
+                    "ssp_book_version_id": None,
+                    "against_version_id": None,
+                    "only_changes": None,
+                },
+                "entries": [PLATFORM_H2],
+                "against": [PLATFORM_H1],
+                "only_changes": True,
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=version_diff.CODE,
+        report_version=1,
+        entity_ids=(entity_id,),
+        parameters={},
+        known_at=at,
+        binding=SourceBinding(
+            cutoff=at,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={version_diff.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant_id))
+    data = version_diff.build(uow, params)
+    assert data.rows[0]["mid_change_ratio"] == "0.12"
+    retained["entries"][0]["ranges"][0]["mid_value"] = "125000"
+    assert version_diff.build(uow, params).rows[0]["mid_change_ratio"] == "0.25"
+    retained["entries"] = []
+    assert version_diff.build(uow, params).control_totals["removed"] == 1
+    for invalid in (
+        replace(params, entity_ids=(uuid4(),)),
+        replace(params, parameters={"against_version_id": str(uuid4())}),
+        replace(params, parameters={"only_changes": False}),
+    ):
+        with pytest.raises(Problem):
+            version_diff.build(uow, invalid)
+    with pytest.raises(Problem):
+        version_diff.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=uuid4())), params)
