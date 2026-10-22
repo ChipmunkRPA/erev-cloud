@@ -424,7 +424,47 @@ class UnitBook:
             running.amount_txn += sign * flow.amount
             for piece in pieces:
                 running.add(piece, sign)
+            self.record_revenue(flow, when, period, pieces, sign)
         return pieces
+
+    def record_revenue(
+        self,
+        flow: ControlFlow,
+        when: date,
+        period: dates.PeriodLike,
+        pieces: Sequence[Piece],
+        sign: int,
+    ) -> None:
+        """Keep each revenue movement's actual functional layer amounts for attribution.
+
+        This is disclosure evidence, not another posting target. A movement can consume several
+        historical liability layers and an unbilled remainder; multiplying its transaction amount
+        by a single current rate would lose that basis. Negative revenue keeps its actual credit
+        pieces and sign, rather than assuming it reverses a chosen historic rate.
+        """
+        formula = "fx.revenue_functional.v1"
+        self.tb.node(
+            measure="revenue_activity_functional",
+            subject_key=flow.flow_key,
+            period_key=period.period_key,
+            value=sign * sum(piece.amount for piece in pieces),
+            currency=self.fn,
+            minor_unit=self.mu_fn,
+            formula_id=formula,
+            inputs=[piece.node_id for piece in pieces],
+            params={
+                "signs": "|".join(str(sign) for _ in pieces),
+                "amount_txn": str(sign * flow.amount),
+                "txn_minor_unit": str(self.mu_txn),
+                "txn_currency": self.txn,
+                "entity": self.entity,
+                "obligation_subject": flow.subject_key,
+                "source_key": flow.source_key,
+                "flow_kind": flow.kind,
+                "effective_date": when.isoformat(),
+            },
+            narrative_key=_narrative(formula),
+        )
 
     def record_billing(self, flow: ControlFlow, when: date, period: dates.PeriodLike) -> None:
         """Retain dated billing activity independently of liability carrying relief.

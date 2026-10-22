@@ -12063,3 +12063,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the saved run rebuilds the original SUBMITTED row with identical output hash. No-session tests
   cover typed values, names, counts and scope/filter refusal. Scoped lint/types and migration 0311
   frozen IPE parity passed. No deployment.
+
+## Late-entry retained reconstruction — October 21, 2026
+
+- New runs retain event inputs and import/uploader provenance, entity period boundaries, first-lock
+  timestamps and the applied window. Same-source reruns validate tenant/entity scope and filters,
+  restore typed values and recalculate both sections and counts without current source reads.
+  Older OPEN runs preserve their new-evaluation behavior.
+- Necessary validation passed: 39 focused late-entry/source-binding cases; actual K07 close,
+  import and report API/worker flow. A newly appended period-end memo appears in a fresh report;
+  the saved report reproduces its original rows and identical hash. Pure reconstruction verifies
+  both-section membership, window/lock changes and scope/filter refusal. Scoped lint/types and
+  migration 0312 IPE parity passed.
+- Corrected K07 fixture clock drift: FX preparation unnecessarily advanced the application clock
+  two minutes, making the lock appear later than subsequent database-recorded events. Removing
+  that advance restores the intended chronology without changing production lock behavior.
+  No deployment; other documented Reporting and repository gaps remain.

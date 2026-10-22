@@ -722,3 +722,41 @@ def test_billing_disclosure_respects_layer_date_and_contract_members() -> None:
     )
     assert _node(trace, f"billed_control_functional:{CONTRACT}:FY2026-P01").value == "120.00"
     assert _node(trace, f"billed_control_functional:SECOND@{ENTITY}:FY2026-P01").value == "260.00"
+
+
+def test_revenue_activity_keeps_actual_layers_and_negative_movement():
+    ctx = _context(months=2)
+    first = _release(SERVICES, date(2026, 1, 31), "150.00")
+    reversal = _release(SERVICES, date(2026, 2, 28), "20.00", "NEGATIVE_REVENUE")
+    state, trace = _run(
+        ctx,
+        [
+            _invoice(1, date(2026, 1, 1), "100.00"),
+            _invoice(2, date(2026, 1, 15), "100.00"),
+            first,
+            reversal,
+        ],
+        [
+            _spot(date(2026, 1, 1), "1.10"),
+            _spot(date(2026, 1, 15), "1.20"),
+            _spot(date(2026, 1, 31), "1.40"),
+            _spot(date(2026, 2, 28), "1.30"),
+        ],
+    )
+    assert state.findings == ()
+    recognized = _node(trace, f"revenue_activity_functional:{first.flow_key}:FY2026-P01")
+    # 100 at its historical 1.10 layer plus 50 at 1.20, not 150 at January's 1.40 spot.
+    assert recognized.value == "170.00"
+    assert len(recognized.inputs) == 2
+    assert recognized.params["amount_txn"] == "15000"
+    assert recognized.params["obligation_subject"] == SERVICES
+    assert recognized.params["source_key"] == first.source_key
+    assert recognized.params["effective_date"] == "2026-01-31"
+    negative = _node(trace, f"revenue_activity_functional:{reversal.flow_key}:FY2026-P02")
+    assert negative.value == "-26.00"
+    assert negative.params["amount_txn"] == "-2000"
+    assert negative.params["flow_kind"] == "NEGATIVE_REVENUE"
+    assert _cumulative(state, "revenue_cum", SERVICES) == {"FY2026-P01": 17000, "FY2026-P02": 14400}
+    assert not any(
+        target.measure == "revenue_activity_functional" for target in state.functional_targets
+    )
