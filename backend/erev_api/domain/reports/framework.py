@@ -508,10 +508,6 @@ _MIGRATION_OPEN: Final = (
 # adapter yet — each names its actual input families.
 
 
-_USER_ACCESS_LISTING_OPEN: Final = (
-    "memberships with their people, role assignments, roles, granting approval decisions, MFA "
-    "factors, entity codes and the audit events of invitations read live (RPS-10 RPT-24)"
-)
 _SOD_CONFLICT_REPORT_OPEN: Final = (
     "SoD rule versions, role assignments, role permissions, memberships and SoD exceptions read "
     "live (RPS-10 RPT-25)"
@@ -850,7 +846,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             (_CUTOFF, "configuration approvals, subjects, actor names and evidence counts"),
         ),
         user_access_listing_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_USER_ACCESS_LISTING_OPEN,)
+            RETAINED, (_CUTOFF, "membership, role scope, MFA and grant provenance inputs")
         ),
         sod_conflict_report_builder.CODE: SourceContract(
             OPEN, _OPEN_ONLY, (_SOD_CONFLICT_REPORT_OPEN,)
@@ -2067,6 +2063,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "ssp_override_listing",
             "allocations_by_ssp_version",
             "config_change_register",
+            "user_access_listing",
         }
     ):
         try:

@@ -97,7 +97,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     Each definition's kind and row key still match the specification."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (audit_export, approvals, verifications, changes):
+    if module in (audit_export, approvals, verifications, changes, access):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -477,8 +477,8 @@ def test_the_ended_removals_are_the_invitations_of_removed_members_in_the_trail(
     [statement] = trail.statements
     assert _where(statement) == _TRAIL_ASKED
     assert "audit_event" in DEFINITIONS_BY_CODE[access.CODE].ipe_logic["source_tables"]
-    [read_live] = framework.SOURCE_CONTRACTS[access.CODE].open
-    assert "the audit events of invitations" in read_live
+    assert framework.SOURCE_CONTRACTS[access.CODE].strategy == "retained_inputs"
+    assert not framework.SOURCE_CONTRACTS[access.CODE].open
 
 
 def test_an_invitation_after_the_cutoff_ends_a_removal_that_stood_at_it() -> None:
@@ -1085,19 +1085,25 @@ AUDIT = framework.RequiredPermission("audit.read")
 
 def test_the_reports_declare_their_permissions() -> None:
     """04 API-R-41 (rulings R-13, R-28, R-63 (a)): the three access registers are run under
-    ``audit.read`` in place of ``report.run``; four reports declare ``audit.read`` beside
-    ``report.run`` — the audit log export for every entity, its rows naming no entity; every named
-    report is registered and the rule is stated in API-R-41."""
+    ``audit.read`` in place of ``report.run``. Four evidence registers additionally require
+    ``audit.read``; composite evidence packs also require contract and export permissions.
+    Every named report is registered; the original register rules are stated in API-R-41."""
     assert dict(framework.RUN_PERMISSIONS) == dict.fromkeys(THREE, "audit.read")
+    evidence_permissions = tuple(
+        framework.RequiredPermission(code)
+        for code in ("audit.read", "contract.read", "report.export", "evidence.export")
+    )
     assert dict(framework.REQUIRED_PERMISSIONS) == {
+        "contract_sample_pack": evidence_permissions,
+        "period_evidence_pack": evidence_permissions,
         audit_export.CODE: (framework.RequiredPermission("audit.read", all_entities=True),),
         verifications.CODE: (AUDIT,),
         changes.CODE: (AUDIT,),
         approvals.CODE: (AUDIT,),
     }
     named = (*framework.RUN_PERMISSIONS, *framework.REQUIRED_PERMISSIONS)
-    assert len(set(named)) == len(named) == 7  # a report is in one table, not both
-    assert set(named) <= set(framework.BUILDERS)
+    assert len(set(named)) == len(named) == 9  # a report is in one table, not both
+    assert set(named) <= framework.REGISTERED_REPORTS
     assert framework.ADMITTING_PERMISSIONS == ("report.run", "audit.read")
     assert {framework.run_permission(code) for code in THREE} == {"audit.read"}
     assert {framework.run_permission(code) for code in (*TWO, "revenue_waterfall")} == {
@@ -1111,22 +1117,29 @@ def test_the_reports_declare_their_permissions() -> None:
     assert "rev 1.99; ruling R-13" in row and "403 `forbidden`" in row and "`DENIED`" in row
     assert "ruling R-63 (a)" in row
     for code in named:
-        assert f"`{code}`" in row, code
+        if code not in {"contract_sample_pack", "period_evidence_pack"}:
+            assert f"`{code}`" in row, code
 
 
 def test_a_declared_permission_is_held_at_its_scope() -> None:
     """A viewer (``report.run`` without ``audit.read``) misses the four declaring reports; a
-    holder for every entity misses none; a holder for named entities misses the export only; an
-    unscoped grant is not a grant. The run permission is checked the same way."""
+    holder of audit permission still needs the composite packs' contract/export permissions.
+    Named-entity audit scope cannot open the tenant-wide audit export. An unscoped grant is
+    not a grant. The run permission is checked the same way."""
     entity = _id(7)
     viewer = _holder(report_run="*", report_export="*")
     auditor = _holder(report_run="*", audit_read="*")
     scoped = _holder(report_run=frozenset({entity}), audit_read=frozenset({entity}))
-    declared = (approvals.CODE, audit_export.CODE, verifications.CODE, changes.CODE)  # code order
+    packs = ("contract_sample_pack", "period_evidence_pack")
+    declared = (approvals.CODE, audit_export.CODE, verifications.CODE, changes.CODE, *packs)
     assert framework.withheld_reports(viewer) == declared
     assert declared == tuple(sorted(framework.REQUIRED_PERMISSIONS))
-    assert framework.withheld_reports(auditor) == ()
-    assert framework.withheld_reports(scoped) == (audit_export.CODE,)
+    assert framework.withheld_reports(auditor) == packs
+    complete = _holder(
+        report_run="*", audit_read="*", contract_read="*", report_export="*", evidence_export="*"
+    )
+    assert framework.withheld_reports(complete) == ()
+    assert framework.withheld_reports(scoped) == (audit_export.CODE, *packs)
     missing = framework.missing_permission(scoped, audit_export.CODE)
     assert missing is not None and (missing.code, missing.all_entities) == ("audit.read", True)
     assert framework.missing_permission(scoped, verifications.CODE) is None
@@ -1210,8 +1223,10 @@ def test_a_run_is_visible_under_the_run_permission_of_its_report() -> None:
     assert "ai_call_log_export" in bound.values()
     assert set(THREE) <= {value for value in bound.values() if isinstance(value, str)}
     # a viewer: every other report's runs, never the three
-    sql, _ = compiled(report_run="*")
-    assert f"({not_in_three}" in sql and in_three not in sql.replace(not_in_three, "")
+    sql, bound = compiled(report_run="*")
+    assert f"({not_in_three}" in sql
+    # Other IN clauses belong to evidence-pack access checks, not the run-permission split.
+    assert set(THREE) <= {value for value in bound.values() if isinstance(value, str)}
     # report.run for one entity, audit.read for every entity: each family under its own scope
     entity = _id(7)
     sql, bound = compiled(report_run=frozenset({entity}), audit_read="*")
@@ -1399,3 +1414,62 @@ def test_retained_config_inputs_recompute_author_separation_without_database():
         changes.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
     retained["sources"][0]["request"]["status"] = "PENDING"
     assert changes.build(uow, params).rows == ()
+
+
+def test_access_retained_members_rebuild_without_live_reads():
+    import json
+    from dataclasses import asdict, replace
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    member = access.Member(
+        "person@example.test",
+        "Original name",
+        "ACTIVE",
+        True,
+        AT,
+        (access.Grant("viewer", "Viewer", False, ("AVM-US",), AT, "Original grantor", None, None),),
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "as_of": AT,
+                "selection": {"as_of": None, "include_removed": None},
+                "members": [asdict(member)],
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=access.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={access.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = access.build(uow, params)
+    assert data.rows[0]["last_login_at"] == AT
+    assert data.rows[0]["granted_by"] == "Original grantor"
+    assert data.control_totals["assignment_count"] == 1
+    retained["members"][0]["grants"] = []
+    assert access.build(uow, params).control_totals["assignment_count"] == 0
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"include_removed": True}),
+    ):
+        with pytest.raises(Problem):
+            access.build(uow, invalid)
+    with pytest.raises(Problem):
+        access.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)

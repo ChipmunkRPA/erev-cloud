@@ -1974,6 +1974,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "audit_event.object_id = tenant_membership.id (action tenant_membership.invite)",
         ),
         filters=(
+            "same-source runs retain member/grant inputs, MFA state and original names; "
+            "rebuild rows and counts without live reads",
             "role assignments active at as_of",
             "memberships removed at as_of are left out: REMOVED with removed_at by then, or "
             "as_of inside a removal that a later invitation ended (the invitation's audit event "

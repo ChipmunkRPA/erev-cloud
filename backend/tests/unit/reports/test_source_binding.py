@@ -351,7 +351,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet
         # BUILD_SPEC RPS-10 (lane F-RPS-REG): the access, configuration, approvals and audit
         # registers read live, no adapter yet
-        "user_access_listing",
         "sod_conflict_report",
         # BUILD_SPEC RPS-11 (lane F-RPS-REG): the judgement, estimate-change and scope-exclusion
         # registers read live, no adapter yet

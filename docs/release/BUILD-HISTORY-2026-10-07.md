@@ -11948,3 +11948,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: manual adjustment retained same-source inputs and other documented report adapters,
   plus final repository verification. Historical lock datasets keep their current currency support.
   No deployment.
+
+## Manual adjustment retained reconstruction — October 21, 2026
+
+- Functional and reporting runs now retain adjustment source records, preparer/approver names,
+  decision timestamps/comments, attachment counts and period-rate inputs. Adjustment IDs are
+  captured as membership. Bound runs validate tenant/entity scope, view and book/period/status/kind
+  selection before restoring typed inputs and rebuilding rows, converted amounts and totals.
+- Rebuilds do not read current adjustment statuses, approvals, attachments, actor names or rates.
+  Retained reporting amounts are recalculated from functional amounts and saved rates. Date,
+  timestamp, UUID and Decimal restoration preserves rendering and actor-identity comparisons.
+- Migration 0305 documents the retained basis. Older OPEN runs retain new-evaluation behavior.
+  This adds saved-run reproduction, not historical versions of mutable adjustment rows: an ad-hoc
+  known_at query still refuses when required row history is unavailable.
+- Necessary verification passed: 27 focused register/source-binding cases; actual report API and
+  worker runs before/after approval of a USD 50 release (fresh posted total rises from USD 100 to
+  USD 150; original functional/reporting rows and output hashes remain identical); frozen IPE
+  parity and scoped lint/types. Input-only reconstruction tests need no session and recompute
+  approval displays, attachment counts, posted totals and rate changes.
+- Remaining: other documented report adapters and final repository verification. No deployment.

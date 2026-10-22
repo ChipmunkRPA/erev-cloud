@@ -700,6 +700,22 @@ def test_user_access_listing_fields(access: AccessWorld, clock: FrozenClock) -> 
     viewer = keyed(scoped)[f"access:{access.email('hannah')}:viewer"]
     assert (viewer["entity_scope"], viewer["granted_by"]) == ([AVM_US], None)
 
+    from support import worlds
+
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["items"] == rows
+
 
 def test_user_access_listing_states_a_removal_that_a_later_invitation_ended(
     access: AccessWorld, clock: FrozenClock

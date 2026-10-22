@@ -48,12 +48,14 @@ person, is refused by name (REGISTER-CUTOFF-1); a live run never refuses.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -72,9 +74,11 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import NOT_SHOWN, Column, ReportData, utc_text
 from erev_api.enums import MembershipStatus
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "user_access_listing"
+EVIDENCE: Final = "user_access_inputs_v1"
 ROW_KEY_PREFIX: Final = "access:"  # RPT-24: row_key `access:<email>:<role code>`
 ALL_ENTITIES: Final = "All entities"
 NEVER: Final = "Never"
@@ -407,9 +411,57 @@ def members(uow: UnitOfWork, params: ReportParams, *, at: datetime) -> list[Memb
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {key: params.parameters.get(key) for key in ("as_of", "include_removed")}
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained access inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("as_of", "Retained inputs use another access selection.")
+        return data_from_inputs(retained)
     at = support.as_of_instant(params)
-    rows, totals = dataset_rows(members(uow, params, at=at))
-    totals["as_of"] = utc_text(at)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "as_of": at,
+                "members": [asdict(item) for item in members(uow, params, at=at)],
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    found = []
+    for record in retained["members"]:
+        values = dict(record)
+        values["last_login_at"] = (
+            None
+            if values["last_login_at"] is None
+            else datetime.fromisoformat(values["last_login_at"].replace("Z", "+00:00"))
+        )
+        grants = []
+        for stored in values["grants"]:
+            grant = dict(stored)
+            grant["entity_codes"] = tuple(grant["entity_codes"])
+            grant["sod_exception_id"] = support.uuid_of(grant["sod_exception_id"])
+            for key in ("granted_at", "revoked_at"):
+                grant[key] = (
+                    None
+                    if grant[key] is None
+                    else datetime.fromisoformat(grant[key].replace("Z", "+00:00"))
+                )
+            grants.append(Grant(**grant))
+        values["grants"] = tuple(grants)
+        found.append(Member(**values))
+    rows, totals = dataset_rows(found)
+    totals["as_of"] = utc_text(datetime.fromisoformat(retained["as_of"].replace("Z", "+00:00")))
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 
