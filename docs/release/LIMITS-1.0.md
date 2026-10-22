@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## SSP override retained reconstruction — October 22, 2026
+
+- New runs retain obligation/product identifiers, original default/override version labels,
+  approval requests/decisions, justification and actor names. Same-source reruns validate
+  tenant/entity scope and date filters, restore approval inputs, reapply the approved-date
+  selection and rebuild rows without live reads. Request membership is recorded.
+- Necessary verification passed: 44 focused SSP/source-binding cases; actual SSP override
+  approval/computation/report API and worker workflow. After approval, fresh reports show the
+  override while the pre-approval saved report still rebuilds empty; both pre/post approval
+  saved reports reproduce original rows and hashes. No-session checks cover labels, reasons,
+  actor display, approval timestamps, status selection and scope refusal. Scoped lint/types and
+  migration 0315 frozen IPE parity passed. Older OPEN runs retain new-evaluation behavior.
+- This report lists version overrides and approval evidence, not monetary allocation amounts.
+  Remaining allocation and other documented Reporting gaps remain open. No deployment.
+
 ## SSP change-log retained reconstruction — October 22, 2026
 
 - New runs retain version lifecycle/status inputs, effective dates, entry counts, diff summaries,

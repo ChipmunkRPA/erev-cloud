@@ -1906,6 +1906,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "obligation_version.product_id = product.id",
         ),
         filters=(
+            "same-source runs retain override/version labels, approval requests and actor names; "
+            "rebuild rows and approval-date selection without live reads",
             _SCOPE,
             "obligation_version.ssp_override_approval_request_id is not null",
             "approval decided from from_date to to_date inclusive",

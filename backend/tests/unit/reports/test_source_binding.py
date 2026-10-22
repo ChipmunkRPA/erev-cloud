@@ -350,7 +350,6 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
         "migration_reconciliation",
         # BUILD_SPEC RPS-9 (lane F-RPS-REG): the SSP reports read live, no adapter yet
         "allocations_by_ssp_version",
-        "ssp_override_listing",
         # BUILD_SPEC RPS-10 (lane F-RPS-REG): the access, configuration, approvals and audit
         # registers read live, no adapter yet
         "config_change_register",

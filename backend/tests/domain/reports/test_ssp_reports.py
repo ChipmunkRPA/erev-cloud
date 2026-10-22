@@ -432,7 +432,7 @@ def test_override_listing(k02: K02World, runtime: JobRuntime, clock: FrozenClock
     assert requested.status_code == 200, requested.text
     request_id = str(requested.json()["approval_request_id"])
     # requested, not approved: the obligation carries no override yet
-    _, pending = report_run(world, "ssp_override_listing", {"entity_codes": [AVM_US]})
+    pending_run, pending = report_run(world, "ssp_override_listing", {"entity_codes": [AVM_US]})
     assert pending == []
 
     clock.advance(timedelta(minutes=1))
@@ -490,6 +490,24 @@ def test_override_listing(k02: K02World, runtime: JobRuntime, clock: FrozenClock
         {"entity_codes": [AVM_US], "from_date": "2026-10-01", "to_date": "2026-10-31"},
     )
     assert outside == []
+
+    from support import worlds
+    from support.reference import get
+
+    for original, original_rows in ((pending_run, pending), (run, rows)):
+        started = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+        restored = get(
+            world.app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == original_rows
 
 
 def test_draft_ssp_diff_rerun_keeps_original_entries(publication: SspPublicationWorld):

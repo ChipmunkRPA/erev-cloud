@@ -512,10 +512,7 @@ _ALLOCATIONS_BY_SSP_VERSION_OPEN: Final = (
     "obligation versions (the allocation lineage) of the run's book with their contract versions, "
     "cause events, contracts and SSP book versions read live (RPS-9 RPT-21)"
 )
-_SSP_OVERRIDE_LISTING_OPEN: Final = (
-    "obligation versions carrying an SSP override with their contracts, SSP book versions and "
-    "approval requests / decisions read live (RPS-9 RPT-22)"
-)
+
 _CONFIG_CHANGE_REGISTER_OPEN: Final = (
     "decided configuration approval requests with their decisions, subject versions, audit "
     "events (the recorded field diffs) and example cases read live (RPS-10 RPT-23)"
@@ -854,7 +851,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             OPEN, _OPEN_ONLY, (_ALLOCATIONS_BY_SSP_VERSION_OPEN,)
         ),
         ssp_override_listing_builder.CODE: SourceContract(
-            OPEN, _OPEN_ONLY, (_SSP_OVERRIDE_LISTING_OPEN,)
+            RETAINED, (_CUTOFF, "SSP override version labels, requests, decisions and actor names")
         ),
         # RPS-10 (RPT-23 to RPT-26, RPT-43, RPT-44): the registers read live; no source adapter yet.
         config_change_register_builder.CODE: SourceContract(
@@ -2075,6 +2072,7 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
             "late_entry_report",
             "ssp_version_diff",
             "ssp_change_log",
+            "ssp_override_listing",
         }
     ):
         try:

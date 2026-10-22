@@ -77,7 +77,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     what it reads; each definition's kind and row key are the specification's."""
     assert framework.BUILDERS[module.CODE] is module.build
     contract = framework.SOURCE_CONTRACTS[module.CODE]
-    if module in (version_diff, change_log):
+    if module in (version_diff, change_log, overrides):
         assert contract.strategy == "retained_inputs" and not contract.open
     else:
         assert contract.strategy == "open" and len(contract.open) == 1
@@ -737,3 +737,61 @@ def test_ssp_log_retained_lifecycle_and_approvals_rebuild_without_database():
     retained["from_date"] = "2027-01-01"
     retained["to_date"] = "2027-12-31"
     assert change_log.build(uow, params).rows == ()
+
+
+def test_override_retained_approval_and_labels_without_database():
+    import json
+    from dataclasses import asdict
+    from types import SimpleNamespace
+
+    from erev_api.domain.reports.builders import RETAINED, SourceBinding
+    from erev_engine.canonical import canonical_bytes
+
+    source = overrides.Source("C-1", "O1", "SKU", "H1", "H2", _request())
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": MAYA,
+                "entity_ids": [PRIYA],
+                "selection": {"from_date": None, "to_date": None},
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+                "sources": [asdict(source)],
+                "names": {str(k): v for k, v in NAMES.items()},
+            }
+        )
+    )
+    params = ReportParams(
+        report_code=overrides.CODE,
+        report_version=1,
+        entity_ids=(PRIYA,),
+        parameters={},
+        known_at=AT,
+        binding=SourceBinding(
+            cutoff=AT,
+            versions={},
+            labels={},
+            row_keys=frozenset(),
+            strategy=RETAINED,
+            evidence={overrides.EVIDENCE: retained},
+        ),
+    )
+    uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=MAYA))
+    data = overrides.build(uow, params)
+    assert data.rows[0]["approved_at"] == AT
+    assert data.rows[0]["approved_by"] == "Priya Raman"
+    retained["sources"][0]["override_version_label"] = "Original override"
+    retained["sources"][0]["request"]["comment"] = "Original justification"
+    changed = overrides.build(uow, params)
+    assert changed.rows[0]["override_version_label"] == "Original override"
+    assert changed.rows[0]["justification"] == "Original justification"
+    for invalid in (
+        replace(params, entity_ids=(MAYA,)),
+        replace(params, parameters={"to_date": "2026-08-31"}),
+    ):
+        with pytest.raises(Problem):
+            overrides.build(uow, invalid)
+    with pytest.raises(Problem):
+        overrides.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+    retained["sources"][0]["request"]["status"] = "PENDING"
+    assert overrides.build(uow, params).rows == ()

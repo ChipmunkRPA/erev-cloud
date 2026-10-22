@@ -21,12 +21,14 @@ number; ``row_key`` ``override:<external id>:<obligation key>:<request no>``. Co
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import asdict, dataclass
+from datetime import date, datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -41,9 +43,11 @@ from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.outputs import Column, ReportData
+from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "ssp_override_listing"
+EVIDENCE: Final = "ssp_override_inputs_v1"
 ROW_KEY_PREFIX: Final = "override:"
 COLUMNS: Final = (
     Column("contract_external_id", "Contract", "code"),
@@ -226,6 +230,16 @@ def sources(uow: UnitOfWork, params: ReportParams, *, cutoff: datetime) -> list[
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    selection = {key: params.parameters.get(key) for key in ("from_date", "to_date")}
+    if params.binding is not None:
+        retained = tie_outs.bound_evidence(params, EVIDENCE)
+        if retained["tenant_id"] != str(uow.principal.tenant_id) or set(retained["entity_ids"]) != {
+            str(entity_id) for entity_id in params.entity_ids
+        }:
+            raise Problem("forbidden", "Retained SSP override inputs exceed report scope.")
+        if retained["selection"] != selection:
+            raise tie_outs.invalid("from_date", "Retained inputs use another date selection.")
+        return data_from_inputs(retained)
     session = uow.session
     cutoff = tie_outs.cutoff_for(session, params)
     first, last = support.date_range(session, params, today=True)
@@ -236,8 +250,42 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         if support.within(item.request.approved_at, bounds)
     ]
     names = support.names_of(session, (item.request for item in found))
+    tie_outs.record_members(params, "ssp_override_requests", (item.request.id for item in found))
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "tenant_id": uow.principal.tenant_id,
+                "entity_ids": params.entity_ids,
+                "selection": selection,
+                "from_date": first,
+                "to_date": last,
+                "sources": [asdict(item) for item in found],
+                "names": {str(key): value for key, value in names.items()},
+            }
+        )
+    )
+    tie_outs.record_evidence(params, EVIDENCE, retained)
+    return data_from_inputs(retained)
+
+
+def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
+    bounds = support.instants(
+        date.fromisoformat(retained["from_date"]), date.fromisoformat(retained["to_date"])
+    )
+    found = []
+    for record in retained["sources"]:
+        values = dict(record)
+        values["request"] = support.request_from_inputs(values["request"])
+        item = Source(**values)
+        if support.within(item.request.approved_at, bounds):
+            found.append(item)
+    names = {UUID(key): value for key, value in retained["names"].items()}
     rows = dataset_rows(found, names)
-    totals = {"row_count": len(rows), "from_date": first.isoformat(), "to_date": last.isoformat()}
+    totals = {
+        "row_count": len(rows),
+        "from_date": retained["from_date"],
+        "to_date": retained["to_date"],
+    }
     return ReportData(columns=COLUMNS, rows=tuple(rows), control_totals=totals)
 
 
