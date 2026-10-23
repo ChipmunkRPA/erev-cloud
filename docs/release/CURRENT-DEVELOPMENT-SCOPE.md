@@ -4,6 +4,21 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Hours-only combined EAC entry and calculation — October 23, 2026
+
+- EAC versions may now be entered with expected hours and no invented cost amount. The
+  form requires at least one measure and the estimate list displays hours for hours-only EACs.
+- Combined EAC aggregates each measure only when every selected member supplies it. Labour
+  progress no longer fails merely because cost estimates or cost-material parameters are absent;
+  cost progress still refuses missing member cost totals. Missing member hours block recognition
+  through the existing EXPECTED_HOURS_MISSING finding, instead of using a partial denominator.
+- Full-engine valid hours-only calculation, missing-hours and missing-cost rejection, retained
+  trace replay and existing scope cases pass; form submission models, scoped types/lint pass.
+- This completes expected-hours input and denominator selection, not original-member actual-hour
+  aggregation. Owner choice for combined percentage/milestone progress remains pending.
+  Other documented development gaps remain open. No deployment.
+
+
 ## Explicit combined EAC coverage — October 23, 2026
 
 - Owner selected explicit coverage: a COMBINATION EAC replaces member totals; MEMBERS

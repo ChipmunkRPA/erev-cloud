@@ -786,3 +786,24 @@ not decide whether a host EAC represents its component or the entire combination
 - Eight focused cases and the populated foreign locked-group public workflow pass, including
   both functional/reporting cell endpoints and identical saved reruns. Scoped lint/types pass.
   No journal or engine amount changes, no deployment. The overall development scope remains open.
+
+## Explicit combined EAC coverage — October 23, 2026
+
+- Owner selected explicit coverage: a COMBINATION EAC replaces member totals; MEMBERS
+  estimates aggregate only with complete, non-overlapping coverage. Ambiguous host scope,
+  overlap, duplicate whole-combination EACs and mixed member currencies stop calculation.
+- The estimate-version drawer, validated API parameters and import parameter schema carry
+  the scope. Existing element obligation/target keys identify member coverage.
+- Cost progress, modification boundary totals and causal estimate replay use the selected
+  total. Trace version 3 retains every original component estimate and verifies their sum.
+  Loss and impairment selection use the same coverage rule. Later member revisions recompute
+  the aggregate without fabricating a persisted combined estimate.
+- Evidence revision 6 applies the rule to new computations. Older retained bundles preserve
+  their single-host convention; reopening a current combination requires explicit host scope.
+  Intermediate event positions wait for complete members; incomplete period totals are refused.
+- Necessary checks: full-engine member/whole totals, later revisions, ambiguity/incompleteness,
+  overlapping/currency/duplicate scope, loss totals, source replay and adjacent cost cases;
+  rendered estimate submission, TypeScript, scoped lint/types. No deployment.
+- Limits: mixed explicit/implicit uninstalled-material forecasts require complete explicit
+  material inputs. Combined cumulative hours/percentage/milestones and quantity/removal/term
+  reassessment remain separate unfinished features. Overall development remains open.

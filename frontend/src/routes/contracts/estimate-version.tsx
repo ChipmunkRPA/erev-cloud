@@ -800,6 +800,7 @@ export function VersionDrawer({
         ) : null}
         {kind === "EAC" ? (
           <div className="flex flex-col gap-2">
+            <p className="text-body-sm text-fg-2">{t("contracts.estimates.eacMeasureHelp")}</p>
             <RadioGroup<string>
               legend={t("contracts.estimates.eacScope.legend")}
               options={[

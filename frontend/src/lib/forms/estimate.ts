@@ -85,7 +85,7 @@ export const KIND_MEMBERS: Readonly<Record<EstimateKind, readonly Member[]>> = {
     column("expected_quantity", "quantity", "expectedRedemptions"),
   ],
   EAC: [
-    column("expected_total_amount", "money", "estimatedTotalCosts", true),
+    column("expected_total_amount", "money", "estimatedTotalCosts"),
     column("expected_quantity", "quantity", "expectedHours"),
   ],
   EXERCISE_LIKELIHOOD: [column("rate", "rate", "rate", true)],
@@ -386,6 +386,9 @@ export function figuresOf(kind: EstimateKind, version: EstimateVersion): readonl
     case "BREAKAGE":
       return [ofMember(version, kind, "rate"), ofMember(version, kind, "expected_quantity")];
     case "EAC":
+      if (version.expected_total_amount === null && version.expected_quantity !== null) {
+        return [ofMember(version, kind, "expected_quantity")];
+      }
       return [
         ofMember(version, kind, "expected_total_amount"),
         figure(
@@ -689,6 +692,13 @@ export function buildVersion(
     } else {
       columns[member.name] = value;
     }
+  }
+  if (
+    kind === "EAC" &&
+    columns.expected_total_amount === null &&
+    columns.expected_quantity === null
+  ) {
+    errors.expected_total_amount ??= t("contracts.estimates.error.eacMeasureRequired");
   }
   if (kind === "RENEWAL_EXPECTATION") {
     const comparison = [

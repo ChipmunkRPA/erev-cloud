@@ -119,6 +119,25 @@ describe("a percent and the ratio the API stores", () => {
 });
 
 describe("a version body", () => {
+  it("allows an hours-only EAC without inventing a cost estimate", () => {
+    const built = buildVersion(
+      "EAC",
+      "COST_BUILDUP",
+      form("EAC", { values: { expected_quantity: "1000", expected_total_amount: "" } }),
+      "USD",
+    );
+    expect(built.errors).toEqual({});
+    expect(built.body?.expected_quantity).toBe("1000");
+    expect(built.body?.expected_total_amount).toBeNull();
+    expect(keyFigure("EAC", version({ expected_quantity: "1000" }))).toMatchObject({
+      id: "expected_quantity",
+      type: "quantity",
+    });
+    expect(
+      buildVersion("EAC", "COST_BUILDUP", form("EAC", { values: {} }), "USD").errors
+        .expected_total_amount,
+    ).toBeTruthy();
+  });
   it("an estimate of total costs sends its total, null for every other column and no checklist", () => {
     const built = buildVersion(
       "EAC",
@@ -152,7 +171,10 @@ describe("a version body", () => {
     expect(built.body).toBeNull();
     expect(Object.entries(built.errors)).toEqual([
       ["effective_date", "Enter the effective date."],
-      ["expected_total_amount", "Enter a value."],
+      [
+        "expected_total_amount",
+        "Enter estimated total costs or expected hours for the progress measure.",
+      ],
       ["expected_quantity", "Enter a number of 0 or more."],
       ["rationale", "Enter the rationale."],
     ]);

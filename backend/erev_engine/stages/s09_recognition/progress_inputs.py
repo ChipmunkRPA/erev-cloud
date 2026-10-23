@@ -366,10 +366,12 @@ def eac_version(
     if len(versions) == 1:
         return versions[0]
     # This aggregate is a calculation view only. Trace and causal replay retain original pins.
-    if any(v.expected_total_amount is None for v in versions):
-        raise _invariant("Member EAC has no expected total amount", ob, rule="COMBINED_EAC_SCOPE")
     parameters: dict[str, object] = {}
-    materials = [_parameter(v, ob) for v in versions]
+    materials = (
+        []
+        if str(ob.recognition_method) == "LABOUR_HOURS"
+        else [_parameter(v, ob) for v in versions]
+    )
     if any(value is not None for value in materials):
         if any(value is None for value in materials):
             raise _invariant(
@@ -383,7 +385,9 @@ def eac_version(
     return replace(
         versions[0],
         version_key="|".join(v.version_key for v in versions),
-        expected_total_amount=Decimal(
+        expected_total_amount=None
+        if any(v.expected_total_amount is None for v in versions)
+        else Decimal(
             format_exact(
                 sum(
                     (

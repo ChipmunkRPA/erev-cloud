@@ -184,3 +184,64 @@ def test_loss_scope_uses_same_combined_eac_without_double_counting(scope, total)
     assert nodes
     assert {n.params["eac"] for n in nodes} == {str(total)}
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+
+
+@pytest.mark.parametrize("missing_hours", [False, True])
+def test_combined_expected_hours_do_not_require_cost_estimates(missing_hours):
+    value = scenario()
+    versions = tuple(
+        replace(
+            v,
+            expected_quantity=None
+            if missing_hours and v.obligation_key == "LEASE"
+            else v.expected_total_amount,
+            expected_total_amount=None,
+        )
+        for v in value.estimate_versions
+    )
+    progress = bundles.event(
+        CONTRACT,
+        7,
+        "PROGRESS_RECORDED",
+        date(2026, 1, 31),
+        {
+            "obligation_key": "SERVICE",
+            "measure": "LABOUR_HOURS",
+            "hours_to_date": "300",
+            "cumulative_progress_ratio": "0.3",
+        },
+        obligation_keys=["SERVICE"],
+    )
+    value = replace(
+        value,
+        estimate_versions=versions,
+        events=tuple(e for e in value.events if e.event_type != "COST_INCURRED") + (progress,),
+        pob_template_versions=tuple(
+            replace(t, recognition_method="LABOUR_HOURS") for t in value.pob_template_versions
+        ),
+    )
+    if missing_hours:
+        with pytest.raises(EngineError) as error:
+            compute(value)
+        assert "EXPECTED_HOURS_MISSING" in error.value.detail["findings"]
+        return
+    result = compute(value).books[0]
+    assert result.contract_version.columns["revenue_cum"] == 300000
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    measured = [
+        n
+        for n in result.trace.nodes
+        if n.formula_id == "rec.progress.labour_hours.v1" and n.params.get("hours") == "300"
+    ]
+    assert measured
+    assert all(n.params.get("expected_hours") == "1000" for n in measured)
+
+
+def test_member_cost_total_is_not_summed_when_one_member_has_no_cost_estimate():
+    value = scenario()
+    versions = tuple(
+        replace(v, expected_total_amount=None) if v.obligation_key == "LEASE" else v
+        for v in value.estimate_versions
+    )
+    with pytest.raises(EngineError, match="no expected_total_amount"):
+        compute(replace(value, estimate_versions=versions))
