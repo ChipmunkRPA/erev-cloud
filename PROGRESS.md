@@ -248,10 +248,10 @@ remain in the dated build history; they do not verify current main. This list do
 not authorize deployment, provisioning or changes to a live database.
 
 - October 22: fixed six new Python dependency advisories; patched-lock audit is clean (86 runtime packages; npm also clean). See [dependency checkpoint](docs/release/DEPENDENCY-SECURITY-2026-10-22.md). Refresh on the final candidate.
-- make docker-build passed on clean b4b8210 (October 15); rerun on the final candidate.
+- October 22: three-image build and Linux PDF/resource probes passed on bbd64be8; see [build checkpoint](docs/release/LOCAL-BUILD-2026-10-22.md). Refresh for the final candidate.
 - make compose-verify passed on clean 74bd148 (October 15), including cleanup. Rerun on the final candidate.
 - make zap-baseline passed on clean 4c4b583 (October 15), including cleanup; one documented low COEP warning and three informational alerts remain. Unauthenticated surface only; rerun on the final candidate.
-- SUPERVISOR VERIFICATION NEEDED: make tf-validate (October 14 backend-disabled development validation passed; rerun on a clean final candidate).
+- October 22: backend-disabled Terraform validation passed on clean bbd64be8 after a whitespace fix. No cloud state or resources changed.
 - make restore-drill passed on frozen d7e8715 (October 15), exercising backup and restore-verify
   on a fresh disposable server. Rerun on the final candidate; hosted recovery is outside this scope.
 
