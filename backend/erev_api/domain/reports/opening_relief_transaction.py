@@ -112,7 +112,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             files=uow.files,
         )
     )
-    frozen_sources = opening_relief_frozen.Reader(source_uow)
+    frozen_sources = opening_relief_frozen.Reader(source_uow, params)
     for (version, entity, currency), members in groups.items():
         first = {
             name: sum((open_rows[key].value(name) for key in members if key in open_rows), ZERO)

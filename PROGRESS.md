@@ -20,24 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Original obligation closing capture — October 23, 2026
+## Lock-bound native closing reader — October 23, 2026
 
-- Evidence revision 5 captures obligation-level cumulative billing, revenue, nonnegative
-  liability eligibility and original flow/node identities inside native rollforward output.
-  The stage-13/15 path supplies this data to the existing immutable computation output file.
-  Group caps remain separate; obligation eligibility is not allocated group liability.
-- Transaction source coverage is checked against each original document. Functional capture
-  requires the same complete document population and reconciled revenue quantities; signed
-  invoice/credit sources survive zero transaction balances and functional FX residuals.
-  Agent/cross-entity/acquired or incomplete sources explicitly record UNAVAILABLE rather than
-  inventing snapshot amounts. These records still describe the original computation, not a lock.
-- Sixteen focused native/codec cases pass, including changed population, a zero-transaction FX
-  residual and unchanged revision-4 outputs. A populated persistence/refresh workflow reads back
-  available obligation data with matching file digest and no additional journal postings;
-  scoped lint/types pass. No deployment.
-- Remaining: bind these original computation snapshots to authenticated lock history, then
-  automatically feed their retained obligation balances into the next native calculation.
-  No older computation files or lock records are rewritten or backfilled.
+- New opening-relief runs bind native closing evidence to the original version already proven
+  by the authenticated lock-time balance report. The reader uses that version's computation,
+  checks the output file against all retained digests and input identity, then checks book,
+  entity, period end, currency scale and group identity. Duplicate views are refused.
+- The original output payload, file/hash identity and version are retained with the frozen
+  source proof. Reading is cached by version/entity/period/book. Older report bindings keep
+  their previous proof shape; absent historical native output is not backfilled from current data.
+- Public foreign-functional and reporting locked-opening workflows pass: original USD closing
+  obligation eligibility is 11,000, the version differs from the later computation, and saved
+  report rows rerun identically. Three reader cases cover digest/duplicate refusal, legacy
+  absence and old-binding behavior; scoped lint/types pass. No deployment.
+- Remaining native integration: automatically feed the authenticated original obligation
+  balances into the next engine bundle and identify that calculation's opening as frozen.
+  This reader establishes provenance; it does not yet change the next native computation.
 
 ## Rollforward Other explanation — October 23, 2026
 

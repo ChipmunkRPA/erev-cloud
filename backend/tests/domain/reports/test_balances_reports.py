@@ -1259,6 +1259,17 @@ def test_functional_pob_report_uses_original_invoice_fx(
             for member in group["members"].values():
                 frozen = member["frozen_opening"]
                 assert frozen["version"] != member["version"]
+                native = frozen["native_closing"]
+                assert native is not None
+                assert native["version"] == frozen["version"]
+                assert native["period_key"] == "FY2026-P08"
+                native_functional = [
+                    item for item in native["views"] if item["view"] == "FUNCTIONAL"
+                ]
+                assert len(native_functional) == 1
+                closing = native_functional[0]["obligation_closing"]
+                assert closing["status"] == "AVAILABLE"
+                assert sum(item["liability"] for item in closing["obligations"].values()) == 1100000
                 trace_links = [
                     link["href"]
                     for link in items[0]["source_links"]

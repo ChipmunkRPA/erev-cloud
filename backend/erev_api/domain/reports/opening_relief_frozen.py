@@ -10,7 +10,10 @@ from sqlalchemy import select
 from erev_api.db.tables import report_run
 from erev_api.domain.reports import disclosure_frozen, tie_outs
 from erev_api.domain.reports.builders import ADAPTER, ReportParams, SourceBinding
+
 from erev_api.uow import UnitOfWork
+
+NATIVE_KEY = "opening_relief_native_snapshots_v1"
 
 
 @dataclass(frozen=True)
@@ -20,8 +23,15 @@ class FrozenSources:
 
 
 class Reader:
-    def __init__(self, uow: UnitOfWork) -> None:
+    def __init__(self, uow: UnitOfWork, params: ReportParams | None = None) -> None:
         self.uow = uow
+        self.native = params is not None and (
+            params.binding is None or params.binding.evidence.get(NATIVE_KEY) is True
+        )
+        if self.native:
+            assert params is not None
+            tie_outs.record_evidence(params, NATIVE_KEY, True)
+        self.native_cache: dict[tuple[UUID, UUID, UUID, str], dict[str, Any] | None] = {}
         self.cache: dict[tuple[UUID, UUID, str], FrozenSources] = {}
 
     def read(
@@ -54,7 +64,15 @@ class Reader:
             raise tie_outs.invalid(
                 "currency_view", "Original obligation sources do not tie to the opening lock."
             )
-        return found, {**sources.facts, "version": None if found is None else str(found.version_id)}
+        facts = {**sources.facts, "version": None if found is None else str(found.version_id)}
+        if self.native and found is not None:
+            from .opening_native_snapshot import read
+
+            identity = (found.version_id, found.entity_id, previous.id, book)
+            if identity not in self.native_cache:
+                self.native_cache[identity] = read(self.uow, found, previous, book)
+            facts["native_closing"] = self.native_cache[identity]
+        return found, facts
 
 
 def _sources(

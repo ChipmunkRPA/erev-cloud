@@ -56,7 +56,7 @@ def rows(
         if source is None:
             raise tie_outs.invalid("currency_view", "Functional POB source version is missing.")
         groups[(source.version_id, item.entity_id, item.currency)].append(item)
-    frozen_sources = opening_relief_frozen.Reader(uow)
+    frozen_sources = opening_relief_frozen.Reader(uow, params)
     result = []
     excluded: set[tuple[UUID, UUID]] = set()
     evidence: dict[str, Any] = {}
