@@ -58,6 +58,19 @@ not decide whether a host EAC represents its component or the entire combination
   Combined foreign lock histories and native frozen per-POB inputs remain separate gaps.
   No deployment.
 
+## New obligation opening absence — October 23, 2026
+
+- Public POB opening relief can now use proven zero openings for new obligations whose
+  prior-period nodes are absent. Proof joins the selected version's identity to its original
+  CONTRACT_AMENDED event, requires an ADD after the opening date, and excludes inherited or
+  regrouped identities. Existing obligations without history still require original evidence.
+- Saved facts retain the creating event ID/date. Nonzero or wrong-currency historical nodes
+  conflict with absence and are refused; the foreign opening reader is not asked to invent FX
+  for a proven zero position. Normal report shape and group caps are unchanged.
+- 13 focused reader cases pass. A populated approved-modification case proves only the new O2
+  qualifies at August end, and no obligation qualifies once its September creation is in the
+  opening. Scoped lint/types pass. No deployment; broader special-source work remains open.
+
 ## Reporting implementation status
 
 ### Aligned range reports across separate calendars — implemented October 23

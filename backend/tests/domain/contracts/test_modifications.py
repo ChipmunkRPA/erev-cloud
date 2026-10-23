@@ -3987,3 +3987,45 @@ def test_required_product_attributes_block_added_obligations_at_create_and_appro
     assert ("lines", "REQ-REF-012") in fields(blocked)
     assert str(_row(k02, created["id"])["status"]) == "SUBMITTED"
     assert _events(k02, contract_id, ContractEventType.CONTRACT_AMENDED) == []
+
+
+def test_new_pob_opening_absence_uses_original_approved_add(k02, runtime, clock):
+    from types import SimpleNamespace
+    from erev_api.domain.reports.opening_relief_pob import _new_after_opening
+
+    contract_id = _k02_contract(k02)
+    created = _create(k02, contract_id, _upgrade_body())
+    _classify(k02, created["id"])
+    _preview(k02, created["id"], runtime)
+    _applied(k02, created["id"], clock)
+    with k02.place.uow() as uow:
+        version = (
+            uow.session.execute(
+                select(obligation_version)
+                .where(
+                    obligation_version.c.contract_id == contract_id,
+                )
+                .order_by(obligation_version.c.version_no.desc())
+                .limit(1)
+            )
+            .mappings()
+            .one()
+        )
+        external_id = uow.session.scalar(
+            select(contract.c.external_id).where(contract.c.id == contract_id)
+        )
+        row = SimpleNamespace(
+            version_id=version["contract_version_id"],
+            contract_id=contract_id,
+            external_id=external_id,
+        )
+        subjects = {f"{external_id}/O1", f"{external_id}/O2"}
+        found = _new_after_opening(
+            uow.session, row, SimpleNamespace(end=date(2026, 8, 31)), subjects
+        )
+        assert set(found) == {f"{external_id}/O2"}
+        assert found[f"{external_id}/O2"]["effective_date"] == "2026-09-16"
+        assert (
+            _new_after_opening(uow.session, row, SimpleNamespace(end=date(2026, 9, 16)), subjects)
+            == {}
+        )

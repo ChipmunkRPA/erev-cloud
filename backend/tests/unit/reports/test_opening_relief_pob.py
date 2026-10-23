@@ -184,3 +184,44 @@ def test_zero_functional_opening_keeps_special_contract_revenue_without_invented
             D(40),
             functional_currency="USD",
         )
+
+
+@pytest.mark.parametrize("functional", [None, "USD"])
+def test_proven_new_obligation_needs_no_opening_nodes(monkeypatch, functional):
+    session, row, nodes = fixture(monkeypatch)
+    nodes[:] = [n for n in nodes if ":C/D:" not in n.id]
+    proof = {
+        "basis": "CREATED_AFTER_OPENING",
+        "event_id": str(UUID(int=90)),
+        "effective_date": "2026-04-10",
+    }
+
+    def created(session, source, previous, missing):
+        assert missing == {"C/D"}
+        return {"C/D": proof}
+
+    monkeypatch.setattr(pob, "_new_after_opening", created)
+    amount, facts = pob.calculate(
+        session,
+        row,
+        NS(key="P03"),
+        [entry(1, "D", "8000"), entry(2, "S", "800")],
+        D("5000"),
+        D("5800"),
+        functional_currency=functional,
+    )
+    assert amount == D("800")
+    assert facts["obligations"]["C/D"]["opening_absence"] == proof
+    assert facts["obligations"]["C/D"]["opening_nodes"] == []
+    assert facts["obligations"]["C/D"]["eligible_relief"] == "0"
+
+
+def test_new_obligation_proof_does_not_override_conflicting_history(monkeypatch):
+    session, row, nodes = fixture(monkeypatch)
+    nodes[:] = [n for n in nodes if n.id != "billed_cum:C/D:P03"]
+    next(n for n in nodes if n.id == "revenue_cum:C/D:P03").value = "1"
+    monkeypatch.setattr(
+        pob, "_new_after_opening", lambda *a: {"C/D": {"basis": "CREATED_AFTER_OPENING"}}
+    )
+    with pytest.raises(Problem):
+        pob.calculate(session, row, NS(key="P03"), [entry(1, "D", "8000")], D("5000"), D("5800"))

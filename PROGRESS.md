@@ -20,18 +20,18 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Locked foreign POB opening — October 23, 2026
+## New obligation opening absence — October 23, 2026
 
-- Connected the existing functional/reporting POB scenario to the actual August close run,
-  journal acknowledgement, reviewed reconciliation gate and approved period lock, followed
-  by September performance. Both populated cases pass and saved reruns reproduce all rows.
-- USD opening/relief are 11,000. Reporting EUR opening is 9,954.75 and relief is 9,909.91,
-  preserving the different retained closing/average rates. The original opening version
-  differs from the current version and belongs to the authenticated lock-time child report.
-- This verifies existing public report behavior for a single principal, same-entity foreign
-  contract with positive opening liability; no production calculation change was needed.
-  Combined foreign lock histories and native frozen per-POB inputs remain separate gaps.
-  No deployment.
+- Public POB opening relief can now use proven zero openings for new obligations whose
+  prior-period nodes are absent. Proof joins the selected version's identity to its original
+  CONTRACT_AMENDED event, requires an ADD after the opening date, and excludes inherited or
+  regrouped identities. Existing obligations without history still require original evidence.
+- Saved facts retain the creating event ID/date. Nonzero or wrong-currency historical nodes
+  conflict with absence and are refused; the foreign opening reader is not asked to invent FX
+  for a proven zero position. Normal report shape and group caps are unchanged.
+- 13 focused reader cases pass. A populated approved-modification case proves only the new O2
+  qualifies at August end, and no obligation qualifies once its September creation is in the
+  opening. Scoped lint/types pass. No deployment; broader special-source work remains open.
 
 ## Rollforward Other explanation — October 23, 2026
 

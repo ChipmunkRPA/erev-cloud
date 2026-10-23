@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import obligation_version
+from erev_api.db.tables import contract_event, obligation, obligation_version
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders.contract_balance_rollforward import Entry
 from erev_api.explain import store
@@ -16,6 +16,67 @@ from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
 KEY = "opening_relief_pob_v1"
 ZERO = Decimal(0)
+
+
+def _new_after_opening(
+    session: Session,
+    row: tie_outs.BalanceRow,
+    previous: tie_outs.PeriodRef | None,
+    missing: set[str],
+) -> dict[str, dict[str, str]]:
+    """Prove new ADD identities from the selected version and their immutable creating event.
+
+    A regrouped/replaced obligation can inherit history and is deliberately not a new opening.
+    """
+    if not missing or previous is None or getattr(previous, "end", None) is None:
+        return {}
+    rows = (
+        session.execute(
+            select(
+                obligation.c.obligation_key,
+                contract_event.c.id.label("event_id"),
+                contract_event.c.effective_date,
+                contract_event.c.payload,
+            )
+            .select_from(
+                obligation_version.join(
+                    obligation,
+                    (obligation.c.id == obligation_version.c.obligation_id)
+                    & (obligation.c.tenant_id == obligation_version.c.tenant_id),
+                ).join(
+                    contract_event,
+                    (contract_event.c.id == obligation.c.created_by_event_id)
+                    & (contract_event.c.tenant_id == obligation.c.tenant_id),
+                )
+            )
+            .where(
+                obligation_version.c.contract_version_id == row.version_id,
+                obligation.c.contract_id == row.contract_id,
+                contract_event.c.contract_id == row.contract_id,
+                contract_event.c.event_type == "CONTRACT_AMENDED",
+                contract_event.c.effective_date > previous.end,
+                obligation.c.parent_obligation_id.is_(None),
+                obligation.c.regrouped_from_obligation_id.is_(None),
+            )
+        )
+        .mappings()
+        .all()
+    )
+    found = {}
+    for item in rows:
+        key = item["obligation_key"]
+        subject = obligation_subject_key(row.external_id, key)
+        if subject not in missing or not any(
+            line.get("action") == "ADD" and line.get("obligation_key") == key
+            for line in item["payload"].get("lines", [])
+        ):
+            continue
+        found[subject] = {
+            "basis": "CREATED_AFTER_OPENING",
+            "event_id": str(item["event_id"]),
+            "effective_date": item["effective_date"].isoformat(),
+        }
+    return found
 
 
 def calculate(
@@ -123,6 +184,25 @@ def calculate(
     if trace is None:
         raise tie_outs.invalid("currency_view", "Per-obligation opening relief requires a trace.")
     nodes = {node.id: node for node in trace.nodes}
+    missing = {
+        subject
+        for subject in opening_subjects
+        if previous is not None
+        and any(
+            f"{measure}:{subject}:{previous.key}" not in nodes
+            for measure in ("billed_cum", "revenue_cum")
+        )
+    }
+    new = _new_after_opening(session, source, previous, missing)
+    for subject in new:
+        assert previous is not None
+        for measure in ("billed_cum", "revenue_cum"):
+            node = nodes.get(f"{measure}:{subject}:{previous.key}")
+            if node is not None and (node.currency != row.currency or Decimal(node.value) != ZERO):
+                raise tie_outs.invalid(
+                    "currency_view", "New obligation has conflicting opening evidence."
+                )
+    opening_subjects = opening_subjects - set(new)
     facts: dict[str, Any] = {}
     formula = ZERO
     for subject in sorted(subjects | opening_subjects):
@@ -171,6 +251,7 @@ def calculate(
             "opening_revenue": str(revenue),
             "posted_revenue": str(recognized[subject]),
             "eligible_relief": str(contribution),
+            **({"opening_absence": new[subject]} if subject in new else {}),
         }
     result = min(max(ZERO, opening), max(ZERO, consumed), formula)
     return result, {
