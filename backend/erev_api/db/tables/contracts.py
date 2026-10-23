@@ -463,3 +463,28 @@ report_source_revision: Final = Table(
     Column("is_baseline", Boolean(), nullable=False),
     Column("document", JSONB(), nullable=False),
 )
+
+
+# T-CON-21/22: shared-estimate population and immutable record-time membership history.
+portfolio: Final = Table(
+    "portfolio",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("code", Text(), nullable=False),
+    Column("name", Text(), nullable=False),
+    Column("product_group", Text(), nullable=True),
+    Column("description", Text(), nullable=True),
+    *_sc_c_sc_m(),
+)
+portfolio_member: Final = Table(
+    "portfolio_member",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("portfolio_id", Uuid(), nullable=False),
+    Column("contract_id", Uuid(), nullable=False),
+    _timestamp("valid_from_known_at", nullable=False, now_default=True),
+    _timestamp("valid_to_known_at"),
+    *_sc_c(),
+)

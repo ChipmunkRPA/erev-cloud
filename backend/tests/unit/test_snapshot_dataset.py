@@ -15,16 +15,17 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from erev_api.db import tables
-from erev_api.db.tables import metadata
-from erev_api.db.transitions import TRANSITIONS
-from erev_api.domain.platform import snapshot_dataset as sd
-from erev_engine.canonical import canonical_bytes
 from hypothesis import given
 from hypothesis import strategies as st
 from sqlalchemy import ARRAY as sa_ARRAY
 from sqlalchemy import Column, LargeBinary, MetaData, Table, Text, Uuid
 from support.snapshots import immutability_classes
+
+from erev_api.db import tables
+from erev_api.db.tables import metadata
+from erev_api.db.transitions import TRANSITIONS
+from erev_api.domain.platform import snapshot_dataset as sd
+from erev_engine.canonical import canonical_bytes
 
 INV = sd.inventory()
 KNOWN_AT = datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC)
@@ -61,7 +62,7 @@ def test_class_totals_and_reasons_are_pinned() -> None:
         totals[rule.snapshot_class] = totals.get(rule.snapshot_class, 0) + 1
         assert rule.reason
     assert totals == {
-        sd.SnapshotClass.COPIED: 76,  # + migration_batch, migrated_legacy_row (main 065e7f65);
+        sd.SnapshotClass.COPIED: 78,  # + migration_batch, migrated_legacy_row (main 065e7f65);
         # + modification (T-CON-06; CTR-17 / D-98 140, revision 0068)
         # + migration_population_version, migration_population_obligation (04 rev 1.60, F-LMG)
         sd.SnapshotClass.REPLAY_REFERENCE: 3,
@@ -79,7 +80,7 @@ def test_class_totals_and_reasons_are_pinned() -> None:
     # (DIN-12, revision 0072)
     # Private contract navigation history is regenerated, never copied (0159).
     # AI call evidence and intents are regenerated per tenant (0147, 0150); never copied.
-    assert len(sd.PENDING) == 4
+    assert len(sd.PENDING) == 2
     assert sd.RULES["posting_attribution"].snapshot_class is sd.SnapshotClass.REGENERATED
     assert sd.RULES["release_group_processing"].snapshot_class is sd.SnapshotClass.REGENERATED
     for item in sd.PENDING.values():
@@ -210,7 +211,7 @@ def test_references_resolve_every_id_column_of_the_copied_tables() -> None:
     # item SSP-ENTITY-SCOPE-1, lane SECFIX-APR, revision 0123): the entities the provider of a
     # calculator run read, a requirement set (ruling R-98) = 211
     # Forecast input sets are regenerated; copied uploads must clear that reference.
-    assert len(refs) == len(INV.references) == 216
+    assert len(refs) == len(INV.references) == 218
     assert refs[("import_upload", "forecast_event_set_id")].target == "forecast_event_set"
     assert refs[("period_lock", "judgement_record_id")].target == "judgement_record"
     assert refs[("approval_request", "entity_ids")].target == "legal_entity"
@@ -329,7 +330,12 @@ def test_load_order_places_every_not_null_parent_first() -> None:
     # FIX-D1: the approval graphs now load before modification, so its ``approval_request_id`` is
     # inserted with the row (was deferred: ("approval_request_id", "applied_event_id")).
     assert INV.dataset("modification").deferred == ("applied_event_id",)
-    assert set(parents["contract"]) == {"legal_entity", "customer", "combination_group"}
+    assert set(parents["contract"]) == {
+        "legal_entity",
+        "customer",
+        "combination_group",
+        "portfolio",
+    }
 
 
 def test_approval_graphs_load_before_the_rows_that_freeze_their_reference() -> None:
@@ -799,6 +805,8 @@ def _frozen_columns(name: str) -> frozenset[str]:
     klass = IM_CLASSES[name]
     if klass == "IM-M":
         return frozenset()
+    if name == "portfolio_member":
+        return frozenset(columns - {"valid_to_known_at"})
     if klass == "IM-S":
         spec = TRANSITIONS[name]
         status = {spec.status_column} if spec.status_column is not None else set()
@@ -815,7 +823,9 @@ def test_immutability_classes_cover_the_copied_tables() -> None:
 
     assert set(IM_CLASSES) == set(sd.LOAD_ORDER)
     assert set(IM_CLASSES.values()) == {"IM-A", "IM-S", "IM-P", "IM-P child", "IM-M", "IM-X"}
-    assert all(name in TRANSITIONS for name, klass in IM_CLASSES.items() if klass == "IM-S")
+    assert {
+        name for name, klass in IM_CLASSES.items() if klass == "IM-S" and name not in TRANSITIONS
+    } == {"portfolio_member"}  # interval closure, not a status transition
     assert _IM_P_LIFECYCLE <= set(CONFIG_MUTABLE_COLUMNS)
     assert set(CONFIG_MUTABLE_COLUMNS) - _IM_P_LIFECYCLE == {
         "row_version",
@@ -863,7 +873,6 @@ def test_references_to_regenerated_pending_or_secret_targets_are_nulled_on_expor
                 assert reference.column not in dataset.nulled_on_export, reference
     assert set(INV.dataset("contract").nulled_on_export) == {
         "latest_computation_id",
-        "portfolio_id",
     }
     assert INV.dataset("source_record").nulled_on_export == ("sync_run_id",)
     assert INV.dataset("tenant_membership").nulled_on_export == ("invitation_token_sha256",)
@@ -903,7 +912,7 @@ def test_every_dataset_has_a_cutoff_rule_and_the_kinds_are_pinned() -> None:
         kinds[dataset.cutoff.kind] = kinds.get(dataset.cutoff.kind, 0) + 1
     assert kinds == {
         # + migration_batch, migrated_legacy_row; + T-MIG-04 / 05; + modification (CTR-17)
-        sd.CutoffKind.TIMESTAMP: 56,
+        sd.CutoffKind.TIMESTAMP: 58,
         sd.CutoffKind.EFFECTIVE: 12,
         sd.CutoffKind.PARENT: 8,
         sd.CutoffKind.NONE: 3,
@@ -2133,3 +2142,22 @@ def test_role_assignment_scope_keeps_the_load_check_invariant_and_never_flips_th
     assert refused.unrepresentable[0].startswith(f"role_assignment.entity_ids: {UUID(int=13)}")
     (row,) = refused.kept["role_assignment"]
     assert row["is_all_entities"] is False and row["entity_ids"] == [e_cut]  # never flipped
+
+
+def test_portfolio_snapshot_keeps_membership_as_known_without_future_closure():
+    from datetime import UTC, datetime, timedelta
+
+    at = datetime(2026, 10, 23, tzinfo=UTC)
+    member = {
+        "id": "one",
+        "created_at": at - timedelta(days=2),
+        "valid_from_known_at": at - timedelta(days=1),
+        "valid_to_known_at": at + timedelta(days=1),
+    }
+    dataset = INV.dataset("portfolio_member")
+    rows = sd.cutoff(
+        dataset, [member, {**member, "id": "late", "created_at": at + timedelta(days=1)}], at
+    )
+    assert rows == ({**member, "valid_to_known_at": None},)
+    assert member["valid_to_known_at"] == at + timedelta(days=1)
+    assert sd.cutoff(dataset, [member], at + timedelta(days=1)) == (member,)

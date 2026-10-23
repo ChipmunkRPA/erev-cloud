@@ -4429,6 +4429,16 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_portfolio__code (tenant_id, code)`.
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_portfolio_member__current (tenant_id, portfolio_id, contract_id) WHERE valid_to_known_at IS NULL`.
 
+Implemented by revision 0341. Composite tenant foreign keys connect membership to portfolio
+and contract, and connect contract/estimate.portfolio_id to portfolio. Membership intervals
+are nonempty and half-open; a parent-row lock serializes changes for overlap validation.
+An existing membership may only be closed once: its identity/start/creation facts cannot be
+changed and closed history cannot be reopened or deleted. A populated downgrade is refused.
+Snapshots copy both tables and references, excluding later-created/started memberships and
+removing a closure later than the requested record cutoff. The shared-estimate command and
+approval workflow is a separate, still outstanding implementation task.
+
+
 ### T-CON-23 `policy_override`
 
 - **Purpose.** Contract-level (C) or obligation-level (O) policy value with OVR approval (POLICIES.md §0.5, §0.6). **Not offered in release 1.0** (rev 1.322; the paragraph below the keys): the table and its code stay, and no row is created.

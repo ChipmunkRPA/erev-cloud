@@ -432,3 +432,29 @@ rolls back a failed calculation and preserves independent activation review; two
 explicit discount/likelihood workflows pass; two per-book resolution cases and 18 form cases
 pass, with scoped lint/types. API document and generated frontend types are refreshed. POL-015
 portfolio estimates and POL-231 lessor combination remain implementation gaps. No deployment.
+
+## October 23 portfolio implementation — storage foundation in progress
+
+Current-source audit: engine returns already accepts a portfolio RETURN_RATE pin and applies
+its rate to transferred units, but platform bundles always supply portfolios=() and omit
+portfolio estimate versions. Approval explicitly refuses estimates without contract_id.
+BREAKAGE selection is contract-only. These paths need integration; a registry flag alone is
+not sufficient. Do not mark shared estimates complete from the following storage work.
+
+Revision 0341 implements the specified portfolio and portfolio_member tables, tenant foreign
+keys, non-overlapping record-time intervals and once-only closure without history rewriting.
+The application role cannot delete membership history or change its identifying fields; the
+closure trigger also protects owner updates. Downgrade refuses populated records. Privacy
+classification is promoted from pending to implemented for these two tables.
+
+Snapshot inventory/order/reference resolution now includes both tables, retains contract and
+estimate portfolio references, and exports membership at the requested cutoff without future
+closure data. This is dataset-level coverage, not a populated end-to-end sandbox refresh proof.
+Necessary checks cover schema/document/privacy agreement, snapshot inventory/cutoff and
+membership ownership/history plus empty upgrade/downgrade and populated downgrade refusal.
+
+Next development: authorized portfolio/member commands and UI; reviewed shared estimate
+versions; member-specific application events and recomputation; retained input/source reporting;
+populated snapshot restoration and end-to-end reconciliation. The owner has been asked about
+local-versus-portfolio precedence and redemption-ratio versus total-quantity distribution.
+Neither choice is assumed to be approved. No deployment.

@@ -40,6 +40,8 @@ from erev_api.db.tables.contracts import (  # noqa: E402
     modification,
     obligation,
     policy_override,
+    portfolio,
+    portfolio_member,
     report_source_revision,
 )
 from erev_api.db.tables.engine_output import (  # noqa: E402
@@ -324,6 +326,8 @@ __all__ = [
     "pob_template",
     "pob_template_version",
     "policy_override",
+    "portfolio",
+    "portfolio_member",
     "posting_ack",
     "product",
     "product_bundle_component",

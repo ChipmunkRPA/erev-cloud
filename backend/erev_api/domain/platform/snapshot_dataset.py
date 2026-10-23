@@ -65,10 +65,10 @@ from typing import Any, Final
 from uuid import UUID
 
 import sqlalchemy as sa
-from erev_engine.canonical import canonical_bytes
 from sqlalchemy import LargeBinary, MetaData
 
 from erev_api.db.tables import metadata as model_metadata
+from erev_engine.canonical import canonical_bytes
 
 __all__ = [
     "ALIASES",
@@ -315,6 +315,8 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "related_party_group": _copied(_K.CONFIGURATION, "reference data: related parties"),
         "pob_template": _copied(_K.CONFIGURATION, "configuration: POB templates (SBX-03)"),
         "pob_template_version": _copied(_K.CONFIGURATION, "configuration versions (SBX-03)"),
+        "portfolio": _copied(_K.CONFIGURATION, "shared-estimate populations"),
+        "portfolio_member": _copied(_K.CONFIGURATION, "retained portfolio membership"),
         "product": _copied(_K.CONFIGURATION, "products (SBX-03)"),
         "product_bundle_component": _copied(_K.CONFIGURATION, "bundle components of products"),
         "ssp_book": _copied(_K.CONFIGURATION, "configuration: SSP books"),
@@ -563,8 +565,6 @@ PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
                 "capitalised cost identity (T-CON-15); payee is C3 (PRV-01)",
             ),
             _pending("cost_asset_version", _C.REGENERATED, _K.DERIVED, "CST", "engine state"),
-            _pending("portfolio", _C.COPIED, _K.CONFIGURATION, "CTR", "portfolios (T-CON-21)"),
-            _pending("portfolio_member", _C.COPIED, _K.CONFIGURATION, "CTR", "T-CON-22"),
         )
     )
 )
@@ -641,6 +641,7 @@ LOAD_ORDER: Final[tuple[str, ...]] = (
     "source_usage",
     "source_payment",
     "source_match",
+    "portfolio",
     "combination_group",
     "contract",
     # D-98 140-A3 F1 (F-SNP consent 2026-09-21; CTR-17): judgement_record before modification, so
@@ -650,6 +651,7 @@ LOAD_ORDER: Final[tuple[str, ...]] = (
     "event_submission",
     "contract_event",
     "combination_group_member",
+    "portfolio_member",
     "obligation",
     "contract_source_link",
     "contract_hold",
@@ -968,6 +970,8 @@ CUTOFF_RULES: Final[Mapping[str, CutoffRule]] = MappingProxyType(
         "source_payment": _CREATED,
         "source_match": _CREATED,
         "combination_group": _CREATED,
+        "portfolio": _CREATED,
+        "portfolio_member": CutoffRule(_TS, "valid_from_known_at"),
         "contract": _CREATED,
         "modification": _CREATED,
         "event_submission": _CREATED,
@@ -1159,8 +1163,6 @@ REBUILD_STEPS: Final[Mapping[tuple[str, str], str | None]] = MappingProxyType(
         # synthetic id is in the payload; MAIN DEFECT 2, (c)-QUALIFIED) and exports null
         ("source_record", "sync_run_id"): None,
         ("contract_event", "sync_run_id"): None,
-        ("contract", "portfolio_id"): None,
-        ("estimate", "portfolio_id"): None,
         # operational job rows of the source are not rebuilt
         ("import_upload", "job_id"): None,
         ("import_upload", "forecast_event_set_id"): None,
@@ -2036,6 +2038,14 @@ def cutoff(
         return tuple(rows)
     kept: list[Mapping[str, Any]] = []
     for row in rows:
+        if dataset.name == "portfolio_member":
+            if not _at_or_before(row.get("created_at"), known_at, "portfolio_member.created_at"):
+                continue
+            ended = row.get("valid_to_known_at")
+            if ended is not None and not _at_or_before(
+                ended, known_at, "portfolio_member.valid_to_known_at"
+            ):
+                row = {**row, "valid_to_known_at": None}
         value = row.get(rule.column)
         what = f"{dataset.name}.{rule.column}"
         if rule.kind is CutoffKind.TIMESTAMP:

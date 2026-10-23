@@ -160,8 +160,6 @@ UNBUILT_04_TABLES: frozenset[str] = frozenset(
         # pinned names; the table is now compared (ORM / migration / 04) like every built table.
         # "integration_connection", "sync_run" and "external_id_map" left this set with
         # 0072_din_12_integrations (DIN-12): 16 → 13 pinned names.
-        "portfolio",
-        "portfolio_member",
     }
 )
 

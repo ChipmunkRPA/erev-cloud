@@ -2417,7 +2417,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols("code name product_group description"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "portfolio_member",
@@ -2430,7 +2429,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "created_at created_by created_by_kind"
             ),
         },
-        status=Status.PENDING,
     ),
     _table(
         "policy_override",
