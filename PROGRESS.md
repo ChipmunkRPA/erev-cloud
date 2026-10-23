@@ -20,19 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Opening-disclosure source navigation — October 23, 2026
+## Native historical obligation openings — October 23, 2026
 
-- Amount contributors now offer internal links to original member histories/journals and
-  retained opening calculation nodes. Combined rows keep one amount with multiple source
-  links; unknown contributor kinds no longer render a button that does nothing.
-- Opening links resolve the original contract version to its actual calculation-trace ID.
-  Frozen openings use the authenticated historical version; an absent frozen version never
-  falls back to the current version. Source links share the source-detail entity filter.
-- Necessary validation: a public foreign-functional locked-opening report opens its linked
-  trace and proves the historical version, then reproduces saved rows. Three focused backend
-  cases, a rendered viewer case, existing link-route cases, TypeScript, scoped lint/types and
-  regenerated API schemas pass. Amounts, source bindings and journal calculations are unchanged.
-  No deployment; the broader implementation gaps remain open.
+- Native rollforward_balances accepts explicit opening_obligations alongside the frozen group
+  opening. It requires a complete current obligation population, nonnegative integer minor-unit
+  amounts and FIFO_WITHIN_POB. The amounts use the selected view's currency; the caller is
+  responsible for authenticating the original snapshot and source provenance.
+- Transaction and foreign-functional classification can use those original obligation balances
+  instead of restated ownership, capped by frozen group liability and actual period consumption.
+  Total revenue relief and other movement lines remain unchanged. Calls without the new input
+  preserve their existing group-cap-only behavior and do not establish historical POB ownership.
+- Thirteen focused native rollforward cases pass, including changed historical ownership at an
+  unchanged group total, incomplete/negative/unknown inputs, and functional classification.
+  Scoped lint/types pass. No deployment or posting changes.
+- This completes the calculation input path only: platform/native snapshot capture and automatic
+  handoff of authenticated per-obligation history remain unfinished. Existing public report
+  frozen-source recovery is separate; positive special-contract attribution remains guarded.
 
 ## Rollforward Other explanation — October 23, 2026
 

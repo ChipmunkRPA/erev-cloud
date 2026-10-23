@@ -589,3 +589,17 @@ not decide whether a host EAC represents its component or the entire combination
 - Necessary checks: functional/reporting public cells and saved reruns, combined transaction
   public cell/rerun, four focused backend cases, two viewer cases, TypeScript and scoped lint.
   No journal or recognition calculation changes; no deployment. Broader gaps remain open.
+
+## Opening-disclosure source navigation — October 23, 2026
+
+- Amount contributors now offer internal links to original member histories/journals and
+  retained opening calculation nodes. Combined rows keep one amount with multiple source
+  links; unknown contributor kinds no longer render a button that does nothing.
+- Opening links resolve the original contract version to its actual calculation-trace ID.
+  Frozen openings use the authenticated historical version; an absent frozen version never
+  falls back to the current version. Source links share the source-detail entity filter.
+- Necessary validation: a public foreign-functional locked-opening report opens its linked
+  trace and proves the historical version, then reproduces saved rows. Three focused backend
+  cases, a rendered viewer case, existing link-route cases, TypeScript, scoped lint/types and
+  regenerated API schemas pass. Amounts, source bindings and journal calculations are unchanged.
+  No deployment; the broader implementation gaps remain open.

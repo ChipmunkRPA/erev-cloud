@@ -696,3 +696,89 @@ def test_s15_inv_01_opening_plus_lines_equals_closing() -> None:
     liability = found.lines[CL]
     moved = sum(amount for code, amount in liability.items() if code not in ("OPENING", "CLOSING"))
     assert liability["OPENING"] + moved == liability["CLOSING"]
+
+
+def test_original_obligation_openings_replace_restated_ownership():
+    ctx, st, records = ex_15_b_context("FIFO_WITHIN_POB"), ex_15_b_state(), ex_15_b()
+    # The historical group held the same 5,000 total, but on delivery instead of services.
+    current = rollforward_balances(ctx, st, records, ENTITY, APRIL)
+    original = {DELIVERY: usd("5000.00"), SERVICES: 0}
+    retained = rollforward_balances(
+        ctx, st, records, ENTITY, APRIL, opening={CL: usd("5000.00")}, opening_obligations=original
+    )
+    assert current.revenue_from_opening_liability == usd("800.00")
+    assert retained.revenue_from_opening_liability == usd("5000.00")
+    assert retained.revenue_relief == current.revenue_relief
+    assert retained.balanced
+    for role, values in current.lines.items():
+        for code, amount in values.items():
+            if not code.startswith("REVENUE_FROM_"):
+                assert retained.lines[role][code] == amount
+    for bad in (
+        {DELIVERY: 1},
+        {**original, "UNKNOWN": 1},
+        {**original, SERVICES: -1},
+        {**original, SERVICES: True},
+    ):
+        with pytest.raises(ValueError, match="complete nonnegative"):
+            rollforward_balances(
+                ctx,
+                st,
+                records,
+                ENTITY,
+                APRIL,
+                opening={CL: usd("5000.00")},
+                opening_obligations=bad,
+            )
+
+
+def test_original_functional_opening_changes_only_relief_classification():
+    from types import SimpleNamespace as NS
+    from erev_engine.stages.s15_disclosures.functional_pob import classify
+
+    ctx = NS(txn_currency="EUR", entities={ENTITY: NS(functional_currency="USD")})
+    previous = NS(period_key=MARCH)
+    period = NS(period_key=APRIL, start_date=date(2026, 4, 1), end_date=date(2026, 4, 30))
+    own = [
+        NS(
+            subject_key=DELIVERY,
+            performing_entity=ENTITY,
+            principal_agent=NS(value="PRINCIPAL"),
+            opening=None,
+        )
+    ]
+    flow = on_event(1, date(2026, 4, 10), "200.00", DELIVERY)
+    target = NS(
+        entity=ENTITY,
+        subject_key=DELIVERY,
+        measure="revenue_cum",
+        period_key=APRIL,
+        amount_txn=usd("200.00"),
+        amount_functional=usd("220.00"),
+        txn_currency="EUR",
+        functional_currency="USD",
+    )
+    records = NS(
+        flows=[flow],
+        attribution={},
+        fx=NS(billing_attribution_sources=[], functional_targets=[target]),
+    )
+    lines = {
+        CL: {
+            "OPENING": usd("500.00"),
+            "REVENUE_FROM_OPENING_BALANCE": 0,
+            "REVENUE_FROM_OTHER_INCREASES": -usd("220.00"),
+        }
+    }
+    classify(
+        ctx,
+        records,
+        own,
+        ENTITY,
+        period,
+        previous,
+        lines,
+        opening_obligations={DELIVERY: usd("100.00")},
+    )
+    assert lines[CL]["REVENUE_FROM_OPENING_BALANCE"] == -usd("100.00")
+    assert lines[CL]["REVENUE_FROM_OTHER_INCREASES"] == -usd("120.00")

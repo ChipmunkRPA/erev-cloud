@@ -321,12 +321,16 @@ def rollforward_balances(
     *,
     view: str = TRANSACTION,
     opening: Mapping[str, int] | None = None,
+    opening_obligations: Mapping[str, int] | None = None,
 ) -> BalanceRollforward:
     """S15-R-03 to S15-R-07 lines of the balances ``entity`` presents for the group over
     ``period_key`` of its calendar, in ``view``.
 
     ``opening`` holds a previous lock snapshot's closing per balance role (S15-R-20), 0 for a role
     it does not hold; without it the opening is restated from the version.
+    ``opening_obligations`` supplies complete original POB liability amounts in this view's
+    minor units. The caller must authenticate their historical provenance. Absent this input,
+    the legacy group-cap-only behavior remains; it does not prove historical POB ownership.
     """
     if view not in VIEWS:
         raise ValueError(f"unknown rollforward view {view!r}; expected one of {', '.join(VIEWS)}")
@@ -345,6 +349,18 @@ def rollforward_balances(
         previous = ordered[index - 1]
     unit = group_entity_subject_key(st.group_code, entity)
     own = tuple(ob for ob in st.obligations if ob.contracting_entity == entity)
+    if opening_obligations is not None:
+        if (
+            opening is None
+            or set(opening_obligations) != {ob.subject_key for ob in own}
+            or any(type(amount) is not int or amount < 0 for amount in opening_obligations.values())
+        ):
+            raise ValueError(
+                "Historical obligation openings require a group opening "
+                "and complete nonnegative minor-unit amounts"
+            )
+        if ctx.policies.value(_POL_126, entity=entity, period=period_key) != _WITHIN_POB:
+            raise ValueError("Historical obligation openings require FIFO_WITHIN_POB")
     cutover = _cutover(own)
     lines = {balance: dict.fromkeys(BALANCE_LINES[balance], 0) for balance in BALANCES}
     memo = dict.fromkeys(MEMO_CAUSES, 0)
@@ -357,15 +373,52 @@ def rollforward_balances(
             if consumption == _WITHIN_POB:
                 from .functional_pob import classify
 
-                classify(ctx, records, own, entity, period, previous, lines)
+                if opening_obligations is None:
+                    classify(ctx, records, own, entity, period, previous, lines)
             elif consumption != _WITHIN_CONTRACT:
                 raise ValueError(f"{_POL_126} is {_WITHIN_CONTRACT} or {_WITHIN_POB} (POL-126)")
         else:
-            relief = _transaction(ctx, records, own, entity, unit, period, previous, cutover, lines)
+            relief = _transaction(
+                ctx,
+                records,
+                own,
+                entity,
+                unit,
+                period,
+                previous,
+                cutover,
+                lines,
+                classify_pob=opening_obligations is None,
+            )
             memo = _memo(ctx, records, own, period, cutover)
     if opening is not None:
         for balance in BALANCES:
             lines[balance][OPENING] = opening.get(balance, 0)
+        if opening_obligations is not None:
+            if functional:
+                from .functional_pob import classify
+
+                classify(
+                    ctx,
+                    records,
+                    own,
+                    entity,
+                    period,
+                    previous,
+                    lines,
+                    opening_obligations=opening_obligations,
+                )
+            else:
+                _within_obligations(
+                    records,
+                    own,
+                    entity,
+                    period.start_date,
+                    period.end_date,
+                    cutover,
+                    lines,
+                    opening_obligations=opening_obligations,
+                )
         # The retained closing replaces the restated opening. Its smaller liability cannot
         # fund more opening consumption than it presents; keep total relief unchanged.
         liability = lines[CONTRACT_LIABILITY]
@@ -402,6 +455,8 @@ def _transaction(
     previous: PeriodInput | None,
     cutover: date | None,
     lines: dict[str, dict[str, int]],
+    *,
+    classify_pob: bool = True,
 ) -> int:
     """The path attribution in the transaction currency (§15.2.2 ``rollforward_contract``)."""
     start, end = period.start_date, period.end_date
@@ -470,7 +525,8 @@ def _transaction(
     _captions(asset, closing, lines)
     consumption = ctx.policies.value(_POL_126, entity=entity, period=period.period_key)
     if consumption == _WITHIN_POB:
-        _within_obligations(records, own, entity, start, end, cutover, lines)
+        if classify_pob:
+            _within_obligations(records, own, entity, start, end, cutover, lines)
     elif consumption != _WITHIN_CONTRACT:
         raise ValueError(f"{_POL_126} is {_WITHIN_CONTRACT} or {_WITHIN_POB} (POL-126)")
     return relief
@@ -595,6 +651,8 @@ def _within_obligations(
     end: date,
     cutover: date | None,
     lines: dict[str, dict[str, int]],
+    *,
+    opening_obligations: Mapping[str, int] | None = None,
 ) -> None:
     """POL-126 ``FIFO_WITHIN_POB``: Σ min(opening liability, relief) per obligation, with the
     obligation-attributed billing of stage 10, capped by the liability revenue of the path."""
@@ -619,14 +677,20 @@ def _within_obligations(
             found[flow.subject_key] = found.get(flow.subject_key, 0) + signed
     formula = sum(
         min(
-            max(0, billed.get(subject, 0) - before.get(subject, 0)),
+            opening_obligations[subject]
+            if opening_obligations is not None
+            else max(0, billed.get(subject, 0) - before.get(subject, 0)),
             max(0, during.get(subject, 0)),
         )
         for subject in sorted(subjects)
     )
     liability = lines[CONTRACT_LIABILITY]
     consumed = -(liability[_FROM_OPENING] + liability[_FROM_OTHER])
-    from_opening = min(consumed, liability[OPENING], formula)
+    from_opening = (
+        min(max(0, consumed), max(0, liability[OPENING]), formula)
+        if opening_obligations is not None
+        else min(consumed, liability[OPENING], formula)
+    )
     liability[_FROM_OPENING] = -from_opening
     liability[_FROM_OTHER] = -(consumed - from_opening)
 

@@ -13,6 +13,23 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Native historical obligation openings — October 23, 2026
+
+- Native rollforward_balances accepts explicit opening_obligations alongside the frozen group
+  opening. It requires a complete current obligation population, nonnegative integer minor-unit
+  amounts and FIFO_WITHIN_POB. The amounts use the selected view's currency; the caller is
+  responsible for authenticating the original snapshot and source provenance.
+- Transaction and foreign-functional classification can use those original obligation balances
+  instead of restated ownership, capped by frozen group liability and actual period consumption.
+  Total revenue relief and other movement lines remain unchanged. Calls without the new input
+  preserve their existing group-cap-only behavior and do not establish historical POB ownership.
+- Thirteen focused native rollforward cases pass, including changed historical ownership at an
+  unchanged group total, incomplete/negative/unknown inputs, and functional classification.
+  Scoped lint/types pass. No deployment or posting changes.
+- This completes the calculation input path only: platform/native snapshot capture and automatic
+  handoff of authenticated per-obligation history remain unfinished. Existing public report
+  frozen-source recovery is separate; positive special-contract attribution remains guarded.
+
 ## Opening-disclosure source navigation — October 23, 2026
 
 - Amount contributors now offer internal links to original member histories/journals and

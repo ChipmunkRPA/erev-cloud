@@ -1,6 +1,6 @@
 """Native functional POL-126 classification using original document and revenue evidence."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from erev_engine.bundle import PeriodInput
@@ -19,6 +19,8 @@ def classify(
     period: PeriodInput,
     previous: PeriodInput | None,
     lines: dict[str, dict[str, int]],
+    *,
+    opening_obligations: Mapping[str, int] | None = None,
 ) -> None:
     from .rollforward import _entered
 
@@ -112,7 +114,12 @@ def classify(
         for subject in sorted(subjects):
             before = revenue(subject, previous.period_key, revenue_before[subject])
             end = revenue(subject, period.period_key, revenue_end[subject])
-            formula += min(max(0, billed[subject] - before), max(0, end - before))
+            available = (
+                opening_obligations[subject]
+                if opening_obligations is not None
+                else max(0, billed[subject] - before)
+            )
+            formula += min(available, max(0, end - before))
     relief = min(max(0, consumed), max(0, liability["OPENING"]), formula)
     liability[opening_code] = -relief
     liability[other_code] = -(consumed - relief)
