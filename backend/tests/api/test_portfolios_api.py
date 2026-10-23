@@ -10,7 +10,7 @@ from support import worlds
 from support.db import TestDatabase
 from support.http import call
 from support.principals import colleague, cookie_headers, member
-from support.reference import entity, get, holding, post
+from support.reference import assign, entity, get, holding, post
 
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
@@ -134,3 +134,55 @@ def test_portfolio_membership_workflow(
     headers = cookie_headers(maya.token, maya.csrf_token, key=True)
     headers["If-Match"] = rejoined.headers["etag"]
     assert call(app, "PUT", path, json=identity, headers=headers).status_code == 412
+
+    definition = {"element_code": "RETURNS", "estimate_kind": "RETURN_RATE", "method": "RATE"}
+    current_tag = updated.headers["etag"]
+    assert (
+        post(app, path + "/estimates", viewer, definition, if_match=current_tag).status_code == 403
+    )
+    assert (
+        post(app, path + "/estimates", hidden, definition, if_match=current_tag).status_code == 404
+    )
+    limited_member = colleague(maya.member.tenant_id, "portfolio-limited-writer")
+    assign(limited_member, "viewer")
+    limited = holding(
+        app, limited_member, "revenue_accountant", entity_ids=[UUID(other_entity["id"])]
+    )
+    assert (
+        post(app, path + "/estimates", limited, definition, if_match=current_tag).status_code == 404
+    )
+    defined = post(app, path + "/estimates", maya, definition, if_match=current_tag)
+    assert defined.status_code == 201, defined.text
+    assert defined.json()["portfolio_id"] == created.json()["id"]
+    assert defined.json()["contract_id"] is None
+    assert defined.json()["latest_version"] is None
+    assert get(app, defined.headers["location"], viewer).json() == defined.json()
+    assert get(app, defined.headers["location"], hidden).status_code == 404
+    listed = get(app, path + "/estimates", viewer, {"count": "true"})
+    assert listed.headers["X-Erev-Total-Count"] == "1"
+    assert listed.json()["items"] == [defined.json()]
+    assert get(app, path + "/estimates", hidden).status_code == 404
+    assert post(app, path + "/estimates", maya, definition, if_match=current_tag).status_code == 412
+    current_tag = get(app, path, maya).headers["etag"]
+    assert post(app, path + "/estimates", maya, definition, if_match=current_tag).status_code == 422
+    assert (
+        post(
+            app,
+            path + "/estimates",
+            maya,
+            {**definition, "estimate_kind": "EAC"},
+            if_match=current_tag,
+        ).status_code
+        == 422
+    )
+    clock.advance(timedelta(seconds=1))
+    removed = post(
+        app,
+        path + f"/members/{contract_id}/remove",
+        maya,
+        {"rationale": "End membership"},
+        if_match=current_tag,
+    )
+    assert removed.status_code == 200, removed.text
+    # Removing the last current member cannot reveal shared evidence to an excluded entity.
+    assert get(app, path + "/estimates", hidden).status_code == 404

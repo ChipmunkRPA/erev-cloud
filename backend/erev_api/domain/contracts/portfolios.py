@@ -4,16 +4,19 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, insert, select, update
+from sqlalchemy import Select, func, insert, select, update
 from sqlalchemy.orm import Session
 
 from erev_api.audit.writer import record_facts
 from erev_api.auth.dependencies import require_for_entity
+from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id
-from erev_api.db.tables import contract, portfolio, portfolio_member
-from erev_api.domain.contracts import repo
+from erev_api.db.tables import contract, estimate, portfolio, portfolio_member
+from erev_api.domain.contracts import estimates, repo
 from erev_api.problems import Problem
+from erev_api.schemas.estimates import EstimateOut
 from erev_api.schemas.portfolios import (
+    PortfolioEstimateIn,
     PortfolioIn,
     PortfolioMemberOut,
     PortfolioOut,
@@ -212,3 +215,96 @@ def change_member(
         .one()
     )
     return PortfolioMemberOut.model_validate(row)
+
+
+def require_estimate_scope(
+    session: Session, ctx: RequestContext, portfolio_id: UUID, permission: str
+) -> None:
+    """Shared estimate evidence requires every historical member's permission.
+
+    Comparing the retained population with the contract join detects RLS-hidden members.
+    Keeping former members in scope prevents removing one to reveal its shared evidence.
+    No population count or hidden contract identity is returned in a refusal.
+    """
+    get(session, portfolio_id)
+    expected = session.scalar(
+        select(func.count())
+        .select_from(portfolio_member)
+        .where(portfolio_member.c.portfolio_id == portfolio_id)
+    )
+    visible = session.execute(members(portfolio_id, history=True)).mappings().all()
+    if len(visible) != expected:
+        raise Problem("not-found")
+    require_for_entity(ctx, permission, None)
+    for entity_id in {row["contracting_entity_id"] for row in visible}:
+        require_for_entity(ctx, permission, entity_id)
+
+
+def get_estimate_definition(
+    session: Session, ctx: RequestContext, portfolio_id: UUID, estimate_id: UUID
+) -> EstimateOut:
+    require_estimate_scope(session, ctx, portfolio_id, "contract.read")
+    row = (
+        session.execute(
+            select(estimate).where(
+                estimate.c.id == estimate_id, estimate.c.portfolio_id == portfolio_id
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if row is None:
+        raise Problem("not-found")
+    return estimates.estimate_outs(session, [dict(row)])[0]
+
+
+def create_estimate_definition(
+    uow: UnitOfWork,
+    portfolio_id: UUID,
+    body: PortfolioEstimateIn,
+    *,
+    check_version: Callable[[int], None],
+) -> EstimateOut:
+    current = get(uow.session, portfolio_id, lock=True)
+    check_version(current.row_version)
+    require_estimate_scope(uow.session, uow.ctx, portfolio_id, WRITE)
+    # The response contains shared evidence too, including any existing version summaries.
+    require_estimate_scope(uow.session, uow.ctx, portfolio_id, "contract.read")
+    if (
+        uow.session.execute(
+            select(estimate.c.id).where(
+                estimate.c.portfolio_id == portfolio_id,
+                estimate.c.element_code == body.element_code,
+            )
+        ).first()
+        is not None
+    ):
+        raise Problem("validation-failed", "This portfolio already has that estimate code.")
+    estimate_id = new_id()
+    uow.session.execute(
+        insert(estimate).values(
+            tenant_id=uow.principal.tenant_id,
+            id=estimate_id,
+            portfolio_id=portfolio_id,
+            contract_id=None,
+            obligation_id=None,
+            estimate_kind=body.estimate_kind,
+            element_code=body.element_code,
+            method=body.method.value,
+            direction="INCREASE",
+            allocation_target="CONTRACT",
+            target_obligation_ids=[],
+            created_at=uow.now,
+            created_by=uow.principal.id,
+            created_by_kind=uow.principal.kind.value,
+        )
+    )
+    _touch(uow, portfolio_id)
+    record_facts(
+        uow,
+        action="estimate.create",
+        object_type="estimate",
+        ids=[estimate_id],
+        detail={"portfolio_id": str(portfolio_id), **body.model_dump(mode="json")},
+    )
+    return get_estimate_definition(uow.session, uow.ctx, portfolio_id, estimate_id)

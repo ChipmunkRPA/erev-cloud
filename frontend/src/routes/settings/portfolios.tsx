@@ -7,6 +7,7 @@ import { type GridColumn } from "../../components/data-grid/types";
 import { Banner } from "../../components/feedback/Banner";
 import { RefusalBanner } from "../../components/feedback/RefusalBanner";
 import { controlClass, Field } from "../../components/form/Field";
+import { Select } from "../../components/form/Select";
 import { Button } from "../../components/ui/Button";
 import { useAccess } from "../../lib/access";
 import { useCommand } from "../../lib/api/commands";
@@ -128,6 +129,7 @@ function PortfolioDetail({
         onReload={() => setRevision((value) => value + 1)}
       />
       <Members portfolio={current.data} />
+      <EstimateDefinitions portfolio={current.data} />
     </>
   );
 }
@@ -453,5 +455,132 @@ function MembershipForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
+  const access = useAccess();
+  const [code, setCode] = useState("");
+  const [kind, setKind] = useState<"RETURN_RATE" | "BREAKAGE">("RETURN_RATE");
+  const [method, setMethod] = useState<components["schemas"]["EstimateMethod"]>("RATE");
+  const [networkError, setNetworkError] = useState(false);
+  const command = useCommand({
+    method: "POST",
+    path: `${PATH}/${portfolio.id}/estimates`,
+    ifMatch: rowIfMatch(portfolio.row_version),
+    invalidates: [KEY],
+  });
+  type Estimate = components["schemas"]["EstimateOut"];
+  const columns: readonly GridColumn<Estimate>[] = [
+    {
+      id: "code",
+      header: label("code"),
+      kind: "text",
+      value: (e) => e.element_code,
+      sortKey: "element_code",
+    },
+    {
+      id: "kind",
+      header: label("estimateKind"),
+      kind: "text",
+      value: (e) => label(`kind.${e.estimate_kind}`),
+    },
+    {
+      id: "method",
+      header: label("estimateMethod"),
+      kind: "text",
+      value: (e) => label(`method.${e.method}`),
+    },
+  ];
+  return (
+    <section className="flex flex-col gap-3" aria-label={label("estimates")}>
+      <h2 className="text-heading-sm">{label("estimates")}</h2>
+      <p className="text-body-sm text-fg-2">{label("estimateDefinitionHelp")}</p>
+      <DataGrid<Estimate>
+        name="portfolio-estimates"
+        title={label("estimates")}
+        columns={columns}
+        countLabel={(count, formatted) =>
+          t("settings.portfolios.estimateCount", { count, formatted })
+        }
+        source={{
+          queryKey: queryKey("portfolios", "tenant", { id: portfolio.id, view: "estimates" }),
+          fetchPage: (cursor, sort) =>
+            fetchListPage<Estimate>(`${PATH}/${portfolio.id}/estimates`, { sort }, cursor),
+        }}
+        rowKey={(e) => e.id}
+        rowLabel={(e) => e.element_code}
+      />
+      {access.holdsAnywhere("estimate.create") ? (
+        <form
+          className="flex max-w-120 flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!code.trim() || command.pending) return;
+            setNetworkError(false);
+            void command
+              .submit({ element_code: code.trim(), estimate_kind: kind, method })
+              .then((outcome) => {
+                if (outcome.kind === "succeeded") setCode("");
+                if (outcome.kind === "network-error") setNetworkError(true);
+              });
+          }}
+        >
+          <RefusalBanner problem={command.problem} conflict={command.banner} />
+          {networkError ? <Banner tone="negative" title={label("networkError")} /> : null}
+          <Field name="portfolio-estimate-code" label={label("estimateCode")} required>
+            {(control) => (
+              <input
+                {...control}
+                className={controlClass(false)}
+                value={code}
+                disabled={command.pending}
+                onChange={(e) => setCode(e.target.value)}
+              />
+            )}
+          </Field>
+          <Field name="portfolio-estimate-kind" label={label("estimateKind")} required>
+            {(control) => (
+              <Select
+                control={control}
+                options={(["RETURN_RATE", "BREAKAGE"] as const).map((value) => ({
+                  value,
+                  label: label(`kind.${value}`),
+                }))}
+                value={kind}
+                onChange={setKind}
+                disabled={command.pending}
+              />
+            )}
+          </Field>
+          <Field name="portfolio-estimate-method" label={label("estimateMethod")} required>
+            {(control) => (
+              <Select
+                control={control}
+                options={(
+                  [
+                    "RATE",
+                    "EXPECTED_VALUE",
+                    "MOST_LIKELY_AMOUNT",
+                    "ENTERED_AMOUNT",
+                    "COST_BUILDUP",
+                  ] as const
+                ).map((value) => ({ value, label: label(`method.${value}`) }))}
+                value={method}
+                onChange={setMethod}
+                disabled={command.pending}
+              />
+            )}
+          </Field>
+          <Button
+            type="submit"
+            loading={command.pending}
+            disabledReason={code.trim() ? undefined : label("estimateCodeRequired")}
+          >
+            {label("createEstimate")}
+          </Button>
+        </form>
+      ) : null}
+    </section>
   );
 }

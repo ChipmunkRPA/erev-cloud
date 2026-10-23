@@ -170,3 +170,14 @@
 - Shared estimates are NOT complete: commands/UI, approval fan-out, member calculations,
   reporting and populated restore remain. Engine portfolio returns can be reused; breakage
   still selects contract-only estimates. Two estimation choices await the owner's response.
+
+
+## Material-right product defaults — October 23, 2026
+
+- POL-026 now initializes option entry from resolved product policy, using retained pins
+  when present. API omission resolves the common book default; explicit methods win.
+  Conflicting defaults require a choice. Saved immutable terms govern later calculations.
+- Public entry/rollback/activation and two explicit discount workflows pass; two resolution
+  and 18 UI cases pass, with scoped lint/types and regenerated API types. No deployment.
+- Remaining policy implementation: portfolio estimates (POL-015) and lessor combination
+  (POL-231). This supersedes POL-026 in the preceding reader audit.

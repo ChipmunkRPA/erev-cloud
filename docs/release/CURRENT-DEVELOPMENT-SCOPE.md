@@ -496,3 +496,24 @@ This closes populated portfolio/member restoration and isolation coverage noted 
 It does not establish shared-estimate application or restoration of portfolio estimate
 versions that the public authoring/approval workflow does not yet implement. Those calculation
 and reporting paths, along with the two owner estimation choices, remain outstanding.
+
+## October 23 shared-estimate definitions — authoring foundation implemented
+
+Portfolio detail now exposes shared estimate definitions for RETURN_RATE and BREAKAGE, with
+an explicit estimation method. Public nested list/get/create routes use the existing estimate
+table and estimate output shape. Creation requires a current portfolio ETag, rejects duplicate
+codes, records audit facts and advances the parent version. Lists support cursor paging,
+code search/sort and counts. The detail page exposes the definition form and list.
+
+Shared definition access requires contract.read for every retained member, including former
+members; creation additionally requires estimate.create for the same complete population.
+Hidden members cause a generic refusal without returning identities or counts. Removing the
+last current member cannot reveal historical shared-estimate evidence. Partial write scopes
+cannot create a shared definition even when the actor holds broader read permission.
+
+This is definition authoring only: version values, approval, application/recomputation and
+reporting are not yet enabled, and the UI explicitly states that boundary. No portfolio/local
+estimate precedence or breakage distribution choice has been assumed. Necessary verification:
+the populated portfolio API workflow covers definitions, duplicate/stale requests, full-member
+scope and historical-member protection; five UI cases plus frontend types/lint and scoped
+backend types/lint pass. No deployment.

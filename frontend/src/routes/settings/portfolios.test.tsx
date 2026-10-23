@@ -35,6 +35,9 @@ const member = {
 };
 function serve() {
   server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
     http.get(apiUrl("/api/v1/portfolios"), () =>
       HttpResponse.json({ items: [portfolio], next_cursor: null }),
     ),
@@ -157,4 +160,32 @@ it("shows portfolio and member history to a reader without editing controls", as
   expect(screen.queryByRole("button", { name: "Add member" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Save portfolio" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Remove member" })).toBeNull();
+});
+
+it("creates a shared definition with the portfolio version and leaves application unavailable", async () => {
+  serve();
+  let body: unknown;
+  let tag: string | null = null;
+  server.use(
+    http.post(apiUrl("/api/v1/portfolios/p1/estimates"), async ({ request }) => {
+      body = await request.json();
+      tag = request.headers.get("If-Match");
+      return HttpResponse.json({ id: "e1" }, { status: 201 });
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.change(await screen.findByLabelText(/^Estimate code/), {
+    target: { value: "RETURNS" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create estimate definition" }));
+  await waitFor(() =>
+    expect(body).toEqual({ element_code: "RETURNS", estimate_kind: "RETURN_RATE", method: "RATE" }),
+  );
+  expect(tag).toBe('"r3"');
+  await waitFor(() =>
+    expect((screen.getByLabelText(/^Estimate code/) as HTMLInputElement).value).toBe(""),
+  );
+  expect(
+    screen.getByText(/Version values, approval and calculation application are not yet available/),
+  ).toBeTruthy();
 });

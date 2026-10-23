@@ -1,10 +1,13 @@
 """Named shared-estimate populations and record-time membership commands."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from erev_api.enums import EstimateMethod
+from erev_api.schemas.estimates import Code
 from erev_api.schemas.roles import CODE_LENGTH
 from erev_api.schemas.users import LABEL_LENGTH, MEMO_LENGTH
 
@@ -44,3 +47,12 @@ class PortfolioMemberOut(BaseModel):
     valid_from_known_at: datetime
     valid_to_known_at: datetime | None
     portfolio_row_version: int
+
+
+class PortfolioEstimateIn(BaseModel):
+    """A shared-estimate definition, without contract-specific allocation targets."""
+
+    model_config = ConfigDict(extra="forbid")
+    element_code: Code
+    estimate_kind: Literal["RETURN_RATE", "BREAKAGE"]
+    method: EstimateMethod

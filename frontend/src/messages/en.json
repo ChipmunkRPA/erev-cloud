@@ -8011,5 +8011,21 @@
   "settings.portfolios.count.one": "{formatted} portfolio",
   "settings.portfolios.count.other": "{formatted} portfolios",
   "settings.portfolios.memberCount.one": "{formatted} membership",
-  "settings.portfolios.memberCount.other": "{formatted} memberships"
+  "settings.portfolios.memberCount.other": "{formatted} memberships",
+  "settings.portfolios.estimates": "Shared estimate definitions",
+  "settings.portfolios.estimateKind": "Estimate kind",
+  "settings.portfolios.estimateMethod": "Estimation method",
+  "settings.portfolios.estimateCode": "Estimate code",
+  "settings.portfolios.estimateCodeRequired": "Enter an estimate code.",
+  "settings.portfolios.createEstimate": "Create estimate definition",
+  "settings.portfolios.estimateDefinitionHelp": "Define a shared estimate for this portfolio. Version values, approval and calculation application are not yet available. Access requires permission for all current and former members.",
+  "settings.portfolios.kind.RETURN_RATE": "Return rate",
+  "settings.portfolios.kind.BREAKAGE": "Breakage",
+  "settings.portfolios.method.RATE": "Rate",
+  "settings.portfolios.method.EXPECTED_VALUE": "Expected value",
+  "settings.portfolios.method.MOST_LIKELY_AMOUNT": "Most likely amount",
+  "settings.portfolios.method.ENTERED_AMOUNT": "Entered amount",
+  "settings.portfolios.method.COST_BUILDUP": "Cost buildup",
+  "settings.portfolios.estimateCount.one": "{formatted} estimate definition",
+  "settings.portfolios.estimateCount.other": "{formatted} estimate definitions"
 }

@@ -29,10 +29,12 @@ from erev_api.api.lists import (
 )
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
-from erev_api.db.tables import contract, portfolio, portfolio_member
-from erev_api.domain.contracts import portfolios, queries
+from erev_api.db.tables import contract, estimate, portfolio, portfolio_member
+from erev_api.domain.contracts import estimates, portfolios, queries
 from erev_api.schemas.common import ListOut
+from erev_api.schemas.estimates import EstimateOut
 from erev_api.schemas.portfolios import (
+    PortfolioEstimateIn,
     PortfolioIn,
     PortfolioMemberCloseIn,
     PortfolioMemberIn,
@@ -236,4 +238,75 @@ def remove_member(
             check_version=lambda actual: assert_version(cmd.expected_version, actual),
         ),
         etag=lambda out: row_etag(out.portfolio_row_version),
+    )
+
+
+ESTIMATES = ListSpec(
+    resource="portfolio-estimates",
+    default_sort="element_code",
+    sort_keys={"id": estimate.c.id, "element_code": estimate.c.element_code},
+    filters={},
+    search_columns=(estimate.c.element_code,),
+)
+
+
+@router.get(
+    "/portfolios/{portfolio_id}/estimates",
+    operation_id="portfolio_estimates_list",
+    response_model=ListOut[EstimateOut],
+    responses=problem_responses(*READ_PROBLEMS),
+)
+def list_estimates(
+    portfolio_id: UUID, ctx: ReadContext, params: Params, response: Response
+) -> ListOut[EstimateOut]:
+    def read(session: Session) -> tuple[ListResult, list[EstimateOut]]:
+        portfolios.require_estimate_scope(session, ctx, portfolio_id, "contract.read")
+        result = paginate(
+            session,
+            select(estimate).where(estimate.c.portfolio_id == portfolio_id),
+            ESTIMATES,
+            params,
+        )
+        return result, estimates.estimate_outs(session, [dict(row) for row in result.items])
+
+    result, items = queries.read(ctx, read)
+    if result.total_count is not None:
+        response.headers[TOTAL_COUNT_HEADER] = result.total_count
+    return ListOut[EstimateOut](items=items, next_cursor=result.next_cursor)
+
+
+@router.get(
+    "/portfolios/{portfolio_id}/estimates/{estimate_id}",
+    operation_id="portfolio_estimates_get",
+    response_model=EstimateOut,
+    responses=problem_responses(*READ_PROBLEMS),
+)
+def get_estimate(portfolio_id: UUID, estimate_id: UUID, ctx: ReadContext) -> EstimateOut:
+    return queries.read(
+        ctx,
+        lambda session: portfolios.get_estimate_definition(session, ctx, portfolio_id, estimate_id),
+    )
+
+
+@router.post(
+    "/portfolios/{portfolio_id}/estimates",
+    operation_id="portfolio_estimates_create",
+    response_model=EstimateOut,
+    status_code=201,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def create_estimate(
+    portfolio_id: UUID, body: PortfolioEstimateIn, cmd: EditContext, deps: Deps
+) -> Response:
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: portfolios.create_estimate_definition(
+            uow,
+            portfolio_id,
+            body,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        ),
+        status_code=201,
+        location=lambda out: f"{API_PREFIX}/portfolios/{portfolio_id}/estimates/{out.id}",
     )

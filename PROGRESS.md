@@ -20,6 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Shared-estimate definitions — October 23, 2026
+
+- Portfolio page/API can create and list RETURN_RATE/BREAKAGE definitions with an explicit
+  method, parent-version protection and audit facts. Full retained-member read/write scope
+  protects shared evidence, including after all current members leave.
+- Populated API workflow and five UI cases plus scoped lint/types pass. Definition authoring
+  is available; values, approval, calculation application and reporting are still pending.
+  The UI states this boundary. No estimation-choice assumptions and no deployment.
+
 ## Portfolio management — October 23, 2026
 
 - Added public portfolio/member commands and Settings → Reference data → Portfolios.
@@ -31,16 +40,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Actual copy and LATEST refresh jobs now preserve populated member history; a successor
   sandbox membership edit leaves production unchanged. The focused database workflow passes.
   Two previously asked estimation choices still await the owner. No deployment.
-
-## Material-right product defaults — October 23, 2026
-
-- POL-026 now initializes option entry from resolved product policy, using retained pins
-  when present. API omission resolves the common book default; explicit methods win.
-  Conflicting defaults require a choice. Saved immutable terms govern later calculations.
-- Public entry/rollback/activation and two explicit discount workflows pass; two resolution
-  and 18 UI cases pass, with scoped lint/types and regenerated API types. No deployment.
-- Remaining policy implementation: portfolio estimates (POL-015) and lessor combination
-  (POL-231). This supersedes POL-026 in the preceding reader audit.
 
 ## Legacy FX-evidence refresh — October 23, 2026
 
