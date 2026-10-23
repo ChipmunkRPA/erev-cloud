@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Latest-production sandbox refresh — October 22, 2026
+
+- Added LATEST to the existing reset command and the Sandbox copies reset dialog. The worker
+  captures a new production seed at execution time, loads an editable successor, archives the
+  old sandbox only after successful loading, and moves the requester's sessions. The new seed
+  becomes the successor's future snapshot-reset baseline. Existing SNAPSHOT/EMPTY modes remain.
+- Current all-entity tenant.snapshot access in the production source is required both when
+  requesting and executing refresh, in addition to existing sandbox.reset and fresh MFA. The
+  source and requester must be active. A sandbox grant alone cannot read fresh production data.
+- Source writes are snapshot files/metadata and provenance; production business rows and existing
+  files remain unchanged. Export failure marks the new source snapshot FAILED and leaves the old
+  sandbox active; access revoked before execution refuses without creating the successor.
+- Necessary verification passed: three populated API/worker cases (new post-seed source data,
+  revoked source access, injected storage outage), two frontend reset/refresh cases, scoped
+  lint/types. OpenAPI and generated frontend types include LATEST. No deployment.
+- This completes the fresh-production refresh entry point identified in the previous checkpoint.
+  Foreign modification currency attribution and final release-candidate verification remain open.
+
 ## Editable sandbox periods after copy/reset — October 22, 2026
 
 - Implemented the owner's sandbox scope in the shared snapshot loader: periods previously opened
@@ -203,23 +221,6 @@ review and publish changes without PR accumulation, and do not deploy.
   both composite evidence packs and their audit/contract/export requirements; visibility checks
   distinguish the run-permission split from additional evidence-pack SQL predicates. The entire
   focused access test file now passes. No production permission policy was changed.
-  No deployment; other documented Reporting/repository gaps remain.
-
-## Configuration change retained reconstruction — October 22, 2026
-
-- New runs retain configuration subjects, approval requests/decisions, actor identities/names,
-  changed-field and test-evidence counts, simulation flags and resolved dates. Bound reruns
-  validate scope/filters, restore typed inputs and recompute author/approver separation and
-  displayed rows without current source reads. Request membership is captured.
-- Necessary verification passed: 56 focused access/source-binding cases and actual configuration
-  approval/report API and worker flow. A later rejected SSP request adds a fresh report row;
-  the saved report preserves its original three rows and identical output hash. Scoped lint/types
-  and migration 0317 IPE parity passed. Older OPEN runs retain new-evaluation behavior.
-- Three older permission tests fail because they assume the old report inventory/SQL shape
-  (test_the_reports_declare_their_permissions, test_a_declared_permission_is_held_at_its_scope,
-  test_a_run_is_visible_under_the_run_permission_of_its_report). All three also fail when executing
-  the preceding committed framework, so this feature does not introduce them. They remain an
-  explicit verification cleanup item; the full access test file is not claimed green.
   No deployment; other documented Reporting/repository gaps remain.
 
 ## Outstanding release verification

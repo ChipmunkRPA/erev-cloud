@@ -8,10 +8,13 @@ A reset deletes nothing: it creates a successor sandbox and archives the one it 
   ``sandbox.reset``; in a sandbox it needs a fresh TOTP step-up, a user principal and a reason of
   at least ten characters. Mode ``SNAPSHOT`` goes back to the sandbox's SEED snapshot, the one its
   own ``tenant.snapshot_loaded`` names: the server resolves it, and a caller that names a snapshot
-  must name that one. It defers ``SANDBOX_RESET`` in the sandbox, with the successor tenant
+  must name that one. Mode ``LATEST`` captures a new production snapshot when the worker starts,
+  requiring all-entity ``tenant.snapshot`` permission in the source at request and execution.
+  It defers ``SANDBOX_RESET`` in the sandbox, with the successor tenant
   pre-allocated, and refuses a second reset while one is queued or running.
 * :func:`reset_sandbox` is the job. (a) The successor: mode ``SNAPSHOT`` is the SBX-04 load of the
-  seed, driven through a job context of the SOURCE tenant as every load is; mode ``EMPTY`` is
+  seed, driven through a job context of the SOURCE tenant as every load is; ``LATEST`` exports
+  a new seed before that load; mode ``EMPTY`` is
   :func:`create_empty_sandbox`. (b) The old sandbox is set ``ARCHIVED`` in its own context, with
   ``tenant.sandbox_reset`` there and in the successor. (c) The requester's live sessions in the
   old sandbox move to the successor. Each step is its own transaction in one tenant context
@@ -58,6 +61,7 @@ __all__ = [
     "ACTION_RESET",
     "ACTION_RESET_REQUESTED",
     "MODE_EMPTY",
+    "MODE_LATEST",
     "MODE_SNAPSHOT",
     "PRODUCTION_RESET",
     "RESET_RUNNING",
@@ -72,9 +76,10 @@ __all__ = [
     "successor_code",
 ]
 
+MODE_LATEST: Final = "LATEST"
 MODE_SNAPSHOT: Final = "SNAPSHOT"
 MODE_EMPTY: Final = EMPTY_SANDBOX_PURPOSE  # "EMPTY"
-MODES: Final = (MODE_SNAPSHOT, MODE_EMPTY)
+MODES: Final = (MODE_SNAPSHOT, MODE_EMPTY, MODE_LATEST)
 # 04 §16.14 rev 1.125.
 ACTION_RESET_REQUESTED: Final = "tenant.sandbox_reset_requested"
 ACTION_RESET: Final = "tenant.sandbox_reset"
@@ -166,7 +171,7 @@ def parse_reset(params: Mapping[str, Any]) -> ResetParams:
     mode = params.get("mode")
     errors: list[ProblemError] = []
     if mode not in MODES:
-        errors.append(_invalid("mode", "PARAMS_INVALID", "SNAPSHOT or EMPTY."))
+        errors.append(_invalid("mode", "PARAMS_INVALID", "SNAPSHOT, LATEST or EMPTY."))
     raw = params.get("tenant_snapshot_id")
     snapshot_id: UUID | None = None
     if raw is not None:
@@ -174,7 +179,7 @@ def parse_reset(params: Mapping[str, Any]) -> ResetParams:
             snapshot_id = raw if isinstance(raw, UUID) else UUID(str(raw))
         except (TypeError, ValueError):
             errors.append(_invalid("tenant_snapshot_id", "PARAMS_INVALID", "a uuid is required."))
-    if mode == MODE_SNAPSHOT and raw is None:
+    if mode in (MODE_SNAPSHOT, MODE_LATEST) and raw is None:
         errors.append(_invalid("tenant_snapshot_id", sandboxes.RULE_SEED, SEED_REQUIRED))
     reason = params.get("reason")
     if not isinstance(reason, str) or not reason.strip():
@@ -209,6 +214,29 @@ def _sandbox_row(session: Session, tenant_id: UUID, *, lock: bool = False) -> Ma
     return dict(session.execute(statement).mappings().one())
 
 
+def require_refresh_source(source_id: UUID | None, user_id: UUID, *, at: datetime) -> None:
+    """A sandbox grant never grants access to fresh production data."""
+    from erev_api.db.session import DbContext, tenant_session
+    from erev_api.db.tables import app_user, tenant
+
+    if source_id is None:
+        raise Problem("precondition-failed", "This sandbox has no production source to refresh.")
+    actor = sandboxes.sandbox_actor(source_id, user_id, at=at)
+    if actor.permission_scopes.get("tenant.snapshot") != "*":
+        raise Problem("forbidden", "Refreshing requires snapshot access to all source entities.")
+    with tenant_session(
+        DbContext(tenant_id=source_id, user_id=user_id, entity_scope="*"), read_only=True
+    ) as session:
+        source = session.execute(
+            sa.select(tenant.c.kind, tenant.c.status).where(tenant.c.id == source_id)
+        ).one()
+        enabled = session.execute(
+            sa.select(app_user.c.status).where(app_user.c.id == user_id)
+        ).scalar_one()
+    if source != (TenantKind.PRODUCTION.value, TenantStatus.ACTIVE.value) or enabled != "ACTIVE":
+        raise Problem("forbidden", "The production source and requester must be active.")
+
+
 def request_reset(
     uow: UnitOfWork, *, mode: str, tenant_snapshot_id: UUID | None, reason: str
 ) -> tuple[UUID, JobOut]:
@@ -231,7 +259,20 @@ def request_reset(
     elif len(text) >= REASON_LENGTH.stop:
         errors.append(_invalid("reason", RULE_REASON, REASON_LONG))
     seed_id = tenant_snapshot_id
-    if mode == MODE_SNAPSHOT:
+    if mode not in MODES:
+        errors.append(_invalid("mode", "PARAMS_INVALID", "SNAPSHOT, LATEST or EMPTY."))
+    if mode == MODE_LATEST:
+        require_refresh_source(current["source_tenant_id"], principal.id, at=uow.now)
+        if tenant_snapshot_id is not None:
+            errors.append(
+                _invalid(
+                    "tenant_snapshot_id",
+                    sandboxes.RULE_SEED,
+                    "A latest-production refresh selects its own new snapshot.",
+                )
+            )
+        seed_id = new_id()
+    elif mode == MODE_SNAPSHOT:
         # the seed is the sandbox's own fact: a caller may name it, and then it must be the seed
         seed = sandboxes.sandbox_load_of(uow.session, current)
         if seed is None:
@@ -494,7 +535,11 @@ def _source_context(jc: JobContext, source_tenant_id: UUID) -> JobContext:
 
 
 def reset_sandbox(
-    jc: JobContext, params: ResetParams, *, heartbeat: Callable[[], None] | None = None
+    jc: JobContext,
+    params: ResetParams,
+    *,
+    heartbeat: Callable[[], None] | None = None,
+    refresh_snapshot: Callable[[JobContext, UUID, UUID], None] | None = None,
 ) -> ResetOutcome:
     """The ``SANDBOX_RESET`` job in the sandbox it supersedes (module docstring)."""
     from erev_api.auth import sessions
@@ -537,7 +582,13 @@ def reset_sandbox(
 
     # (a) the successor
     loaded: sandboxes.Loaded | None = None
-    if params.mode == MODE_SNAPSHOT:
+    if params.mode == MODE_LATEST:
+        require_refresh_source(source_id, requester, at=jc.clock.now())
+        if refresh_snapshot is None or params.tenant_snapshot_id is None:
+            raise RuntimeError("Latest-production refresh requires a snapshot exporter")
+        refresh_snapshot(_source_context(jc, source_id), params.tenant_snapshot_id, requester)
+        beat()
+    if params.mode in (MODE_SNAPSHOT, MODE_LATEST):
         assert params.tenant_snapshot_id is not None
         loaded = sandboxes.load_sandbox(
             _source_context(jc, source_id),

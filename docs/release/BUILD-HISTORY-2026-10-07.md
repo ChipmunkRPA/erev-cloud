@@ -12140,3 +12140,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   runs keep their original behavior. This report remains transaction-currency-only as specified;
   the change does not add functional allocation measures. Other documented Reporting/repository
   gaps remain open. No deployment.
+
+## Configuration change retained reconstruction — October 22, 2026
+
+- New runs retain configuration subjects, approval requests/decisions, actor identities/names,
+  changed-field and test-evidence counts, simulation flags and resolved dates. Bound reruns
+  validate scope/filters, restore typed inputs and recompute author/approver separation and
+  displayed rows without current source reads. Request membership is captured.
+- Necessary verification passed: 56 focused access/source-binding cases and actual configuration
+  approval/report API and worker flow. A later rejected SSP request adds a fresh report row;
+  the saved report preserves its original three rows and identical output hash. Scoped lint/types
+  and migration 0317 IPE parity passed. Older OPEN runs retain new-evaluation behavior.
+- Three older permission tests fail because they assume the old report inventory/SQL shape
+  (test_the_reports_declare_their_permissions, test_a_declared_permission_is_held_at_its_scope,
+  test_a_run_is_visible_under_the_run_permission_of_its_report). All three also fail when executing
+  the preceding committed framework, so this feature does not introduce them. They remain an
+  explicit verification cleanup item; the full access test file is not claimed green.
+  No deployment; other documented Reporting/repository gaps remain.

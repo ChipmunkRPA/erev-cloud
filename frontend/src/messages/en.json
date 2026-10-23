@@ -7069,6 +7069,7 @@
   "settings.sandbox.reset.consequence": "The current sandbox is archived and a new sandbox replaces it. No data is deleted.",
   "settings.sandbox.reset.mode.empty": "Empty workspace",
   "settings.sandbox.reset.mode.label": "Reset to",
+  "settings.sandbox.reset.mode.latest": "Latest production data (requires source snapshot access)",
   "settings.sandbox.reset.mode.snapshot": "Back to the copy taken on {knownAt}",
   "settings.sandbox.reset.reason": "Reason (required)",
   "settings.sandbox.restore.action": "Restore into a new sandbox",

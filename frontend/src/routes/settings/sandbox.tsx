@@ -915,7 +915,7 @@ function SandboxView({ me, tenantId, tenantName }: ViewProps) {
   );
 }
 
-type ResetMode = "SNAPSHOT" | "EMPTY";
+type ResetMode = "SNAPSHOT" | "EMPTY" | "LATEST";
 
 interface ResetDialogProps {
   /** `source_known_at` of the sandbox: the copy a reset can go back to, null in an empty sandbox. */
@@ -989,6 +989,7 @@ function ResetDialog({ knownAt, onClose, onStarted }: ResetDialogProps) {
                       }),
                     },
                   ]),
+              { value: "LATEST" as const, label: t("settings.sandbox.reset.mode.latest") },
               { value: "EMPTY" as const, label: t("settings.sandbox.reset.mode.empty") },
             ]}
             value={mode}

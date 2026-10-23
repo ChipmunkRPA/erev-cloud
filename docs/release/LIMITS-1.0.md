@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Latest-production sandbox refresh — October 22, 2026
+
+- Added LATEST to the existing reset command and the Sandbox copies reset dialog. The worker
+  captures a new production seed at execution time, loads an editable successor, archives the
+  old sandbox only after successful loading, and moves the requester's sessions. The new seed
+  becomes the successor's future snapshot-reset baseline. Existing SNAPSHOT/EMPTY modes remain.
+- Current all-entity tenant.snapshot access in the production source is required both when
+  requesting and executing refresh, in addition to existing sandbox.reset and fresh MFA. The
+  source and requester must be active. A sandbox grant alone cannot read fresh production data.
+- Source writes are snapshot files/metadata and provenance; production business rows and existing
+  files remain unchanged. Export failure marks the new source snapshot FAILED and leaves the old
+  sandbox active; access revoked before execution refuses without creating the successor.
+- Necessary verification passed: three populated API/worker cases (new post-seed source data,
+  revoked source access, injected storage outage), two frontend reset/refresh cases, scoped
+  lint/types. OpenAPI and generated frontend types include LATEST. No deployment.
+- This completes the fresh-production refresh entry point identified in the previous checkpoint.
+  Foreign modification currency attribution and final release-candidate verification remain open.
+
+
 ## Editable sandbox periods after copy/reset — October 22, 2026
 
 - Implemented the owner's sandbox scope in the shared snapshot loader: periods previously opened

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any, Final
+from uuid import UUID
 
 from erev_api.domain.platform import sandbox_reset
 from erev_api.enums import JobKind
@@ -31,7 +32,9 @@ def sandbox_reset_job(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     """``SANDBOX_RESET``: supersede the job's sandbox by a successor loaded from its seed snapshot
     or created empty, archive it and move the requester's sessions (05 SBX-07)."""
     parsed = sandbox_reset.parse_reset(params)
-    outcome = sandbox_reset.reset_sandbox(jc, parsed, heartbeat=jc.heartbeat)
+    outcome = sandbox_reset.reset_sandbox(
+        jc, parsed, heartbeat=jc.heartbeat, refresh_snapshot=_export_latest
+    )
     counts: dict[str, Any] = {"sessions_moved": outcome.sessions_moved}
     if outcome.loaded is not None:
         counts.update(
@@ -52,3 +55,72 @@ def sandbox_reset_job(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             "archived_tenant_id": str(outcome.archived_tenant_id),
         },
     )
+
+
+def _export_latest(jc: JobContext, snapshot_id: UUID, requester: UUID) -> None:
+    """Capture fresh source inputs in the source tenant; the reset job stays in the sandbox."""
+    from sqlalchemy import insert
+
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import tenant_snapshot
+    from erev_api.domain.platform import snapshot_job as export
+    from erev_api.domain.platform import snapshots
+    from erev_api.enums import PrincipalKind, RunStatus
+
+    known_at = jc.clock.now()
+    with jc.unit_of_work() as uow:
+        uow.session.execute(
+            insert(tenant_snapshot).values(
+                tenant_id=jc.tenant_id,
+                id=snapshot_id,
+                known_at=known_at,
+                purpose="SANDBOX_SEED",
+                status=RunStatus.QUEUED.value,
+                job_id=None,
+                created_at=uow.now,
+                created_by=requester,
+                created_by_kind=PrincipalKind.USER.value,
+            )
+        )
+        uow.audit(
+            action=snapshots.ACTION_REQUESTED,
+            object_type=snapshots.OBJECT_TYPE,
+            object_id=snapshot_id,
+            before=None,
+            after={"status": RunStatus.QUEUED.value},
+            detail={
+                "known_at": known_at.isoformat(),
+                "purpose": "SANDBOX_SEED",
+                "sandbox_reset_job_id": str(jc.job_id),
+                "requested_by": str(requester),
+            },
+        )
+        uow.commit()
+    try:
+        with jc.unit_of_work() as uow:
+            resolution = export.retention_policy_for(uow.session, known_at)
+            reader = export.DbSnapshotReader(
+                uow.principal.db_context,
+                engine_release=export.engine_release_of(current_release()),
+                retention=resolution.policy,
+                retention_refusal=resolution.refusal,
+                retention_unset=resolution.unset,
+            )
+            export.export_snapshot(
+                export.DbSnapshotRepository(uow),
+                reader,
+                export.writer_for(uow),
+                params=export.SnapshotParams(snapshot_id, known_at, "SANDBOX_SEED"),
+                heartbeat=jc.heartbeat,
+            )
+            uow.commit()
+    except Exception:
+        # The source snapshot must not remain queued after a failed export.
+        with jc.unit_of_work() as uow:
+            export.fail_snapshot(
+                export.DbSnapshotRepository(uow),
+                snapshot_id,
+                {"detail": "Latest-production sandbox refresh export failed."},
+            )
+            uow.commit()
+        raise

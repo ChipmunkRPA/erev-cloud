@@ -42509,12 +42509,13 @@
       },
       "TenantResetIn": {
         "additionalProperties": false,
-        "description": "``POST /tenant/reset`` (API-R-04 rev 1.125; BUILD_SPEC SNP-3; 05 SBX-07): back to the\nsandbox's seed snapshot (the server resolves it; ``tenant_snapshot_id``, when sent, must name\nit) or to an empty workspace (``tenant_snapshot_id`` absent or null), with the reason of the\nhigh-risk confirmation.",
+        "description": "``POST /tenant/reset`` (API-R-04 rev 1.125; BUILD_SPEC SNP-3; 05 SBX-07): back to the\nsandbox's seed snapshot (the server resolves it; ``tenant_snapshot_id``, when sent, must name\nit), latest production data (``LATEST``), or an empty workspace (``EMPTY``). LATEST and EMPTY\naccept no snapshot ID. LATEST requires current all-entity source snapshot access and captures\na new snapshot when its worker starts. All modes require a reason and fresh MFA.",
         "properties": {
           "mode": {
             "enum": [
               "SNAPSHOT",
-              "EMPTY"
+              "EMPTY",
+              "LATEST"
             ],
             "title": "Mode",
             "type": "string"

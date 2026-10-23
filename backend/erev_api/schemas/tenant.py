@@ -126,15 +126,16 @@ class TenantSandboxRequestedOut(JobOut):
     sandbox_tenant_id: uuid.UUID
 
 
-ResetMode = Literal["SNAPSHOT", "EMPTY"]
+ResetMode = Literal["SNAPSHOT", "EMPTY", "LATEST"]
 RESET_REASON_LENGTH = range(10, 2001)  # SB-R-05 minimum; the comment length of BR-PLT-08
 
 
 class TenantResetIn(BaseModel):
     """``POST /tenant/reset`` (API-R-04 rev 1.125; BUILD_SPEC SNP-3; 05 SBX-07): back to the
     sandbox's seed snapshot (the server resolves it; ``tenant_snapshot_id``, when sent, must name
-    it) or to an empty workspace (``tenant_snapshot_id`` absent or null), with the reason of the
-    high-risk confirmation."""
+    it), latest production data (``LATEST``), or an empty workspace (``EMPTY``). LATEST and EMPTY
+    accept no snapshot ID. LATEST requires current all-entity source snapshot access and captures
+    a new snapshot when its worker starts. All modes require a reason and fresh MFA."""
 
     model_config = ConfigDict(extra="forbid")
 

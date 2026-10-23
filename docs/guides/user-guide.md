@@ -674,7 +674,12 @@ A sandbox is a workspace of kind `SANDBOX`: it runs the same engine, it can neve
 - A person who was invited and had not accepted when the copy was taken is not a member of the copy: the invitation is shown there as removed, and an administrator of the copy can invite the person again.
 - Keep a stored backup: the same command with purpose `STORED_BACKUP` stores the snapshot without creating a sandbox; `GET /api/v1/tenant/snapshots` lists them. Purpose `SANDBOX_SEED`, like `SANDBOX_COPY`, asks the sandbox `name` and loads that sandbox in the same job.
 - Restore: `POST /api/v1/tenant/sandboxes` with a `SUCCEEDED` `tenant_snapshot_id` and a `name` creates a new sandbox from the stored snapshot. A restore never targets production.
-- Reset a sandbox: `POST /api/v1/tenant/reset` (`sandbox.reset`, with a fresh authenticator code) replaces the sandbox by a successor, from its seed snapshot (`mode` `SNAPSHOT`) or empty (`EMPTY`); the old one is archived and nothing is deleted. It answers 202 with the `SANDBOX_RESET` job. A production workspace answers 409 `production-reset-forbidden`.
+- Reset a sandbox: `POST /api/v1/tenant/reset` (`sandbox.reset`, with a fresh authenticator code) replaces the sandbox by a successor, from its seed snapshot (`mode` `SNAPSHOT`), latest production data (`LATEST`), or empty (`EMPTY`); the old one is archived and nothing is deleted. It answers 202 with the `SANDBOX_RESET` job. A production workspace answers 409 `production-reset-forbidden`.
+- Refresh from production: choose **Latest production data** in the Reset sandbox dialog. This
+  requires `tenant.snapshot` for all entities in the production source as well as sandbox reset
+  access. The worker captures a new snapshot when it starts, rechecks source access, and opens
+  previously opened periods in the replacement. The old sandbox remains active if export or
+  loading fails before replacement. The new snapshot becomes the replacement's reset seed.
 - Scenario workspaces (`scenario.use`) are sandboxes created from a production snapshot. Scenario creation, input publication, refresh and forecast runs are available through the API; deal previews remain unfinished.
 
 The Sandbox copies settings page is `/settings/sandbox`. In a production workspace it creates a sandbox copy and lists the sandboxes copied from the workspace and the stored snapshots, each with its restore into a new sandbox; in a sandbox it says what the workspace was copied from and offers the reset.

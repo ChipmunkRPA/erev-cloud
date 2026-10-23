@@ -40,6 +40,7 @@ from erev_api.db.tables import (
     approval_request,
     audit_event,
     contract_version,
+    customer,
     job,
     metadata,
     outbox_message,
@@ -67,7 +68,7 @@ from erev_api.jobs import registry
 from erev_api.jobs.context import JobRuntime
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, select, update
 from support.clock import FROZEN_AT
 from support.db import TestDatabase
 from support.factories import stamp_test_release
@@ -417,6 +418,100 @@ def test_reset_to_copy(
         "historical_source_commit",
     }, changed
     assert _business_rows(copied.production_id) == business_before
+
+
+@pytest.mark.parametrize("failure", [None, "revoked", "storage"])
+def test_reset_from_latest_production(
+    app: FastAPI,
+    files: LocalFileStore,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    runtime: JobRuntime,
+    failure: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = k03_castellan(app, keyring, clock, files)
+    copied = _copy(world.report.marcus, runtime, clock, f"Refresh production {failure}")
+    with tenant_session(_context(copied.production_id)) as session:
+        original = session.execute(select(customer).limit(1)).mappings().one()
+        customer_id, old_name = original["id"], original["name"]
+        session.execute(
+            update(customer)
+            .where(customer.c.id == customer_id)
+            .values(name="Updated after original sandbox copy")
+        )
+    cutoff_after(copied.production_id, clock)
+    marcus = enter_workspace(app, clock, copied.requester, copied.sandbox_id)
+    accepted = _reset(app, marcus, mode="LATEST", reason="Refresh current production inputs")
+    assert accepted.status_code == 202, accepted.text
+    successor_id = UUID(accepted.headers["X-Erev-Sandbox-Tenant-Id"])
+    if failure == "revoked":
+        with tenant_session(_context(copied.production_id)) as session:
+            session.execute(
+                update(tenant_membership)
+                .where(tenant_membership.c.user_id == marcus.member.user_id)
+                .values(status="SUSPENDED")
+            )
+    if failure == "storage":
+        from erev_api.domain.platform.snapshot_job import PutFileWriter
+
+        def unavailable(*args: Any, **kwargs: Any) -> None:
+            raise OSError("Storage unavailable during refresh")
+
+        monkeypatch.setattr(PutFileWriter, "write", unavailable)
+    business_before = _business_rows(copied.production_id)
+    ended = _run_reset(accepted, copied.sandbox_id, runtime)
+    if failure is not None:
+        assert ended["state"] == "FAILED", ended
+        assert _tenant(copied.sandbox_id)["status"] == "ACTIVE"
+        with tenant_session(_context(successor_id), read_only=True) as session:
+            assert session.execute(select(tenant.c.id)).first() is None
+        if failure == "revoked":
+            refused = _reset(app, marcus, mode="LATEST", reason="Try again without source access")
+            assert refused.status_code == 403, refused.text
+        else:
+            with tenant_session(_context(copied.production_id), read_only=True) as session:
+                assert (
+                    session.execute(
+                        select(tenant_snapshot.c.status).where(
+                            tenant_snapshot.c.id != copied.snapshot_id
+                        )
+                    ).scalar_one()
+                    == "FAILED"
+                )
+    else:
+        assert ended["state"] == "SUCCEEDED", ended["problem"]
+        assert _tenant(copied.sandbox_id)["status"] == "ARCHIVED"
+        assert (
+            _tenant(successor_id)["source_known_at"] > _tenant(copied.sandbox_id)["source_known_at"]
+        )
+        with tenant_session(_context(successor_id), read_only=True) as session:
+            assert (
+                session.execute(
+                    select(customer.c.name).where(customer.c.id == customer_id)
+                ).scalar_one()
+                == "Updated after original sandbox copy"
+            )
+        with tenant_session(_context(copied.sandbox_id), read_only=True) as session:
+            assert (
+                session.execute(
+                    select(customer.c.name).where(customer.c.id == customer_id)
+                ).scalar_one()
+                == old_name
+            )
+        (summary,) = _events(successor_id, sb.ACTION_LOADED)
+        assert summary["object_id"] != copied.snapshot_id
+        assert ended["result"]["counts"]["blocked_periods"] == 0
+        assert ended["result"]["counts"]["groups_recomputed"] == 1
+    business_after = _business_rows(copied.production_id)
+    original_files = {row["id"]: row for row in business_before.pop("file_object")}
+    after_files = {row["id"]: row for row in business_after.pop("file_object")}
+    assert {key: after_files[key] for key in original_files} == original_files
+    assert all(
+        after_files[key]["purpose"] == "SNAPSHOT_DATASET"
+        for key in after_files.keys() - original_files.keys()
+    )
+    assert business_after == business_before
 
 
 def test_reset_empty(

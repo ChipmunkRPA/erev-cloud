@@ -371,6 +371,48 @@ describe("SF-15:sandbox", () => {
     expect(screen.queryByRole("button", { name: "Reset sandbox" })).toBeNull();
   });
 
+  it("refresh submits the latest production mode", async () => {
+    const resets: unknown[] = [];
+    serve([]);
+    server.use(
+      http.post(apiUrl("/api/v1/tenant/reset"), async ({ request }) => {
+        resets.push(await request.json());
+        return HttpResponse.json(
+          {
+            ...job("QUEUED"),
+            kind: "SANDBOX_RESET",
+            mode: null,
+            sandbox_tenant_id: NEW_SANDBOX_ID,
+          },
+          {
+            status: 202,
+            headers: {
+              Location: `/api/v1/jobs/${JOB_ID}`,
+              "X-Erev-Sandbox-Tenant-Id": NEW_SANDBOX_ID,
+            },
+          },
+        );
+      }),
+      http.get(apiUrl(`/api/v1/jobs/${JOB_ID}`), () =>
+        HttpResponse.json({ ...job("RUNNING"), kind: "SANDBOX_RESET", mode: null }),
+      ),
+      http.get(apiUrl("/api/v1/session"), () => HttpResponse.json(SANDBOX_SESSION)),
+    );
+    renderSandbox(marcus({ active_membership_id: COPY.membership_id }), SANDBOX_SESSION);
+    fireEvent.click(await screen.findByRole("button", { name: "Reset sandbox" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Reset sandbox" });
+    fireEvent.click(within(dialog).getByRole("radio", {
+      name: "Latest production data (requires source snapshot access)",
+    }));
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Reason (required)" }), {
+      target: { value: "Refresh production inputs" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reset sandbox" }));
+    await waitFor(() => {
+      expect(resets).toEqual([{ mode: "LATEST", reason: "Refresh production inputs" }]);
+    });
+  });
+
   it("empty state copy", async () => {
     serve([]);
     renderSandbox(marcus({ memberships: [PRODUCTION] }));
