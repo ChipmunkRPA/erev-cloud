@@ -13,6 +13,20 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Opening-disclosure source navigation — October 23, 2026
+
+- Amount contributors now offer internal links to original member histories/journals and
+  retained opening calculation nodes. Combined rows keep one amount with multiple source
+  links; unknown contributor kinds no longer render a button that does nothing.
+- Opening links resolve the original contract version to its actual calculation-trace ID.
+  Frozen openings use the authenticated historical version; an absent frozen version never
+  falls back to the current version. Source links share the source-detail entity filter.
+- Necessary validation: a public foreign-functional locked-opening report opens its linked
+  trace and proves the historical version, then reproduces saved rows. Three focused backend
+  cases, a rendered viewer case, existing link-route cases, TypeScript, scoped lint/types and
+  regenerated API schemas pass. Amounts, source bindings and journal calculations are unchanged.
+  No deployment; the broader implementation gaps remain open.
+
 ## Opening-liability money-cell contributors — October 23, 2026
 
 - New transaction, functional and reporting runs retain pre-summary contributions for

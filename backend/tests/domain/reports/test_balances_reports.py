@@ -1259,6 +1259,17 @@ def test_functional_pob_report_uses_original_invoice_fx(
             for member in group["members"].values():
                 frozen = member["frozen_opening"]
                 assert frozen["version"] != member["version"]
+                trace_links = [
+                    link["href"]
+                    for link in items[0]["source_links"]
+                    if link["href"].startswith("/trace/")
+                ]
+                assert trace_links
+                for link in trace_links:
+                    trace_id = link.split("/trace/")[1].split("?")[0]
+                    trace = get(world.app, f"/api/v1/calc-traces/{trace_id}", world.maya)
+                    assert trace.status_code == 200, trace.text
+                    assert trace.json()["contract_version_id"] == frozen["version"]
                 original = world.place.scalar(
                     select(saved_run.c.source_binding).where(
                         saved_run.c.id == UUID(frozen["source_run_id"])

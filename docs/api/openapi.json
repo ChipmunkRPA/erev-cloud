@@ -15289,6 +15289,13 @@
             "title": "Object Type",
             "type": "string"
           },
+          "source_links": {
+            "items": {
+              "$ref": "#/components/schemas/ExplainCellSourceLinkOut"
+            },
+            "title": "Source Links",
+            "type": "array"
+          },
           "value": {
             "$ref": "#/components/schemas/MoneyOut"
           }
@@ -15371,6 +15378,25 @@
           "other_entities"
         ],
         "title": "ExplainCellOut",
+        "type": "object"
+      },
+      "ExplainCellSourceLinkOut": {
+        "description": "An authorized internal source of a retained contribution, without an allocated amount.",
+        "properties": {
+          "href": {
+            "title": "Href",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "href"
+        ],
+        "title": "ExplainCellSourceLinkOut",
         "type": "object"
       },
       "ExplainDrillOut": {

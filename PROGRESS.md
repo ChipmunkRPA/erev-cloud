@@ -20,19 +20,19 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Opening-liability money-cell contributors — October 23, 2026
+## Opening-disclosure source navigation — October 23, 2026
 
-- New transaction, functional and reporting runs retain pre-summary contributions for
-  opening liability, recognized revenue and revenue from opening. Summary and detail cells
-  explain saved amounts without consulting current calculations. Same-source reruns
-  recompute contributions and reject differences; legacy bindings are not backfilled.
-- Combined rows remain one monetary contribution with the complete original member set.
-  Retained POB evidence exposes opening/consumption caps, posted source IDs, opening trace
-  nodes and reporting rates. Contract-policy rows expose their retained balance contribution;
-  they do not claim obligation-level source detail. Reader entity restrictions still apply.
-- Necessary checks: functional/reporting public cells and saved reruns, combined transaction
-  public cell/rerun, four focused backend cases, two viewer cases, TypeScript and scoped lint.
-  No journal or recognition calculation changes; no deployment. Broader gaps remain open.
+- Amount contributors now offer internal links to original member histories/journals and
+  retained opening calculation nodes. Combined rows keep one amount with multiple source
+  links; unknown contributor kinds no longer render a button that does nothing.
+- Opening links resolve the original contract version to its actual calculation-trace ID.
+  Frozen openings use the authenticated historical version; an absent frozen version never
+  falls back to the current version. Source links share the source-detail entity filter.
+- Necessary validation: a public foreign-functional locked-opening report opens its linked
+  trace and proves the historical version, then reproduces saved rows. Three focused backend
+  cases, a rendered viewer case, existing link-route cases, TypeScript, scoped lint/types and
+  regenerated API schemas pass. Amounts, source bindings and journal calculations are unchanged.
+  No deployment; the broader implementation gaps remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 

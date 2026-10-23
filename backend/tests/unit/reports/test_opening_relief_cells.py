@@ -65,3 +65,36 @@ def test_old_binding_does_not_gain_new_evidence_or_fabricate_drill():
     assert KEY not in params.sources.evidence
     with pytest.raises(Problem, match="no retained"):
         cell(None, params, "summary:GBP", "revenue_from_opening")
+
+
+def test_opening_links_use_frozen_version_and_never_replace_absent_opening():
+    from erev_api.domain.reports.opening_relief_cells import source_links
+
+    old, current = str(UUID(int=11)), str(UUID(int=12))
+    source = {
+        "contracts": [str(A), str(B)],
+        "pob": {
+            "members": {
+                str(A): {
+                    "version": current,
+                    "frozen_opening": {"version": old},
+                    "obligations": {"A/O1": {"opening_nodes": ["billed_cum:A/O1:P01"]}},
+                },
+                str(B): {
+                    "version": current,
+                    "frozen_opening": {"version": None},
+                    "obligations": {"B/O1": {"opening_nodes": ["billed_cum:B/O1:P01"]}},
+                },
+            }
+        },
+    }
+    trace = str(UUID(int=13))
+    links = source_links(source, {old: trace, current: str(UUID(int=14))})
+    assert {item["href"] for item in links} == {
+        f"/contracts/{A}/history",
+        f"/contracts/{A}/journals",
+        f"/contracts/{B}/history",
+        f"/contracts/{B}/journals",
+        f"/trace/{trace}?node=billed_cum%3AA%2FO1%3AP01",
+    }
+    assert all(current not in item["href"] for item in links)

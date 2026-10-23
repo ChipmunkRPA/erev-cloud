@@ -14345,6 +14345,8 @@ export interface components {
       measure: string;
       /** Object Type */
       object_type: string;
+      /** Source Links */
+      source_links?: components["schemas"]["ExplainCellSourceLinkOut"][];
       value: components["schemas"]["MoneyOut"];
     };
     /**
@@ -14379,6 +14381,16 @@ export interface components {
       /** Other Entities */
       other_entities: components["schemas"]["ExplainCellEntityPartOut"][];
       value: components["schemas"]["MoneyOut"];
+    };
+    /**
+     * ExplainCellSourceLinkOut
+     * @description An authorized internal source of a retained contribution, without an allocated amount.
+     */
+    ExplainCellSourceLinkOut: {
+      /** Href */
+      href: string;
+      /** Label */
+      label: string;
     };
     /**
      * ExplainDrillOut

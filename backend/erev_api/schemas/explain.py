@@ -43,6 +43,13 @@ ExplainObjectType = Literal[
 ]
 
 
+class ExplainCellSourceLinkOut(BaseModel):
+    """An authorized internal source of a retained contribution, without an allocated amount."""
+
+    label: str
+    href: str
+
+
 class ExplainCellContributorOut(BaseModel):
     """One record behind a report cell (04 §16.11 ``GET /explain/report-runs/{id}/cell``)."""
 
@@ -52,6 +59,7 @@ class ExplainCellContributorOut(BaseModel):
     value: MoneyOut
     href: str
     details: list[str] = Field(default_factory=list)
+    source_links: list[ExplainCellSourceLinkOut] = Field(default_factory=list)
 
 
 class ExplainCellContributorsOut(BaseModel):

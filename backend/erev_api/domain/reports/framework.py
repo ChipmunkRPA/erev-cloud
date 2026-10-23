@@ -3250,6 +3250,9 @@ def explain_cell(
             source_entities = {
                 UUID(identity) for identity in item.pop("_source_set_entity_ids", [])
             }
+            source_links = item.pop("_source_set_links", [])
+            if source_links and source_entities <= reached:
+                item["source_links"] = source_links
             if source_details:
                 item["details"] = [
                     *item.get("details", []),

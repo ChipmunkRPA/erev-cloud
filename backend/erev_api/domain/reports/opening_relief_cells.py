@@ -7,11 +7,12 @@ explain that retained calculation; they do not allocate its net result to histor
 from decimal import Decimal
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
+from urllib.parse import quote
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract
+from erev_api.db.tables import calc_trace, contract
 from erev_api.problems import Problem
 
 from . import tie_outs
@@ -120,6 +121,48 @@ def _details(source: dict[str, Any]) -> list[str]:
     return result
 
 
+def opening_nodes(source: dict[str, Any]) -> list[tuple[str, str, str]]:
+    nodes: list[tuple[str, str, str]] = []
+    facts = source["pob"]
+    for detail in facts.get("members", {"group": facts}).values():
+        # An explicit absent frozen opening must never fall back to a newer version.
+        frozen = detail.get("frozen_opening")
+        version = frozen.get("version") if frozen is not None else detail.get("version")
+        if version is None:
+            continue
+        UUID(version)
+        for subject, obligation in sorted(detail.get("obligations", {}).items()):
+            nodes.extend((version, subject, node) for node in obligation.get("opening_nodes", []))
+    return nodes
+
+
+def source_links(source: dict[str, Any], traces: dict[str, str]) -> list[dict[str, str]]:
+    """Resolve original version IDs to actual trace IDs; they are distinct identities."""
+    links = []
+    for identity in source["contracts"]:
+        links.extend(
+            [
+                {
+                    "label": f"Contract history · {identity}",
+                    "href": f"/contracts/{identity}/history",
+                },
+                {
+                    "label": f"Posted journals · {identity}",
+                    "href": f"/contracts/{identity}/journals",
+                },
+            ]
+        )
+    for version, subject, node in opening_nodes(source):
+        if version in traces:
+            links.append(
+                {
+                    "label": f"Opening calculation · {subject} · {node}",
+                    "href": f"/trace/{traces[version]}?node={quote(node, safe='')}",
+                }
+            )
+    return list({link["href"]: link for link in links}.values())
+
+
 def cell(
     session: Session, params: ReportParams, row_key: str, column_key: str
 ) -> tuple[dict[str, str], list[dict[str, Any]]]:
@@ -133,6 +176,19 @@ def cell(
     ]
     if not selected:
         raise Problem("not-found", "No such opening-liability contribution.")
+    versions = {UUID(version) for _, source in selected for version, _, _ in opening_nodes(source)}
+    traces = (
+        {
+            str(row[0]): str(row[1])
+            for row in session.execute(
+                select(calc_trace.c.contract_version_id, calc_trace.c.id).where(
+                    calc_trace.c.contract_version_id.in_(versions)
+                )
+            )
+        }
+        if versions
+        else {}
+    )
     currency = selected[0][1]["currency"]
     items = []
     total = Decimal(0)
@@ -152,6 +208,7 @@ def cell(
                 "_entity_id": source["entity_id"],
                 "_source_set_entity_ids": source["source_entities"],
                 "_source_set_details": _details(source),
+                "_source_set_links": source_links(source, traces),
             }
         )
     return tie_outs.money(total, currency), items

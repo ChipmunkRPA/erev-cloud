@@ -46,7 +46,7 @@ function measureLabel(measure: string): string {
   return key === null ? measure : t(key);
 }
 
-export function sourceHref(contributor: ReportCellContributor): string | null {
+export function sourceHref(contributor: Pick<ReportCellContributor, "href">): string | null {
   // Internal business records and retained calculation traces; no arbitrary API/external links.
   if (/^\/trace\/[0-9a-f-]{36}(?:\?node=[A-Za-z0-9%_.!~*'()-]*)?$/i.test(contributor.href)) {
     return contributor.href;
@@ -209,11 +209,16 @@ export function CellContributors({
                         {objectLabel(contributor.object_type)}
                         <span className="block font-mono text-xs">{contributor.id}</span>
                       </Link>
-                    ) : (
+                    ) : figureOf(contributor) !== null ? (
                       <Button variant="link" onClick={() => openContributor(contributor)}>
                         {objectLabel(contributor.object_type)}
                       </Button>
-                    )}
+                    ) : <span>{objectLabel(contributor.object_type)}</span>}
+                    {contributor.source_links?.filter(link => sourceHref(link) !== null).map(link => (
+                      <Link key={link.href} to={link.href} className="mt-1 block text-xs text-accent underline break-all" onClick={() => onClose(false)}>
+                        {link.label}
+                      </Link>
+                    ))}
                   </td>
                   <td className="py-1 pe-2 text-fg-2">
                     {measureLabel(contributor.measure)}

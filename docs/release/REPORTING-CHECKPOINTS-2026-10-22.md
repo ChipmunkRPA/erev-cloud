@@ -575,3 +575,17 @@ not decide whether a host EAC represents its component or the entire combination
   functional report verifies the marker/control output and identical saved-row replay.
   This adds visible explanations, not complete general-purpose money-cell attribution.
   No deployment; remaining functional gaps stay open.
+
+## Opening-liability money-cell contributors — October 23, 2026
+
+- New transaction, functional and reporting runs retain pre-summary contributions for
+  opening liability, recognized revenue and revenue from opening. Summary and detail cells
+  explain saved amounts without consulting current calculations. Same-source reruns
+  recompute contributions and reject differences; legacy bindings are not backfilled.
+- Combined rows remain one monetary contribution with the complete original member set.
+  Retained POB evidence exposes opening/consumption caps, posted source IDs, opening trace
+  nodes and reporting rates. Contract-policy rows expose their retained balance contribution;
+  they do not claim obligation-level source detail. Reader entity restrictions still apply.
+- Necessary checks: functional/reporting public cells and saved reruns, combined transaction
+  public cell/rerun, four focused backend cases, two viewer cases, TypeScript and scoped lint.
+  No journal or recognition calculation changes; no deployment. Broader gaps remain open.
