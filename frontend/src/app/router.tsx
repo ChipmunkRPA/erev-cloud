@@ -471,7 +471,9 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     id: "SF-08:disclosures",
     path: "/reports/disclosures",
     handle: { sf: "SF-08", screen: "SF-08:disclosures", titleKey: "reports.disclosures.title" },
-    lazy: async () => ({ Component: (await import("../routes/reports/disclosures")).DisclosureRegister }),
+    lazy: async () => ({
+      Component: (await import("../routes/reports/disclosures")).DisclosureRegister,
+    }),
   },
   {
     id: "SF-17:scenarios",
@@ -483,7 +485,9 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     id: "SF-17",
     path: "/reports/forecasts",
     handle: { sf: "SF-17", screen: "SF-17", titleKey: "reports.forecasts.title" },
-    lazy: async () => ({ Component: (await import("../routes/reports/forecasts")).ForecastRunsPage }),
+    lazy: async () => ({
+      Component: (await import("../routes/reports/forecasts")).ForecastRunsPage,
+    }),
   },
   {
     // SCREENS_B RT-32 SF-08:report Report view (RV-01 to RV-14).
@@ -936,6 +940,14 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     },
     lazy: async () => ({
       Component: (await import("../routes/settings/related-party-groups")).RelatedPartyGroupsScreen,
+    }),
+  },
+  {
+    id: "SF-15:portfolios",
+    path: "/settings/portfolios",
+    handle: { sf: "SF-15", screen: "SF-15:portfolios", titleKey: "settings.portfolios.title" },
+    lazy: async () => ({
+      Component: (await import("../routes/settings/portfolios")).PortfoliosScreen,
     }),
   },
   {

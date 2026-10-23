@@ -458,3 +458,26 @@ versions; member-specific application events and recomputation; retained input/s
 populated snapshot restoration and end-to-end reconciliation. The owner has been asked about
 local-versus-portfolio precedence and redemption-ratio versus total-quantity distribution.
 Neither choice is assumed to be approved. No deployment.
+
+## October 23 portfolio management — implemented
+
+The public API and Settings → Reference data → Portfolios now support creating and editing
+named portfolios, searching contracts to join, ending current memberships with a reason, and
+viewing retained membership history. Both portfolio and member lists use cursor pagination
+and optional counts. Commands serialize on the portfolio row, require its current ETag and
+write audit facts. Membership changes require estimate.create for the contract's entity;
+contract RLS also filters member reads and counts. Historical joins are never overwritten.
+The UI retains unsaved metadata after a version conflict and offers an explicit latest-value
+reload. Read-only users can inspect the population and history without editing controls.
+
+Necessary verification: one populated public API workflow covers create/update, joining,
+closure/rejoin, stale and missing ETags, hidden-entity reads/counts/writes, read-only users,
+cross-tenant access, audit facts and an unchanged computation head. Four UI workflows cover
+creation, join/remove requests, history, stale-edit retention and read-only access. The 24
+route checks, frontend type/lint and scoped backend type/lint checks pass. The route inventory
+also now lists four previously implemented screens omitted from its expectation. Generated
+OpenAPI/types include the new routes; existing API path definitions remain unchanged.
+
+This completes population management only. Shared estimate approval/application, per-member
+calculation/reporting and populated snapshot restoration remain. The two previously asked
+estimation choices remain unapproved. No deployment or accounting-signoff gate is introduced.

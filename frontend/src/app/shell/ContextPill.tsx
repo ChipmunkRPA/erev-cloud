@@ -382,6 +382,7 @@ const REFERENCE_DATA_SCREENS: ReadonlySet<string> = new Set([
   "SF-15:customers",
   "SF-15:customer",
   "SF-15:related-party-groups",
+  "SF-15:portfolios",
   "SF-15:products",
   "SF-15:product",
 ]);

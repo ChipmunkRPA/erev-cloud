@@ -120,6 +120,7 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
         "relatedPartyGroups",
         ["contract.read"],
       ),
+      settingsPage("SF-15:portfolios", "/settings/portfolios", "portfolios", ["contract.read"]),
       settingsPage("SF-15:products", "/settings/products", "products", ["contract.read"]),
     ],
   },

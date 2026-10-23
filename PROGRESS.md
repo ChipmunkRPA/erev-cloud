@@ -20,15 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Portfolio storage foundation — October 23, 2026
+## Portfolio management — October 23, 2026
 
-- Revision 0341 adds named portfolios and retained member intervals, tenant foreign keys,
-  overlap prevention, once-only closure and populated-downgrade protection.
-- Snapshot datasets include both tables and references; record cutoffs omit future closure.
-  Schema/privacy, dataset and focused database checks cover this foundation.
-- Shared estimates are NOT complete: commands/UI, approval fan-out, member calculations,
-  reporting and populated restore remain. Engine portfolio returns can be reused; breakage
-  still selects contract-only estimates. Two estimation choices await the owner's response.
+- Added public portfolio/member commands and Settings → Reference data → Portfolios.
+  Create/edit, search/add, reasoned exit and retained history are available with pagination.
+- Parent ETags, audit facts and contract/entity permissions protect writes; reads/counts omit
+  hidden members. Stale metadata edits stay visible until the user explicitly reloads.
+- Populated API workflow, four UI cases, 24 route checks and scoped lint/types pass; existing
+  computation head is unchanged. Shared estimate application and populated restore remain.
+  Two previously asked estimation choices still await the owner. No deployment.
 
 ## Material-right product defaults — October 23, 2026
 

@@ -159,3 +159,14 @@
   approved-rate and mixed-period API workflows, plus retained reconstruction and scoped lint/types.
 - Multi-event functional allocation and actual per-event posted deltas remain open; this is
   incremental calculation evidence, not completion of that larger feature.
+
+
+## Portfolio storage foundation — October 23, 2026
+
+- Revision 0341 adds named portfolios and retained member intervals, tenant foreign keys,
+  overlap prevention, once-only closure and populated-downgrade protection.
+- Snapshot datasets include both tables and references; record cutoffs omit future closure.
+  Schema/privacy, dataset and focused database checks cover this foundation.
+- Shared estimates are NOT complete: commands/UI, approval fan-out, member calculations,
+  reporting and populated restore remain. Engine portfolio returns can be reused; breakage
+  still selects contract-only estimates. Two estimation choices await the owner's response.
