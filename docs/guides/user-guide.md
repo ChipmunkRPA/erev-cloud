@@ -1099,3 +1099,8 @@ For functional/reporting views, a reconciled zero group opening gives zero openi
 while retaining actual posted income and its line identities, including contracting-entity rows
 with agent obligations or another performing entity. Positive-opening special attribution still
 requires the original sources described above; zero does not imply historical member ownership.
+
+If an existing contract's report requests recomputation for missing original attribution, recompute
+the contract and run a new report. Recalculation now saves the newer evidence even when business
+inputs are unchanged. It preserves historical calculations and does not duplicate unchanged ledger
+postings. Re-exporting an older saved report continues to use that report's original sources.

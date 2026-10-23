@@ -264,11 +264,10 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Zero-opening special-contract disclosure — October 23, 2026
+## POB evidence refresh for existing contracts — October 23, 2026
 
-- Functional/reporting POB calculations now admit zero-opening contracting-entity rows for
-  agents and cross-entity performers, retaining signed posted revenue and line identities.
-  A verified zero group cap requires no invented historical attribution or opening trace.
-- Positive openings retain special-source restrictions; unknown posting subjects still refuse.
-  Eleven focused cases and scoped types/lint pass. Other contract/reassessment gaps remain.
-- Partial-credit checkpoint archived. No deployment.
+- Current bundles now declare evidence revision 2, so unchanged monetary inputs do not reuse
+  revision-1 calculations lacking original document/line POB evidence. Original history stays intact.
+- Populated recompute creates fresh evidence with zero new postings and unchanged income;
+  repetition reuses the new result. Two codec/hash/accounting cases and scoped lint pass.
+- Zero-opening checkpoint archived. No deployment or database migration.

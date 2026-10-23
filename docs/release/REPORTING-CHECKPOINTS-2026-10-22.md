@@ -436,3 +436,12 @@
   and gaps in CURRENT-DEVELOPMENT-SCOPE.md.
 - Negative redistribution pending; shared-line checkpoint archived.
 - No accounting-rule change or deployment.
+
+## Zero-opening special-contract disclosure — October 23, 2026
+
+- Functional/reporting POB calculations now admit zero-opening contracting-entity rows for
+  agents and cross-entity performers, retaining signed posted revenue and line identities.
+  A verified zero group cap requires no invented historical attribution or opening trace.
+- Positive openings retain special-source restrictions; unknown posting subjects still refuse.
+  Eleven focused cases and scoped types/lint pass. Other contract/reassessment gaps remain.
+- Partial-credit checkpoint archived. No deployment.

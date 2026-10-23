@@ -23,6 +23,8 @@ are unfinished.
 
 Implemented for complete retained principal/same-entity sources:
 - Public transaction, functional and reporting views, retained policies and original-source reruns.
+- Existing-contract recomputation refreshes revision-1 evidence to revision 2 once, even when
+  monetary inputs are unchanged. Original saved records remain immutable; new reports use fresh sources.
 - Original functional invoice/credit values and exact source-population checks, including a credit
   for only part of the original invoice. Full transaction cancellation preserves functional FX
   residuals; no source disappears merely because its net amount is zero.
@@ -1314,3 +1316,22 @@ without reading a historical trace, reject unknown subjects, and continue to rej
 openings. Eleven focused POB/frozen/range-translation cases pass, with scoped types/lint. No
 posting changes, database migration or deployment. Combined-component quantity/removal/term
 reassessment remains unfinished; this change does not alter reviewed combination decisions.
+
+## October 23 existing-contract POB evidence refresh
+
+The original document/line attribution implementation changed the retained source graph after
+revision 1 was introduced, but bundle assembly still declared revision 1. Consequently unchanged
+business inputs could reuse a succeeded computation instead of persisting the new sources that
+Reporting requires. Current bundles now declare evidence_revision=2. This changes the retained
+input identity once, not the accounting rules, and leaves old bundle decoding/defaults unchanged.
+No original input/output evidence is backfilled or overwritten. Users recompute the contract and
+run a new report; old saved reports keep their original sources and methods.
+
+Necessary verification: a populated foreign-currency group is stabilized under revision 1, then
+recomputed with current assembly. The new computation has a different identity/input hash, posts
+zero additional lines, and leaves cumulative income unchanged. A repeated current recomputation
+returns the same new ID; the original evidence row remains byte-for-byte equivalent as read from
+the database. Two codec/identity cases cover absent legacy revision and revision 1 -> 2, preserved
+old hashes, changed CV-25/attribution identities, typed roundtrip, and equal accounting views.
+The populated case and both codec cases pass; scoped lint passes. Temporary database only,
+no deployment or schema migration. Special-source and contract-reassessment gaps remain open.

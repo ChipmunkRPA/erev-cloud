@@ -1094,3 +1094,61 @@ def test_close_refreshes_legacy_head_without_fx_evidence(
     assert repeated["status"] == "SUCCEEDED", str(repeated)
     assert _mark(world, group_id) == (None, None)
     assert _revenue(world, contract_id) == before
+
+
+def test_recompute_refreshes_pob_evidence_revision_once_without_posting_again(
+    app, keyring, clock, files, monkeypatch
+):
+    assert bundles.EVIDENCE_REVISION == 2
+    with monkeypatch.context() as legacy:
+        legacy.setattr(bundles, "EVIDENCE_REVISION", 1)
+        world, contract_id, group_id = _august_run_done(app, keyring, clock, files, monkeypatch)
+        prior = None
+        for _ in range(3):
+            with world.place.uow() as uow:
+                result = compute_job.compute_group(uow, group_id)
+                assert result.status is ComputationStatus.SUCCEEDED
+                identity = result.computation["id"]
+                uow.commit()
+            if prior == identity:
+                break
+            prior = identity
+        else:
+            pytest.fail("Original revision did not reach an idempotent input")
+    before = _revenue(world, contract_id)
+    with world.place.uow() as uow:
+        original_evidence = dict(
+            uow.session.execute(
+                select(computation_evidence).where(
+                    computation_evidence.c.contract_computation_id == identity
+                )
+            )
+            .mappings()
+            .one()
+        )
+        refreshed = compute_job.compute_group(uow, group_id)
+        assert refreshed.status is ComputationStatus.SUCCEEDED
+        fresh_id = refreshed.computation["id"]
+        assert fresh_id != identity
+        assert refreshed.computation["input_sha256"] != result.computation["input_sha256"]
+        uow.commit()
+    assert _revenue(world, contract_id) == before
+    assert _computations(world, group_id)[-1][1] == 0
+    with world.place.uow() as uow:
+        repeated = compute_job.compute_group(uow, group_id)
+        assert repeated.status is ComputationStatus.SUCCEEDED
+        assert repeated.computation["id"] == fresh_id
+        assert (
+            dict(
+                uow.session.execute(
+                    select(computation_evidence).where(
+                        computation_evidence.c.contract_computation_id == identity
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            == original_evidence
+        )
+        uow.commit()
+    assert _revenue(world, contract_id) == before

@@ -365,3 +365,18 @@ def test_decoder_refuses_invalid_decimal_evidence(value: str) -> None:
 def test_decoder_refuses_missing_bundle_as_a_codec_error() -> None:
     with pytest.raises(ValueError, match="bundle is not an object"):
         decode_input(b'{"evidence_format":1}')
+
+
+def test_pob_evidence_revision_two_preserves_revision_one_history_and_accounting() -> None:
+    old = dataclasses.replace(_computable(), evidence_revision=1)
+    old_bytes = encode_input(old)
+    old_hash = old.sha256()
+    current = dataclasses.replace(old, evidence_revision=2)
+    assert current.sha256() != old_hash
+    assert normalised_input_sha256(current) != normalised_input_sha256(old)
+    assert attribution_input_sha256(current) != attribution_input_sha256(old)
+    assert sha256_hex(cv25_view(current)) == current.sha256()
+    assert decode_input(encode_input(current)) == current
+    assert decode_input(old_bytes) == old
+    assert decode_input(old_bytes).sha256() == old_hash
+    assert l1_sha256(output_mapping(compute(current))) == l1_sha256(output_mapping(compute(old)))
