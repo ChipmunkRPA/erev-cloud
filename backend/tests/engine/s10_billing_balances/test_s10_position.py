@@ -939,7 +939,8 @@ def test_s10_inv_08_performing_entity_holds_no_balance() -> None:
     assert _net_position(state, "FY2026-P01") == usd("1000.00") - usd("3000.00")
 
 
-def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sign():
+@pytest.mark.parametrize("credit_amount", ["3.00", "1.00"])
+def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sign(credit_amount):
     from erev_engine.bundle import FxRateInput
     from erev_engine.stages import s12_fx_entities
     from erev_engine.stages.state import RateIndex
@@ -971,7 +972,7 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
         {
             "credit_memo_number": "CM-SHARED",
             "invoice_number": "SHARED",
-            "amount": Decimal("3.00"),
+            "amount": Decimal(credit_amount),
             "issue_date": credit_date,
         },
     )
@@ -1003,19 +1004,36 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
         trace = tb.build(root_measures={})
         assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
         results.append(fx)
+        if retained:
+            retained_trace = trace
     with_sources, without_sources = results
     assert with_sources.layer_movements == without_sources.layer_movements
     assert with_sources.functional_targets == without_sources.functional_targets
     assert without_sources.billing_disclosure_targets == ()
     targets = with_sources.billing_disclosure_targets
     assert len(targets) == 3
-    assert sum(target.amount_txn for target in targets) == 0
-    # The invoice is USD 3.01, the credit USD 3.00; the deterministic residual is retained.
-    assert {target.subject_key: target.amount_functional for target in targets} == {
-        O1: 1,
-        O2: 0,
-        O3: 0,
-    }
+    assert sum(target.amount_txn for target in targets) == (0 if credit_amount == "3.00" else 200)
+    expected = {O1: 1, O2: 0, O3: 0} if credit_amount == "3.00" else {O1: 67, O2: 67, O3: 67}
+    assert {target.subject_key: target.amount_functional for target in targets} == expected
+    from types import SimpleNamespace
+    from erev_api.domain.reports.opening_pob_functional_nodes import read
+
+    nodes = {node.id: node for node in retained_trace.nodes}
+    for target in targets:
+        functional, revenue, sources = read(
+            nodes,
+            subject=target.subject_key,
+            period=SimpleNamespace(key="FY2026-P01", end=date(2026, 1, 31)),
+            txn_currency="EUR",
+            currency="USD",
+            billed=Decimal(target.amount_txn) / 100,
+            revenue=Decimal(0),
+        )
+        assert functional == Decimal(expected[target.subject_key]) / 100
+        assert revenue == 0
+        assert (
+            len(sources) == 4
+        )  # Both the invoice and credit, even if their transaction net is zero.
 
 
 @pytest.mark.parametrize("second_date", [None, date(2026, 1, 15), date(2026, 2, 15)])

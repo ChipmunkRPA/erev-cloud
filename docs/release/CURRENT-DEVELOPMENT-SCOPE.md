@@ -15,6 +15,43 @@ refresh from production must preserve isolation and allow experimentation.
 
 ## Reporting implementation status
 
+### Opening-liability POB attribution — current consolidated status, October 23
+
+The dated sections below are checkpoints; this current summary supersedes their earlier blanket
+statements that functional/reporting, native foreign or ordinary partial-amount credit memos
+are unfinished.
+
+Implemented for complete retained principal/same-entity sources:
+- Public transaction, functional and reporting views, retained policies and original-source reruns.
+- Original functional invoice/credit values and exact source-population checks, including a credit
+  for only part of the original invoice. Full transaction cancellation preserves functional FX
+  residuals; no source disappears merely because its net amount is zero.
+- Direct multi-line invoices and nonnegative cumulative increments of shared/mixed invoice lines,
+  with original dates/rates and partial opening-period admission.
+- Native S15 functional POB classification, preserving total revenue and all posting targets.
+- Reporting period deltas against one original range opening, with retained average rates.
+- Combined group totals with complete member sets and one group cap; no member ownership invented.
+- Public lock-time opening recovery from authenticated original report bindings. This is distinct
+  from the still-incomplete native frozen per-obligation snapshot history.
+
+Remaining implementation/evidence:
+- Negative redistribution caused by cumulative largest-remainder rounding: a presentation/source
+  choice is pending; do not assign negative changes to positive invoice FX weights.
+- Agent/cross-entity attribution and acquired/baseline openings with complete original sources.
+- Native frozen per-obligation opening history; combined/locked foreign special histories require
+  the missing connected evidence. A smaller frozen group cap alone does not prove POB ownership.
+- Credit populations where only a subset of a source document belongs to the admitted position,
+  if such a retained lifecycle population is encountered. This is **not** a normal partial-amount
+  credit memo, which already uses credited-invoice weights and has been verified.
+
+Focused partial-credit audit: a EUR 3 invoice at USD 3.01 and a EUR 1 credit at USD 1.00 yield
+USD 0.67 on each of three obligations (USD 2.01 total), with EUR 0.66/0.67/0.67 transaction
+quantities. Both document sources survive in every public-reader result. The existing full-credit
+case retains the USD 0.01 residual when transaction balances net to zero. Connected trace replay
+passes, and layer movements/ordinary posting targets match execution without disclosure evidence.
+These two necessary cases verify existing behavior; no new accounting or posting rule was added.
+
+
 ### Rollforward Other explanation threshold — implemented October 23
 
 The rollforward now reads `close.rollforward_other_threshold_ratio` and retains its value

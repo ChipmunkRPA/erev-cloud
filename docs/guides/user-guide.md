@@ -1089,3 +1089,8 @@ of the document's cumulative allocation, preserving its rounding rather than ind
 rounding each line. If a later line reduces an earlier obligation's allocated amount, source-based
 FX redistribution is not yet supported; the report explains the missing complete sources instead
 of inventing that amount. Whole-invoice amounts are never duplicated across line sources.
+
+A credit memo for part of an invoice uses the original credited-invoice allocation and its own
+functional amount. Both invoice and credit remain in the source set, including when they fully
+cancel in transaction currency but leave a functional FX residual. This ordinary partial credit
+is supported; a missing subset of an admitted source population is a separate limitation.
