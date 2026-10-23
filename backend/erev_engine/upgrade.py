@@ -422,7 +422,12 @@ def cv25_view(bundle: InputBundle, *, engine_version: str | None = None) -> dict
         item.name: getattr(bundle, item.name) for item in dataclasses.fields(bundle)
     }
     del view["known_at"]
+    if bundle.evidence_revision is None:
+        del view["evidence_revision"]
+    view["contracts"] = tuple(item.hash_view() for item in bundle.contracts)
     view["estimate_versions"] = tuple(item.hash_view() for item in bundle.estimate_versions)
+    view["ssp_versions"] = tuple(item.hash_view() for item in bundle.ssp_versions)
+    view["posted"] = tuple(item.hash_view() for item in bundle.posted)
     if engine_version is not None:
         view["engine_version"] = engine_version
     return view
@@ -442,6 +447,8 @@ def attribution_view(bundle: InputBundle) -> dict[str, object]:
     }
     view["engine_version"] = ""
     view["format_version"] = 0
+    if bundle.evidence_revision is None:
+        del view["evidence_revision"]
     return view
 
 

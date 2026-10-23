@@ -12,6 +12,18 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
+from support.billing_lines import checkpoint_bundle
+from support.bundles import (
+    book,
+    booking_line,
+    contract,
+    entity,
+    event,
+    group,
+    minimal_contract,
+    product,
+)
+
 from erev_engine import ENGINE_VERSION, compute
 from erev_engine.bundle import EstimateVersionInput, InputBundle
 from erev_engine.canonical import sha256_hex
@@ -34,17 +46,6 @@ from erev_engine.upgrade import (
     raw_digest,
     representation_diff,
     transform_chain,
-)
-from support.billing_lines import checkpoint_bundle
-from support.bundles import (
-    book,
-    booking_line,
-    contract,
-    entity,
-    event,
-    group,
-    minimal_contract,
-    product,
 )
 
 # A computable stored-style bundle: the same answer-key checkpoint the stage-01 ledger tests load
@@ -132,6 +133,25 @@ def test_round_trip_of_a_stored_computation_reproduces_the_output_hash() -> None
     assert decoded == original and decoded.sha256() == original.sha256()
     # Re-execution of the decoded bundle reproduces the stored output hash (RCP-28 L0).
     assert compute(decoded).sha256() == compute(original).sha256()
+
+
+def test_evidence_revision_refreshes_persistence_without_changing_accounting() -> None:
+    original = _computable()
+    old_mapping = dict(input_mapping(encode_input(original)))
+    old_mapping.pop("evidence_revision")
+    restored = bundle_from_mapping(old_mapping)
+    assert restored == original
+    assert restored.sha256() == original.sha256()
+    assert sha256_hex(cv25_view(restored)) == restored.sha256()
+    assert compute(restored).sha256() == compute(original).sha256()
+
+    refreshed = dataclasses.replace(restored, evidence_revision=1)
+    assert refreshed.sha256() != original.sha256()
+    assert sha256_hex(cv25_view(refreshed)) == refreshed.sha256()
+    assert decode_input(encode_input(refreshed)) == refreshed
+    assert l1_sha256(output_mapping(compute(refreshed))) == l1_sha256(
+        output_mapping(compute(original))
+    )
 
 
 def test_payload_scalar_types_survive_the_round_trip() -> None:

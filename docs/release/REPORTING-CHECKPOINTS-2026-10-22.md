@@ -131,3 +131,17 @@
   workflows and ten frontend cases pass, with scoped lint/types. No posting-rule change or deployment.
 - BBR reporting currency (0334) and waterfall calendar columns (0333) checkpoints moved to
   REPORTING-CHECKPOINTS-2026-10-22.md; current scope remains in CURRENT-DEVELOPMENT-SCOPE.
+
+## Close-variance offsetting effects — October 22, 2026
+
+- Retain contract rows whose nonzero replay effects offset to zero, including repeated runs
+  of one driver. Retain driver summary rows when opposing contract contributions net to zero.
+  Unchanged replays still render empty; section totals remain the original net amounts.
+- Drill evidence includes signed intermediate effects and event references. The cell reader
+  checks each retained effect population against its contract/driver amount before displaying it;
+  original source/hash/entity checks remain. New bindings pin offset details; older bound runs
+  preserve their original row population and evidence without the additive details works.
+- Migration 0330 documents the presentation scope. Necessary checks cover native replay/export
+  compatibility, authored offset witnesses, contributor reads, corrupt effects, catalogue parity
+  and scoped types/lint. No engine calculation, event grouping or deployment changed.
+- Individual amounts within a consecutive same-driver event run remain an implementation gap.

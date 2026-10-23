@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import threading
 import time
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -53,6 +53,7 @@ from erev_api.config import Settings
 from erev_api.db.tables import (
     approval_request,
     combination_group,
+    computation_evidence,
     contract,
     contract_computation,
     exception_item,
@@ -62,7 +63,7 @@ from erev_api.db.tables import (
     subledger_posting,
 )
 from erev_api.domain.close import gates
-from erev_api.domain.contracts import compute_job, fx_input_freshness, period_ends
+from erev_api.domain.contracts import bundles, compute_job, fx_input_freshness, period_ends
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import out_of_period_register as register
 from erev_api.enums import ComputationStatus, ComputationTrigger
@@ -1030,3 +1031,66 @@ def _close_repairs_stale_rates(
         )
         facts = gates.close_run_facts(uow.session, scope, known_at=uow.now)
         assert facts is not None and facts.inputs_changed == ()
+
+
+def test_close_refreshes_legacy_head_without_fx_evidence(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unchanged legacy FX calculation must not remain permanently stale after upgrade."""
+    with monkeypatch.context() as legacy:
+        legacy.setattr(fx_input_freshness, "capture", lambda bundle: None)
+        legacy.setattr(bundles, "EVIDENCE_REVISION", None)
+        world, contract_id, group_id = _august_run_done(app, keyring, clock, files, monkeypatch)
+        for _ in range(2):
+            with world.place.uow() as uow:
+                computed = compute_job.compute_group(
+                    uow, group_id, trigger=ComputationTrigger.FX_REPUBLISH
+                )
+                assert computed.status is ComputationStatus.SUCCEEDED
+                uow.commit()
+    state = worlds.period_state(world, AVM_US, AUGUST)
+    entity_id = UUID(str(state["entity"]["id"]))
+    with world.place.uow() as uow:
+        assert group_id in fx_input_freshness.stale_groups(
+            uow.session, entity_id=entity_id, book_code="ASC606", through=date(2026, 8, 31)
+        )
+    with world.place.uow() as uow:
+        legacy_head = uow.session.scalar(
+            select(combination_group.c.head_computation_id).where(
+                combination_group.c.id == group_id
+            )
+        )
+    before = _revenue(world, contract_id)
+    repaired = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=AUGUST)
+    assert repaired["status"] == "SUCCEEDED", str(repaired)
+    assert _revenue(world, contract_id) == before
+    assert _mark(world, group_id) == (None, None)
+    with world.place.uow() as uow:
+        assert group_id not in fx_input_freshness.stale_groups(
+            uow.session, entity_id=entity_id, book_code="ASC606", through=date(2026, 8, 31)
+        )
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(computation_evidence.c.fx_inputs).where(
+                    computation_evidence.c.contract_computation_id == legacy_head
+                )
+            )
+            is None
+        )  # Original history was not rewritten with today's inputs.
+        assert (
+            uow.session.scalar(
+                select(combination_group.c.head_computation_id).where(
+                    combination_group.c.id == group_id
+                )
+            )
+            != legacy_head
+        )
+    repeated = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=AUGUST)
+    assert repeated["status"] == "SUCCEEDED", str(repeated)
+    assert _mark(world, group_id) == (None, None)
+    assert _revenue(world, contract_id) == before

@@ -697,6 +697,8 @@ class InputBundle:
     # (book_code, entity_code, subject_key, entry_kind, account_role, clearing_purpose or "",
     #  period_key, origin_period_key or "", posting_class)
     posted: tuple[PostedAmountInput, ...]
+    # Persistence evidence evolves independently of monetary rules. Omitted by old bundles.
+    evidence_revision: int | None = None
 
     def sha256(self) -> str:
         """CV-25: SHA-256 of the canonical bundle without ``known_at``; each estimate version
@@ -707,6 +709,8 @@ class InputBundle:
         ``reason_code`` only when set, S14-R-27; its ``rate_refs`` only when present, S14-R-28)."""
         view = {item.name: getattr(self, item.name) for item in fields(self)}
         del view["known_at"]
+        if self.evidence_revision is None:
+            del view["evidence_revision"]  # Preserve historical CV-25 hashes.
         view["contracts"] = tuple(item.hash_view() for item in self.contracts)
         view["estimate_versions"] = tuple(item.hash_view() for item in self.estimate_versions)
         # D-97 (3): an entry's quantity_unit enters only when declared (SspEntryInput.hash_view).

@@ -383,3 +383,29 @@ rejects incomplete evidence and preserves approved amounts in the original compu
 Seventeen frontend form cases, frontend type checking and scoped lint/types pass. No deployment,
 new database migration or independent accounting approval was performed. This supersedes the
 POL-142 reader/input gap in the preceding audit; other historical policies remain unaudited.
+
+## October 23 legacy FX-evidence refresh — repaired
+
+A populated legacy witness exposed an idempotency collision: a head without fx_inputs, already
+computed under FX_REPUBLISH with unchanged inputs, was reused by the close worker. The close
+reported success while the group remained dirty and stale. New platform bundles now carry
+optional evidence_revision=1 in their logical identity, requiring fresh persistence once after
+this upgrade. The original calculation and its missing evidence remain untouched. Repeated
+current-format inputs retain ordinary idempotency; no duplicate ledger amounts are introduced.
+Historical inputs omit the marker from hash views and still decode/recompute with their original
+hashes. The upgrade comparison's CV-25 view also now uses contract, SSP and posting hash views,
+matching the actual input hash for populated bundles rather than only minimal fixtures.
+
+Verification: the fail-first populated legacy close now clears its dirty/stale state, preserves
+revenue and original evidence, and closes successfully again. The existing persistence-idempotency
+case, 21 codec/upgrade cases and replay decision checks cover current repeats and historical
+replay. Scoped lint/types pass. No schema migration, deployment or accounting-rule change.
+
+## October 23 remaining policy reader audit
+
+POL-015 portfolio estimates still lack shared portfolio-rate application to member contracts;
+POL-231 still lacks eligible lease/nonlease combination and predominant-component routing.
+POL-026 is driven by explicitly entered option terms; product policy values are not consulted
+for that method. These are implementation gaps, not release-check substitutes. POL-142's
+commission comparison is implemented above. Preserve explicit historical option terms when
+adding product-policy behavior; the existence of registry entries is not completion evidence.

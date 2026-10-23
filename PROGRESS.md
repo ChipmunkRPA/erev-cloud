@@ -20,6 +20,16 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Legacy FX-evidence refresh — October 23, 2026
+
+- Fixed unchanged legacy FX runs being reused indefinitely: current bundles declare an
+  evidence revision, forcing fresh retained evidence once without rewriting original history.
+  Populated close now clears dirty/stale state, preserves revenue and succeeds again.
+- Historical hashes/typed inputs remain compatible; populated CV-25 comparison now uses the
+  same contract/SSP/posting views as computation. Necessary codec/replay/idempotency checks pass.
+- Reader audit confirms POL-015 portfolio application, POL-231 lessor combination and POL-026
+  product method behavior remain gaps. Details in CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
 ## Rollforward Other explanation — October 23, 2026
 
 - Read and retain the configured Other/closing threshold. Report and contract checks stay
@@ -38,20 +48,6 @@ review and publish changes without PR accumulation, and do not deploy.
   targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-
-## Close-variance offsetting effects — October 22, 2026
-
-- Retain contract rows whose nonzero replay effects offset to zero, including repeated runs
-  of one driver. Retain driver summary rows when opposing contract contributions net to zero.
-  Unchanged replays still render empty; section totals remain the original net amounts.
-- Drill evidence includes signed intermediate effects and event references. The cell reader
-  checks each retained effect population against its contract/driver amount before displaying it;
-  original source/hash/entity checks remain. New bindings pin offset details; older bound runs
-  preserve their original row population and evidence without the additive details works.
-- Migration 0330 documents the presentation scope. Necessary checks cover native replay/export
-  compatibility, authored offset witnesses, contributor reads, corrupt effects, catalogue parity
-  and scoped types/lint. No engine calculation, event grouping or deployment changed.
-- Individual amounts within a consecutive same-driver event run remain an implementation gap.
 
 ## Modification functional calculation evidence — October 22, 2026
 
