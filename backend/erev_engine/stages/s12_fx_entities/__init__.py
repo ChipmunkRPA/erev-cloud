@@ -210,6 +210,12 @@ def run(
                 book.billing_attribution[document.document_key] = {
                     name: (amount, nodes[name]) for name, amount in document.attribution.items()
                 }
+            for source, shares in getattr(document, "line_attribution", {}).items():
+                source_nodes = document.line_attribution_nodes.get(source, {})
+                if set(source_nodes) == set(shares):
+                    book.billing_attribution[source] = {
+                        name: (amount, source_nodes[name]) for name, amount in shares.items()
+                    }
         pairs = PairBook(ctx, allocated, rates, book)
         try:
             result = _measure(book, pairs, allocated.inception_date, flows, _attributions(st))

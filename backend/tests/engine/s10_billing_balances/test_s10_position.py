@@ -16,6 +16,8 @@ from datetime import date
 from decimal import Decimal
 from fractions import Fraction
 
+import pytest
+
 from erev_engine import ENGINE_VERSION
 from erev_engine.money import format_exact, largest_remainder
 from erev_engine.stages import s09_recognition, s10_billing_balances, s11_costs_loss, s13_books
@@ -1016,7 +1018,8 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
     }
 
 
-def test_native_foreign_pob_classification_uses_original_billing_and_revenue():
+@pytest.mark.parametrize("second_date", [None, date(2026, 1, 15), date(2026, 2, 15)])
+def test_native_foreign_pob_classification_uses_original_billing_and_revenue(second_date):
     import pytest
     from erev_engine.bundle import FxRateInput
     from erev_engine.errors import EngineError
@@ -1039,13 +1042,30 @@ def test_native_foreign_pob_classification_uses_original_billing_and_revenue():
             "invoice_number": "POB-ADVANCE",
             "line_external_id": "LINE-1",
             "obligation_key": "P1",
-            "amount": Decimal("3000.00"),
+            "amount": Decimal("3000.00" if second_date is None else "1500.00"),
             "issue_date": INCEPTION,
         },
     )
+    events = [invoice]
+    if second_date is not None:
+        events.append(
+            event_view(
+                CONTRACT_KEY,
+                3,
+                "BILLING_RECORDED",
+                second_date,
+                {
+                    "invoice_number": "POB-ADVANCE",
+                    "line_external_id": "LINE-2",
+                    "obligation_key": "P1",
+                    "amount": Decimal("1500.00"),
+                    "issue_date": second_date,
+                },
+            )
+        )
     st = allocated_state(
         [_service(key, "1500.00", date(2026, 2, 1), date(2026, 2, 28)) for key in ("P1", "P2")],
-        events=[invoice],
+        events=events,
     )
     tb = TraceBuilder(engine_version=ENGINE_VERSION)
     balances, _ = _run(ctx, st, tb=tb)
@@ -1065,6 +1085,22 @@ def test_native_foreign_pob_classification_uses_original_billing_and_revenue():
                     INCEPTION,
                     None,
                     Decimal("1.1"),
+                ),
+                *(
+                    ()
+                    if second_date is None
+                    else (
+                        FxRateInput(
+                            "SECOND-SPOT",
+                            "TEST@v1",
+                            "spot",
+                            "EUR",
+                            "USD",
+                            second_date,
+                            None,
+                            Decimal("1.2"),
+                        ),
+                    )
                 ),
             )
         ),
@@ -1088,11 +1124,19 @@ def test_native_foreign_pob_classification_uses_original_billing_and_revenue():
     result = rollforward_balances(
         pob_ctx, st, records, bundles.ENTITY_CODE, "FY2026-P02", view="FUNCTIONAL"
     )
-    assert baseline.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OPENING_BALANCE"] == -330000
+    assert baseline.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OPENING_BALANCE"] == (
+        -330000 if second_date is None else -345000 if second_date.month == 1 else -165000
+    )
     assert result.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OPENING_BALANCE"] == -165000
-    assert result.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OTHER_INCREASES"] == -165000
+    assert result.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OTHER_INCREASES"] == (
+        -165000 if second_date is None else -180000
+    )
     assert result.balanced
     assert result.revenue_relief == baseline.revenue_relief
+    transaction = rollforward_balances(
+        pob_ctx, st, records, bundles.ENTITY_CODE, "FY2026-P02", view="TRANSACTION"
+    )
+    assert transaction.revenue_from_opening_liability == 150000
     broken = dataclasses.replace(
         records, fx=dataclasses.replace(fx, billing_attribution_sources=())
     )
@@ -1102,3 +1146,20 @@ def test_native_foreign_pob_classification_uses_original_billing_and_revenue():
         )
     trace = tb.build(root_measures={})
     assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+
+    from types import SimpleNamespace
+    from erev_api.domain.reports.opening_pob_functional_nodes import read
+
+    opening_billing, opening_revenue, _ = read(
+        {node.id: node for node in trace.nodes},
+        subject=O1,
+        period=SimpleNamespace(key="FY2026-P01", end=date(2026, 1, 31)),
+        txn_currency="EUR",
+        currency="USD",
+        billed=Decimal("1500" if second_date is not None and second_date.month == 2 else "3000"),
+        revenue=Decimal(0),
+    )
+    assert opening_billing == Decimal(
+        3300 if second_date is None else 3450 if second_date.month == 1 else 1650
+    )
+    assert opening_revenue == 0

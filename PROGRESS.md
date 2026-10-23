@@ -264,11 +264,11 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Native foreign-functional POB classification — October 23, 2026
+## Direct multi-line invoice POB sources — October 23, 2026
 
-- Native S15 now applies FIFO_WITHIN_POB to original functional invoice attribution and cumulative
-  revenue, proving the full document population and transaction quantities before classification.
-  Only disclosure captions change; signed total revenue, postings and balances are preserved.
-- Connected S09–S15 case plus 12 relevant cases and scoped lint/types pass. Special attribution,
-  partial billing and frozen POB opening histories still need their remaining sources/evidence.
-- Reporting-currency checkpoint archived. No deployment.
+- Directly attributed invoice lines now carry original source amounts/dates into functional POB
+  evidence. Native and public readers use each line once, including partial opening-period coverage.
+  Each line keeps its actual FX amount; whole-document attribution is not reused for every line.
+- Connected mixed-date/rate, partial-opening and single-line cases plus relevant regressions pass
+  (27 cases), with scoped types/lint. Shared unreferenced lines and special histories remain open.
+- Native functional checkpoint archived. No deployment.

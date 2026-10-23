@@ -113,6 +113,8 @@ class BillingDocumentOut:
     lines: tuple[Line, ...]
     attribution: Mapping[str, int]  # obligation subject key -> signed minor units (S10-INV-04)
     attribution_nodes: Mapping[str, str] = field(default_factory=dict)
+    line_attribution: Mapping[str, Mapping[str, int]] = field(default_factory=dict)
+    line_attribution_nodes: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -476,6 +478,58 @@ class _Emitter:
                 narrative_key=_narrative(ATTRIBUTION_FORMULA),
             )
         return MappingProxyType(nodes)
+
+    def line_nodes(
+        self, attribution: Attribution
+    ) -> tuple[Mapping[str, Mapping[str, int]], Mapping[str, Mapping[str, str]]]:
+        """Direct multi-line invoice sources; shared-line rounding needs separate evidence."""
+        document = attribution.document
+        if (
+            document.kind != INVOICE
+            or len(document.lines) < 2
+            or any(line.obligation_key is None for line in document.lines)
+        ):
+            return {}, {}
+        amounts: dict[str, Mapping[str, int]] = {}
+        nodes: dict[str, Mapping[str, str]] = {}
+        for line in document.lines:
+            source = line.event.event_key
+            shares = {
+                key: value
+                for key, value in _restricted(self.st, attribution, [line]).signed().items()
+                if value
+            }
+            if sum(shares.values()) != line.amount:
+                raise _invariant(
+                    "direct line attribution differs from source", source, rule="S10-INV-04"
+                )
+            amounts[source] = shares
+            nodes[source] = {
+                subject: self.tb.node(
+                    measure=f"billing_line_attributed@{source}",
+                    subject_key=subject,
+                    period_key=None,
+                    value=amount,
+                    currency=self.ctx.txn_currency,
+                    minor_unit=self.mu,
+                    formula_id=ATTRIBUTION_FORMULA,
+                    inputs=[
+                        SourceRef(
+                            "contract_event",
+                            source,
+                            {"member": "amount", "value": money.format_money(amount, self.mu)},
+                        )
+                    ],
+                    params={
+                        "mode": "sum",
+                        "document_key": document.key,
+                        "as_of": (line.unconditional_date or date.max).isoformat(),
+                    },
+                    narrative_key=_narrative(ATTRIBUTION_FORMULA),
+                )
+                for subject, amount in shares.items()
+            }
+        return amounts, nodes
 
     def _restricted_share(self, restricted: Attribution, counted: Sequence[Line], key: str) -> str:
         """``billed_attributed@<document>@<latest unconditional date>``: the share of ``key`` in the
@@ -849,10 +903,18 @@ def measure(
             )
         )
     emitter = _Emitter(ctx, tb, attributions, st)
-    documents = [
-        replace(document, attribution_nodes=emitter.document_nodes(attribution))
-        for document, attribution in zip(documents, attributions, strict=True)
-    ]
+    retained = []
+    for output_document, attribution in zip(documents, attributions, strict=True):
+        line_amounts, line_nodes = emitter.line_nodes(attribution)
+        retained.append(
+            replace(
+                output_document,
+                attribution_nodes=emitter.document_nodes(attribution),
+                line_attribution=line_amounts,
+                line_attribution_nodes=line_nodes,
+            )
+        )
+    documents = retained
     # Contracts with a line billed under ENGINE mode (S10-R-06): their obligations publish the
     # JET-03 inputs; ERP-mode contracts publish nothing new.
     engine_billed = {

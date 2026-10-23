@@ -299,7 +299,13 @@ def balance_inputs(
         right_classes=balances.right_classes,
         schedule_lines=balances.recognition.schedule_lines,
         attribution=MappingProxyType(
-            {document.document_key: document.attribution for document in balances.documents}
+            {
+                source: shares
+                for document in balances.documents
+                for source, shares in (
+                    document.line_attribution or {document.document_key: document.attribution}
+                ).items()
+            }
         ),
         late_revenue=MappingProxyType(dict(sorted(late.items()))),
         fx=fx,

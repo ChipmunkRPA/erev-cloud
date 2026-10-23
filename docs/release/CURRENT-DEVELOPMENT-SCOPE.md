@@ -1200,3 +1200,29 @@ opening and USD 1,650 other consumption, preserving total revenue and all balanc
 original document sources is rejected. Complete trace replay and the existing foreign invoice/
 credit rounding test pass, together with 11 native rollforward cases. Four production modules
 pass scoped type checks and lint. No database migration or deployment.
+
+## October 23 direct multi-line invoice attribution
+
+The prior whole-document bridge did not cover S13's separate invoice-line flows. S10 now emits
+original line attribution and replayable line nodes for multi-line invoices whose every line
+explicitly names an obligation. Each line retains its event key and unconditional date; a line
+that has not become unconditional cannot enter the opening population. S12 consumes those exact
+line amounts/nodes and original per-line FX values instead of reusing the full document for its
+first line. S15's transaction and functional source maps use the same line identities. The public
+functional opening reader replaces a partitioned document with its original dated line population,
+checks the cumulative transaction billing, and requires matching functional activity sources.
+There is no additional journal target or change to liability-layer movements.
+
+Necessary evidence: connected S09–S15 cases cover the original single invoice, two directly
+attributed lines on different January dates/rates, and a second line entering only in February.
+The January opening is respectively USD 3,300, USD 3,450 and USD 1,650. Native POB revenue
+classification and public source-reader values agree with those originals; transaction POB
+classification reads each line once. Removing original functional sources still refuses, and
+all trace nodes re-evaluate. The selected billing-position/native-rollforward/source-coverage
+suite passes 27 cases; four production modules pass type checks and scoped lint passes.
+
+Multi-line invoices containing unreferenced/shared lines remain unfinished: independent line
+rounding cannot stand in for the document's cumulative restricted allocation. Those require an
+explicit conserving source bridge. Partial credit memo populations, agent/cross-entity, acquired
+openings and original frozen POB histories retain their existing limitations. This checkpoint
+adds no deployment or database migration.

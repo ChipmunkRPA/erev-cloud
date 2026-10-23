@@ -399,3 +399,12 @@
 - Public foreign-currency report/rerun and functional regression pass; focused reversal/rate
   checks and scoped types/lint pass. Native foreign S15 and special attribution remain open.
 - Functional checkpoint archived. No deployment.
+
+## Native foreign-functional POB classification — October 23, 2026
+
+- Native S15 now applies FIFO_WITHIN_POB to original functional invoice attribution and cumulative
+  revenue, proving the full document population and transaction quantities before classification.
+  Only disclosure captions change; signed total revenue, postings and balances are preserved.
+- Connected S09–S15 case plus 12 relevant cases and scoped lint/types pass. Special attribution,
+  partial billing and frozen POB opening histories still need their remaining sources/evidence.
+- Reporting-currency checkpoint archived. No deployment.

@@ -1082,3 +1082,8 @@ Native engine functional rollforwards also apply this POB policy for supported p
 using original invoice shares and cumulative functional revenue. Missing complete original sources
 produce an error rather than silently applying contract-level FIFO. Special acquired, agent,
 cross-entity and original frozen POB histories remain subject to the limitations above.
+
+Multi-line invoices are supported when every line explicitly identifies its obligation. Each line
+uses its own original amount, billing date and FX source, so only lines admitted by the opening
+date enter that opening. Shared/unreferenced invoice lines still require additional attribution
+support and must not be replaced by duplicated whole-invoice amounts.

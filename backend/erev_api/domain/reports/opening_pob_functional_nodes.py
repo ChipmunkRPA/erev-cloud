@@ -27,12 +27,20 @@ def read(
         raise tie_outs.invalid(
             "currency_view", "Functional POB billing sources require recomputation."
         )
+    line_nodes = [
+        node for identity, node in nodes.items() if identity.startswith("billing_line_attributed@")
+    ]
+    partitioned = {node.params["document_key"] for node in line_nodes}
+    all_documents = [
+        node for node in all_documents if node.id.split(":")[0][len(prefix) :] not in partitioned
+    ]
+    all_documents.extend(line_nodes)
     for node in all_documents:
         measure, owner, _ = node.id.split(":")
         if owner == subject and date.fromisoformat(node.params["as_of"]) <= period.end:
             if node.currency != txn_currency:
                 raise tie_outs.invalid("currency_view", "Original billing currency differs.")
-            documents[measure[len(prefix) :]] = node
+            documents[measure.split("@", 1)[1]] = node
     if sum((Decimal(node.value) for node in documents.values()), ZERO) != billed:
         raise tie_outs.invalid(
             "currency_view", "Original document attribution does not cover opening billing."
