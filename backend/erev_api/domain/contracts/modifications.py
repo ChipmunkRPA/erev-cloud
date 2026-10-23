@@ -1315,6 +1315,9 @@ def classify(
     line_keys = {
         str(line["obligation_key"]) for line in (row["lines"] or ()) if isinstance(line, Mapping)
     }
+    # The proposal names accounting obligations, which may be combined hosts rather than
+    # the original components on the authored lines. Show their actual selected basis too.
+    line_keys.update(proposed)
     selected: dict[str, str] = {
         key: version_key
         for key, version_key in selected_ssp_versions(

@@ -265,9 +265,10 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Combined component price modifications — October 23, 2026
+## Combined price-change public flow — October 23, 2026
 
-- Original-member price changes now reach the combined obligation; conflicting instructions
-  are refused. Remaining SSP includes every original product, and lease scope totals update.
-- 46 targeted engine cases and scoped types/lint pass. Quantity/term reassessment, mixed SSP
-  bases and public modification/Reporting workflow remain open. No deployment.
+- Original-member changes now verified through public classification, preview, independent
+  approval, persisted calculation and saved Reporting: 108,000 becomes 109,000.
+- Classification now displays the selected SSP default for proposed combined hosts too.
+  Authored overrides are preserved. The wizard still lacks original-component selection;
+  this is the next UI gap. No deployment. See CURRENT-DEVELOPMENT-SCOPE.

@@ -794,3 +794,29 @@ Remaining: public modification entry/approval/persistence and saved Reporting ve
 quantity/removal/term changes with reassessed combinations; mixed SSP quantity-basis support;
 other host recognition measures. These restrictions are explicit outstanding implementation,
 not evidence that the complete modification feature is finished.
+
+## October 23 combined price-change public workflow — verified and SSP defaults fixed
+
+A populated service-predominant combination now has end-to-end evidence through the public
+modification API: create a price change on the original L1-LEASE member, explicitly confirm the
+classification questionnaire, run the queued preview, submit, independently approve, persist
+APPLIED and run Latest contract status. The authored line still names L1-LEASE while the report
+has one combined 109,000 allocation (108,000 plus 1,000), both original members and an identical
+saved-report rerun hash. Existing activation fixtures are reused.
+
+Classification previously restricted displayed SSP defaults to authored line keys, so a combined
+host proposed by the engine had no default when the line named its original member. It now also
+includes proposed treatment keys, using each accounting obligation's actual selected version.
+This does not fabricate a per-original-member version. Existing authored overrides remain intact.
+The wizard's treatment table already reads this basis by proposed obligation key.
+
+Verification: the populated workflow passes with the combined-host default asserted. Existing
+K02 classification and five targeted unit cases for selected versions/defaults/overrides pass.
+Scoped mypy passes; lint excluding pre-existing import-order drift passes. No deployment.
+
+Next UI gap confirmed in source: the modification wizard gets its line choices only from the
+current obligation-version list, which omits merged-away original members. The API supports
+those original keys, but the UI selector still needs retained original-component choices. This
+checkpoint does not claim that original-component authoring is fully accessible in the UI.
+Quantity/removal/term reassessment, mixed SSP quantity bases and other recognition measures
+remain open as previously recorded.

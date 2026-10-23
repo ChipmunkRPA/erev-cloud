@@ -280,3 +280,10 @@
   reruns identically; ordinary and older saved reports retain their column shape.
 - Two populated workflows and 28 unit cases pass; scoped production lint/types pass.
   Other measures and modifications remain open. No deployment. See CURRENT-DEVELOPMENT-SCOPE.
+
+## Combined component price modifications — October 23, 2026
+
+- Original-member price changes now reach the combined obligation; conflicting instructions
+  are refused. Remaining SSP includes every original product, and lease scope totals update.
+- 46 targeted engine cases and scoped types/lint pass. Quantity/term reassessment, mixed SSP
+  bases and public modification/Reporting workflow remain open. No deployment.

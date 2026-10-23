@@ -2346,5 +2346,8 @@ explicitly. Reports without combinations retain their existing columns.
 
 Combined-component price changes now have engine support for mapping original members to the
 combined obligation and repricing compatible SSP bases. Quantity, removal and term changes
-still require combination reassessment support, which is unfinished. The public modification
-approval-to-Reporting workflow for these combinations has not yet been verified.
+still require combination reassessment support, which is unfinished. The public modification API
+now supports and verifies classification, preview, independent approval and saved Reporting
+for original-component price changes. The modification wizard still needs original-component
+choices in its line selector; its treatment table now shows the combined host's selected SSP
+default.
