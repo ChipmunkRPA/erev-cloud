@@ -13,6 +13,20 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Opening-liability money-cell contributors — October 23, 2026
+
+- New transaction, functional and reporting runs retain pre-summary contributions for
+  opening liability, recognized revenue and revenue from opening. Summary and detail cells
+  explain saved amounts without consulting current calculations. Same-source reruns
+  recompute contributions and reject differences; legacy bindings are not backfilled.
+- Combined rows remain one monetary contribution with the complete original member set.
+  Retained POB evidence exposes opening/consumption caps, posted source IDs, opening trace
+  nodes and reporting rates. Contract-policy rows expose their retained balance contribution;
+  they do not claim obligation-level source detail. Reader entity restrictions still apply.
+- Necessary checks: functional/reporting public cells and saved reruns, combined transaction
+  public cell/rerun, four focused backend cases, two viewer cases, TypeScript and scoped lint.
+  No journal or recognition calculation changes; no deployment. Broader gaps remain open.
+
 ## Combined original-component cost recognition — October 23, 2026
 
 - COST_RECOVERY and COST_TO_COST now consume original combined-component costs once per

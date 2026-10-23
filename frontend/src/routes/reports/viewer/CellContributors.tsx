@@ -32,6 +32,7 @@ export interface CellRequest {
 }
 
 function objectLabel(objectType: string): string {
+  if (objectType === "opening_disclosure_contribution") return t("reports.explain.object.opening_disclosure_contribution");
   return (EXPLAIN_OBJECT_TYPES.some((item) => item === objectType) || objectType === "contract_event" || objectType === "modification" || objectType === "contract")
     ? t(`reports.explain.object.${objectType}`)
     : objectType;

@@ -237,6 +237,7 @@ from erev_api.jobs.context import JobContext
 from erev_api.jobs.registry import JobOutcome, RetryPolicy, task
 from erev_api.numbering import next_number
 from erev_api.problems import Problem, ProblemError
+from erev_api.domain.reports import opening_relief_cells
 from erev_api.registry.resolve import setting
 from erev_api.schemas.common import ActorOut, JobOut, MoneyOut, ProblemOut, RefOut
 from erev_api.schemas.explain import (
@@ -1039,6 +1040,7 @@ type CellExplainer = Callable[
 # API-R-49 ``GET /explain/report-runs/{id}/cell``: the reports whose cells name contributors.
 CELL_EXPLAINERS: Final[Mapping[str, CellExplainer]] = MappingProxyType(
     {
+        "revenue_from_opening_liability": opening_relief_cells.cell,
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.cell,
         rpo_builder.CODE: rpo_builder.cell,
         loss_provision_register_builder.CODE: loss_provision_register_builder.cell,
@@ -3243,6 +3245,7 @@ def explain_cell(
         owner = owners[UUID(str(item["id"]))]
         if owner in reached:
             item = dict(item)
+            item.pop("_entity_id", None)
             source_details = item.pop("_source_set_details", [])
             source_entities = {
                 UUID(identity) for identity in item.pop("_source_set_entity_ids", [])
@@ -3326,9 +3329,27 @@ def _contributor_entities(
     """Contributor id → the entity whose scope reaches the record (``_reach_statement``); read
     inside the caller's ``every_entity_scope`` block."""
     by_kind: dict[str, list[UUID]] = {}
-    for item in contributors:
-        by_kind.setdefault(str(item["object_type"]), []).append(UUID(str(item["id"])))
     owners: dict[UUID, UUID] = {}
+    disclosure = [
+        item for item in contributors if item["object_type"] == "opening_disclosure_contribution"
+    ]
+    entity_ids = {UUID(str(item["_entity_id"])) for item in disclosure}
+    verified = (
+        set(
+            session.execute(
+                select(legal_entity.c.id).where(legal_entity.c.id.in_(entity_ids))
+            ).scalars()
+        )
+        if entity_ids
+        else set()
+    )
+    if verified != entity_ids:
+        raise Problem("not-found", "Opening disclosure entity is unavailable.")
+    for item in disclosure:
+        owners[UUID(str(item["id"]))] = UUID(str(item["_entity_id"]))
+    for item in contributors:
+        if item["object_type"] != "opening_disclosure_contribution":
+            by_kind.setdefault(str(item["object_type"]), []).append(UUID(str(item["id"])))
     for kind, ids in sorted(by_kind.items()):
         owners.update(
             (UUID(str(found[0])), UUID(str(found[1])))

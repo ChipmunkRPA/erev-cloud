@@ -285,6 +285,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 recognized_total = sum((recognized[member] for member in members), ZERO)
                 contracts.append(
                     {
+                        "_opening_source": {
+                            "entity_id": str(entity),
+                            "contracts": sorted(str(member[0]) for member in members),
+                            "group_key": group_identity,
+                        },
                         "row_key": f"combined:{group_identity}",
                         "section": 2,
                         "summary": "Combined contracts (group total): "
@@ -316,6 +321,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 continue
             contracts.append(
                 {
+                    "_opening_source": {
+                        "entity_id": str(entity),
+                        "contracts": [str(row.contract_id)],
+                        "group_key": group_identity,
+                    },
                     "row_key": f"contract:{row.external_id}:{row.entity_code}",
                     "section": 2,
                     "contract_external_id": row.external_id,

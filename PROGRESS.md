@@ -20,18 +20,19 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Visible opening-attribution explanations — October 23, 2026
+## Opening-liability money-cell contributors — October 23, 2026
 
-- Opening-liability reports now expose retained zero-opening, zero-consumption and newly
-  created-obligation reasons in an expandable viewer panel. New-obligation proofs show the
-  effective date and original event ID, with navigation to the member contract's history.
-- Explanation content comes only from the run's retained POB facts. Combined members stay
-  individually identified without invented monetary allocation. Legacy reports without the
-  new evidence marker keep their previous control totals and display.
-- Two source/replay cases, two viewer cases, TypeScript and scoped lint/types pass. A populated
-  functional report verifies the marker/control output and identical saved-row replay.
-  This adds visible explanations, not complete general-purpose money-cell attribution.
-  No deployment; remaining functional gaps stay open.
+- New transaction, functional and reporting runs retain pre-summary contributions for
+  opening liability, recognized revenue and revenue from opening. Summary and detail cells
+  explain saved amounts without consulting current calculations. Same-source reruns
+  recompute contributions and reject differences; legacy bindings are not backfilled.
+- Combined rows remain one monetary contribution with the complete original member set.
+  Retained POB evidence exposes opening/consumption caps, posted source IDs, opening trace
+  nodes and reporting rates. Contract-policy rows expose their retained balance contribution;
+  they do not claim obligation-level source detail. Reader entity restrictions still apply.
+- Necessary checks: functional/reporting public cells and saved reruns, combined transaction
+  public cell/rerun, four focused backend cases, two viewer cases, TypeScript and scoped lint.
+  No journal or recognition calculation changes; no deployment. Broader gaps remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 

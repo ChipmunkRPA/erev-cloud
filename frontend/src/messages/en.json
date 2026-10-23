@@ -7727,6 +7727,7 @@
   "reports.column.variance.measure_label": "Measure",
   "reports.column.variance.scope": "Scope",
   "reports.explain.object.contract": "Contract",
+  "reports.explain.object.opening_disclosure_contribution": "Opening-liability disclosure contribution",
   "reports.section.variance.1": "Change by driver",
   "reports.section.variance.2": "Changes by contract",
   "reports.stamp.comparison": "Frozen close comparison",

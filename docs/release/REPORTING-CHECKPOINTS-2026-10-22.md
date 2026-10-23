@@ -562,3 +562,16 @@ not decide whether a host EAC represents its component or the entire combination
   existing evidence shape. Frozen-source authentication and posted/path reconciliation remain.
 - 18 focused reader/period cases, scoped lint and types pass. Positive special attribution and
   other documented gaps remain unfinished. No deployment.
+
+## Visible opening-attribution explanations — October 23, 2026
+
+- Opening-liability reports now expose retained zero-opening, zero-consumption and newly
+  created-obligation reasons in an expandable viewer panel. New-obligation proofs show the
+  effective date and original event ID, with navigation to the member contract's history.
+- Explanation content comes only from the run's retained POB facts. Combined members stay
+  individually identified without invented monetary allocation. Legacy reports without the
+  new evidence marker keep their previous control totals and display.
+- Two source/replay cases, two viewer cases, TypeScript and scoped lint/types pass. A populated
+  functional report verifies the marker/control output and identical saved-row replay.
+  This adds visible explanations, not complete general-purpose money-cell attribution.
+  No deployment; remaining functional gaps stay open.

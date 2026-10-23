@@ -1039,6 +1039,23 @@ def test_combined_pob_opening_shows_group_total_and_all_sources(combined, monkey
     assert amount(row["opening_contract_liability"]) == "77591.97"
     assert Decimal(amount(row["revenue_from_opening"])) > 0
     assert row["revenue_from_opening"] == row["revenue_recognized"]
+    explained = get(
+        combined.app,
+        f"/api/v1/explain/report-runs/{run['id']}/cell",
+        combined.maya,
+        params={"row_key": row["row_key"], "column_key": "revenue_from_opening"},
+    )
+    assert explained.status_code == 200, explained.text
+    assert explained.json()["value"] == row["revenue_from_opening"]
+    contributions = explained.json()["contributors"]["items"]
+    assert len(contributions) == 1
+    assert contributions[0]["value"] == row["revenue_from_opening"]
+    details = contributions[0]["details"]
+    assert "Combined-contract group total. Member relief is not allocated." in details
+    assert all(
+        any(str(combined.contracts[name].contract["id"]) in text for text in details)
+        for name in (K09, SECOND)
+    )
     assert not any(
         row["row_key"] in {f"contract:{K09}:{AVM_US}", f"contract:{SECOND}:{AVM_US}"}
         for row in rows

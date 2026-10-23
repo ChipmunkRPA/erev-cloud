@@ -133,6 +133,10 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             continue
         contracts.append(
             {
+                "_opening_source": {
+                    "entity_id": str(item.entity_id),
+                    "contracts": [str(item.contract_id)],
+                },
                 "row_key": f"contract:{item.external_id}:{item.entity_code}",
                 "section": 2,
                 "contract_external_id": item.external_id,
@@ -188,6 +192,9 @@ def finish(
     labels = sorted(
         {f"{p[0].name} to {p[-1].name}" if len(p) > 1 else p[0].name for p in periods.values() if p}
     )
+    from .opening_relief_cells import retain
+
+    retain(session, params, contracts, view=view, rates=rates)
     rows = [
         {
             "row_key": f"summary:{currency}",

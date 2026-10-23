@@ -1239,6 +1239,21 @@ def test_functional_pob_report_uses_original_invoice_fx(
     assert binding["evidence"][f"opening_relief_{view}_pob_v1"]
     assert binding["evidence"]["opening_relief_explanation_v1"] is True
     assert run["control_totals"]["opening_attribution_explanation"] == {"items": []}
+    for column in ("opening_contract_liability", "revenue_recognized", "revenue_from_opening"):
+        for key in (row["row_key"], f"summary:{row['currency']}"):
+            explained = get(
+                world.app,
+                CELL.format(run_id=run["id"]),
+                world.maya,
+                params={"row_key": key, "column_key": column},
+            )
+            assert explained.status_code == 200, explained.text
+            assert explained.json()["value"] == row[column]
+            items = explained.json()["contributors"]["items"]
+            assert len(items) == 1
+            assert items[0]["object_type"] == "opening_disclosure_contribution"
+            assert any("Posted revenue sources:" in detail for detail in items[0]["details"])
+            assert "_entity_id" not in items[0]
     if locked:
         for group in binding["evidence"][f"opening_relief_{view}_pob_v1"].values():
             for member in group["members"].values():

@@ -200,6 +200,11 @@ def rows(
         first = members[0]
         result.append(
             {
+                "_opening_source": {
+                    "entity_id": str(entity),
+                    "contracts": sorted(str(item.contract_id) for item in members),
+                    "group_key": group_key,
+                },
                 "row_key": f"combined:{group_key}"
                 if combined
                 else f"contract:{first.external_id}:{first.entity_code}",
