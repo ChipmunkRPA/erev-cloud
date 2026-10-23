@@ -223,6 +223,11 @@ def build(
             )
         obligations.append(
             ObligationState(
+                combined_component_keys=(
+                    tuple(member.obligation_key for member in draft.members)
+                    if draft.lessor_judgement_keys
+                    else ()
+                ),
                 subject_key=draft.subject_key,
                 contract_key=draft.contract_key,
                 obligation_key=draft.obligation_key,

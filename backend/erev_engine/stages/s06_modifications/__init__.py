@@ -663,6 +663,11 @@ def _added_obligation(
     product = identified.canonical.group.products.get(draft.product_code)
     cost = None if product is None else product.assurance_cost_per_unit
     return ObligationState(
+        combined_component_keys=(
+            tuple(member.obligation_key for member in draft.members)
+            if draft.lessor_judgement_keys
+            else ()
+        ),
         subject_key=draft.subject_key,
         contract_key=draft.contract_key,
         obligation_key=draft.obligation_key,

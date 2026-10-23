@@ -987,6 +987,8 @@ class ObligationState:
     # original_total_contract_ssp, original_stated_price, original_total_contract_price and
     # allocation_weight. The assembler links by this identity and asserts the link holds.
     snapshot_producer_links: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
+    # Original components of a reviewed POL-231 combination; source events retain their keys.
+    combined_component_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -666,3 +666,29 @@ the API path reused here. No deployment.
 
 POL-231 still requires modification/variable-payment integration and in-scope combined-component
 visibility. This UI does not mark the overall policy or repository complete.
+
+## October 23 combined-component rated usage — implemented for USAGE measure
+
+Reviewed POL-231 component keys now survive allocation-state construction. The shared derived
+usage reader selects the host and every original component within the same contract, retaining
+original event identity and counting each event once even when it names multiple components.
+Stage 04 price and stage 09 recognition use this same set. Other obligations retain their
+existing single-obligation behavior. This applies to USAGE / PERIOD_VC, not every payment mode.
+
+For a nonlease-predominant USAGE component, a 200 rated fee recorded on the original lease
+increases both transaction price and revenue by 200. The complete trace re-evaluates.
+For a lease-predominant USAGE component, all rated fees follow the combined lease out of 606.
+This required fixing the version-date lease-scope trace collision and publishing the total
+lease allocation (including rated fees), with linked source events and consistent contract/
+obligation totals. A 10,000 fixed amount plus 300 fees produces 10,300 excluded allocation,
+zero 606 transaction price/revenue/RPO and no schedules. The scope register already consumes
+that obligation allocation; fees are not added again by the report.
+
+Verification: three full-engine scenarios cover original-source collection, duplicate naming
+and the lease-predominant path, including trace reevaluation. Twelve earlier combination and
+14 existing usage cases also pass (29 total); scoped lint and eight-file mypy pass.
+
+Remaining: public event-entry/persistence and report verification for these new fee cases;
+RIGHT_TO_INVOICE source selection across original components; variable payments where the host
+uses a different recognition method; contract modifications; in-scope combined-component
+visibility. Do not describe all variable-payment handling as complete. No deployment.

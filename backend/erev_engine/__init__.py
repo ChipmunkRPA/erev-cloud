@@ -40,6 +40,7 @@ from erev_engine.bundle import (
     OutputBundle,
 )
 from erev_engine.canonical import canonical_bytes
+from erev_engine.enums import ScopeFlag
 from erev_engine.errors import EngineError
 from erev_engine.money import EXACT_PLACES
 from erev_engine.trace import (
@@ -724,10 +725,21 @@ def _obligation_version(
     stated = money.round_half_up(ob.stated_price, minor_unit)
     if measures is None:
         amount = sum(segment.a_posted for segment in current.values())
+        scope_node = f"lessor_total_scope_amount:{ob.subject_key}:-"
+        combined_amount = _exact(nodes.get(scope_node))
+        if combined_amount is not None:
+            amount = money.round_half_up(combined_amount, minor_unit)
         recognised: dict[str, object] = dict(_RECOGNITION_COLUMNS)
         recognised["remaining_allocation"] = amount
         recognised["awaiting_trigger_amount"] = amount
-        measure_nodes: Mapping[str, str] = {}
+        measure_nodes: Mapping[str, str] = (
+            {
+                key: scope_node
+                for key in ("allocated_amount", "remaining_allocation", "awaiting_trigger_amount")
+            }
+            if combined_amount is not None
+            else {}
+        )
         effective = as_of
     else:
         amount = measures.allocated_amount
@@ -1217,7 +1229,17 @@ def _contract_version(
         columns["expected_returns_amount"] = memo
         trace_nodes.pop("transaction_price", None)
         trace_nodes.pop("expected_returns_amount", None)
-    leased = _routed_out_lease_allocation(allocated)
+    lease_usage = sum(
+        money.round_half_up(
+            _exact(nodes.get(f"lessor_usage_scope_amount:{ob.subject_key}:-")) or Fraction(0),
+            minor_unit,
+        )
+        for ob in allocated.obligations
+        if ob.scope_flag == ScopeFlag.LEASE_842 and ob.combined_component_keys
+    )
+    if tp is not None and lease_usage:
+        columns["out_of_scope_amount"] = tp.out_of_scope.posted + lease_usage
+    leased = _routed_out_lease_allocation(allocated) + lease_usage
     if tp is not None and leased:
         # D-88 L7-5-Q-6: the price excludes the allocation of routed-out LEASE_842 obligations at
         # the version date; the pool, P1 and out_of_scope_amount stay gross (PT-09; DB-17 V1).

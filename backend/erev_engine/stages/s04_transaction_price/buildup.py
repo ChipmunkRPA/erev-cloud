@@ -147,6 +147,11 @@ def realised(
                     contract_key=contract,
                     obligation_key=ob.obligation_key,
                     subject_key=ob.subject_key,
+                    component_keys=(
+                        tuple(member.obligation_key for member in ob.members)
+                        if ob.lessor_judgement_keys
+                        else ()
+                    ),
                     at=at,
                     admits=lambda ev: before is None or ev.order_key < before.order_key,
                 )

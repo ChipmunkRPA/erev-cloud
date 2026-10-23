@@ -33,11 +33,11 @@ from erev_engine.errors import EngineError
 from erev_engine.formulas import binds_encoded, rational_param
 from erev_engine.stages.s04_transaction_price import TP_COMPONENTS
 from erev_engine.stages.s04_transaction_price.taxes import collected_tax
-from erev_engine.stages.s09_recognition import RecognitionState
+from erev_engine.stages.s09_recognition import RecognitionState, components
 from erev_engine.stages.s09_recognition.schedule import ObligationMeasures
 from erev_engine.stages.s10_billing_balances import BalanceState
 from erev_engine.stages.state import AllocatedState, AllocationSegment, BookContext, ObligationState
-from erev_engine.trace import TraceBuilder
+from erev_engine.trace import SourceRef, TraceBuilder
 
 __all__ = [
     "OUTPUT_KEY",
@@ -118,6 +118,81 @@ def routed_out_lease_allocation(st: AllocatedState) -> int:
         if ob.scope_flag == ScopeFlag.LEASE_842
         for segment in _current(ob).values()
     )
+
+
+def _combined_lease_usage(
+    ctx: BookContext, st: AllocatedState, as_of: date, tb: TraceBuilder
+) -> int:
+    """Rated period fees follow a combined lease out of Topic 606, with original event evidence."""
+    total = 0
+    mu = ctx.currencies[ctx.txn_currency].minor_unit
+    for ob in st.obligations:
+        if (
+            ob.scope_flag != ScopeFlag.LEASE_842
+            or not ob.combined_component_keys
+            or str(ob.recognition_method) != "USAGE"
+            or not any(seg.component == "PERIOD_VC" for seg in ob.segments)
+        ):
+            continue
+        realised, findings = components.period_vc_realised(ctx, st, ob, as_of)
+        if findings:
+            raise EngineError(
+                "NON_FINITE_AMOUNT",
+                "Combined lease usage requires rated amounts",
+                subject_key=ob.subject_key,
+            )
+        amount = sum(item.amount for item in realised)
+        inputs = [
+            SourceRef(
+                "contract_event",
+                item.event_key,
+                {"member": "rated_amount", "value": money.format_money(item.amount, mu)},
+            )
+            for item in realised
+        ]
+        fee_node = tb.node(
+            measure="lessor_usage_scope_amount",
+            subject_key=ob.subject_key,
+            period_key=None,
+            value=amount,
+            currency=ctx.txn_currency,
+            minor_unit=mu,
+            formula_id=SUM_FORMULA,
+            inputs=inputs,
+            params={"signs": ",".join("+" for _ in inputs), "as_of": as_of.isoformat()},
+            narrative_key=SUM_FORMULA.rsplit(".v", 1)[0],
+        )
+        fixed = sum(segment.a_posted for segment in _current(ob).values())
+        allocation_inputs = [fee_node]
+        unlinked = fixed
+        for segment in _current(ob).values():
+            if segment.a_posted == 0:
+                continue
+            node_id = (
+                f"original_allocated_amount:{ob.subject_key}:-"
+                if segment.event_key is None
+                else f"allocated_amount@{segment.event_key}:{ob.subject_key}:-"
+            )
+            if tb.value(node_id) is not None:
+                allocation_inputs.append(node_id)
+                unlinked -= segment.a_posted
+        tb.node(
+            measure="lessor_total_scope_amount",
+            subject_key=ob.subject_key,
+            period_key=None,
+            value=fixed + amount,
+            currency=ctx.txn_currency,
+            minor_unit=mu,
+            formula_id=SUM_FORMULA,
+            inputs=allocation_inputs,
+            params={
+                "signs": ",".join("+" for _ in allocation_inputs),
+                "default_allocations": str(unlinked),
+            },
+            narrative_key=SUM_FORMULA.rsplit(".v", 1)[0],
+        )
+        total += amount
+    return total
 
 
 def _holding_periods(ctx: BookContext, on: date) -> dict[str, str]:
@@ -272,6 +347,7 @@ def publish(
     as_of = version_date(st)
     values: dict[str, int] = {}
     nodes: dict[str, str] = {}
+    lease_usage = _combined_lease_usage(ctx, st, as_of, tb)
     recognised = recognition.obligation_measures
     billed = {} if balances is None else balances.obligation_measures
     for column, stage, measure_name in SUMS:
@@ -296,6 +372,11 @@ def publish(
             for ob in sorted(st.obligations, key=lambda item: item.subject_key):
                 if ob.subject_key in recognised:
                     continue
+                combined_node = f"lessor_total_scope_amount:{ob.subject_key}:-"
+                if tb.value(combined_node) is not None:
+                    inputs.append(combined_node)
+                    signs.append("+")
+                    continue
                 for segment in _current(ob).values():
                     default += segment.a_posted
                     node_id = (
@@ -313,6 +394,7 @@ def publish(
                 if ob.subject_key not in recognised
                 for segment in _current(ob).values()
             )
+            total += lease_usage
             if default:
                 params["default_allocations"] = str(default)
         if column == "revenue_cum" and balances is not None:
@@ -357,7 +439,9 @@ def publish(
         adjustments["expected_returns_amount"] = memo - expected_returns
         adjustments["transaction_price"] = memo - expected_returns
         price += memo - expected_returns
-    leased = routed_out_lease_allocation(st)
+    if lease_usage:
+        adjustments["out_of_scope_amount"] = lease_usage
+    leased = routed_out_lease_allocation(st) + lease_usage
     if leased:
         adjustments["transaction_price"] = adjustments.get("transaction_price", 0) - leased
         price -= leased
@@ -397,7 +481,9 @@ def publish(
             if money.to_fraction(existing) * scale == final:
                 nodes[column] = node_id
                 continue
-            if "expected_returns_amount" not in adjustments:
+            if leased and column in {"transaction_price", "out_of_scope_amount"}:
+                period_key = "lease_scope"
+            elif "expected_returns_amount" not in adjustments:
                 raise EngineError(
                     "ENGINE_INVARIANT_VIOLATED",
                     "a version-date re-measurement collides with the boundary build-up node",
@@ -407,7 +493,8 @@ def publish(
             # The boundary's build-up holds the expected returns at the rate in force before the
             # event while the memo at d_v stands at the new one: the returns-netted figure takes
             # the CV-50 qualifier ``returns`` in the period slot (Codex T1F-R3 ruling).
-            period_key = RETURNS_QUALIFIER
+            if period_key is None:
+                period_key = RETURNS_QUALIFIER
         nodes[column] = tb.node(
             measure=f"{column}@{latest.event_key}",
             subject_key=group,

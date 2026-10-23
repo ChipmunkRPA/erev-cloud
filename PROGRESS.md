@@ -20,6 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Combined-component rated usage — October 23, 2026
+
+- USAGE price/recognition now includes original component events once, preserving their ids.
+  Nonlease-predominant fees enter revenue; lease-predominant fees enter the excluded allocation.
+- Fixed lease-scope trace collision and total allocation: 10,000 + 300 routes out as 10,300
+  with zero revenue/RPO. Three full-engine cases plus 26 existing cases, lint/types pass.
+- Other payment modes, public persistence/report evidence, modifications and in-scope visibility
+  remain open; this does not complete all variable payments. No deployment.
+
 ## Lessor assessment workbench — October 23, 2026
 
 - Contract Step 2 now provides explicit component/asset/eligibility/predominance entry and
@@ -28,17 +37,6 @@ review and publish changes without PR accumulation, and do not deploy.
   Original component keys remain selectable from retained assessments after combination.
 - Two interaction cases, TypeScript and scoped ESLint pass. Modification/variable-payment
   integration and in-scope combined visibility remain open. No deployment.
-
-## Combined lessor scope Reporting — October 23, 2026
-
-- Scope exclusions now show retained original components and exact reviewed assessments/
-  rationales, with the combined amount counted once. Saved reruns retain these fields;
-  older traces without structured membership explicitly state that limitation.
-- Populated approval-to-report workflow exposed/fixed the standalone lease amount surviving
-  combination: 108,000 now routes out as 108,000, not its former 81,000 lease-only memo.
-- Combined report/rerun, existing scope workflow and 39 engine/register checks pass; production
-  lint/types pass. UI, modification/variable-payment and in-scope visibility remain open.
-  No deployment; see CURRENT-DEVELOPMENT-SCOPE.md for scope.
 
 ## Legacy FX-evidence refresh — October 23, 2026
 

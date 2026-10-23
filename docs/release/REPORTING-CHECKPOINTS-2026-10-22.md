@@ -244,3 +244,14 @@
 - Twelve targeted cases (including two full-engine paths), eight existing election cases and
   scoped lint/types pass. UI, populated approval, modification/variable-payment integration
   and Reporting remain open; see CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
+## Combined lessor scope Reporting — October 23, 2026
+
+- Scope exclusions now show retained original components and exact reviewed assessments/
+  rationales, with the combined amount counted once. Saved reruns retain these fields;
+  older traces without structured membership explicitly state that limitation.
+- Populated approval-to-report workflow exposed/fixed the standalone lease amount surviving
+  combination: 108,000 now routes out as 108,000, not its former 81,000 lease-only memo.
+- Combined report/rerun, existing scope workflow and 39 engine/register checks pass; production
+  lint/types pass. UI, modification/variable-payment and in-scope visibility remain open.
+  No deployment; see CURRENT-DEVELOPMENT-SCOPE.md for scope.

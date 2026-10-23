@@ -178,11 +178,21 @@ def _own_events(
     obligation_key: str,
     subject_key: str,
     admits: Callable[[EventView], bool],
+    component_keys: Sequence[str] = (),
 ) -> list[EventView]:
     return [
         ev
         for ev in measure_events
-        if admits(ev) and royalties.names_obligation(ev, contract_key, obligation_key, subject_key)
+        if admits(ev)
+        and (
+            royalties.names_obligation(ev, contract_key, obligation_key, subject_key)
+            or any(
+                royalties.names_obligation(
+                    ev, contract_key, key, f"{_encode(contract_key)}/{_encode(key)}"
+                )
+                for key in component_keys
+            )
+        )
     ]
 
 
@@ -214,6 +224,7 @@ def derived_usage(
     subject_key: str,
     at: date,
     admits: Callable[[EventView], bool],
+    component_keys: Sequence[str] = (),
 ) -> RtiRealisation:
     """S09-R-19 (POL-240 ``DERIVED``): the rated non-royalty usage of one obligation whose usage
     period ended on or before ``at``, over the events ``admits`` accepts (S04-R-06 prices the same
@@ -224,6 +235,7 @@ def derived_usage(
         obligation_key=obligation_key,
         subject_key=subject_key,
         admits=admits,
+        component_keys=component_keys,
     )
     return _rated(own, at)
 

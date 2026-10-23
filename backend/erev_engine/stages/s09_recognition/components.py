@@ -506,6 +506,7 @@ def period_vc_realised(
         contract_key=ob.contract_key,
         obligation_key=ob.obligation_key,
         subject_key=ob.subject_key,
+        component_keys=ob.combined_component_keys,
         at=d,
         admits=admits,
     )
