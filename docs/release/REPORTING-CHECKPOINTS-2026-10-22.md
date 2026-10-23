@@ -225,3 +225,13 @@
 - Populated API, seven registry and seven UI cases plus scoped lint/types pass. Approval,
   calculation and Reporting integration remain; two calculation choices await the owner.
   No deployment.
+
+## Shared-estimate audit history — October 23, 2026
+
+- Definitions and draft version changes now identify their audited object; versions retain
+  before/after values and row version. Current/former member contracts are frozen into each
+  event for contract audit trails. Portfolio audit types and metadata labels are registered.
+- Scoped writer scan, lint and types pass; populated workflow checks version evidence.
+  Full audit architecture scan still reports 29 pre-existing findings in forecast,
+  release-validation and sandbox dispatch. Track these separately; no full-suite claim.
+- Shared approval/application still await the two calculation choices. No deployment.

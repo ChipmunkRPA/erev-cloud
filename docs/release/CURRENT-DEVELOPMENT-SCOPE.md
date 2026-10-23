@@ -614,3 +614,31 @@ create/review-to-computation verification, modification/variable-payment handlin
 members, and scope-exclusion/reporting display of the full combined population and assessment.
 Those paths must be inspected and completed before claiming this policy is release-ready.
 No deployment.
+
+## October 23 combined lessor scope Reporting — implemented
+
+Scope exclusion rows now show the full original component set, exact reviewed assessment
+numbers, rationales and retained-evidence basis for a combined lease. The amount remains one
+combined allocation, counted once; no per-component attribution is invented. The source is
+the selected version's hash-checked calculation trace, not current membership or the latest
+host judgement. Structured JSON component keys preserve delimiters inside identifiers.
+Older combined traces without that structured field explicitly report unavailable membership
+instead of guessing from comma-separated text. Existing non-combination rows and saved reports
+keep their old column shape. New saved report evidence retains the added fields for reruns.
+
+A populated workflow publishes the lease template election, creates/submits a contract-level
+assessment through the public judgement API, independently approves it, activates with the
+existing fixture and runs the report through its public job. It exposed and repaired a real
+initial-combination defect: the lease host's standalone entered out_of_scope_amount was retained
+after combination. Combined drafts now clear that standalone measure so the full component is
+measured. The 108,000 combined case now reports 108,000 rather than the old 81,000 lease-only
+memo, with both original components and the actual reviewed rationale.
+
+Verification: the populated combined report and identical saved rerun pass; the existing scope
+workflow (including functional/reporting and saved reruns) passes. Twelve targeted engine and
+27 pure register cases pass, along with production lint/types. Test-file lint excluding existing
+import-order drift passes. No deployment.
+
+Still open for POL-231: dedicated user entry UI; modification and variable-payment treatment
+across combined members; broader in-scope combined-component visibility (nonlease-predominant
+components correctly do not appear as scope exclusions). This checkpoint does not close those.

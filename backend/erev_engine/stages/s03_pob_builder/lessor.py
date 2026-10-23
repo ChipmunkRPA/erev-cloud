@@ -100,6 +100,8 @@ def combine(ctx: BookContext, st: IdentifiedState, drafts: Sequence[PobDraft]) -
                 result,
                 scope_flag=ScopeFlag.IN_SCOPE_606 if predominates else ScopeFlag.LEASE_842,
                 routed_out=not predominates,
+                # A standalone lease's entered amount does not measure the combined component.
+                out_of_scope_amount=None,
                 lessor_judgement_keys=tuple(sorted(item[3] for item in assessed)),
             )
         )

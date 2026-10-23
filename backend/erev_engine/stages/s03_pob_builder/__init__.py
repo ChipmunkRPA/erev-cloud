@@ -11,6 +11,7 @@ triggers. ``run`` builds the obligations of every member's booking at the group 
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -423,6 +424,9 @@ def _template_params(draft: PobDraft) -> dict[str, str]:
         **(
             {
                 "lessor_judgement_keys": ",".join(draft.lessor_judgement_keys),
+                "lessor_component_keys": json.dumps(
+                    [member.obligation_key for member in draft.members], ensure_ascii=False
+                ),
                 "lessor_scope": draft.scope_flag.value,
             }
             if draft.lessor_judgement_keys

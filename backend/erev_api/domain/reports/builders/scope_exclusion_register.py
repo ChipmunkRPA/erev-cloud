@@ -37,7 +37,6 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -54,8 +53,12 @@ from erev_api.domain.reports.builders import register_support as support
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import JudgementStatus, ScopeFlag
+from erev_api.explain import store as trace_store
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import canonical_bytes
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
+from erev_engine.trace import Trace
 
 CODE: Final = "scope_exclusion_register"
 EVIDENCE: Final = "scope_exclusion_inputs_v1"
@@ -108,6 +111,10 @@ class Source:
     judgement_no: str | None
     rationale: str | None
     effective_date: date
+    combined_components: tuple[str, ...] = ()
+    combination_judgements: tuple[str, ...] = ()
+    combination_rationales: tuple[str, ...] = ()
+    combination_evidence_status: str | None = None
 
 
 def amount_of(
@@ -161,6 +168,22 @@ def dataset_rows(found: Iterable[Source]) -> tuple[list[dict[str, Any]], dict[st
                 "effective_date": item.effective_date,
             }
         )
+        if item.combination_evidence_status is not None:
+            rows[-1].update(
+                combined_components="; ".join(item.combined_components),
+                combination_judgements="; ".join(item.combination_judgements),
+                combination_rationales="\n".join(item.combination_rationales),
+                combination_evidence_status=item.combination_evidence_status,
+            )
+    if any("combination_evidence_status" in row for row in rows):
+        for row in rows:
+            for key in (
+                "combined_components",
+                "combination_judgements",
+                "combination_rationales",
+                "combination_evidence_status",
+            ):
+                row.setdefault(key, None)
     return rows, {
         "row_count": len(rows),
         "out_of_scope_amount_total": tie_outs.by_currency(totals),
@@ -210,6 +233,25 @@ def _judgements(
     return found
 
 
+def combination_evidence(
+    trace: Trace | None, subject_key: str
+) -> tuple[tuple[str, ...], tuple[str, ...], str] | None:
+    """Read retained calculation evidence, never infer combined membership from live judgements."""
+    if trace is None:
+        return None
+    node = next((node for node in trace.nodes if node.id == f"stated_price:{subject_key}:-"), None)
+    if node is None or "lessor_judgement_keys" not in node.params:
+        return None
+    judgements = tuple(node.params["lessor_judgement_keys"].split(","))
+    encoded = node.params.get("lessor_component_keys")
+    if encoded is None:
+        return (), judgements, "Legacy trace lacks structured component membership"
+    components = json.loads(encoded)
+    if not isinstance(components, list) or not all(isinstance(key, str) for key in components):
+        raise ValueError("Invalid retained lessor component membership")
+    return tuple(components), judgements, "Retained calculation evidence"
+
+
 def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[list[Source], date]:
     """The routed-out obligation versions at each entity's period end; and the as-of date of the
     control totals (the first entity's period end; the run's day without entities)."""
@@ -249,10 +291,30 @@ def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[l
     judgements = _judgements(
         session, params, [UUID(str(row["obligation_id"])) for row, _ in rows], cutoff=cutoff
     )
+    traces = {version_id: trace_store.load_trace(session, version_id) for version_id in version_ids}
     found: list[Source] = []
     for row, entity in rows:
         version_id = UUID(str(row["contract_version_id"]))
         judgement = judgements.get(UUID(str(row["obligation_id"])))
+        combined = combination_evidence(
+            traces[version_id],
+            obligation_subject_key(str(row["contract_external_id"]), str(row["obligation_key"])),
+        )
+        rationales: tuple[str, ...] = ()
+        if combined is not None:
+            # Reviewed content is immutable even after supersession. Select the exact records
+            # named by the retained computation, not a more recent assessment of the host.
+            evidence = session.execute(
+                select(judgement_record.c.judgement_no, judgement_record.c.rationale).where(
+                    judgement_record.c.contract_id == row["contract_id"],
+                    judgement_record.c.judgement_no.in_(combined[1]),
+                    judgement_record.c.reviewed_at <= row["version_known_at"],
+                )
+            ).all()
+            by_number = {str(number): str(rationale) for number, rationale in evidence}
+            if set(by_number) != set(combined[1]):
+                raise ValueError("Retained lessor judgement evidence is unavailable")
+            rationales = tuple(f"{number}: {by_number[number]}" for number in combined[1])
         found.append(
             Source(
                 contract_external_id=str(row["contract_external_id"]),
@@ -270,6 +332,10 @@ def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[l
                 judgement_no=None if judgement is None else str(judgement["judgement_no"]),
                 rationale=None if judgement is None else str(judgement["rationale"]),
                 effective_date=row["effective_date"],
+                combined_components=() if combined is None else combined[0],
+                combination_judgements=() if combined is None else combined[1],
+                combination_rationales=rationales,
+                combination_evidence_status=None if combined is None else combined[2],
             )
         )
     # ``period_ends`` inserts in entity-code order: its first key is the first entity's end
@@ -376,6 +442,13 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
     check_view(view, found)
     rows, totals = dataset_rows(found)
     columns: tuple[Column, ...] = COLUMNS
+    if any(item.combination_evidence_status is not None for item in found):
+        columns += (
+            Column("combined_components", "Combined original components", "text"),
+            Column("combination_judgements", "Combination assessments", "text"),
+            Column("combination_rationales", "Combination rationales", "text"),
+            Column("combination_evidence_status", "Combination evidence basis", "text"),
+        )
     if view == "reporting":
         target = retained["reporting_currency"]
         translations = {
@@ -409,7 +482,7 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
         totals["out_of_scope_reporting_total"] = tie_outs.by_currency(equivalents)
         totals["reporting_currency"] = target
         totals["translation_basis"] = "report_period_closing_equivalent"
-        columns = COLUMNS + (
+        columns = columns + (
             Column("reporting_currency", "Reporting currency", "code"),
             Column("out_of_scope_reporting", "Out-of-scope reporting equivalent", "money"),
             Column("reporting_basis", "Reporting conversion basis", "text"),

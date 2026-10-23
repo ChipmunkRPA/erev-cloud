@@ -663,3 +663,83 @@ def test_judgement_retained_inputs_rebuild_labels_and_withheld_count_without_dat
             judgements.build(uow, invalid)
     with pytest.raises(Problem):
         judgements.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=PRIYA)), params)
+
+
+def test_scope_combination_evidence_is_structured_and_legacy_is_not_inferred():
+    from dataclasses import replace
+    from erev_engine.trace import Trace, TraceNode
+
+    node = TraceNode(
+        id="stated_price:BR-06/L1-LEASE:-",
+        measure="stated_price",
+        value="108000",
+        currency="USD",
+        formula_id="pob.merge.v1",
+        inputs=(),
+        params={
+            "lessor_judgement_keys": "JDG-1,JDG-2",
+            "lessor_component_keys": '["L1-LEASE", "SERVICE,WITH,COMMAS"]',
+        },
+        rounding_residue=None,
+        narrative_key="pob.merge.v1",
+    )
+    trace = Trace(1, "test", (node,), {})
+    found = exclusions.combination_evidence(trace, "BR-06/L1-LEASE")
+    assert found == (
+        ("L1-LEASE", "SERVICE,WITH,COMMAS"),
+        ("JDG-1", "JDG-2"),
+        "Retained calculation evidence",
+    )
+    legacy = replace(
+        trace,
+        nodes=(
+            replace(
+                node,
+                params={
+                    "lessor_judgement_keys": "JDG-1",
+                    "members": "L1-LEASE,SERVICE,WITH,COMMAS",
+                },
+            ),
+        ),
+    )
+    found = exclusions.combination_evidence(legacy, "BR-06/L1-LEASE")
+    assert found == ((), ("JDG-1",), "Legacy trace lacks structured component membership")
+    assert exclusions.combination_evidence(None, "BR-06/L1-LEASE") is None
+
+
+def test_scope_combination_saved_inputs_retain_full_amount_once():
+    import json
+    from dataclasses import asdict
+    from erev_engine.canonical import canonical_bytes
+
+    source = _excluded(
+        out_of_scope_amount=Decimal("108000"),
+        combined_components=("L1-LEASE", "L2-SERVICE"),
+        combination_judgements=("JDG-1",),
+        combination_rationales=("JDG-1: Equipment predominates.",),
+        combination_evidence_status="Retained calculation evidence",
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(source)],
+                "currency_view": "transaction",
+                "as_of": "2026-09-30",
+            }
+        )
+    )
+    data = exclusions.data_from_inputs(retained)
+    assert data.control_totals["out_of_scope_amount_total"] == {"USD": "108000.00"}
+    assert len(data.rows) == 1
+    assert data.rows[0]["combined_components"] == "L1-LEASE; L2-SERVICE"
+    assert "combination_rationales" in {column.key for column in data.columns}
+    for key in (
+        "combined_components",
+        "combination_judgements",
+        "combination_rationales",
+        "combination_evidence_status",
+    ):
+        retained["sources"][0].pop(key)
+    legacy = exclusions.data_from_inputs(retained)
+    assert legacy.columns == exclusions.COLUMNS
+    assert "combined_components" not in legacy.rows[0]

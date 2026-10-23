@@ -2027,7 +2027,12 @@ class Br06World:
 
 
 def br06_lease(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    *,
+    lessor_combination: bool = False,
 ) -> Br06World:
     """The facts of answer key ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT through the product's
     commands (PRD §2.10 BR-06): Maya, Priya and Marcus as in ``k03_castellan``; AVM-US (USD) with
@@ -2088,7 +2093,11 @@ def br06_lease(
             maya,
             marcus,
             code=template_code,
-            outputs=outputs,
+            outputs=(
+                {**outputs, "policy_values": {"scope.lessor_combination_expedient": "ELECTED"}}
+                if lessor_combination and code == ROBOT_LEASE
+                else outputs
+            ),
             case_line={
                 "obligation_key": "POB-01",
                 "product_code": code,
@@ -2142,18 +2151,42 @@ def br06_lease(
         },
         activate=False,
     )
+    if lessor_combination:
+        record = judgement_submitted(
+            app,
+            maya,
+            {
+                "topic": "OTHER",
+                "subject_type": "contract",
+                "subject_id": str(booked.contract["id"]),
+                "conclusion": "The lease predominates in the combined component.",
+                "rationale": "Same transfer pattern; operating lease; equipment is predominant.",
+                "codification_refs": ["842-10-15-42A", "842-10-15-42B"],
+                "questionnaire": {
+                    "obligation_key": "L2-SERVICE",
+                    "lessor_lease_obligation_key": "L1-LEASE",
+                    "lessor_asset_class": "Equipment",
+                    "lessor_same_transfer_pattern": True,
+                    "lessor_operating_lease": True,
+                    "lessor_nonlease_predominates": False,
+                },
+            },
+        )
+        reviewed = approve(app, str(record["approval_request_id"]), priya)
+        assert reviewed.status_code == 200, reviewed.text
     booked = activated_contract(place, booked)
     contract_id = UUID(str(booked.contract["id"]))
     (version,) = place.rows(
-        select(contract_version.c.transaction_price, contract_version.c.out_of_scope_amount).where(
-            contract_version.c.combination_group_id == UUID(str(booked.combination_group["id"]))
-        )
+        select(contract_version.c.transaction_price, contract_version.c.out_of_scope_amount)
+        .where(contract_version.c.combination_group_id == UUID(str(booked.combination_group["id"])))
+        .order_by(contract_version.c.version_no.desc())
+        .limit(1)
     )
     # answer key ALC-BR-06: transaction price 27,000.00 net of the lease allocation 81,000.00
     assert (Decimal(version["transaction_price"]), Decimal(version["out_of_scope_amount"])) == (
-        Decimal("27000.00"),
-        Decimal("81000.00"),
-    )
+        Decimal("0.00") if lessor_combination else Decimal("27000.00"),
+        Decimal("108000.00") if lessor_combination else Decimal("81000.00"),
+    ), version
     lease_obligation_id = place.scalar(
         select(obligation.c.id).where(
             obligation.c.contract_id == contract_id, obligation.c.obligation_key == "L1-LEASE"

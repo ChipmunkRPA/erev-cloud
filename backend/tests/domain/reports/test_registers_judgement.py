@@ -861,3 +861,36 @@ def test_loss_register_explain_stays_bound_and_refuses_other_entity(
         post(world.app, contributor["href"] + "/verify", reader, {}),
     ):
         assert hidden.status_code == 404, hidden.text
+
+
+def test_combined_lessor_scope_register_retains_members_and_review_evidence(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = br06_lease(app, keyring, clock, files, lessor_combination=True).report
+    parameters = {"entity_codes": [AVM_US], "book": "ASC606", "period_key": SEPTEMBER_2026}
+    clock.advance(STEP)
+    run, rows = report_run(world, "scope_exclusion_register", parameters)
+    assert run["status"] == "SUCCEEDED"
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["out_of_scope_amount"] == usd("108000.00")
+    assert set(row["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
+    assert row["combination_judgements"].startswith("JDG-")
+    assert "equipment is predominant" in row["combination_rationales"]
+    assert row["combination_evidence_status"] == "Retained calculation evidence"
+    assert run["control_totals"]["out_of_scope_amount_total"] == {"USD": "108000.00"}
+
+    from support import worlds
+
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.json()["items"] == rows

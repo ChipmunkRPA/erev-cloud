@@ -50,7 +50,13 @@ def example(*, elected=True, book="ASC606", outcome=None):
     return bundle(
         booked(
             line("SERVICE", "MAINT", price="2500.00"),
-            line("LEASE", "EQUIP", price="7500.00", scope_flag="LEASE_842"),
+            line(
+                "LEASE",
+                "EQUIP",
+                price="7500.00",
+                scope_flag="LEASE_842",
+                out_of_scope_amount="7000.00",
+            ),
         ),
         products=[product("EQUIP"), product("MAINT")],
         templates=[template(**OVER_TIME)],
