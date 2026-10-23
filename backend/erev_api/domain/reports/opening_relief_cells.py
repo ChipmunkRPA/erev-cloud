@@ -89,9 +89,16 @@ def _details(source: dict[str, Any]) -> list[str]:
     ]
     if len(source["contracts"]) > 1:
         result.append("Combined-contract group total. Member relief is not allocated.")
+    labels = dict(
+        zip(
+            COLUMNS,
+            ("Opening contract liability", "Revenue recognized", "Revenue from opening"),
+            strict=True,
+        )
+    )
     for column in COLUMNS:
         value = source["values"][column]
-        result.append(f"{column}: {value['amount']} {value['currency']}")
+        result.append(f"{labels[column]}: {value['amount']} {value['currency']}")
     facts = source["pob"]
     if not facts:
         result.append(
@@ -99,21 +106,48 @@ def _details(source: dict[str, Any]) -> list[str]:
             "obligation-level source detail is unavailable for this row."
         )
     members = facts.get("members", {"group": facts})
+    # The group key is retained before reporting projection; its currency is the source basis.
+    parts = source.get("group_key", "").split(":")
+    currency = (
+        parts[-1]
+        if len(parts) == 3
+        else (source["currency"] if source["currency_view"] != "reporting" else "original currency")
+    )
+    cap_labels = {
+        "opening_cap": "Opening liability cap",
+        "opening": "Opening liability cap",
+        "consumption_cap": "Actual liability consumption",
+        "consumed": "Actual liability consumption",
+    }
     for name in ("opening_cap", "consumption_cap", "opening", "consumed"):
         if name in facts:
-            result.append(f"POB {name}: {facts[name]} (source currency)")
+            result.append(f"{cap_labels[name]}: {facts[name]} {currency}")
     for member, detail in sorted(members.items()):
         if not detail:
             continue
         result.append(f"Source member: {member}; computation: {detail.get('version', '')}")
         for name in ("opening_cap", "consumption_cap"):
             if name in detail:
-                result.append(f"POB {name}: {detail[name]} (source currency)")
+                result.append(f"{cap_labels[name]}: {detail[name]} {currency}")
         result.append(
             "Posted revenue sources: " + "; ".join(map(str, detail.get("posted_lines", [])))
         )
         for subject, obligation in sorted(detail.get("obligations", {}).items()):
+            for field, label in (
+                ("opening_billing", "Opening attributed billing"),
+                ("opening_revenue", "Opening recognized revenue"),
+                ("posted_revenue", "Selected-range net posted revenue"),
+                ("eligible_relief", "Eligibility before group caps; not allocated group relief"),
+            ):
+                if field in obligation:
+                    result.append(f"{subject} · {label}: {obligation[field]} {currency}")
             result.append(f"{subject}: opening sources {obligation.get('opening_nodes', [])}")
+    if "period_relief" in facts:
+        result.append(
+            "Reporting relief uses signed period changes at each period's retained average rate."
+        )
+        for period, amount in sorted(facts["period_relief"].items()):
+            result.append(f"{period} · Relief before reporting translation: {amount} {currency}")
     for rate in source["translation_rates"]:
         result.append(
             "Retained translation: " + "; ".join(f"{k}={v}" for k, v in sorted(rate.items()))

@@ -98,3 +98,65 @@ def test_opening_links_use_frozen_version_and_never_replace_absent_opening():
         f"/trace/{trace}?node=billed_cum%3AA%2FO1%3AP01",
     }
     assert all(current not in item["href"] for item in links)
+
+
+def test_reporting_calculation_explains_original_currency_and_signed_period_changes():
+    from erev_api.domain.reports.opening_relief_cells import _details
+
+    source = {
+        "contracts": [str(A), str(B)],
+        "currency_view": "reporting",
+        "currency": "EUR",
+        "group_key": f"{A}:{ENTITY}:USD",
+        "values": rows()[0] | {},
+        "translation_rates": [],
+        "pob": {
+            "opening": "80",
+            "consumed": "26.67",
+            "period_relief": {"P01": "40", "P02": "-13.33"},
+            "members": {
+                str(A): {
+                    "obligations": {
+                        "A/O1": {
+                            "opening_billing": "50",
+                            "opening_revenue": "10",
+                            "posted_revenue": "26.67",
+                            "eligible_relief": "26.67",
+                        }
+                    }
+                }
+            },
+        },
+    }
+    source["values"] = {column: {"amount": "24.00", "currency": "EUR"} for column in COLUMNS}
+    detail = _details(source)
+    assert "Revenue from opening: 24.00 EUR" in detail
+    assert "Opening liability cap: 80 USD" in detail
+    assert "A/O1 · Opening attributed billing: 50 USD" in detail
+    assert "A/O1 · Eligibility before group caps; not allocated group relief: 26.67 USD" in detail
+    assert "P02 · Relief before reporting translation: -13.33 USD" in detail
+    assert not any("26.67 EUR" in item for item in detail)
+
+
+def test_zero_consumption_does_not_invent_missing_opening_calculation_inputs():
+    from erev_api.domain.reports.opening_relief_cells import _details
+
+    source = {
+        "contracts": [str(A)],
+        "currency_view": "functional",
+        "currency": "USD",
+        "group_key": f"{A}:{ENTITY}:USD",
+        "values": rows()[0],
+        "translation_rates": [],
+        "pob": {
+            "basis": "ZERO_CONSUMPTION",
+            "opening_cap": "40",
+            "consumption_cap": "-10",
+            "obligations": {"A/O1": {"posted_revenue": "-10"}},
+        },
+    }
+    details = _details(source)
+    assert "A/O1 · Selected-range net posted revenue: -10 USD" in details
+    assert not any(
+        "Opening attributed billing" in item or "Eligibility before" in item for item in details
+    )

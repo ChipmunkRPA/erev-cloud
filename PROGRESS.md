@@ -20,22 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Native historical obligation openings — October 23, 2026
+## Opening-relief calculation breakdown — October 23, 2026
 
-- Native rollforward_balances accepts explicit opening_obligations alongside the frozen group
-  opening. It requires a complete current obligation population, nonnegative integer minor-unit
-  amounts and FIFO_WITHIN_POB. The amounts use the selected view's currency; the caller is
-  responsible for authenticating the original snapshot and source provenance.
-- Transaction and foreign-functional classification can use those original obligation balances
-  instead of restated ownership, capped by frozen group liability and actual period consumption.
-  Total revenue relief and other movement lines remain unchanged. Calls without the new input
-  preserve their existing group-cap-only behavior and do not establish historical POB ownership.
-- Thirteen focused native rollforward cases pass, including changed historical ownership at an
-  unchanged group total, incomplete/negative/unknown inputs, and functional classification.
-  Scoped lint/types pass. No deployment or posting changes.
-- This completes the calculation input path only: platform/native snapshot capture and automatic
-  handoff of authenticated per-obligation history remain unfinished. Existing public report
-  frozen-source recovery is separate; positive special-contract attribution remains guarded.
+- Opening-liability amount drill now exposes retained obligation opening billing, opening
+  recognized revenue, selected-range net posted revenue and eligibility before group caps.
+  Eligibility is explicitly not an allocation of combined group relief; absent inputs remain
+  absent rather than becoming manufactured zero balances.
+- Source amounts and caps name the retained pre-projection currency. Reporting cells show
+  signed period relief before translation alongside the report-currency result and retained
+  rates, so reversals and different closing/average-rate bases remain visible.
+- Five focused contributor cases and scoped lint/types pass. This reads existing saved evidence;
+  report amounts, bindings and posting calculations are unchanged. No deployment.
+- Native snapshot integration audit: S15 constructs balance_rollforwards, but the platform output
+  adapter currently persists no such collection. Completing native frozen-history integration
+  requires a persisted output/snapshot path as well as authenticated bundle inputs; adding a
+  keyword to the stage call alone would not create a usable platform feature. This remains open.
 
 ## Rollforward Other explanation — October 23, 2026
 

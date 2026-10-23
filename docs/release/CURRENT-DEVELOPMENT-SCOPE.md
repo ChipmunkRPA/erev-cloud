@@ -13,6 +13,22 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Opening-relief calculation breakdown — October 23, 2026
+
+- Opening-liability amount drill now exposes retained obligation opening billing, opening
+  recognized revenue, selected-range net posted revenue and eligibility before group caps.
+  Eligibility is explicitly not an allocation of combined group relief; absent inputs remain
+  absent rather than becoming manufactured zero balances.
+- Source amounts and caps name the retained pre-projection currency. Reporting cells show
+  signed period relief before translation alongside the report-currency result and retained
+  rates, so reversals and different closing/average-rate bases remain visible.
+- Five focused contributor cases and scoped lint/types pass. This reads existing saved evidence;
+  report amounts, bindings and posting calculations are unchanged. No deployment.
+- Native snapshot integration audit: S15 constructs balance_rollforwards, but the platform output
+  adapter currently persists no such collection. Completing native frozen-history integration
+  requires a persisted output/snapshot path as well as authenticated bundle inputs; adding a
+  keyword to the stage call alone would not create a usable platform feature. This remains open.
+
 ## Native historical obligation openings — October 23, 2026
 
 - Native rollforward_balances accepts explicit opening_obligations alongside the frozen group
