@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Optional modification currency equivalents — October 22, 2026
+
+- Added an explicit Currency amount basis choice to the modification report. The default
+  source basis is unchanged; spot_equivalent enables foreign Functional/Reporting views.
+  Original TP/catch-up values remain alongside labelled analytical functional equivalents,
+  with optional reporting equivalents and the pinned spot rate/reference.
+- Functional conversion uses approved direct spot rates on/before the effective date under
+  the report cutoff; reporting then uses that effective period's approved average. Each stage
+  rounds to the destination minor unit. Unknown values remain empty and missing rates refuse.
+  Same-source inputs retain the basis and rates, and reject switching basis on a bound rerun.
+- Necessary validation passed: 29 focused backend cases, populated original-register and
+  approved-rate integration cases, and seven parameter-toolbar cases. The rate integration
+  uses supplied register sources with real rate publication/read paths; it proves draft-rate
+  exclusion and future-effective-rate exclusion, not a new foreign native booking workflow.
+  Scoped types/lint passed. No deployment.
+- Actual functional per-event posted catch-up attribution remains outstanding. This feature
+  offers explicitly labelled analytical equivalents and does not substitute for that work.
+
+
 ## Modification price composition — October 22, 2026
 
 - New modification-register runs expose original-currency TP contributions: fixed consideration,

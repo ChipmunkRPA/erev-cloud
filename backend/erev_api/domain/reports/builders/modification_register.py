@@ -33,7 +33,9 @@ empty measures. ``currency_view``
 ``transaction`` is served; ``functional`` only when every row's currency is its entity's functional
 currency, else the run refuses by name (RPT-07 pattern). Reporting view uses that same
 admission and adds separately labelled equivalents at the modification effective-period average,
-retaining original values and empty measures. These equivalents are not posted FX amounts.
+retaining original values and empty measures. The optional spot_equivalent basis admits foreign
+contracts using pinned effective-date spot rates to functional currency before reporting
+translation. These equivalents are not posted FX amounts.
 A row whose key column cannot be supplied, or two rows of one key, refuse by name
 (``ModificationRegisterRefusal``).
 The as-locked surface (``period_lock_id``) is CLO-8b's; a lock source here refuses by name.
@@ -46,7 +48,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
@@ -71,7 +73,7 @@ from erev_api.db.tables import (
     obligation_version,
     tenant,
 )
-from erev_api.domain.contracts import modifications
+from erev_api.domain.contracts import bundles, modifications
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.reports import modification_event_amounts, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
@@ -96,7 +98,7 @@ QUESTIONS: Final = (
 )
 FUNCTIONAL_ONLY: Final = (
     "Functional and reporting views are available when every modification is in its entity's "
-    "functional currency; choose the transaction view."
+    "functional currency; choose the transaction view or explicitly select spot equivalents."
 )
 # D-98 140-A8 REGISTER-CUTOFF-1: T-CON-06 keeps no row history — status, effective date or any
 # authored member — so an explicit historical read whose cutoff precedes a row's last change cannot
@@ -1057,10 +1059,110 @@ def reporting_rows(
     return rows, totals
 
 
+def functional_equivalents(
+    found: Sequence[Source],
+    facts: Mapping[str, Mapping[str, Any]],
+) -> list[Source]:
+    """Explicit analytical spot equivalents, never historical-layer posted catch-ups."""
+    result = []
+    for item in found:
+        has_amount = item.tp_change is not None or bool(item.catch_up)
+        if not has_amount:
+            result.append(replace(item, currency=item.functional_currency))
+            continue
+        fact = facts.get(item.modification_no)
+        try:
+            if fact is None:
+                raise ValueError("missing spot basis")
+            rate = Decimal(str(fact["rate"]))
+            if (
+                fact["base"] != item.currency
+                or fact["quote"] != item.functional_currency
+                or fact["on"] != item.effective_date.isoformat()
+                or fact["rate_type"] != "spot"
+                or not rate.is_finite()
+                or rate <= 0
+            ):
+                raise ValueError("inconsistent spot basis")
+            if item.currency == item.functional_currency:
+                if rate != 1:
+                    raise ValueError("nonidentity equal-currency rate")
+            elif not fact.get("rate_key") or not fact.get("version_key"):
+                raise ValueError("missing pinned rate identity")
+            # Reuse the same exact decimal-to-minor-unit conversion as other reports.
+            identity = UUID(int=0)
+            conversion = reporting_currency.Translation(
+                item.functional_currency, {identity: {"rate": str(rate)}}
+            )
+            result.append(
+                replace(
+                    item,
+                    currency=item.functional_currency,
+                    tp_change=None
+                    if item.tp_change is None
+                    else conversion.amount(identity, item.tp_change),
+                    catch_up=None
+                    if item.catch_up is None
+                    else {
+                        key: conversion.amount(identity, amount)
+                        for key, amount in item.catch_up.items()
+                    },
+                )
+            )
+        except (KeyError, ValueError, ArithmeticError) as error:
+            raise tie_outs.invalid(
+                "currency_basis", "Retained modification spot evidence is inconsistent."
+            ) from error
+    return result
+
+
+def equivalent_rows(
+    found: Sequence[Source],
+    functional: Sequence[Source],
+    view: str,
+    target: str | None,
+    translations: Mapping[str, tuple[UUID, reporting_currency.Translation]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    rows = dataset_rows(found)
+    converted = dataset_rows(functional)
+    totals = control_totals(rows)
+    functional_totals = control_totals(converted)
+    totals["tp_change_functional_equivalent_total"] = functional_totals["tp_change_total"]
+    totals["catch_up_functional_equivalent_total"] = functional_totals["catch_up_total"]
+    if view == "reporting":
+        assert target is not None
+        translated, reporting_totals = reporting_rows(functional, target, translations)
+        for name in ("tp_change_reporting_total", "catch_up_reporting_total", "reporting_currency"):
+            totals[name] = reporting_totals[name]
+    else:
+        translated = converted
+    for row, func, report in zip(rows, converted, translated, strict=True):
+        row["functional_currency"] = func["currency"]
+        row["tp_change_functional_equivalent"] = func["tp_change"]
+        row["catch_up_functional_equivalent"] = func["catch_up_amount"]
+        row["conversion_basis"] = "Effective-date spot equivalent; not actual posted FX attribution"
+        if view == "reporting":
+            for name in ("reporting_currency", "tp_change_reporting", "catch_up_reporting"):
+                row[name] = report[name]
+            row["reporting_basis"] = (
+                "Effective-date spot to functional, then effective-period average to reporting"
+            )
+    totals["translation_basis"] = "analytical_spot_equivalent_not_posted"
+    return rows, totals
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
     view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
     check_view(view, ())
+    basis = str(params.parameters.get("currency_basis") or "source")
+    if basis not in {"source", "spot_equivalent"} or (
+        basis == "spot_equivalent" and view == "transaction"
+    ):
+        raise tie_outs.invalid(
+            "currency_basis",
+            "Choose source amounts, or spot equivalents with Functional or Reporting currency.",
+        )
     selection = {
         key: params.parameters.get(key)
         for key in (
@@ -1077,7 +1179,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             str(entity_id) for entity_id in params.entity_ids
         }:
             raise Problem("forbidden", "Retained modification inputs exceed report scope.")
-        if retained["currency_view"] != view or retained["selection"] != selection:
+        if (
+            retained["currency_view"] != view
+            or retained["selection"] != selection
+            or retained.get("currency_basis", "source") != basis
+        ):
             raise tie_outs.invalid(
                 "currency_view", "Retained inputs use another currency or filter selection."
             )
@@ -1093,7 +1199,34 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         to_date=to_date,
         statuses=_statuses(params),
     )
-    check_view(view, found)
+    if basis == "source":
+        check_view(view, found)
+    spot_facts: dict[str, dict[str, Any]] = {}
+    if basis == "spot_equivalent":
+        currencies = {
+            currency for item in found for currency in (item.currency, item.functional_currency)
+        }
+        cutoff = tie_outs.cutoff_for(session, params)
+        fx = bundles.fx_rate_inputs(session, currencies, cutoff)
+        for item in found:
+            if item.tp_change is None and not item.catch_up:
+                continue
+            fact = modifications.spot_basis(
+                fx, base=item.currency, quote=item.functional_currency, on=item.effective_date
+            )
+            if fact.get("rate") is None:
+                raise tie_outs.invalid(
+                    "currency_basis",
+                    "An approved spot rate is required for "
+                    f"{item.currency}/{item.functional_currency} "
+                    f"on or before {item.effective_date}.",
+                )
+            spot_facts[item.modification_no] = {
+                **fact,
+                "on": item.effective_date.isoformat(),
+                "known_at": cutoff.isoformat(),
+            }
+        tie_outs.record_evidence(params, "modification_spot_equivalents_v1", spot_facts)
     target: str | None = None
     translations: dict[str, tuple[UUID, reporting_currency.Translation]] = {}
     if view == "reporting":
@@ -1140,6 +1273,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "to_date": to_date,
                 "sources": [asdict(item) for item in found],
                 "tp_component_breakdown": True,
+                "currency_basis": basis,
+                "spot_equivalents": spot_facts,
                 "reporting_currency": target,
                 "translations": [
                     {
@@ -1179,8 +1314,15 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
         values["obligation_keys"] = tuple(values["obligation_keys"])
         found.append(Source(**values))
     view = retained["currency_view"]
-    check_view(view, found)
+    basis = retained.get("currency_basis", "source")
+    functional = (
+        functional_equivalents(found, retained["spot_equivalents"])
+        if basis == "spot_equivalent"
+        else found
+    )
+    check_view(view, functional)
     columns: tuple[Column, ...] = COLUMNS
+    translations: dict[str, tuple[UUID, reporting_currency.Translation]] = {}
     if view == "reporting":
         translations = {
             item["modification_no"]: (
@@ -1191,7 +1333,7 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
             )
             for item in retained["translations"]
         }
-        rows, totals = reporting_rows(found, retained["reporting_currency"], translations)
+        rows, totals = reporting_rows(functional, retained["reporting_currency"], translations)
         columns = COLUMNS + (
             Column("reporting_currency", "Reporting currency", "code"),
             Column("tp_change_reporting", "TP change, reporting equivalent", "money"),
@@ -1201,6 +1343,26 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
     else:
         rows = dataset_rows(found)
         totals = control_totals(rows)
+    if basis == "spot_equivalent":
+        rows, totals = equivalent_rows(
+            found, functional, view, retained["reporting_currency"], translations
+        )
+        for row in rows:
+            fact = retained["spot_equivalents"].get(str(row["modification_no"]))
+            row["functional_spot_rate"] = None if fact is None else fact["rate"]
+            row["functional_spot_rate_key"] = None if fact is None else fact.get("rate_key")
+        columns += (
+            Column("functional_spot_rate", "Functional spot rate", "decimal"),
+            Column("functional_spot_rate_key", "Functional spot rate reference", "text"),
+            Column("functional_currency", "Functional currency", "code"),
+            Column(
+                "tp_change_functional_equivalent", "TP change, functional spot equivalent", "money"
+            ),
+            Column(
+                "catch_up_functional_equivalent", "Catch-up, functional spot equivalent", "money"
+            ),
+            Column("conversion_basis", "Conversion basis", "text"),
+        )
     if retained.get("tp_component_breakdown"):
         labels = (
             "Fixed consideration",

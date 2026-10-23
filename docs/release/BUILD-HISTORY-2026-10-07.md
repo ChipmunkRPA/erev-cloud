@@ -12187,3 +12187,33 @@ cleanup in the shared database session kernel was also repaired and regression-t
   catalogue parity passed. Original historical-cutoff limits and older OPEN-run behavior remain.
 - This preserves selected report inputs; it does not add role-permission history or expand
   approvals. Saved-run access still uses current authorization. No deployment.
+
+## Latest contract status retained reconstruction — October 22, 2026
+
+- New latest-status runs retain selected contract-version inputs, original contract/product/entity
+  labels, resolved as-of obligation cuts and member/entity balance cuts. Bound reruns validate
+  tenant/entity scope and book/as-of/contract selection, then recalculate reported allocation,
+  remaining allocation and deduplicated balance totals without live contract reads.
+- This is reconstruction from retained resolved cuts, not a new engine computation. The live
+  as-of calculation, transaction-currency presentation and legacy export behavior are unchanged.
+  Older OPEN runs retain their original live-evaluation behavior. Migration 0320 updates IPE.
+- Necessary verification passed: 17 focused source-binding/reconstruction cases and the actual
+  16-obligation latest-status API/worker workflow, including identical rerun rows/output hash;
+  scoped lint/types and frozen metadata parity. No deployment; remaining documented work and
+  final repository verification are not claimed complete.
+
+## Legacy contract exports retained reconstruction — October 22, 2026
+
+- Both legacy contract history and latest-contract exports now retain current/predecessor
+  obligation-version inputs, original labels and the verified exact trace texts used by the
+  71-column format. Shared reconstruction restores source dates/timestamps and reruns the legacy
+  column calculations without reading current contracts or trace storage.
+- Tenant/entity scope, report identity and date/book/contract selection are checked. Current and
+  predecessor obligation IDs are retained as source membership. Exact-text refusals still apply
+  when the original run reads its trace; unavailable activity remains explicitly unavailable.
+  Older OPEN runs keep their original behavior. Migration 0321 freezes both IPE definitions.
+- Necessary verification passed: 32 focused exact-export/source-binding cases, including
+  database-free reconstruction, scope refusals and recalculated remaining SSP. Actual API/worker
+  runs of both 71-column exports and latest-status reproduce original rows/output hashes; scoped
+  lint/types and both metadata checks passed. No deployment. Legacy JE summary, other documented
+  gaps and final repository verification remain outside this completed batch.

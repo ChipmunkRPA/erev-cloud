@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Optional modification currency equivalents — October 22, 2026
+
+- Added an explicit Currency amount basis choice to the modification report. The default
+  source basis is unchanged; spot_equivalent enables foreign Functional/Reporting views.
+  Original TP/catch-up values remain alongside labelled analytical functional equivalents,
+  with optional reporting equivalents and the pinned spot rate/reference.
+- Functional conversion uses approved direct spot rates on/before the effective date under
+  the report cutoff; reporting then uses that effective period's approved average. Each stage
+  rounds to the destination minor unit. Unknown values remain empty and missing rates refuse.
+  Same-source inputs retain the basis and rates, and reject switching basis on a bound rerun.
+- Necessary validation passed: 29 focused backend cases, populated original-register and
+  approved-rate integration cases, and seven parameter-toolbar cases. The rate integration
+  uses supplied register sources with real rate publication/read paths; it proves draft-rate
+  exclusion and future-effective-rate exclusion, not a new foreign native booking workflow.
+  Scoped types/lint passed. No deployment.
+- Actual functional per-event posted catch-up attribution remains outstanding. This feature
+  offers explicitly labelled analytical equivalents and does not substitute for that work.
+
 ## Modification price composition — October 22, 2026
 
 - New modification-register runs expose original-currency TP contributions: fixed consideration,
@@ -202,36 +220,6 @@ review and publish changes without PR accumulation, and do not deploy.
   USD/EUR, same key across entities and sign changes that recalculate debit/credit totals.
   Actual GROSS and DELTA API/worker runs reproduce rows and output hashes. Scoped lint/types and
   migration metadata parity passed. No deployment; final repository verification remains open.
-
-## Legacy contract exports retained reconstruction — October 22, 2026
-
-- Both legacy contract history and latest-contract exports now retain current/predecessor
-  obligation-version inputs, original labels and the verified exact trace texts used by the
-  71-column format. Shared reconstruction restores source dates/timestamps and reruns the legacy
-  column calculations without reading current contracts or trace storage.
-- Tenant/entity scope, report identity and date/book/contract selection are checked. Current and
-  predecessor obligation IDs are retained as source membership. Exact-text refusals still apply
-  when the original run reads its trace; unavailable activity remains explicitly unavailable.
-  Older OPEN runs keep their original behavior. Migration 0321 freezes both IPE definitions.
-- Necessary verification passed: 32 focused exact-export/source-binding cases, including
-  database-free reconstruction, scope refusals and recalculated remaining SSP. Actual API/worker
-  runs of both 71-column exports and latest-status reproduce original rows/output hashes; scoped
-  lint/types and both metadata checks passed. No deployment. Legacy JE summary, other documented
-  gaps and final repository verification remain outside this completed batch.
-
-## Latest contract status retained reconstruction — October 22, 2026
-
-- New latest-status runs retain selected contract-version inputs, original contract/product/entity
-  labels, resolved as-of obligation cuts and member/entity balance cuts. Bound reruns validate
-  tenant/entity scope and book/as-of/contract selection, then recalculate reported allocation,
-  remaining allocation and deduplicated balance totals without live contract reads.
-- This is reconstruction from retained resolved cuts, not a new engine computation. The live
-  as-of calculation, transaction-currency presentation and legacy export behavior are unchanged.
-  Older OPEN runs retain their original live-evaluation behavior. Migration 0320 updates IPE.
-- Necessary verification passed: 17 focused source-binding/reconstruction cases and the actual
-  16-obligation latest-status API/worker workflow, including identical rerun rows/output hash;
-  scoped lint/types and frozen metadata parity. No deployment; remaining documented work and
-  final repository verification are not claimed complete.
 
 ## Outstanding release verification
 

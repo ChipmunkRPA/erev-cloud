@@ -155,6 +155,20 @@ def test_modification_register_k02(k02: K02World, runtime: JobRuntime, clock: Fr
     assert reporting.rows[0]["catch_up_reporting"] == row["catch_up_amount"]
     assert reporting.control_totals["tp_change_reporting_total"] == {"USD": "60000.00"}
     assert reporting.control_totals["translation_basis"] == "modification_effective_period_average"
+    equivalents = SourceCollector()
+    equivalent = _run(
+        k02,
+        known_at=clock.now(),
+        currency_view="functional",
+        currency_basis="spot_equivalent",
+        collector=equivalents,
+    )
+    assert equivalent.rows[0]["tp_change_functional_equivalent"] == row["tp_change"]
+    assert register.data_from_inputs(equivalents.evidence[register.EVIDENCE]) == equivalent
+    assert (
+        equivalents.evidence["modification_spot_equivalents_v1"][row["modification_no"]]["rate"]
+        == "1"
+    )
     shown = get(k02.app, f"{MODIFICATIONS}/{modification_id}", k02.place.author).json()
     assert shown["status"] == "APPLIED"
 
@@ -1364,3 +1378,91 @@ def test_modification_rerun_keeps_submitted_preview_after_application(
         )
         assert restored.status_code == 200, restored.text
         assert restored.json()["items"] == original_rows
+
+
+def test_modification_equivalent_reads_only_approved_dated_spot_rates(
+    k02: K02World,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from support.reference import put
+    from tests.unit.reports.test_modification_register import _source
+
+    source = _source(
+        currency="EUR",
+        functional_currency="USD",
+        tp_change=Decimal("100"),
+        catch_up={"O2": Decimal("-10")},
+    )
+    monkeypatch.setattr(register, "sources", lambda *args, **kwargs: [source])
+    enabled = put(
+        k02.app, "/api/v1/tenant-currencies", k02.marcus, {"currency_codes": ["USD", "EUR"]}
+    )
+    assert enabled.status_code == 200, enabled.text
+    with pytest.raises(Problem) as missing_rate:
+        _run(
+            k02, known_at=clock.now(), currency_view="functional", currency_basis="spot_equivalent"
+        )
+    assert "approved spot rate" in missing_rate.value.errors[0].message
+    rates = post(
+        k02.app,
+        "/api/v1/fx-rate-sets",
+        k02.place.author,
+        {"code": "MOD-SPOT", "name": "Modification equivalents", "rate_type": "spot"},
+    )
+    assert rates.status_code == 201, rates.text
+    draft = post(
+        k02.app,
+        f"/api/v1/fx-rate-sets/{rates.json()['id']}/versions",
+        k02.place.author,
+        {
+            "coverage_from": "2026-09-01",
+            "coverage_to": "2026-12-31",
+            "rates": [
+                {
+                    "base_currency": "EUR",
+                    "quote_currency": "USD",
+                    "rate": "1.1",
+                    "effective_date": "2026-09-15",
+                },
+                {
+                    "base_currency": "EUR",
+                    "quote_currency": "USD",
+                    "rate": "1.5",
+                    "effective_date": "2026-09-17",
+                },
+            ],
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    with pytest.raises(Problem) as missing_rate:
+        _run(
+            k02, known_at=clock.now(), currency_view="functional", currency_basis="spot_equivalent"
+        )
+    assert "approved spot rate" in missing_rate.value.errors[0].message
+    submitted = post(
+        k02.app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        k02.place.author,
+        {"comment": "Approved treasury basis"},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert submitted.status_code == 200, submitted.text
+    clock.advance(timedelta(minutes=1))
+    approved = approve(k02.app, submitted.json()["pending_approval_request_id"], k02.marcus)
+    assert approved.status_code == 200, approved.text
+    collector = SourceCollector()
+    data = _run(
+        k02,
+        known_at=clock.now(),
+        currency_view="functional",
+        currency_basis="spot_equivalent",
+        collector=collector,
+    )
+    assert data.rows[0]["tp_change_functional_equivalent"] == {
+        "amount": "110.00",
+        "currency": "USD",
+    }
+    assert Decimal(data.rows[0]["functional_spot_rate"]) == Decimal("1.1")
+    assert "2026-09-15" in data.rows[0]["functional_spot_rate_key"]
+    assert register.data_from_inputs(collector.evidence[register.EVIDENCE]) == data

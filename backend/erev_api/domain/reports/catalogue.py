@@ -1560,8 +1560,16 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract_external_id",
             "period_lock_id",
             "currency_view",
+            "currency_basis",
         ),
-        overrides={"status": _any_of(list(ModificationStatus))},
+        overrides={
+            "status": _any_of(list(ModificationStatus)),
+            "currency_basis": {
+                **_one_of("source", "spot_equivalent"),
+                "default": "source",
+                "title": "Currency amount basis",
+            },
+        },
         sources=(
             "modification",
             "contract",
@@ -1585,6 +1593,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "currency_basis=spot_equivalent permits foreign functional/reporting views with "
+            "approved effective-date spot equivalents, followed by effective-period average "
+            "for reporting; original amounts and pinned rates are retained; equivalents are "
+            "explicitly analytical, never actual posted FX attribution",
             "Native event TP composition shows fixed, constrained variable, returns, "
             "payable, financing, noncash and posting-rounding contributions in original "
             "currency; components reconcile to event TP change, totals count each "
@@ -1593,7 +1605,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "new native traces provide event-position TP changes and per-obligation catch-ups; "
             "verified trace hashes and node identities distinguish batched modifications; older "
             "traces retain version deltas with exact predecessors and refuse shared catch-ups",
-            "functional/reporting require contract currency to equal entity functional currency; "
+            "source basis functional/reporting require contract currency to equal entity "
+            "functional currency; "
             "reporting preserves original amounts and adds equivalents using the approved average "
             "of the modification effective period; these are analytical equivalents, not posted FX "
             "amounts; unknown measures stay empty and TP totals count each modification once",

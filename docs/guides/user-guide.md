@@ -913,3 +913,23 @@ The breakdown requires a calculation containing the component evidence. Older ca
 and approval previews without that evidence show empty component cells; an empty cell is not
 zero. Previously retained reports keep their original columns. These contributions explain
 transaction price, not the functional-currency posting of revenue catch-ups.
+
+
+### Optional currency equivalents for contract modifications
+
+To compare foreign-currency modifications, choose **Functional** or **Reporting** currency
+and set **Currency amount basis** to **Spot equivalents (not posted amounts)**. The report
+keeps original contract-currency TP changes and catch-ups, and adds labelled functional
+spot equivalents. Reporting view also adds reporting-currency equivalents.
+
+Functional conversion uses the latest approved direct spot rate on or before each
+modification's effective date, available at the report cutoff. Reporting conversion then
+uses the approved average rate for that effective period. Each conversion rounds to its
+currency's minor unit. The report shows the spot rate/reference and retains both conversion
+bases for same-source reruns. Missing approved rates prevent the run; unknown original
+amounts remain empty. There is no automatic inversion or triangulation.
+
+The default **Source evidence** basis retains the existing admission rules. Spot equivalents
+are analytical amounts: they do not claim to reproduce functional revenue posted using
+historical advance or asset layers. Transaction-price component columns remain in original
+contract currency under either basis.

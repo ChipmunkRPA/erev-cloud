@@ -223,3 +223,30 @@ it("edits sourced legacy balances and preserves structured values when reopening
   fireEvent.click(screen.getByRole("button", { name: /Remove.*1/i }));
   expect(runParameters(adoption, context, values).legacy_functional_positions).toBeUndefined();
 });
+
+it("labels analytical currency equivalents and sends the selected basis", () => {
+  const modified = {
+    ...definition,
+    code: "modification_register",
+    parameters_schema: {
+      properties: {
+        currency_view: { type: "string", enum: ["transaction", "functional", "reporting"] },
+        currency_basis: { type: "string", enum: ["source", "spot_equivalent"], default: "source" },
+      },
+    },
+  };
+  const values = { currency_view: "functional", currency_basis: "spot_equivalent" };
+  render(
+    <ParametersToolbar
+      definition={modified}
+      context={context}
+      values={values}
+      errors={{}}
+      timeBands={null}
+      onChange={() => {}}
+      onRun={() => {}}
+    />,
+  );
+  expect(screen.getByText("Spot equivalents (not posted amounts)")).toBeTruthy();
+  expect(runParameters(modified, context, values)).toMatchObject(values);
+});

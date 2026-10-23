@@ -423,7 +423,10 @@ export function ParametersToolbar({
                       { value: "true", label: t("common.grid.yes") },
                       { value: "false", label: t("common.grid.no") },
                     ]
-                  : enumOf(definition, key).map((item) => ({ value: item, label: item }));
+                  : enumOf(definition, key).map((item) => ({
+                      value: item,
+                      label: choiceLabel(key, item),
+                    }));
               return (
                 <ChoiceField
                   key={key}

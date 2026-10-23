@@ -639,3 +639,76 @@ def test_component_breakdown_retains_original_currency_and_counts_each_modificat
     old = register.data_from_inputs(retained)
     assert "tp_fixed" not in old.rows[0]
     assert old.columns == COLUMNS
+
+
+def test_foreign_equivalents_preserve_originals_round_signed_amounts_and_retain_basis():
+    import json
+    from dataclasses import asdict
+
+    from erev_engine.canonical import canonical_bytes
+
+    source = _source(
+        currency="EUR",
+        functional_currency="USD",
+        tp_change=Decimal("100.01"),
+        catch_up={"O2": Decimal("-10.01")},
+    )
+    entity = uuid4()
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(source)],
+                "currency_view": "reporting",
+                "currency_basis": "spot_equivalent",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+                "reporting_currency": "GBP",
+                "spot_equivalents": {
+                    source.modification_no: {
+                        "base": "EUR",
+                        "quote": "USD",
+                        "on": source.effective_date.isoformat(),
+                        "rate_type": "spot",
+                        "rate": "1.1",
+                        "rate_key": "EURUSD-S1",
+                        "version_key": "FX1",
+                    }
+                },
+                "translations": [
+                    {
+                        "modification_no": source.modification_no,
+                        "entity_id": str(entity),
+                        "currency": "GBP",
+                        "rates": {str(entity): {"base_currency": "USD", "rate": "0.8"}},
+                    }
+                ],
+            }
+        )
+    )
+    data = register.data_from_inputs(retained)
+    row = data.rows[0]
+    assert row["tp_change"] == {"amount": "100.01", "currency": "EUR"}
+    assert row["tp_change_functional_equivalent"] == {"amount": "110.01", "currency": "USD"}
+    assert row["catch_up_functional_equivalent"] == {"amount": "-11.01", "currency": "USD"}
+    assert row["tp_change_reporting"] == {"amount": "88.01", "currency": "GBP"}
+    assert row["catch_up_reporting"] == {"amount": "-8.81", "currency": "GBP"}
+    assert "not actual posted" in row["conversion_basis"]
+    assert data.control_totals["tp_change_total"] == {"EUR": "100.01"}
+    assert data.control_totals["tp_change_functional_equivalent_total"] == {"USD": "110.01"}
+    # Changing the view reuses the pinned original rate; unknown amounts stay empty.
+    retained["currency_view"] = "functional"
+    functional = register.data_from_inputs(retained)
+    assert (
+        functional.rows[0]["tp_change_functional_equivalent"]
+        == row["tp_change_functional_equivalent"]
+    )
+    retained["sources"][0]["tp_change"] = None
+    retained["sources"][0]["catch_up"] = None
+    retained["spot_equivalents"] = {}
+    empty = register.data_from_inputs(retained)
+    assert empty.rows[0]["catch_up_functional_equivalent"] is None
+    assert empty.control_totals["tp_change_functional_equivalent_total"] == {}
+    with pytest.raises(Problem):
+        register.functional_equivalents([source], {})
+    with pytest.raises(Problem):
+        register.check_view("functional", [source])
