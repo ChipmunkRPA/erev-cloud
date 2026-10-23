@@ -20,18 +20,18 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## New obligation opening absence — October 23, 2026
+## Special-contract zero consumption — October 23, 2026
 
-- Public POB opening relief can now use proven zero openings for new obligations whose
-  prior-period nodes are absent. Proof joins the selected version's identity to its original
-  CONTRACT_AMENDED event, requires an ADD after the opening date, and excludes inherited or
-  regrouped identities. Existing obligations without history still require original evidence.
-- Saved facts retain the creating event ID/date. Nonzero or wrong-currency historical nodes
-  conflict with absence and are refused; the foreign opening reader is not asked to invent FX
-  for a proven zero position. Normal report shape and group caps are unchanged.
-- 13 focused reader cases pass. A populated approved-modification case proves only the new O2
-  qualifies at August end, and no obligation qualifies once its September creation is in the
-  opening. Scoped lint/types pass. No deployment; broader special-source work remains open.
+- Functional POB rows for agent/cross-entity obligations can now retain a positive opening
+  when actual group liability consumption is nonpositive: relief is necessarily zero.
+  Evidence labels ZERO_CONSUMPTION and retains opening/consumption caps and signed posted
+  revenue/line IDs. Unknown posting subjects and positive-consumption special cases still refuse.
+- Reporting-currency ranges use this shortcut only when no selected period has positive
+  consumption. A release followed by reversal can carry a reporting FX effect despite a zero
+  range total, so it still requires original POB attribution. Principal histories retain their
+  existing evidence shape. Frozen-source authentication and posted/path reconciliation remain.
+- 18 focused reader/period cases, scoped lint and types pass. Positive special attribution and
+  other documented gaps remain unfinished. No deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

@@ -71,6 +71,20 @@ def rows(
             ),
             ZERO,
         )
+        # A net-zero range can hide positive relief followed by reversal at another FX rate.
+        # Reporting may omit POB openings only when every period has no positive consumption.
+        zero_consumption_safe = reporting_slices is None or all(
+            sum(
+                (
+                    item.period_lines[p.id][line][rollforward.LIABILITY]
+                    for item in members
+                    for line in ("REVENUE_FROM_OPENING", "REVENUE_FROM_PERIOD_BILLINGS")
+                ),
+                ZERO,
+            )
+            >= ZERO
+            for p in periods[entity]
+        )
         recognized = ZERO
         eligible = []
         facts = {}
@@ -116,6 +130,7 @@ def rows(
                 opening_row=original,
                 opening_absent=frozen is not None and original is None,
                 functional_currency=currency,
+                allow_zero_consumption=zero_consumption_safe,
             )
             if frozen_facts is not None:
                 detail["frozen_opening"] = frozen_facts

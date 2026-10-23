@@ -225,3 +225,66 @@ def test_new_obligation_proof_does_not_override_conflicting_history(monkeypatch)
     )
     with pytest.raises(Problem):
         pob.calculate(session, row, NS(key="P03"), [entry(1, "D", "8000")], D("5000"), D("5800"))
+
+
+@pytest.mark.parametrize("role,performer", [("AGENT", UUID(int=1)), ("PRINCIPAL", UUID(int=99))])
+@pytest.mark.parametrize("consumed", ["0", "-10"])
+def test_special_positive_opening_without_consumption_needs_no_invented_attribution(
+    monkeypatch, role, performer, consumed
+):
+    session, row, _ = fixture(monkeypatch)
+    obligations = [
+        {"obligation_key": "S", "performing_entity_id": performer, "principal_agent": role}
+    ]
+    session.execute = lambda *a: NS(mappings=lambda: NS(all=lambda: obligations))
+    monkeypatch.setattr(
+        pob.store, "load_trace", lambda *a: pytest.fail("No consumed liability needs no allocation")
+    )
+    amount, facts = pob.calculate(
+        session,
+        row,
+        NS(key="P03"),
+        [entry(1, "S", "10"), entry(2, "S", "-20")],
+        D("100"),
+        D(consumed),
+        functional_currency="USD",
+    )
+    assert amount == 0
+    assert facts["basis"] == "ZERO_CONSUMPTION"
+    assert facts["opening_cap"] == "100"
+    assert facts["consumption_cap"] == consumed
+    assert facts["obligations"] == {"C/S": {"posted_revenue": "-10"}}
+    assert len(facts["posted_lines"]) == 2
+    with pytest.raises(Problem):
+        pob.calculate(
+            session,
+            row,
+            NS(key="P03"),
+            [entry(1, "S", "10")],
+            D("100"),
+            D("1"),
+            functional_currency="USD",
+        )
+    with pytest.raises(Problem):
+        pob.calculate(
+            session,
+            row,
+            NS(key="P03"),
+            [entry(1, "UNKNOWN", "10")],
+            D("100"),
+            D(consumed),
+            functional_currency="USD",
+        )
+
+    # A reporting range with a positive earlier period cannot erase that period's FX effect.
+    with pytest.raises(Problem):
+        pob.calculate(
+            session,
+            row,
+            NS(key="P03"),
+            [entry(1, "S", "-10")],
+            D("100"),
+            D(consumed),
+            functional_currency="USD",
+            allow_zero_consumption=False,
+        )

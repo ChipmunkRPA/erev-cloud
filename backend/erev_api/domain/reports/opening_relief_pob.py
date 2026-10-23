@@ -90,6 +90,7 @@ def calculate(
     opening_row: tie_outs.BalanceRow | None = None,
     opening_absent: bool = False,
     functional_currency: str | None = None,
+    allow_zero_consumption: bool = True,
 ) -> tuple[Decimal, dict[str, Any]]:
     """Eligibility for one member, using the selected version and selected posting range.
 
@@ -108,14 +109,15 @@ def calculate(
         .mappings()
         .all()
     )
-    if not obligations or (
-        not zero_functional_opening
-        and any(
-            item["performing_entity_id"] != row.entity_id
-            or str(item["principal_agent"]) != "PRINCIPAL"
-            for item in obligations
-        )
-    ):
+    special = any(
+        item["performing_entity_id"] != row.entity_id or str(item["principal_agent"]) != "PRINCIPAL"
+        for item in obligations
+    )
+    zero_special_consumption = (
+        allow_zero_consumption and functional_currency is not None and consumed <= 0 and special
+    )
+    zero_cap = zero_functional_opening or zero_special_consumption
+    if not obligations or (not zero_cap and special):
         raise tie_outs.invalid(
             "currency_view",
             "Per-obligation opening relief requires principal obligations performed by the "
@@ -141,7 +143,7 @@ def calculate(
             .all()
         )
         if not prior_obligations or (
-            not zero_functional_opening
+            not zero_cap
             and any(
                 item["performing_entity_id"] != row.entity_id
                 or str(item["principal_agent"]) != "PRINCIPAL"
@@ -166,7 +168,7 @@ def calculate(
             )
         recognized[entry.subject_key] += entry.flow.amount
         posted.append(str(entry.line_id))
-    if zero_functional_opening:
+    if zero_cap:
         return ZERO, {
             "version": str(row.version_id),
             "opening_period": None if previous is None else previous.key,
@@ -178,7 +180,7 @@ def calculate(
             "opening_cap": str(opening),
             "consumption_cap": str(consumed),
             "relief": "0",
-            "basis": "ZERO_GROUP_OPENING",
+            "basis": "ZERO_GROUP_OPENING" if zero_functional_opening else "ZERO_CONSUMPTION",
         }
     trace = store.load_trace(session, source.version_id)
     if trace is None:
