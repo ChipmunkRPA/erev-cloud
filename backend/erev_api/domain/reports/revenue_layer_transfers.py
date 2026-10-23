@@ -65,6 +65,11 @@ def read(
     verify_postings = uow is not None and (
         params.binding is None or delta_key in params.binding.evidence
     )
+    ownership_key = "revenue_posted_ownership_v1"
+    posted_ownership = verify_postings and (
+        params.binding is None or params.binding.evidence.get(ownership_key) is True
+    )
+    ownership_alignments: dict[str, Any] = {}
     return_key = "revenue_return_sources_v1"
     returns = params.binding is None or return_key in params.binding.evidence
     posted_evidence: dict[str, Any] = {}
@@ -246,6 +251,7 @@ def read(
 
                     assert uow is not None
                     posted_reliefs: dict[tuple[UUID, str], Fraction] = defaultdict(Fraction)
+                    posted_opening = Fraction(0)
                     for entry in entries:
                         if entry.line_id is None:
                             raise tie_outs.invalid(
@@ -266,6 +272,20 @@ def read(
                             if part.movement_kind == "LIABILITY_LAYER_CONSUMED":
                                 posted_reliefs[(part.contract_id, part.layer_key)] -= part.amount
                                 signed_liability -= part.amount
+                                if posted_ownership:
+                                    dates = {
+                                        (owner, layer): created
+                                        for owner, layer, created in result.layer_dates
+                                    }
+                                    created = dates.get((part.contract_id, part.layer_key))
+                                    if part.contract_id not in owners.values() or created is None:
+                                        raise tie_outs.invalid(
+                                            "currency_view",
+                                            "Posted relief lacks an original group owner "
+                                            "or layer date.",
+                                        )
+                                    if created < periods[entity][0].start:
+                                        posted_opening -= part.amount
                             elif (
                                 asset_sources
                                 and part.amount
@@ -350,7 +370,31 @@ def read(
                         for (recipient, period_id, owner, layer), amount in retained_reliefs.items()
                         if recipient == recognizer and period_id == at.id and amount
                     }
-                    if {
+                    if posted_ownership:
+                        if sum(posted_reliefs.values(), Fraction(0)) != sum(
+                            expected_reliefs.values(), ZERO
+                        ):
+                            raise tie_outs.invalid(
+                                "currency_view",
+                                "Posted liability relief differs from the retained total.",
+                            )
+                        original[source_key] = Decimal(posted_opening.numerator) / Decimal(
+                            posted_opening.denominator
+                        )
+                        # Target ownership drives member balance reclassification;
+                        # posted ownership drives opening-revenue attribution.
+                        ownership_alignments[f"{version}:{entity}:{recognizer}:{at.id}"] = [
+                            {
+                                "owner": str(owner),
+                                "layer": layer,
+                                "posted_relief": str(
+                                    posted_reliefs.get((owner, layer), Fraction(0))
+                                ),
+                                "target_relief": str(expected_reliefs.get((owner, layer), ZERO)),
+                            }
+                            for owner, layer in sorted(set(posted_reliefs) | set(expected_reliefs))
+                        ]
+                    elif {
                         key: amount for key, amount in posted_reliefs.items() if amount
                     } != expected_reliefs:
                         raise tie_outs.invalid(
@@ -417,6 +461,17 @@ def read(
                 "currency_view", "Revenue asset sources differ from retained evidence."
             )
         tie_outs.record_evidence(params, "revenue_asset_sources_v1", asset_evidence)
+    if posted_ownership:
+        if (
+            params.binding is not None
+            and params.binding.evidence.get("revenue_ownership_alignment_v1")
+            != ownership_alignments
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Revenue ownership alignment differs from retained evidence."
+            )
+        tie_outs.record_evidence(params, ownership_key, True)
+        tie_outs.record_evidence(params, "revenue_ownership_alignment_v1", ownership_alignments)
     if returns:
         tie_outs.record_evidence(params, return_key, True)
     if intercompany:

@@ -864,10 +864,18 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
         )
         retained = read_revenue(uow, later)
         assert retained is not None
-        paid_ids = {row["id"] for row in retained["posted_lines"]}
+        # The retained computation includes all posted control roles. Revenue attribution
+        # selects its own entity/book/subject/role population from that complete evidence.
+        paid_ids = {
+            row["id"]
+            for row in retained["posted_lines"]
+            if row["account_role"] == "REVENUE"
+            and row["subject_key"] == later["subject_key"]
+            and row["entity_id"] == str(later["entity_id"])
+            and row["book_code"] == str(later["book_code"])
+        }
         assert str(revenue_line["id"]) in paid_ids
-        assert str(later["id"]) not in paid_ids
-        assert all(row["account_role"] == "REVENUE" for row in retained["posted_lines"])
+        assert str(later["id"]) not in {row["id"] for row in retained["posted_lines"]}
 
     from fractions import Fraction
 

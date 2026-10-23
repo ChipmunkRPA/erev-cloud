@@ -1342,3 +1342,257 @@ def test_functional_pob_report_uses_original_invoice_fx(
     )
     assert rebuilt.status_code == 200, rebuilt.text
     assert rebuilt.json()["items"] == rows
+
+
+def test_combined_foreign_groups_retain_locked_native_and_public_openings(
+    app, keyring, clock, app_settings, monkeypatch
+):
+    import json
+    from datetime import date, timedelta
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+    from erev_api.db.tables import computation_evidence, contract_computation, customer
+    from erev_api.domain.reports import opening_consumption_policy as policy
+    from erev_api.files.store import open_file
+    from support import close_run_worlds, close_runs, worlds
+    from support.close_world import periods_closed_before
+    from support.factories import booked_contract
+    from support.reference import approve
+
+    original_rates = close_run_worlds._eur_rates
+    monkeypatch.setattr(worlds, "THROUGH_SEPTEMBER", date(2026, 10, 31))
+
+    def through_october(rate_type):
+        rates = original_rates(rate_type)
+        if rate_type != "spot":
+            rates.append({**rates[-1], "period_key": "FY2026-P10"})
+        return rates
+
+    monkeypatch.setattr(close_run_worlds, "_eur_rates", through_october)
+    monkeypatch.setattr(close_run_worlds, "AUGUST", "FY2026-P09")
+    world = close_run_worlds.eur_receivable(
+        app,
+        keyring,
+        clock,
+        LocalFileStore(app_settings.file_root),
+        quantity="200",
+        reporting_currency="EUR",
+    )
+    first = world.contracts[close_run_worlds.EUR_CONTRACT]
+    buyer = world.place.scalar(select(customer.c.id).where(customer.c.code == "C-31"))
+    second = booked_contract(
+        world.place,
+        {
+            "external_id": "EU-SECOND",
+            "customer_id": str(buyer),
+            "contracting_entity_code": AVM_US,
+            "transaction_currency": "EUR",
+            "inception_date": "2026-08-01",
+            "lines": [
+                {
+                    "obligation_key": "O1",
+                    "product_code": close_run_worlds.EUR_HOURS,
+                    "quantity": "300",
+                    "total_price": {"amount": "0.00", "currency": "EUR"},
+                    "unit_price": "100.00",
+                    "start_date": "2026-08-01",
+                    "end_date": "2026-12-31",
+                }
+            ],
+        },
+        activate=True,
+    )
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        UUID(str(second.contract["id"])),
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-08-31",
+            "payload": {"obligation_key": "O1", "quantity": "50", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    for held, amount, invoice in (
+        (first, "20000.00", "EUR-FIRST"),
+        (second, "30000.00", "EUR-SECOND"),
+    ):
+        worlds._appended_through_api(
+            world.place,
+            UUID(str(held.contract["id"])),
+            {
+                "event_type": "BILLING_RECORDED",
+                "effective_date": "2026-08-31",
+                "payload": {
+                    "invoice_number": invoice,
+                    "line_external_id": invoice + "-1",
+                    "obligation_key": "O1",
+                    "issue_date": "2026-08-01",
+                    "amount": {"amount": amount, "currency": "EUR"},
+                },
+            },
+        )
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        UUID(str(first.contract["id"])),
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-09-30",
+            "payload": {"obligation_key": "O1", "quantity": "10", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    for held in (first, second):
+        worlds._appended_through_api(
+            world.place,
+            UUID(str(held.contract["id"])),
+            {
+                "event_type": "MEMO_UPDATED",
+                "effective_date": "2026-09-30",
+                "payload": {"memo_1": "Retain September original sources before combination"},
+            },
+        )
+    world = worlds.on_record_clock(world, clock)
+    state = worlds.period_state(world, AVM_US, "FY2026-P09")
+    periods_closed_before(
+        world.place,
+        app,
+        world.maya,
+        entity_id=UUID(str(state["entity"]["id"])),
+        before="FY2026-P09",
+        entity_code=AVM_US,
+    )
+    state = worlds.period_state(world, AVM_US, "FY2026-P09")
+    started = post(
+        app,
+        f"/api/v1/periods/{state['id']}/start-close",
+        world.maya,
+        {"comment": "Freeze separate original EUR sources"},
+        if_match=f'"r{state["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    closed = close_runs.closed(world, monkeypatch, entity_code=AVM_US, period_key="FY2026-P09")
+    assert closed["status"] == "SUCCEEDED", closed
+    world = close_run_worlds.journal_and_reconciliations(world, clock, closed)
+    requested = close_run_worlds.request_lock(world, "FY2026-P09")
+    assert requested.status_code == 200, requested.text
+    clock.advance(timedelta(minutes=1))
+    world = worlds.verified(world, clock, "marcus")
+    approved = approve(app, requested.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    for held, quantity in ((first, "90"), (second, "50")):
+        worlds.approved_manual_events(
+            world.place,
+            world.priya,
+            UUID(str(held.contract["id"])),
+            {
+                "event_type": "DELIVERY_RECORDED",
+                "effective_date": "2026-10-31",
+                "payload": {"obligation_key": "O1", "quantity": quantity, "trigger": "DELIVERY"},
+            },
+            evidence_file_ids=[],
+        )
+    proposed = post(
+        app,
+        "/api/v1/combination-groups",
+        world.maya,
+        {
+            "contract_ids": [str(first.contract["id"]), str(second.contract["id"])],
+            "criterion": "606-10-25-9(b)",
+            "rationale": "One commercial package in EUR",
+        },
+    )
+    assert proposed.status_code == 201, proposed.text
+    group_id = proposed.json()["id"]
+    submitted = post(app, f"/api/v1/combination-groups/{group_id}/submit", world.maya, {})
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    with world.place.uow() as uow:
+        saved = (
+            uow.session.execute(
+                select(computation_evidence)
+                .join(
+                    contract_computation,
+                    contract_computation.c.id == computation_evidence.c.contract_computation_id,
+                )
+                .where(contract_computation.c.combination_group_id == UUID(group_id))
+                .order_by(contract_computation.c.created_at.desc())
+            )
+            .mappings()
+            .first()
+        )
+        assert saved is not None
+        _, stream = open_file(
+            uow.session, saved["output_file_id"], files=uow.files, keyring=uow.keyring
+        )
+        with stream:
+            output = json.loads(stream.read())
+    native = {
+        row["view"]: row
+        for book in output["books"]
+        if book["book_code"] == "ASC606"
+        for row in book["disclosure_rollforwards"]
+        if row["period_key"] == "FY2026-P10"
+    }
+    assert native, [
+        (book["book_code"], book.get("disclosure_rollforwards")) for book in output["books"]
+    ]
+    assert native["TRANSACTION"]["lines"]["CONTRACT_LIABILITY"]["OPENING"] == 3400000
+    assert native["FUNCTIONAL"]["lines"]["CONTRACT_LIABILITY"]["OPENING"] == 3740000
+    for row in native.values():
+        assert row["opening_basis"] == "FROZEN"
+        assert len(json.loads(row["opening_source"]["sources_json"])) == 2
+    monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
+    for view, currency, opening_amount, recognized in (
+        ("functional", "USD", "37400.00", "15400.00"),
+        ("reporting", "EUR", "33392.86", "13873.87"),
+    ):
+        run, rows = report_run(
+            world,
+            "revenue_from_opening_liability",
+            {
+                **SEPTEMBER,
+                "from_period_key": "FY2026-P10",
+                "to_period_key": "FY2026-P10",
+                "currency_view": view,
+            },
+        )
+        assert {row["currency"] for row in rows} == {currency}
+        for column, expected in (
+            ("opening_contract_liability", opening_amount),
+            ("revenue_from_opening", recognized),
+            ("revenue_recognized", recognized),
+        ):
+            assert sum(
+                Decimal(row[column]["amount"]) for row in rows if row["section"] == 2
+            ) == Decimal(expected), rows
+        from fractions import Fraction
+        from erev_api.db.tables import report_run as stored_report
+
+        binding = world.place.scalar(
+            select(stored_report.c.source_binding).where(stored_report.c.id == UUID(run["id"]))
+        )
+        alignments = binding["evidence"]["revenue_ownership_alignment_v1"]
+        assert alignments and binding["evidence"]["revenue_posted_ownership_v1"] is True
+        assert any(
+            Fraction(item["posted_relief"]) != Fraction(item["target_relief"])
+            for items in alignments.values()
+            for item in items
+        )
+        for items in alignments.values():
+            assert sum(Fraction(item["posted_relief"]) for item in items) == sum(
+                Fraction(item["target_relief"]) for item in items
+            )
+        restarted = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = run_now(world, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        rebuilt = get(
+            app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", world.maya
+        )
+        assert rebuilt.status_code == 200, rebuilt.text
+        assert rebuilt.json()["items"] == rows

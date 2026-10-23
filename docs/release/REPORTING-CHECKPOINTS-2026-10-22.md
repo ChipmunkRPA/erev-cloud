@@ -1,5 +1,23 @@
 # Archived Reporting checkpoints — October 22, 2026
 
+## Post-lock new contract joining a frozen group — October 23, 2026
+
+- A genuinely new contract can join a complete historical group while retaining the old group's
+  frozen native opening. The original locked group proof remains intact and explicitly lists
+  the new contracts with proven zero opening; no historical amount is apportioned to them.
+- Proof requires inception and every retained event after the opening date, exactly one booking,
+  absence from locked balances, and no imported/acquired OPENING_BALANCE_ESTABLISHED event.
+  The engine independently checks retained headers/events and refuses existing obligation
+  openings before supplying zero eligibility for new-contract obligations.
+- Historical membership matching now uses canonical encoded contract keys, including slash and
+  percent characters. Missing, overlapping and partial original groups still do not receive
+  inferred historical openings.
+- Validation: nine focused source/proof cases and 17 native rollforward cases pass. Populated
+  public workflows for both two old groups and an old group plus a newly booked contract pass,
+  retaining FROZEN openings and explicit original/zero sources. Scoped types/lint pass.
+- Partial old-group splits, special/acquired original sources, broader foreign lock histories
+  and the other development scope remain open. No deployment or posting algorithm change.
+
 ## Whole-group union of frozen native openings — October 23, 2026
 
 - After complete original contract groups are combined, the next native rollforward can use
