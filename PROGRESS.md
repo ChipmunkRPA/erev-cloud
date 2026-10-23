@@ -20,6 +20,16 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Confirmed royalty lifecycle gap — October 22, 2026
+
+- Reproduced a native calculation failure for a delivered licence whose royalty is corrected
+  downward after collectibility exit, with no re-entry. Allocation becomes 1,400 while frozen
+  revenue stays 1,600; S09-INV-03 rejects the -200 remainder. Three neighboring no-reentry
+  combinations compute and reconcile. This is a confirmed gap, not a completed feature.
+- Requested the owner's revenue-treatment choice; no choice inferred and no calculation
+  semantics changed. Exact conditions and the separate POL-199 awaiting-satisfaction gap are
+  recorded in [ROYALTY-EXIT-CORRECTION.md](docs/release/ROYALTY-EXIT-CORRECTION.md).
+
 ## GL detail uploads — October 22, 2026
 
 - The reconciliation file workflow now accepts an optional explicit BALANCE/DOCUMENT format
