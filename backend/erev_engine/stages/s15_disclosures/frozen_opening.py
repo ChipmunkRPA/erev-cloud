@@ -1,5 +1,7 @@
 """Apply authenticated original openings without changing monetary posting targets."""
 
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 
@@ -33,7 +35,7 @@ def apply(
         or set(item.balances) != set(BALANCES)
         or any(type(value) is not int for value in item.balances.values())
         or not item.source.get("lock_id")
-        or not item.source.get("output_sha256")
+        or not _has_source(item.source)
     ):
         raise ValueError("Frozen disclosure opening identity or balances differ")
     policy = ctx.policies.value(
@@ -69,3 +71,30 @@ def apply(
         opening_obligations=obligations if policy == "FIFO_WITHIN_POB" else None,
     )
     return replace(result, opening_source=item.source)
+
+
+def _has_source(source: Mapping[str, str]) -> bool:
+    encoded = source.get("sources_json")
+    if encoded is None:
+        return bool(source.get("output_sha256")) and not source.get("source_set_sha256")
+    if hashlib.sha256(encoded.encode()).hexdigest() != source.get("source_set_sha256"):
+        return False
+    try:
+        sources = json.loads(encoded)
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(sources, list) or len(sources) < 2:
+        return False
+    versions = set()
+    for item in sources:
+        if (
+            not isinstance(item, dict)
+            or any(
+                not isinstance(item.get(key), str) or not item[key]
+                for key in ("lock_id", "version", "output_sha256", "source_binding_sha256")
+            )
+            or item["lock_id"] != source.get("lock_id")
+        ):
+            return False
+        versions.add(item["version"])
+    return len(versions) == len(sources) and not source.get("output_sha256")

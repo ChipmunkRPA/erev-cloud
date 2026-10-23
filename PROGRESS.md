@@ -20,27 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Automatic frozen native opening handoff — October 23, 2026
+## Whole-group union of frozen native openings — October 23, 2026
 
-- Computation and preview paths attach available authenticated prior-lock native snapshots to
-  a typed disclosure_openings input. The loader reads the original lock/version/output under
-  the computation's group scope, checks unchanged group/member coverage and transaction closing
-  totals, and retains original lock/version/output/binding hashes. Saved inputs replay directly.
-- Stage 15 applies matching book/entity/period/view openings and records FROZEN plus their source
-  proof in saved native outputs. Group balances and original obligation eligibility remain
-  distinct; posting targets are unchanged. Explicit post-opening ADD events can prove zero
-  opening for new obligations; missing ownership proof is refused, not manufactured.
-- The optional input/output fields are omitted for old evidence, preserving earlier hashes.
-  Previews use the same preparation as actual computation. Existing records without a complete
-  matching native snapshot keep their existing RESTATED native path; public report historical
-  source recovery remains available separately.
-- Necessary validation: 25 codec/upgrade cases, 17 focused native/handoff cases, functional and
-  reporting public locked-opening workflows, and a modification preview/approval workflow pass.
-  Saved next-period outputs point to the original locked version; source-bound report reruns
-  remain identical. Scoped lint/types pass. No deployment or journal calculation changes.
-- Remaining scope includes changed combination membership across the lock, broader combined
-  foreign lock histories, and unavailable special-contract/acquired sources. These are not
-  claimed complete by the unchanged-group workflow above.
+- After complete original contract groups are combined, the next native rollforward can use
+  the sum of their authenticated locked closings. Original obligation eligibility remains
+  separate from group balances; no member/layer allocation is invented.
+- Read every original member source, deduplicate original versions, and require complete,
+  disjoint coverage in each currency view. Check each transaction group against its own locked
+  member totals, so offsetting errors cannot pass an aggregate reconciliation.
+- Multiple original versions retain a deterministic full source set and its digest; the set
+  digest is never presented as an original output-file hash. Single-group proof stays unchanged.
+  Engine handoff validates the source set and retains it in saved native output.
+- Validation: focused union and native/codec checks pass, plus a populated product workflow
+  that computes two contracts separately, closes/locks September, combines them in October,
+  and saves FROZEN openings with both original versions. Scoped lint/types pass.
+- Still open: partial historical-group splits, broader foreign-currency lock histories and
+  special/acquired opening sources. This change does not claim those populations complete.
+  Posting calculation remains unchanged; no deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

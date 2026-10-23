@@ -1,13 +1,17 @@
 """Attach available authenticated prior-lock snapshots to the exact computation input."""
 
+import hashlib
+import json
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from datetime import timedelta
+from datetime import date, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 
-from erev_api.db.tables import contract
 from erev_api.db.session import system_entity_scope
+from erev_api.db.tables import contract
 from erev_api.domain.reports import locked_ends, opening_relief_frozen, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.uow import UnitOfWork
@@ -72,6 +76,7 @@ def _prepare(uow: UnitOfWork, bundle: InputBundle) -> InputBundle:
                 continue
             reader = opening_relief_frozen.Reader(uow, params)
             names = {row[1] for row in members if row[2] == entity.id}
+            snapshots = {}
             for identity, external, owner in members:
                 if owner != entity.id:
                     continue
@@ -88,54 +93,111 @@ def _prepare(uow: UnitOfWork, bundle: InputBundle) -> InputBundle:
                     row=probe, previous=previous, locked=ending, book=book.book_code
                 )
                 native = proof.get("native_closing")
-                if original is None or native is None:
-                    continue
-                for view in native["views"]:
-                    closing = view.get("obligation_closing", {})
-                    if (
-                        view["unit"] != f"{bundle.group.group_key}@{entity.code}"
-                        or closing.get("status") != "AVAILABLE"
-                        or {subject.rsplit("/", 1)[0] for subject in closing["obligations"]}
-                        != names
-                    ):
-                        continue
-                    if view["view"] == "TRANSACTION":
-                        scale = 10 ** view["minor_unit"]
-                        if any(
-                            view["lines"][role]["CLOSING"]
-                            != sum(
-                                ending.rows[name].values.get(role.lower(), 0) * scale
-                                for name in names
-                                if name in ending.rows
-                            )
-                            for role in view["lines"]
-                        ):
-                            raise tie_outs.invalid(
-                                "opening", "Native closing differs from the original lock."
-                            )
-                    captured.append(
-                        DisclosureOpeningInput(
-                            book_code=book.book_code,
-                            entity=entity.code,
-                            period_key=current.key,
-                            view=view["view"],
-                            currency=view["currency"],
-                            opening_date=previous.end,
-                            balances={
-                                role: values["CLOSING"] for role, values in view["lines"].items()
-                            },
-                            obligations={
-                                subject: item["liability"]
-                                for subject, item in closing["obligations"].items()
-                            },
-                            source={
-                                "lock_id": proof["lock_id"],
-                                "version": native["version"],
-                                "output_sha256": native["output_sha256"],
-                                "source_binding_sha256": proof["source_binding_sha256"],
-                            },
-                        )
-                    )
-                if native is not None:
-                    break  # One complete original same-group snapshot per entity/book.
+                if original is not None and native is not None:
+                    snapshots[native["version"]] = (native, proof)
+            captured.extend(
+                complete_openings(
+                    list(snapshots.values()),
+                    names,
+                    ending.rows,
+                    book_code=book.book_code,
+                    entity=entity.code,
+                    period_key=current.key,
+                    opening_date=previous.end,
+                )
+            )
     return replace(bundle, disclosure_openings=tuple(captured)) if captured else bundle
+
+
+def complete_openings(
+    snapshots: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]],
+    names: set[str],
+    locked_rows: Mapping[str, Any],
+    *,
+    book_code: str,
+    entity: str,
+    period_key: str,
+    opening_date: date,
+) -> list[DisclosureOpeningInput]:
+    """Union only complete, disjoint original groups; never apportion a historic group."""
+    result = []
+    for view_name in ("TRANSACTION", "FUNCTIONAL"):
+        covered: set[str] = set()
+        balances: dict[str, int] = {}
+        obligations: dict[str, int] = {}
+        sources = []
+        denomination = None
+        for native, proof in sorted(snapshots, key=lambda item: item[0]["version"]):
+            views = [view for view in native["views"] if view["view"] == view_name]
+            if len(views) != 1:
+                break
+            view = views[0]
+            closing = view.get("obligation_closing", {})
+            if closing.get("status") != "AVAILABLE":
+                break
+            original_names = {subject.rsplit("/", 1)[0] for subject in closing["obligations"]}
+            current_denomination = (view["currency"], view["minor_unit"])
+            if (
+                not original_names
+                or not original_names <= names
+                or original_names & covered
+                or (denomination is not None and denomination != current_denomination)
+                or (balances and set(balances) != set(view["lines"]))
+            ):
+                break
+            if view_name == "TRANSACTION":
+                scale = 10 ** view["minor_unit"]
+                if not original_names <= locked_rows.keys() or any(
+                    view["lines"][role]["CLOSING"]
+                    != sum(
+                        locked_rows[name].values.get(role.lower(), 0) * scale
+                        for name in original_names
+                    )
+                    for role in view["lines"]
+                ):
+                    raise tie_outs.invalid(
+                        "opening", "Native closing differs from the original lock."
+                    )
+            denomination = current_denomination
+            covered.update(original_names)
+            for role, values in view["lines"].items():
+                balances[role] = balances.get(role, 0) + values["CLOSING"]
+            obligations.update(
+                {subject: item["liability"] for subject, item in closing["obligations"].items()}
+            )
+            sources.append(
+                {
+                    "lock_id": proof["lock_id"],
+                    "version": native["version"],
+                    "output_sha256": native["output_sha256"],
+                    "source_binding_sha256": proof["source_binding_sha256"],
+                }
+            )
+        else:
+            if covered != names or denomination is None or not sources:
+                continue
+            if len(sources) == 1:
+                source = sources[0]
+            else:
+                if len({item["lock_id"] for item in sources}) != 1:
+                    continue
+                encoded = json.dumps(sources, sort_keys=True, separators=(",", ":"))
+                source = {
+                    "lock_id": sources[0]["lock_id"],
+                    "sources_json": encoded,
+                    "source_set_sha256": hashlib.sha256(encoded.encode()).hexdigest(),
+                }
+            result.append(
+                DisclosureOpeningInput(
+                    book_code=book_code,
+                    entity=entity,
+                    period_key=period_key,
+                    view=view_name,
+                    currency=denomination[0],
+                    opening_date=opening_date,
+                    balances=balances,
+                    obligations=obligations,
+                    source=source,
+                )
+            )
+    return result

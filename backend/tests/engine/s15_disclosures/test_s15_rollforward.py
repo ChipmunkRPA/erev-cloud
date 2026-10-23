@@ -844,7 +844,8 @@ def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_s
     assert capture(ctx, st, records, ENTITY, period, functional=True)["status"] == "UNAVAILABLE"
 
 
-def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening():
+@pytest.mark.parametrize("multiple_sources", [False, True])
+def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening(multiple_sources):
     from types import SimpleNamespace as NS
     from erev_engine.bundle import DisclosureOpeningInput
     from erev_engine.stages.s15_disclosures.frozen_opening import apply
@@ -862,6 +863,31 @@ def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening():
         obligations={SERVICES: usd("5000.00")},
         source={"lock_id": "lock", "output_sha256": "a" * 64},
     )
+    if multiple_sources:
+        import hashlib
+        import json
+
+        encoded = json.dumps(
+            [
+                {
+                    "lock_id": "lock",
+                    "version": version,
+                    "output_sha256": version * 64,
+                    "source_binding_sha256": "b" * 64,
+                }
+                for version in ("a", "c")
+            ],
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        source = dataclasses.replace(
+            source,
+            source={
+                "lock_id": "lock",
+                "sources_json": encoded,
+                "source_set_sha256": hashlib.sha256(encoded.encode()).hexdigest(),
+            },
+        )
     with pytest.raises(ValueError, match="complete nonnegative"):
         apply(ctx, st, records, row, [source])
     event = NS(

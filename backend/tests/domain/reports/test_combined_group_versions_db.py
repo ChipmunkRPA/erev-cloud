@@ -1093,3 +1093,92 @@ def test_combined_pob_opening_shows_group_total_and_all_sources(combined, monkey
         str(combined.contracts[name].contract["id"]) for name in (K09, SECOND)
     }
     assert all("relief" not in member for member in groups[0]["members"].values())
+
+
+def test_union_after_lock_retains_both_original_native_openings(
+    app, keyring, clock, files, monkeypatch
+):
+    import json
+    from datetime import timedelta
+
+    from erev_api.db.tables import computation_evidence
+    from erev_api.files.store import open_file
+    from support import close_run_worlds, close_runs
+    from support.close_world import periods_closed_before
+
+    world = two_orders(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    world = worlds.on_record_clock(world, clock)
+    state = worlds.period_state(world, AVM_US, SEPTEMBER_2026)
+    periods_closed_before(
+        world.place,
+        app,
+        world.maya,
+        entity_id=UUID(str(state["entity"]["id"])),
+        before=SEPTEMBER_2026,
+        entity_code=AVM_US,
+    )
+    state = worlds.period_state(world, AVM_US, SEPTEMBER_2026)
+    started = post(
+        app,
+        f"/api/v1/periods/{state['id']}/start-close",
+        world.maya,
+        {"comment": "Retain separate original groups before combination"},
+        if_match=f'"r{state["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    closed = close_runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER_2026)
+    assert closed["status"] == "SUCCEEDED", closed
+    monkeypatch.setattr(close_run_worlds, "AUGUST", SEPTEMBER_2026)
+    world = close_run_worlds.journal_and_reconciliations(world, clock, closed)
+    requested = close_run_worlds.request_lock(world, SEPTEMBER_2026)
+    assert requested.status_code == 200, requested.text
+    clock.advance(timedelta(minutes=1))
+    world = worlds.verified(world, clock, "marcus")
+    approved = approve(app, requested.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    for name in (K09, SECOND):
+        worlds._appended_through_api(
+            world.place,
+            UUID(str(world.contracts[name].contract["id"])),
+            {
+                "event_type": "MEMO_UPDATED",
+                "effective_date": "2026-10-15",
+                "payload": {"memo_1": "Combination after original September lock"},
+            },
+        )
+    group_id = combine(world)
+    with world.place.uow() as uow:
+        saved = (
+            uow.session.execute(
+                select(computation_evidence)
+                .join(
+                    contract_computation,
+                    contract_computation.c.id == computation_evidence.c.contract_computation_id,
+                )
+                .where(contract_computation.c.combination_group_id == group_id)
+                .order_by(contract_computation.c.created_at.desc())
+            )
+            .mappings()
+            .first()
+        )
+        assert saved is not None
+        _, stream = open_file(
+            uow.session, saved["output_file_id"], files=uow.files, keyring=uow.keyring
+        )
+        with stream:
+            output = json.loads(stream.read())
+    native = [
+        row
+        for book in output["books"]
+        if book["book_code"] == "ASC606"
+        for row in book["disclosure_rollforwards"]
+        if row["period_key"] == "FY2026-P10"
+    ]
+    assert native
+    for row in native:
+        assert row["opening_basis"] == "FROZEN"
+        sources = json.loads(row["opening_source"]["sources_json"])
+        assert len(sources) == 2
+        assert len({item["version"] for item in sources}) == 2
+        assert row["lines"]["CONTRACT_LIABILITY"]["OPENING"] > 0
