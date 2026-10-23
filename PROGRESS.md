@@ -20,6 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Royalty RPO exemption for pending performance — October 22, 2026
+
+- Replaced POL-199's unconditional zero cap with realized royalty still awaiting recognition.
+  Native calculation retains dated remainder evidence; fixed minimum guarantees remain in
+  RPO. RPO disclosure, rollforward and close-variance projection now read the same basis.
+- Royalty and targeted-VC partial exemptions apply in policy order, are listed separately,
+  and cannot exceed the remainder. Currency-projected rule amounts reconcile to the translated
+  excluded total. New RPO bindings retain the feature flag; older bound runs keep their prior cap.
+- Necessary verification passed: focused engine/report scenarios and the existing targeted-VC
+  suite, combined partial-exemption currency rounding, and both public royalty workflows
+  (pending/delivered) including original-evidence reruns. Example: 15,000 royalties less a
+  12,000 guarantee produces a 3,000 exemption before satisfaction and no royalty remainder
+  afterward. Scoped types/lint and frozen metadata parity pass. No deployment.
+- Missing dated royalty evidence requires recomputation; no inferred quota is substituted.
+  The separate post-exit downward-correction failure still awaits the owner's revenue-treatment
+  choice and remains unresolved. Actual functional per-event posted attribution also remains open.
+
 ## Confirmed royalty lifecycle gap — October 22, 2026
 
 - Reproduced a native calculation failure for a delivered licence whose royalty is corrected
@@ -215,22 +232,6 @@ review and publish changes without PR accumulation, and do not deploy.
   metadata parity passed. Foreign-contract modification functional TP/catch-up evidence remains
   a separate unresolved business gap; no ordinary FX conversion has replaced those amounts.
   No deployment; final repository verification remains open.
-
-## AI call export retained reconstruction — October 22, 2026
-
-- New call-log exports retain only the disclosed AIModelLogOut evidence and original requester
-  scope. Rebuilds reauthorize the original actor before accessing retained content, refuse scope
-  or identity substitution, and recalculate known/unknown usage totals. Promotion to administrator
-  cannot widen an original OWN export. Original call IDs are captured as membership.
-- Original reads still use current authorized visibility; callers cannot supply entity, actor,
-  scope or historical filters. Retention adds no prompt/response body fields. Older explicit
-  OPEN bindings keep their prior live-evaluation semantics. Migration 0323 updates description/IPE.
-- Necessary verification passed: 24 focused catalogue/source-binding cases and database export
-  visibility/CSV/XLSX safeguards, including new-log insertion, no-live-read reconstruction,
-  promotion, revocation and actor/scope substitution. Scoped types/lint and metadata parity passed.
-- Fixed a pre-existing current-catalogue seed helper failure reproduced against committed main:
-  valid JSON regex/text escapes are now preserved, with JSON round-trip coverage. The historical
-  migration seed remains byte-for-byte frozen. No deployment; final release verification remains.
 
 ## Outstanding release verification
 

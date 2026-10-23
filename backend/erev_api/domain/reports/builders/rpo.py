@@ -89,7 +89,8 @@ POL-200 reads dated targeted-VC allocations and later allocated deltas from reta
 with immutable estimate versions identifying evidenced targeted changes. Only wholly unsatisfied
 obligations with no revenue qualify. Net bands and contributors retain currency precision; partial
 exclusions are listed separately and their movement is the ``EXEMPTIONS`` rollforward line.
-POL-199's quota is zero under the engine's royalty realization model; fixed consideration remains.
+POL-199 excludes original realized royalty still awaiting recognition; fixed guarantees remain.
+New bound runs retain this interpretation; earlier bindings preserve their prior zero cap.
 [J] L6-3-Q-28 (POL-193 ``ELECT``): a JSON (on-screen) run omits the entity's section 1 and 2 rows
 with the RV-12 note; file outputs, which need ``report.export``, keep the dataset.
 """
@@ -135,6 +136,7 @@ from erev_api.domain.reports import (
     rpo_positions,
     rpo_quotas,
     rpo_realised_dates,
+    rpo_royalty,
     tie_outs,
 )
 from erev_api.domain.reports.builders import ReportParams, filter_problem
@@ -343,6 +345,7 @@ class ObligationRpo:
     remaining_months: int
     excluded: Decimal = ZERO
     partial_exemption: str | None = None
+    partial_exemptions: tuple[tuple[str, Decimal], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,6 +382,10 @@ class Store:
     classify_eligibility_changes: bool = field(default=True, kw_only=True)
     classify_mixed_eligibility: bool = field(default=True, kw_only=True)
     inception_estimate_events: set[tuple[UUID, str]] = field(default_factory=set, kw_only=True)
+    royalty_exemptions: bool = field(default=True, kw_only=True)
+    royalty_remaining: dict[UUID, dict[str, dict[date, Decimal]]] = field(
+        default_factory=dict, kw_only=True
+    )
     quotas: dict[UUID, Mapping[str, tuple[rpo_quotas.Point, ...]]] = field(default_factory=dict)
     boundaries: dict[UUID, Mapping[str, tuple[rpo_boundary_changes.Change, ...]]] = field(
         default_factory=dict
@@ -856,7 +863,14 @@ def load(
             )
             if expanded is not None:
                 chains[cid] = (*expanded, *chain[1:])
+    royalty_key = "rpo_royalty_remaining_v1"
+    royalty_exemptions = (
+        params is None or params.binding is None or royalty_key in params.binding.evidence
+    )
+    if royalty_exemptions and params is not None and params.sources is not None:
+        params.sources.record_evidence(royalty_key, True)
     return Store(
+        royalty_exemptions=royalty_exemptions,
         versions={key: tuple(value) for key, value in versions.items()},
         obligations={key: tuple(value) for key, value in obligations.items()},
         chains=chains,
@@ -1376,19 +1390,52 @@ def measure(
                 targeted=targets,
             )
 
+    if (
+        store.royalty_exemptions
+        and applied is not None
+        and any("POL-199" in values for values in applied.values())
+    ):
+        for version_id in wanted:
+            trace = trace_store.load_trace(session, version_id)
+            if trace is None:
+                raise Problem(
+                    "validation-failed", "Royalty exemptions require retained calculation evidence."
+                )
+            store.royalty_remaining[version_id] = rpo_royalty.history(trace)
+
+
+def _partial_exemptions(
+    store: Store, ob: _Ob, day: date, total: Decimal, applied: frozenset[str]
+) -> tuple[tuple[str, Decimal], ...]:
+    at = store.at(ob, day)
+    remaining = max(total, ZERO)
+    result = []
+    if "POL-199" in applied and store.royalty_exemptions and remaining:
+        points = store.royalty_remaining.get(ob.version_id, {}).get(
+            obligation_subject_key(ob.external_id, ob.obligation_key), {}
+        )
+        royalty = min(remaining, rpo_royalty.cap(points, day))
+        if royalty:
+            result.append(("POL-199", royalty))
+            remaining -= royalty
+    if "POL-200" in applied and at.satisfaction_status == "UNSATISFIED" and at.revenue == 0:
+        if ob.version_id not in store.quotas:
+            raise Problem(
+                "validation-failed", "RPO targeted-VC quota evidence has not been loaded."
+            )
+        points_vc = store.quotas[ob.version_id].get(
+            obligation_subject_key(ob.external_id, ob.obligation_key), ()
+        )
+        targeted = min(remaining, rpo_quotas.cap(points_vc, day))
+        if targeted:
+            result.append(("POL-200", targeted))
+    return tuple(result)
+
 
 def _partial_exclusion(
     store: Store, ob: _Ob, day: date, total: Decimal, applied: frozenset[str]
 ) -> Decimal:
-    at = store.at(ob, day)
-    if "POL-200" not in applied or at.satisfaction_status != "UNSATISFIED" or at.revenue != 0:
-        return ZERO
-    if ob.version_id not in store.quotas:
-        raise Problem("validation-failed", "RPO targeted-VC quota evidence has not been loaded.")
-    points = store.quotas[ob.version_id].get(
-        obligation_subject_key(ob.external_id, ob.obligation_key), ()
-    )
-    return min(max(total, ZERO), rpo_quotas.cap(points, day))
+    return sum((amount for _, amount in _partial_exemptions(store, ob, day, total, applied)), ZERO)
 
 
 def _net_figures(
@@ -1500,13 +1547,14 @@ def rows_at(
                     0 if ob.end_date is None else max(month_ends_between(day, ob.end_date), 0)
                 )
                 exemption = _exemption(ob, applied.get(ob.entity_id, frozenset()), ends)
-                excluded = (
-                    ZERO
+                partials = (
+                    ()
                     if exemption is not None
-                    else _partial_exclusion(
+                    else _partial_exemptions(
                         store, ob, day, total, applied.get(ob.entity_id, frozenset())
                     )
                 )
+                excluded = sum((amount for _, amount in partials), ZERO)
                 if excluded:
                     total, placed, current, contributors = _net_figures(
                         total, placed, contributors, excluded=excluded, currency=ob.currency
@@ -1522,7 +1570,8 @@ def rows_at(
                         exemption=exemption,
                         remaining_months=remaining,
                         excluded=excluded,
-                        partial_exemption="POL-200" if excluded else None,
+                        partial_exemption=partials[0][0] if partials else None,
+                        partial_exemptions=partials,
                     )
                 )
     return tuple(sorted(found, key=lambda item: (item.ob.external_id, item.ob.obligation_key)))
@@ -2741,10 +2790,17 @@ def _obligation_lines(
     )
     if opening_excluded or closing_excluded:
 
-        def exemption_code(ob: _Ob | None, version: _Version | None, amount: Decimal) -> str | None:
+        def exemption_code(
+            ob: _Ob | None, version: _Version | None, amount: Decimal, day: date
+        ) -> str | None:
             if ob is None or version is None or not amount:
                 return None
-            return _exemption(ob, applied, store.durations(version)) or "POL-200"
+            return _exemption(ob, applied, store.durations(version)) or ", ".join(
+                rule
+                for rule, _ in _partial_exemptions(
+                    store, ob, day=day, total=amount, applied=applied
+                )
+            )
 
         into["exemption_changes"].append(
             {
@@ -2754,8 +2810,8 @@ def _obligation_lines(
                 "currency": described.currency,
                 "opening_date": before.isoformat(),
                 "closing_date": end.isoformat(),
-                "opening_rule": exemption_code(opening, opening_version, opening_excluded),
-                "closing_rule": exemption_code(closing, closing_version, closing_excluded),
+                "opening_rule": exemption_code(opening, opening_version, opening_excluded, before),
+                "closing_rule": exemption_code(closing, closing_version, closing_excluded, end),
                 "opening_excluded": str(opening_excluded),
                 "closing_excluded": str(closing_excluded),
                 "movement": str(lines["EXEMPTIONS"]),
@@ -2935,39 +2991,50 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
     labels = {pol: (label, description) for pol, _, label, description in EXPEDIENTS}
     excluded: dict[str, Decimal] = {}
-    for item in visible:
-        policy = item.exemption or item.partial_exemption
-        if policy is None:
-            continue
-        excluded_amount = item.total if item.exemption else item.excluded
-        label, description = labels[policy]
-        exempt_key = f"{item.ob.external_id}:{item.ob.obligation_key}:{policy}"
-        rows.append(
-            {
-                "row_key": f"exempt:{exempt_key}",
-                "section": 2,
-                "contract_external_id": item.ob.external_id,
-                "obligation_key": item.ob.obligation_key,
-                "expedient": policy,
-                "expedient_label": label,
-                "nature": item.ob.product_name,
-                "remaining_duration_months": item.remaining_months,
-                **(
-                    {
-                        "original_inception_date": item.ob.inception,
-                        "original_contract_end_date": run.store.original_ends[item.ob.version_id][
-                            item.ob.external_id
-                        ],
-                    }
-                    if policy == "POL-197"
-                    else {}
-                ),
-                "excluded_amount": tie_outs.money(excluded_amount, item.ob.currency),
-                "excluded_descriptor": description,
-                "currency": item.ob.currency,
-            }
+    for original in visible:
+        parts = original.partial_exemptions or ((original.partial_exemption, original.excluded),)
+        disclosures = (
+            [original]
+            if original.exemption
+            else [
+                dataclasses.replace(original, partial_exemption=rule, excluded=amount)
+                for rule, amount in parts
+                if rule is not None
+            ]
         )
-        add(excluded, item.ob.currency, excluded_amount)
+        for item in disclosures:
+            policy = item.exemption or item.partial_exemption
+            if policy is None:
+                continue
+            excluded_amount = item.total if item.exemption else item.excluded
+            label, description = labels[policy]
+            exempt_key = f"{item.ob.external_id}:{item.ob.obligation_key}:{policy}"
+            rows.append(
+                {
+                    "row_key": f"exempt:{exempt_key}",
+                    "section": 2,
+                    "contract_external_id": item.ob.external_id,
+                    "obligation_key": item.ob.obligation_key,
+                    "expedient": policy,
+                    "expedient_label": label,
+                    "nature": item.ob.product_name,
+                    "remaining_duration_months": item.remaining_months,
+                    **(
+                        {
+                            "original_inception_date": item.ob.inception,
+                            "original_contract_end_date": run.store.original_ends[
+                                item.ob.version_id
+                            ][item.ob.external_id],
+                        }
+                        if policy == "POL-197"
+                        else {}
+                    ),
+                    "excluded_amount": tie_outs.money(excluded_amount, item.ob.currency),
+                    "excluded_descriptor": description,
+                    "currency": item.ob.currency,
+                }
+            )
+            add(excluded, item.ob.currency, excluded_amount)
     notes: list[dict[str, Any]] = []
     for entity in run.entities:
         if entity.id in omitted:

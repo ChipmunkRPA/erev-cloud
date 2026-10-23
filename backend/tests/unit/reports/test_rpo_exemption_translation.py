@@ -152,3 +152,61 @@ def test_exemption_round_trip_keeps_both_months_and_their_original_rates(
     amount = Decimal("6.72" if reporting else "8.40")
     assert [Decimal(d["translated_movement"]) for d in gaps] == [amount, -amount]
     assert [d["period"] for d in gaps] == ["FY2026-P02", "FY2026-P03"]
+
+
+def test_combined_partial_exemptions_keep_translated_rule_amounts_reconciled(monkeypatch):
+    from erev_api.domain.reports import rpo_currency, rpo_quotas
+
+    vid, oid, cid, eid, gid = (uuid4() for _ in range(5))
+    day = date(2026, 1, 31)
+    ob = rpo._Ob(
+        oid,
+        vid,
+        oid,
+        cid,
+        "C",
+        "O",
+        "Licence",
+        None,
+        None,
+        None,
+        eid,
+        "E",
+        "EUR",
+        "ROYALTY",
+        date(2028, 12, 31),
+        date(2026, 1, 1),
+        Decimal(175),
+        False,
+    )
+    point = ObligationAt(*(Decimal(0) for _ in range(7)), Decimal(175), "UNSATISFIED", None, None)
+    version = rpo._Version(vid, gid, 1, True, date(2026, 1, 1), frozenset())
+    store = rpo.Store(
+        {gid: (version,)},
+        {vid: (ob,)},
+        {cid: (version,)},
+        {(vid, day): {oid: point}},
+        quotas={vid: {"C/O": (rpo_quotas.Point(day, Decimal(100), "quota"),)}},
+        royalty_remaining={vid: {"C/O": {day: Decimal(50)}}},
+    )
+    (original,) = rpo.rows_at(
+        store, as_of={eid: day}, bands=(12, 24), applied={eid: frozenset({"POL-199", "POL-200"})}
+    )
+    assert original.partial_exemptions == (("POL-199", Decimal(50)), ("POL-200", Decimal(100)))
+    assert original.total == 25
+    entity = tie_outs.EntityRef(eid, "E", uuid4(), "USD", "UTC")
+    period = tie_outs.PeriodRef(uuid4(), "FY2026-P01", "Jan", 2026, 1, 1, date(2026, 1, 1), day)
+    rate = reporting_currency.Translation("USD", {eid: {"rate": "1.111", "base_currency": "EUR"}})
+    monkeypatch.setattr(reporting_currency, "rates_for_period", lambda *args, **kwargs: rate)
+    session = SimpleNamespace(execute=lambda *args: SimpleNamespace(scalar_one=lambda: uuid4()))
+    params = ReportParams(
+        report_code="rpo",
+        report_version=1,
+        parameters={"currency_view": "functional"},
+        entity_ids=(eid,),
+        known_at=datetime(2026, 2, 1, tzinfo=UTC),
+    )
+    (converted,), _ = rpo_currency.translate(session, params, [original], [entity], {eid: period})
+    assert converted.excluded == Decimal("166.65")
+    assert sum(amount for _, amount in converted.partial_exemptions) == converted.excluded
+    assert converted.total == Decimal("27.78")

@@ -528,6 +528,46 @@ def test_royalty_rpo_nets_guarantee_and_waits_for_licence_satisfaction(
     assert corrected["OPENING"] == corrected["CLOSING"] == corrected["UNEXPLAINED"] == ZERO
     assert ties(corrected_run) == BALANCED
 
+    from erev_api.enums import RegistryCategory
+    from tests.domain.reports.test_rpo_disaggregation import publish
+
+    clock.advance(timedelta(minutes=1))
+    publish(world, RegistryCategory.PRACTICAL_EXPEDIENT, {"rpo.exemption_royalty_vc": "APPLY"})
+    _, disclosure = report_run(
+        world,
+        "rpo",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "period_key": "FY2026-P03",
+        },
+    )
+    exemptions = [row for row in disclosure if row.get("section") == 2]
+    if delivered:
+        assert exemptions == []
+    else:
+        assert len(exemptions) == 1
+        assert exemptions[0]["expedient"] == "POL-199"
+        assert amount(exemptions[0]["excluded_amount"]) == Decimal("3000")
+        contract_row = next(row for row in disclosure if row["row_key"] == "contract:ROY-RPO")
+        assert amount(contract_row["total"]) == Decimal("12000")
+    net, net_run = rollforward(world, AVM_US, "FY2026-P03")
+    assert net["CLOSING"] == (ZERO if delivered else Decimal("12000"))
+    assert net["EXEMPTIONS"] == (ZERO if delivered else Decimal("-3000"))
+    assert net["UNEXPLAINED"] == ZERO
+
+    from support.reference import post
+
+    repeated = post(app, f"/api/v1/report-runs/{net_run['id']}/rerun", world.maya, {})
+    assert repeated.status_code == 202, repeated.text
+    assert worlds.run_now(world, UUID(repeated.json()["id"]))["state"] == "SUCCEEDED"
+    rows = get(
+        app, f"/api/v1/report-runs/{repeated.headers['x-erev-report-run-id']}/data", world.maya
+    ).json()["items"]
+    assert {
+        key: amount(row["rpo"]) for key, row in keyed(rows).items() if row.get("section") == 1
+    } == net
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize("termination_kind", ["FULL", "PARTIAL"])

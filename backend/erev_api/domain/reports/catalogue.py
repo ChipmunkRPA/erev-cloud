@@ -996,6 +996,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "combination_group_member.contract_id = contract.id",
         ),
         filters=(
+            "POL-199 excludes original realized royalty awaiting recognition, retaining fixed "
+            "minimum guarantees; POL-200 then applies to remaining eligible targeted VC; "
+            "separate exemption rows and translated amounts reconcile to the combined cap; "
+            "new retained RPO runs preserve this interpretation and old bindings keep "
+            "their prior cap",
             _SCOPE,
             _BOOK,
             _CHAIN,
@@ -1111,6 +1116,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "estimate-event shares reconcile to original tp_delta nodes",
         ),
         filters=(
+            "POL-199 excludes original realized royalty awaiting recognition, retaining fixed "
+            "minimum guarantees; POL-200 then applies to remaining eligible targeted VC; "
+            "separate exemption rows and translated amounts reconcile to the combined cap; "
+            "new retained RPO runs preserve this interpretation and old bindings keep "
+            "their prior cap",
             _SCOPE,
             _BOOK,
             "opening: RPO at the end of the period before from_period_key; closing: RPO at the end "
@@ -2589,6 +2599,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "disclosure_snapshot.period_lock_id = period_lock.id",
         ),
         filters=(
+            "POL-199 excludes original realized royalty awaiting recognition, retaining fixed "
+            "minimum guarantees; POL-200 then applies to remaining eligible targeted VC; "
+            "separate exemption rows and translated amounts reconcile to the combined cap; "
+            "new retained RPO runs preserve this interpretation and old bindings keep "
+            "their prior cap",
             "two locks of one entity, book and period; the later recorded after the earlier",
             "locks of an entity in entity_codes",
             "changes attributed to drivers",

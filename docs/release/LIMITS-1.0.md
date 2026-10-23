@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Royalty RPO exemption for pending performance — October 22, 2026
+
+- Replaced POL-199's unconditional zero cap with realized royalty still awaiting recognition.
+  Native calculation retains dated remainder evidence; fixed minimum guarantees remain in
+  RPO. RPO disclosure, rollforward and close-variance projection now read the same basis.
+- Royalty and targeted-VC partial exemptions apply in policy order, are listed separately,
+  and cannot exceed the remainder. Currency-projected rule amounts reconcile to the translated
+  excluded total. New RPO bindings retain the feature flag; older bound runs keep their prior cap.
+- Necessary verification passed: focused engine/report scenarios and the existing targeted-VC
+  suite, combined partial-exemption currency rounding, and both public royalty workflows
+  (pending/delivered) including original-evidence reruns. Example: 15,000 royalties less a
+  12,000 guarantee produces a 3,000 exemption before satisfaction and no royalty remainder
+  afterward. Scoped types/lint and frozen metadata parity pass. No deployment.
+- Missing dated royalty evidence requires recomputation; no inferred quota is substituted.
+  The separate post-exit downward-correction failure still awaits the owner's revenue-treatment
+  choice and remains unresolved. Actual functional per-event posted attribution also remains open.
+
+
 ## GL detail uploads — October 22, 2026
 
 - The reconciliation file workflow now accepts an optional explicit BALANCE/DOCUMENT format

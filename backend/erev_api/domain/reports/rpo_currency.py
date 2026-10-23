@@ -91,12 +91,22 @@ def translate(
                 (entry[0], entry[1], Decimal(share) / target_scale, index, entry[4])
                 for entry, share in zip(held, shares, strict=True)
             )
+        partials = item.partial_exemptions
+        if partials:
+            shares = rpo_bands(
+                int(excluded * target_scale), [int(amount * source_scale) for _, amount in partials]
+            )
+            partials = tuple(
+                (rule, Decimal(share) / target_scale)
+                for (rule, _), share in zip(partials, shares, strict=True)
+            )
         result.append(
             replace(
                 item,
                 ob=replace(item.ob, currency=currency),
                 total=total,
                 excluded=excluded,
+                partial_exemptions=partials,
                 placed=tuple(Decimal(value) / target_scale for value in bands),
                 current=sum((entry[2] for entry in contributors if entry[4]), tie_outs.ZERO),
                 contributors=tuple(contributors),

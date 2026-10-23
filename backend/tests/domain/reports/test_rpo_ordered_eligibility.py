@@ -291,3 +291,99 @@ def test_royalty_guarantee_correction_and_satisfaction_across_eligibility(after,
     assert result.lines["REVENUE"] == ((200 if after else -200) if delivered_early else -1400)
     assert result.lines["CLOSING"] == 0
     assert result.lines["UNEXPLAINED"] == 0, result.lines
+
+
+@pytest.mark.parametrize("delivered", [False, True])
+def test_royalty_exemption_retains_fixed_guarantee_and_reconciles_reports(delivered):
+    from erev_api.domain.reports import rpo_royalty, variance_rpo
+    from erev_engine.trace import reevaluate
+    from support import cpc_worlds
+
+    jan, end = date(2026, 1, 1), date(2026, 3, 31)
+    bundle = worlds.time_world(
+        paid=None,
+        steps=[("C", jan, "")],
+        template_changes={
+            "obligation_kind": "LICENCE",
+            "licence_nature": "FUNCTIONAL",
+            "recognition_method": "ROYALTY",
+        },
+        policies={
+            "royalty.minimum_guarantee": "FIXED_ON_LICENCE_PATTERN",
+            "rpo.exemption_royalty_vc": "APPLY",
+        },
+    )
+    bundle = replace(
+        bundle,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(policy, value="APPLY")
+                    if policy.code == "rpo.exemption_royalty_vc"
+                    else policy
+                    for policy in book.policies
+                ),
+            )
+            for book in bundle.books
+        ),
+    )
+    events = worlds.significant_change(list(bundle.events), date(2026, 2, 1), "Reassessment")
+    events = worlds.not_probable(events, date(2026, 2, 1))
+    events = worlds.criteria_met(events, date(2026, 2, 2))
+    events = cpc_worlds.then(
+        events,
+        "USAGE_REPORTED",
+        end,
+        {
+            "obligation_key": worlds.SERVICE,
+            "usage_period_start": jan,
+            "usage_period_end": end,
+            "metric": "LICENSEE_SALES",
+            "quantity": Decimal(1500),
+            "rated_amount": Decimal(1500),
+            "is_royalty_statement": True,
+        },
+    )
+    if delivered:
+        events = worlds.delivered(events, end, worlds.SERVICE)
+    bundle = replace(
+        bundle,
+        events=tuple(events),
+        known_at=max(bundle.known_at, *(e.recorded_at for e in events)),
+    )
+    before = date(2026, 1, 31)
+    store, eid, vid, oid, book, _ = report_store(bundle, before, end, performance=delivered)
+    assert dict(reevaluate(book.trace)) == {node.id: node.value for node in book.trace.nodes}
+    store.royalty_remaining[vid] = rpo_royalty.history(book.trace)
+    (result,) = rpo.rollforward_lines(
+        store, ranges={eid: (before, end)}, applied={eid: frozenset({"POL-199"})}
+    )
+    assert result.lines["EXEMPTIONS"] == (0 if delivered else -300)
+    assert result.lines["CLOSING"] == (0 if delivered else 1200)
+    assert result.lines["UNEXPLAINED"] == 0
+    rows = rpo.rows_at(
+        store, as_of={eid: end}, bands=(12, 24), applied={eid: frozenset({"POL-199"})}
+    )
+    if not delivered:
+        assert rows[0].excluded == 300
+        assert rows[0].partial_exemptions == (("POL-199", Decimal(300)),)
+        assert rows[0].total == 1200
+        legacy = replace(store, royalty_exemptions=False)
+        old_rows = rpo.rows_at(
+            legacy, as_of={eid: end}, bands=(12, 24), applied={eid: frozenset({"POL-199"})}
+        )
+        assert old_rows[0].total == 1500
+        assert old_rows[0].excluded == 0
+        node = next(
+            n
+            for n in book.trace.nodes
+            if n.id == f"rpo_excluded:{book.obligation_versions[0].subject_key}/POL-199:-"
+        )
+        assert Decimal(node.value) == 300
+    entity = bundle.entities[0]
+    period = next(p for p in entity.periods if p.end_date == end)
+    projected = variance_rpo.project(
+        bundle, book, entity_code=entity.code, period_key=period.period_key, functional=False
+    )
+    assert sum(projected.values()) == (0 if delivered else 1200)

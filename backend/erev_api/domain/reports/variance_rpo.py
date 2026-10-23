@@ -26,7 +26,13 @@ from erev_engine.stages.s01_canonicalize.convert import (
 from erev_engine.stages.state import PolicyResolver
 
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import rpo_boundary_changes, rpo_duration, rpo_quotas, tie_outs
+from erev_api.domain.reports import (
+    rpo_boundary_changes,
+    rpo_duration,
+    rpo_quotas,
+    rpo_royalty,
+    tie_outs,
+)
 from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
@@ -147,6 +153,7 @@ def project(
             for item in bundle.estimate_versions
         },
     )
+    royalty_history = rpo_royalty.history(book.trace)
     result: dict[MeasureKey, Fraction] = {}
     for row in rows:
         contract, currency = ids[row["id"]]
@@ -170,6 +177,16 @@ def project(
         point = measured.obligations[row["id"]]
         remaining = point.scheduled + point.awaiting
         excluded = Decimal(0)
+        if applied("rpo.exemption_royalty_vc") and remaining > 0:
+            excluded = min(
+                remaining,
+                rpo_royalty.cap(
+                    royalty_history.get(
+                        obligation_subject_key(contract, str(row["obligation_key"])), {}
+                    ),
+                    at,
+                ),
+            )
         if (
             applied("rpo.exemption_vc_wholly_unsatisfied")
             and (
@@ -182,7 +199,7 @@ def project(
                 quota_history.get(obligation_subject_key(contract, str(row["obligation_key"])), ()),
                 at,
             )
-            excluded = min(max(remaining, Decimal(0)), quota)
+            excluded += min(max(remaining - excluded, Decimal(0)), quota)
         if functional and currency != entity.functional_currency:
             candidates = [
                 rate

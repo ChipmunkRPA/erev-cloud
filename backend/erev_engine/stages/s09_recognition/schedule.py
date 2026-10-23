@@ -292,6 +292,23 @@ def realised_at(
     return total
 
 
+def royalty_remaining(
+    ctx: BookContext,
+    st: AllocatedState,
+    ob: ObligationState,
+    day: date,
+    evaluator: components.Evaluator | None = None,
+) -> int:
+    """Realized royalty still awaiting recognition; the fixed minimum guarantee is excluded."""
+    if not any(seg.component == "ROYALTY" for seg in ob.segments):
+        return 0
+    evaluator = components.Evaluator(ctx, st, ob) if evaluator is None else evaluator
+    part = evaluator.posted(day).royalty
+    recognised = 0 if part is None else part.recognised
+    realised = royalty.target(ctx, st, ob, day, satisfied=False, mu=evaluator.mu).realised
+    return max(0, realised - recognised)
+
+
 def _quantity_events(
     st: AllocatedState, ob: ObligationState, v: date
 ) -> list[tuple[EventView, Fraction]]:
@@ -1751,6 +1768,31 @@ def _emit_realised_allocation(
                 params={"allocated": str(value), "as_of": day.isoformat(), "kind": "posted"},
                 narrative_key=_narrative(REALISED_FORMULA),
             )
+
+    royalty_dates = {day for _, day, _ in points} | {
+        event.effective_date for event in st.events if event.contract_key == ob.contract_key
+    }
+    for day in sorted(royalty_dates):
+        value = royalty_remaining(ctx, st, ob, day, evaluator)
+        tb.node(
+            measure="royalty_remaining_at_date",
+            subject_key=ob.subject_key,
+            period_key=day.isoformat(),
+            value=value,
+            currency=ctx.txn_currency,
+            minor_unit=evaluator.mu,
+            formula_id=REALISED_FORMULA,
+            inputs=[],
+            params={
+                "allocated": str(value),
+                "as_of": day.isoformat(),
+                "kind": "posted",
+                "royalty_bearing": "true"
+                if any(seg.component == "ROYALTY" for seg in ob.segments)
+                else "false",
+            },
+            narrative_key=_narrative(REALISED_FORMULA),
+        )
 
 
 def _emit_rpo_event_positions(

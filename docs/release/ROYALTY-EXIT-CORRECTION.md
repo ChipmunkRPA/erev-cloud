@@ -38,8 +38,8 @@ successfully and produce zero unexplained RPO movement. Existing same-day re-ent
 also does not reproduce this failure. These observations do not prove the entire royalty
 lifecycle complete.
 
-A separate implementation review found that POL-199 still uses a zero cap on the assumption
-that royalty realization implies recognition. The existing royalty workflow permits realized
-royalties awaiting licence satisfaction; its exemption treatment needs a consistent engine,
-report, close-variance and retained-evidence implementation. It is not fixed by the above
-owner decision and remains an independent development item.
+The separate POL-199 awaiting-satisfaction gap has now been implemented: native calculations
+retain the unrecognized royalty remainder; RPO, rollforward and close-variance readers use
+that quota while retaining fixed guarantees. Multiple partial exemptions are separately
+listed and currency-projected totals reconcile. This does not resolve the correction-after-exit
+income-treatment decision described above.

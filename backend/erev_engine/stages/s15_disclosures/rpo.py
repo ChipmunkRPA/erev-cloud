@@ -15,7 +15,8 @@ Private to stage 15 (DG-ENG-07). At the version date d_v (04 T-CON-11 ``effectiv
     to the latest end date of its inception segments, is 12 months or less (L3-2-Q-27);
   - POL-198 omits ``RIGHT_TO_INVOICE`` obligations;
   - POL-199 omits the ``ROYALTY`` component, whose amounts stage 09 realises as reported
-    (S09-R-02), so the omitted amount is 0 (L3-2-Q-28);
+    (S09-R-02); realized royalty awaiting licence satisfaction remains exempt while the
+    fixed minimum guarantee stays in RPO;
   - POL-200 omits the targeted VC quota in force at the measured date for a wholly unsatisfied
     obligation, read from ``targeted_vc_quota_history`` (stage 05 at inception, stage 08 after
     each reallocating version; S05-R-14, S08-R-07; D-91): d_v for the RPO row, each end of the
@@ -928,7 +929,7 @@ def _omissions(
     for policy, code, basis, description in EXEMPTIONS:
         if ctx.policies.value(code, entity=ob.contracting_entity, period=period) != APPLY:
             continue
-        cap = _exemption_cap(policy, st, ob, wholly_unsatisfied, short, at)
+        cap = _exemption_cap(policy, ctx, st, ob, wholly_unsatisfied, short, at)
         if cap is None:
             continue
         remaining = total - excluded
@@ -967,6 +968,7 @@ def _quota_in_force(history: Sequence[tuple[date, Quota]], at: date) -> Quota | 
 
 def _exemption_cap(
     policy: str,
+    ctx: BookContext,
     st: AllocatedState,
     ob: ObligationState,
     wholly_unsatisfied: bool,
@@ -984,7 +986,11 @@ def _exemption_cap(
     if policy == "POL-198":
         return 0 if str(ob.recognition_method) == RIGHT_TO_INVOICE else None
     if policy == "POL-199":
-        return 0 if any(seg.component == ROYALTY for seg in ob.segments) else None
+        return (
+            schedule.royalty_remaining(ctx, st, ob, at)
+            if any(seg.component == ROYALTY for seg in ob.segments)
+            else None
+        )
     if not wholly_unsatisfied:
         return None
     quotas = [

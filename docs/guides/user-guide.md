@@ -959,3 +959,19 @@ The same comparison rules apply to connector and file data: known eRev journals 
 billing references are distinguished from direct GL entries, and any unexplained residual
 remains visible. A balance-only upload cannot identify documents it does not contain.
 The source file remains attached as the evidence for the comparison.
+
+
+### Royalty consideration awaiting licence satisfaction
+
+When the royalty RPO exemption (POL-199) is applied, realized royalty amounts that still
+await recognition are shown separately in the exemption section. Fixed minimum guarantees
+remain in disclosed RPO unless another elected exemption applies. For example, a 12,000
+fixed guarantee and 15,000 of cumulative royalty statements before licence satisfaction
+leave 12,000 in disclosed RPO and 3,000 in the royalty exemption.
+
+After the royalty is recognized, that amount no longer remains in the exemption. Changes
+appear in the rollforward's Exemptions line. If targeted variable consideration also qualifies
+under POL-200, the rules are applied in order and listed separately without exceeding the
+remaining amount. Translated exemption rows reconcile to the translated excluded total.
+New runs require original dated royalty evidence; older calculations missing it need
+recomputation. Previously retained RPO runs keep their original exemption interpretation.
