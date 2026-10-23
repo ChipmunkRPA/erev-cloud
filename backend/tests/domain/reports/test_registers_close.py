@@ -27,7 +27,7 @@ from erev_api.db.tables import (
     obligation_version,
 )
 from erev_api.domain.contracts import queries
-from erev_api.domain.reports.builders import ReportParams
+from erev_api.domain.reports.builders import ReportParams, SourceCollector
 from erev_api.domain.reports.builders import modification_register as register
 from erev_api.files.store import LocalFileStore
 from erev_api.jobs.context import JobRuntime
@@ -65,7 +65,14 @@ def k02(app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStor
     return world
 
 
-def _run(world: K02World, *, known_at: Any, historical: bool = False, **parameters: Any) -> Any:
+def _run(
+    world: K02World,
+    *,
+    known_at: Any,
+    historical: bool = False,
+    collector: SourceCollector | None = None,
+    **parameters: Any,
+) -> Any:
     """The register built through the framework's parameters as a live (or explicit as-of) run."""
     with world.place.uow() as uow:
         params = ReportParams(
@@ -75,6 +82,7 @@ def _run(world: K02World, *, known_at: Any, historical: bool = False, **paramete
             entity_ids=(world.entity_id,),
             known_at=known_at,
             historical=historical,
+            sources=collector,
         )
         return register.build(uow, params)
 
@@ -107,7 +115,13 @@ def test_modification_register_k02(k02: K02World, runtime: JobRuntime, clock: Fr
     substituted. REGISTER-EVENT-1: the applied event's owner is the original contract."""
     contract_id, modification_id = _applied_upgrade(k02, runtime, clock)
     clock.advance(timedelta(minutes=1))
-    data = _run(k02, known_at=clock.now())
+    collector = SourceCollector()
+    data = _run(k02, known_at=clock.now(), collector=collector)
+    event_evidence = collector.evidence[f"modification_event_amounts_v1:{modification_id}"]
+    assert event_evidence["trace_sha256"]
+    assert event_evidence["node_ids"][0].startswith("modification_tp_change@")
+    assert collector.members["modification_event_traces"] == {event_evidence["trace_id"]}
+    assert register.data_from_inputs(collector.evidence[register.EVIDENCE]) == data
     (row,) = data.rows
     head = k02.place.rows(
         select(contract.c.head_stream_version, contract.c.external_id).where(

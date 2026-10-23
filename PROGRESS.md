@@ -20,6 +20,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Per-event modification amounts — October 22, 2026
+
+- Native calculations now retain transaction price before/after each successful modification
+  boundary, alongside existing obligation catch-ups. The modification register reads these
+  event-specific amounts instead of conflating the whole application-version delta.
+- Multiple modifications in one computation can be reported separately. Retained inputs include
+  the verified trace hash and selected node identities; historical traces keep the guarded
+  predecessor fallback and explicit shared-catch-up limitation.
+- Necessary checks passed: 15 engine cases, 28 focused report/catalogue cases and two populated
+  database report cases. A native two-event calculation yields TP changes +20,000/-10,000 and
+  catch-ups +10,000/-5,000. Scoped lint/types passed.
+- Foreign functional per-event allocation remains outstanding; this change enables original
+  transaction-currency attribution, not an unsupported FX allocation. No deployment.
+
 ## Modification transaction-price predecessor evidence — October 22, 2026
 
 - Applied modification TP change now requires the exact referenced predecessor in the same

@@ -26,6 +26,7 @@ from erev_engine.stages.state import (
     BookContext,
     EventView,
     ObligationState,
+    TpBuildUp,
 )
 from erev_engine.trace import SourceRef, TraceBuilder
 
@@ -220,3 +221,49 @@ def emit(
             exact=fixed.x_exact - ob.stated_price,
             narrative_key=ADJUSTMENT_FORMULA.rsplit(".v", 1)[0],
         )
+
+
+def emit_price_change(
+    ctx: BookContext,
+    tb: TraceBuilder,
+    ev: EventView,
+    group: str,
+    before: TpBuildUp,
+    after: TpBuildUp,
+) -> None:
+    """Retain the TP change at this event position, not a computation-wide version delta."""
+    minor = ctx.currencies[ctx.txn_currency].minor_unit
+    inputs = []
+    for side, price in (("before", before), ("after", after)):
+        inputs.append(
+            tb.node(
+                measure=f"modification_tp_{side}@{ev.event_key}",
+                subject_key=group,
+                period_key=None,
+                value=price.total.posted,
+                currency=ctx.txn_currency,
+                minor_unit=minor,
+                formula_id="rec.allocation.v1",
+                inputs=[],
+                params={
+                    "allocated": str(price.total.posted),
+                    "as_of": ev.effective_date.isoformat(),
+                    "kind": "posted",
+                },
+                exact=price.total.exact,
+                narrative_key="rec.allocation",
+            )
+        )
+    tb.node(
+        measure=f"modification_tp_change@{ev.event_key}",
+        subject_key=group,
+        period_key=None,
+        value=after.total.posted - before.total.posted,
+        currency=ctx.txn_currency,
+        minor_unit=minor,
+        formula_id="rec.activity_sum.v1",
+        inputs=[inputs[1], inputs[0]],
+        params={"signs": "+,-", "as_of": ev.effective_date.isoformat()},
+        exact=after.total.exact - before.total.exact,
+        narrative_key="rec.activity_sum",
+    )

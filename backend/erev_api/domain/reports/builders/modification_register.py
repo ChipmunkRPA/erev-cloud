@@ -14,6 +14,11 @@ declared measures ``tp_change`` and ``catch_up_amount`` are typed API-S-Money ce
 (never bare decimals); an optional cell is empty (None), never 0; the dataset carries no TOTAL row —
 the totals per currency are control totals.
 
+New native APPLIED traces supply event-position transaction-price changes and per-obligation
+catch-ups. Their hashes and formulas are verified and their node identities retained. Several
+modifications in one application version can therefore be read independently. Older traces
+without event-price evidence retain the version-delta fallback and shared-catch-up refusal.
+
 Measure sources by status (S15-R-20c): ``APPLIED`` reads the run's book — the application version
 is bound deterministically: the contract version of the group the applied event's OWNER contract
 belonged to when the event was recorded (T-CON-04 membership by ``recorded_at``) whose
@@ -48,6 +53,8 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
+from erev_engine.errors import EngineError
+from erev_engine.stages.s01_canonicalize import contract_subject_key
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -66,12 +73,13 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.contracts import modifications
 from erev_api.domain.platform import approval_queries
-from erev_api.domain.reports import reporting_currency, tie_outs
+from erev_api.domain.reports import modification_event_amounts, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_history import date_range
 from erev_api.domain.reports.builders.out_of_period_register import event_key, refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import ApprovalDecisionKind, ModificationStatus
+from erev_api.explain.store import load_trace
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
@@ -583,6 +591,7 @@ def _applied_measures(
                 contract_version.c.id,
                 contract_version.c.combination_group_id,
                 contract_version.c.transaction_price,
+                contract_version.c.calc_trace_id,
                 contract_version.c.book_code,
                 contract_version.c.transaction_currency,
                 contract_version.c.known_at,
@@ -628,12 +637,27 @@ def _applied_measures(
         {UUID(str(c)) for v in bound.values() for c in (v["cause_event_ids"] or ())}, key=str
     )
     cause_types: dict[UUID, str] = {}
-    for event_id, event_type in session.execute(
-        select(contract_event.c.id, contract_event.c.event_type).where(
-            contract_event.c.id.in_(cause_ids)
+    event_keys: dict[UUID, str] = {}
+    for event_id, event_type, external_id, stream_version in session.execute(
+        select(
+            contract_event.c.id,
+            contract_event.c.event_type,
+            contract.c.external_id,
+            contract_event.c.stream_version,
         )
+        .join(
+            contract,
+            and_(
+                contract.c.id == contract_event.c.contract_id,
+                contract.c.tenant_id == contract_event.c.tenant_id,
+            ),
+        )
+        .where(contract_event.c.id.in_(cause_ids))
     ):
         cause_types[UUID(str(event_id))] = str(getattr(event_type, "value", event_type))
+        event_keys[UUID(str(event_id))] = (
+            f"{contract_subject_key(str(external_id))}/EV-{stream_version:06d}"
+        )
     previous_ids = sorted(
         {
             UUID(str(v["previous_version_id"]))
@@ -685,8 +709,52 @@ def _applied_measures(
             )
         ).mappings()
     ]
+    trace_cache = {}
     for modification_id, version in bound.items():
         source = by_id[modification_id]
+        version_id = UUID(str(version["id"]))
+        keys = [
+            str(line["obligation_key"])
+            for line in (source["lines"] or ())
+            if isinstance(line, Mapping) and line.get("obligation_key") is not None
+        ]
+        event_key_ = event_keys.get(UUID(str(source["applied_event_id"])))
+        try:
+            if version_id not in trace_cache:
+                trace_cache[version_id] = load_trace(session, version_id)
+            trace = trace_cache[version_id]
+            measured = (
+                None
+                if trace is None or event_key_ is None
+                else modification_event_amounts.read(
+                    trace,
+                    event_key=event_key_,
+                    contract_key=str(source["contract_external_id"]),
+                    obligation_keys=keys,
+                    currency=str(source["currency"]).strip(),
+                )
+            )
+        except (ValueError, EngineError) as error:
+            raise ModificationRegisterRefusal("catch_up_amount", str(error)) from error
+        if measured is not None:
+            found[modification_id] = (measured.tp_change, measured.catch_up)
+            if params is not None:
+                tie_outs.record_members(
+                    params, "modification_event_traces", [version["calc_trace_id"]]
+                )
+                assert trace is not None
+                tie_outs.record_evidence(
+                    params,
+                    f"modification_event_amounts_v1:{modification_id}",
+                    {
+                        "version_id": str(version_id),
+                        "trace_id": str(version["calc_trace_id"]),
+                        "trace_sha256": trace.sha256(),
+                        "event_key": event_key_,
+                        "node_ids": list(measured.node_ids),
+                    },
+                )
+            continue
         causes = [cause_types.get(UUID(str(c)), "") for c in (version["cause_event_ids"] or ())]
         if shared_catch_up(causes) > 1:
             raise ModificationRegisterRefusal(

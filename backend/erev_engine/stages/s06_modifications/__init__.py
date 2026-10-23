@@ -817,7 +817,21 @@ def apply(
         )
     refuse(ctx, st, ev)
     ctx.policies.require(APPLY_POLICY_KEYS)
-    return handler(ctx, st, ev, tb, identified, price_at)
+    result = handler(ctx, st, ev, tb, identified, price_at)
+    if (
+        price_at is not None
+        and ev.event_type in {"CONTRACT_AMENDED", "CONTRACT_TERMINATED", "REGROUPED"}
+        and len(result.tp_history) > len(st.tp_history)
+    ):
+        boundary_state.emit_price_change(
+            ctx,
+            tb,
+            ev,
+            st.group_code,
+            price_at(ctx, st, ev.effective_date, ev),
+            result.tp_history[-1],
+        )
+    return result
 
 
 def _amended(

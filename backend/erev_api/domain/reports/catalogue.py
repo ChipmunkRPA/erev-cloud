@@ -1569,6 +1569,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision",
             "judgement_record",
             "contract_version",
+            "calc_trace",
             "lock_snapshot",
             "legal_entity",
             "period",
@@ -1584,6 +1585,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "new native traces provide event-position TP changes and per-obligation catch-ups; "
+            "verified trace hashes and node identities distinguish batched modifications; older "
+            "traces retain version deltas with exact predecessors and refuse shared catch-ups",
             "functional/reporting require contract currency to equal entity functional currency; "
             "reporting preserves original amounts and adds equivalents using the approved average "
             "of the modification effective period; these are analytical equivalents, not posted FX "
