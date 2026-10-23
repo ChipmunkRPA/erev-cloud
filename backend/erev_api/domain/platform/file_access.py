@@ -89,6 +89,7 @@ from erev_api.db.tables import (
     migration_batch,
     modification,
     period_lock,
+    portfolio_member,
     posting_ack,
     reconciliation,
     registry_version,
@@ -550,6 +551,54 @@ _ESTIMATE_OF_VERSION: Final = (
         estimate.c.id == estimate_version.c.estimate_id,
     ),
 )
+
+
+def _estimate_version_entities(
+    session: Session, subject_id: UUID
+) -> Entities | Literal["*"] | None:
+    """Shared versions require all retained members, even after their membership ends."""
+    row = session.execute(
+        select(estimate.c.contract_id, estimate.c.portfolio_id)
+        .select_from(estimate_version.join(*_ESTIMATE_OF_VERSION))
+        .where(estimate_version.c.id == subject_id)
+    ).one_or_none()
+    if row is None:
+        return None
+    if row.contract_id is not None:
+        return _through_contract(estimate_version, estimate.c.contract_id, _ESTIMATE_OF_VERSION)(
+            session, subject_id
+        )
+    if row.portfolio_id is None:
+        return None
+    # One outer join retains every membership, including those whose contracts RLS hides.
+    # An inner join would silently authorize only the visible subset of a shared population.
+    entities = (
+        session.execute(
+            select(contract.c.contracting_entity_id)
+            .select_from(
+                portfolio_member.outerjoin(
+                    contract,
+                    sa.and_(
+                        contract.c.tenant_id == portfolio_member.c.tenant_id,
+                        contract.c.id == portfolio_member.c.contract_id,
+                    ),
+                )
+            )
+            .where(portfolio_member.c.portfolio_id == row.portfolio_id)
+        )
+        .scalars()
+        .all()
+    )
+    if any(entity is None for entity in entities):
+        return None
+    return frozenset(UUID(str(entity)) for entity in entities)
+
+
+ESTIMATE_ENTITY: Final = (
+    "contract.contracting_entity_id of the contract the record names; "
+    "all current and former portfolio member entities for shared estimates"
+)
+
 CONTRACT_ENTITY: Final = (
     "contract.contracting_entity_id of the contract the record names; tenant without one"
 )
@@ -572,8 +621,8 @@ _SUBJECT_ENTITIES: Final[Mapping[str, tuple[SubjectEntities, str]]] = MappingPro
             "modification.contracting_entity_id",
         ),
         "estimate_version": (
-            _through_contract(estimate_version, estimate.c.contract_id, _ESTIMATE_OF_VERSION),
-            CONTRACT_ENTITY,
+            _estimate_version_entities,
+            ESTIMATE_ENTITY,
         ),
         "ssp_book_version": (_ssp_book_entity, "ssp_book.entity_id"),
         "judgement_record": (

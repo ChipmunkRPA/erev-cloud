@@ -545,3 +545,29 @@ and scoped backend types/lint pass. OpenAPI and frontend types are regenerated. 
 Remaining shared-estimate work: evidence/submission, independent approval and application events,
 member recomputation and retained reporting sources. Portfolio/local precedence and breakage
 allocation choices remain unapproved; this draft workflow chooses neither and changes no posting.
+
+## October 23 shared-estimate evidence — implemented and access leak repaired
+
+Saved portfolio draft versions now expose supporting-file upload/attachment, download and
+uploader-only reasoned void controls. The page uses the existing attachment/file APIs and
+server controls. After upload succeeds but attachment fails, retry reuses the uploaded file
+identity and the retained attachment command key. Voided versions expose evidence read-only;
+new versions must be saved before files can be attached to their identity.
+
+A populated API witness first reproduced a permission leak: the attachment registry treated
+an estimate version without contract_id as a tenant-level subject, so a member outside the
+portfolio could list its evidence. The registry now resolves shared versions through every
+current and former portfolio member. Its outer join preserves RLS-hidden contracts as missing
+scope and refuses access instead of silently authorizing only a visible subset. Existing
+contract-level estimate attachment authorization remains in place. List, direct content read,
+attach and file-reference scope use the same resolver; the existing uploader's own file-read
+rule is unchanged. The authoritative data-model subject table now matches this rule.
+
+Necessary verification: the populated public workflow permits full-scope readers, refuses an
+outside member's list/download/attach and a partially authorized writer's attach, and permits
+the uploader's reasoned void, after all current members have left. Seven file-access registry
+checks pass. Seven portfolio UI cases include failed-attachment retry with one upload and the
+same command key, download navigation and reasoned void. Frontend and scoped backend lint/types
+pass. Shared estimate approval, application/recomputation and reporting remain outstanding.
+The two calculation choices were re-presented to the owner before starting their dependent
+work. No deployment and no inferred accounting approval.

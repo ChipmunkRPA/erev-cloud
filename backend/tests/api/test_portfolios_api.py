@@ -255,3 +255,38 @@ def test_portfolio_membership_workflow(
         )
         == before_computation
     )
+
+    file_id = worlds.evidence_file(app, maya, "portfolio-returns.pdf")
+    subject = {"subject_type": "estimate_version", "subject_id": second.json()["id"]}
+    attached = post(app, "/api/v1/attachments", maya, {**subject, "file_object_id": file_id})
+    assert attached.status_code == 201, attached.text
+    visible_files = get(app, "/api/v1/attachments", viewer, subject)
+    assert visible_files.status_code == 200, visible_files.text
+    assert [f["id"] for f in visible_files.json()["items"]] == [attached.json()["id"]]
+    hidden_files = get(app, "/api/v1/attachments", hidden, subject)
+    assert hidden_files.status_code == 200, hidden_files.text
+    assert hidden_files.json()["items"] == []
+    assert get(app, f"/api/v1/files/{file_id}/content", hidden).status_code == 404
+    assert get(app, f"/api/v1/files/{file_id}/content", viewer).status_code == 200
+    own_file = worlds.evidence_file(app, hidden, "outside-population.pdf")
+    assert (
+        post(
+            app, "/api/v1/attachments", hidden, {**subject, "file_object_id": own_file}
+        ).status_code
+        == 404
+    )
+    # Broader read access is not permission to attach for entities outside the write grant.
+    limited_file = worlds.evidence_file(app, limited, "limited-write.pdf")
+    assert (
+        post(
+            app, "/api/v1/attachments", limited, {**subject, "file_object_id": limited_file}
+        ).status_code
+        == 404
+    )
+    voided = post(
+        app,
+        f"/api/v1/attachments/{attached.json()['id']}/void",
+        maya,
+        {"reason": "Replaced supporting evidence"},
+    )
+    assert voided.status_code == 200, voided.text

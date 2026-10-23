@@ -13,6 +13,7 @@ import { rowIfMatch } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import type { components } from "../../lib/api/schema";
 import { t } from "../../lib/i18n/t";
+import { PortfolioEvidence } from "./portfolio-evidence";
 
 type Estimate = components["schemas"]["EstimateOut"];
 type Portfolio = components["schemas"]["PortfolioOut"];
@@ -113,6 +114,13 @@ export function PortfolioVersions({
           writable ? <Button onClick={() => setSelected("new")}>{label("new")}</Button> : undefined
         }
       />
+      {selected === null || selected === "new" ? null : (
+        <PortfolioEvidence
+          key={selected.id}
+          versionId={selected.id}
+          editable={writable && selected.status === "DRAFT"}
+        />
+      )}
       {selected === null ? null : (
         <VersionForm
           key={selected === "new" ? "new" : `${selected.id}:${selected.row_version}`}

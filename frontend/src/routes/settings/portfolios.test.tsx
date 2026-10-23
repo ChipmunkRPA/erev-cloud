@@ -35,6 +35,9 @@ const member = {
 };
 function serve() {
   server.use(
+    http.get(apiUrl("/api/v1/attachments"), () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
     http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
       HttpResponse.json({ items: [], next_cursor: null }),
     ),
@@ -287,4 +290,92 @@ it("creates and edits draft values, retains a refused edit, and discards without
   fireEvent.click(screen.getByRole("button", { name: "View version" }));
   expect(screen.queryByRole("button", { name: "Save draft version" })).toBeNull();
   expect((screen.getByLabelText("Rate (0 to 1)") as HTMLInputElement).value).toBe("0.15");
+});
+
+it("attaches evidence with retry-safe upload reuse and voids the uploader's attachment", async () => {
+  serve();
+  const version = {
+    id: "v1",
+    version_no: 1,
+    row_version: 1,
+    status: "DRAFT",
+    effective_date: "2026-09-01",
+    currency: "USD",
+    rate: "0.1",
+    parameters: {},
+    scenarios: [],
+    rationale: "Observed returns",
+  };
+  let uploads = 0;
+  let attempts = 0;
+  const keys: (string | null)[] = [];
+  let attachment: Record<string, unknown> | null = null;
+  let voidReason: unknown;
+  server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({
+        items: [
+          { id: "e1", element_code: "RETURNS", estimate_kind: "RETURN_RATE", method: "RATE" },
+        ],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
+      HttpResponse.json({ items: [version], next_cursor: null }),
+    ),
+    http.get(apiUrl("/api/v1/attachments"), () =>
+      HttpResponse.json({ items: attachment ? [attachment] : [], next_cursor: null }),
+    ),
+    http.post(apiUrl("/api/v1/files"), () => {
+      uploads += 1;
+      return HttpResponse.json({ id: "f1" }, { status: 201 });
+    }),
+    http.post(apiUrl("/api/v1/attachments"), async ({ request }) => {
+      attempts += 1;
+      keys.push(request.headers.get("Idempotency-Key"));
+      if (attempts === 1) return problemResponse(null, 500, "Temporary storage error");
+      const body = (await request.json()) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        subject_type: "estimate_version",
+        subject_id: "v1",
+        file_object_id: "f1",
+      });
+      attachment = {
+        ...body,
+        id: "a1",
+        original_filename: "returns.pdf",
+        created_by: editor.user.id,
+        created_by_kind: "USER",
+        voided_at: null,
+      };
+      return HttpResponse.json(attachment, { status: 201 });
+    }),
+    http.post(apiUrl("/api/v1/attachments/a1/void"), async ({ request }) => {
+      voidReason = await request.json();
+      attachment = null;
+      return HttpResponse.json({ id: "a1" });
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
+  fireEvent.click(await screen.findByRole("button", { name: "View version" }));
+  fireEvent.change(await screen.findByLabelText(/^Evidence files/), {
+    target: { files: [new File(["evidence"], "returns.pdf", { type: "application/pdf" })] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and attach evidence" }));
+  await screen.findByText("Temporary storage error");
+  fireEvent.click(screen.getByRole("button", { name: "Upload and attach evidence" }));
+  const link = await screen.findByRole("link", { name: "returns.pdf" });
+  expect(link.getAttribute("href")).toBe("/api/v1/files/f1/content");
+  expect(uploads).toBe(1);
+  expect(attempts).toBe(2);
+  expect(keys[0]).toBeTruthy();
+  expect(keys[1]).toBe(keys[0]);
+  fireEvent.click(screen.getByRole("button", { name: "Void attachment" }));
+  fireEvent.change(screen.getByLabelText(/^Reason for voiding/), {
+    target: { value: "Replace outdated support" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm void attachment" }));
+  await waitFor(() => expect(screen.queryByRole("link", { name: "returns.pdf" })).toBeNull());
+  expect(voidReason).toEqual({ reason: "Replace outdated support" });
 });

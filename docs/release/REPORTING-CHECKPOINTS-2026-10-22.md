@@ -194,3 +194,13 @@
 - Actual copy and LATEST refresh jobs now preserve populated member history; a successor
   sandbox membership edit leaves production unchanged. The focused database workflow passes.
   Two previously asked estimation choices still await the owner. No deployment.
+
+
+## Shared-estimate definitions — October 23, 2026
+
+- Portfolio page/API can create and list RETURN_RATE/BREAKAGE definitions with an explicit
+  method, parent-version protection and audit facts. Full retained-member read/write scope
+  protects shared evidence, including after all current members leave.
+- Populated API workflow and five UI cases plus scoped lint/types pass. Definition authoring
+  is available; values, approval, calculation application and reporting are still pending.
+  The UI states this boundary. No estimation-choice assumptions and no deployment.

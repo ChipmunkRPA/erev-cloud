@@ -8062,5 +8062,18 @@
   "settings.portfolioVersions.closeEditor": "Close version editor",
   "settings.portfolioVersions.saving": "Saving…",
   "settings.portfolioVersions.count.one": "{formatted} version",
-  "settings.portfolioVersions.count.other": "{formatted} versions"
+  "settings.portfolioVersions.count.other": "{formatted} versions",
+  "settings.portfolioEvidence.title": "Supporting evidence",
+  "settings.portfolioEvidence.loading": "Loading evidence…",
+  "settings.portfolioEvidence.empty": "No supporting files attached.",
+  "settings.portfolioEvidence.networkError": "No response received. Retry the same request.",
+  "settings.portfolioEvidence.files": "Evidence files",
+  "settings.portfolioEvidence.chooseFile": "Choose a supporting file.",
+  "settings.portfolioEvidence.attach": "Upload and attach evidence",
+  "settings.portfolioEvidence.void": "Void attachment",
+  "settings.portfolioEvidence.reason": "Reason for voiding",
+  "settings.portfolioEvidence.reasonRequired": "Enter a reason.",
+  "settings.portfolioEvidence.confirmVoid": "Confirm void attachment",
+  "settings.portfolioEvidence.cancel": "Cancel",
+  "settings.portfolioEvidence.saving": "Saving…"
 }

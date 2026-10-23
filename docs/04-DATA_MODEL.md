@@ -1999,7 +1999,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_file_attachment__subject (tenant_id, su
 |---|---|---|---|
 | `contract` | `contract.create` | `contract.read` | `contract.contracting_entity_id` |
 | `modification` | `modification.create` | `contract.read` | `modification.contracting_entity_id` |
-| `estimate_version` | `estimate.create` | `contract.read` | contract.contracting_entity_id of the contract the record names; tenant without one |
+| `estimate_version` | `estimate.create` | `contract.read` | contract.contracting_entity_id of the contract the record names; all current and former portfolio member entities for shared estimates |
 | `ssp_book_version` | `ssp.create` | `ssp.read` | `ssp_book.entity_id` |
 | `judgement_record` | `judgement.create` | `config.read`, `contract.read` | contract.contracting_entity_id of the contract the record names; tenant without one |
 | `manual_adjustment` | `adjustment.create` | `adjustment.approve`, `adjustment.create`, `contract.read`, `report.run` | `manual_adjustment.entity_id` |
