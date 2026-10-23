@@ -706,3 +706,34 @@ This checkpoint adds necessary end-to-end evidence for the previous implementati
 payment mode. The selected workflow and scoped test lint (excluding existing import-order drift)
 pass. RIGHT_TO_INVOICE across original members, other host recognition methods, modifications
 and in-scope combined-component visibility remain unfinished. No deployment.
+
+## October 23 combined right-to-invoice — implemented
+
+Stage 04 pricing and stage 09 fixed/variable progress now read every original POL-231 member.
+Each component retains rated-usage, delivered-units-times-original-rate, then net-invoice source
+priority. One member's rated usage does not suppress another member's performance. Shared source
+events count once; conflicting prices for one multi-target delivery are refused rather than
+inventing an allocation. Event order is retained for the cumulative above-stated-price boundary.
+The nonlinear-price/variable-element expedient guard now checks every original member.
+
+Billing lookup, cumulative billed traces and tax attribution resolve original members to their
+combined host. This fixes a real failure when a service invoice names a merged-away member.
+Combined lease scope measures also support RIGHT_TO_INVOICE: fixed consideration plus excess
+performance is routed out once, with consistent obligation and contract outputs. Full-engine
+cases with 12,000 rated lease performance and a 6,000 service invoice plus separate 500 tax
+produce 18,000 in-scope revenue, or 18,000 excluded allocation with zero 606 revenue/RPO when
+the lease predominates. Billed consideration is 6,000 in both paths; traces re-evaluate.
+
+The same exercise found the RTI invoice fallback deducted tax twice. The canonical event schema
+(04 OQ-AKI-10) explicitly supplies amount net of tax, as stage 10 already implements. The shared
+RTI kernel now uses that net amount directly; ENGINE_SPEC_B's conflicting pseudocode/text is
+aligned. This correction applies to standalone RTI obligations as well as combined components.
+
+Necessary verification: 38 targeted native cases cover mixed sources, original rates, returns,
+advance-invoice exclusion, deduplication/conflicting rates, the original-member pricing guard,
+full 606/842 outputs and existing usage/billing behavior. Six production modules pass scoped
+mypy and changed Python files pass lint. No deployment.
+
+Still open: populated public RTI persistence/Reporting workflow; other host recognition methods;
+contract modifications; in-scope combined-component visibility. This is not a general ASC842
+measurement engine and does not close the overall publication-readiness goal.

@@ -255,3 +255,11 @@
 - Combined report/rerun, existing scope workflow and 39 engine/register checks pass; production
   lint/types pass. UI, modification/variable-payment and in-scope visibility remain open.
   No deployment; see CURRENT-DEVELOPMENT-SCOPE.md for scope.
+
+## Combined usage persistence — October 23, 2026
+
+- Original lease/service usage fees now verified through public event submission, independent
+  approval, persisted computation and scope-report jobs: 108,000 + 300 = 108,300, zero 606
+  revenue/RPO, identical saved rerun. Existing activation fixture is reused.
+- RTI, other payment measures, modifications and in-scope combined visibility remain open;
+  see CURRENT-DEVELOPMENT-SCOPE. No deployment.

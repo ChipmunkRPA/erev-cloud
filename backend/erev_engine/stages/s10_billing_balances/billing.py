@@ -182,9 +182,13 @@ def is_vc_line(ob: ObligationState) -> bool:
     return _is_vc_line(ob)
 
 
+def _names_component(ob: ObligationState, key: str | None) -> bool:
+    return key == ob.obligation_key or key in ob.combined_component_keys
+
+
 def _obligation_of(st: AllocatedState, contract_key: str, obligation_key: str) -> ObligationState:
     for ob in st.obligations:
-        if ob.contract_key == contract_key and ob.obligation_key == obligation_key:
+        if ob.contract_key == contract_key and _names_component(ob, obligation_key):
             return ob
     raise _invariant(
         "a billing line names an obligation absent from the contract",
@@ -532,7 +536,7 @@ class _Emitter:
                 continue
             if document.contract_key == ob.contract_key:
                 for line in counted:
-                    if line.obligation_key != ob.obligation_key:
+                    if not _names_component(ob, line.obligation_key):
                         continue
                     amount = attribution.sign * line.amount
                     detail = {"member": "amount", "value": money.format_money(amount, self.mu)}
@@ -719,7 +723,7 @@ class _Emitter:
 
 def _obligation_tax(attribution: Attribution, lines: Sequence[Line], ob: ObligationState) -> int:
     """The magnitude of the tax of ``lines`` that one obligation carries (L5-5-Q-9)."""
-    direct = sum(line.tax_amount for line in lines if line.obligation_key == ob.obligation_key)
+    direct = sum(line.tax_amount for line in lines if _names_component(ob, line.obligation_key))
     unreferenced = sum(line.tax_amount for line in lines if line.obligation_key is None)
     if unreferenced == 0 or ob.subject_key not in attribution.keys:
         return direct

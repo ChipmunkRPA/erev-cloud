@@ -322,11 +322,19 @@ def expedient_guard(ctx: BookContext, st: AllocatedState) -> tuple[Finding, ...]
                 subject_key=ob.subject_key,
                 detail={"rule": "CV-45"},
             )
-        reasons = usage.expedient_blockers(
-            contract_key=ob.contract_key,
-            obligation_key=ob.obligation_key,
-            booking=contract.booking,
-            versions=versions,
+        reasons = tuple(
+            sorted(
+                {
+                    reason
+                    for key in (ob.combined_component_keys or (ob.obligation_key,))
+                    for reason in usage.expedient_blockers(
+                        contract_key=ob.contract_key,
+                        obligation_key=key,
+                        booking=contract.booking,
+                        versions=versions,
+                    )
+                }
+            )
         )
         if not reasons:
             continue

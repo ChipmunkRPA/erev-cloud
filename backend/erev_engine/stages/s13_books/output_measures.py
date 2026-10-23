@@ -130,7 +130,7 @@ def _combined_lease_usage(
         if (
             ob.scope_flag != ScopeFlag.LEASE_842
             or not ob.combined_component_keys
-            or str(ob.recognition_method) != "USAGE"
+            or str(ob.recognition_method) not in {"USAGE", "RIGHT_TO_INVOICE"}
             or not any(seg.component == "PERIOD_VC" for seg in ob.segments)
         ):
             continue
@@ -138,7 +138,7 @@ def _combined_lease_usage(
         if findings:
             raise EngineError(
                 "NON_FINITE_AMOUNT",
-                "Combined lease usage requires rated amounts",
+                "Combined lease performance requires rated amounts",
                 subject_key=ob.subject_key,
             )
         amount = sum(item.amount for item in realised)
@@ -146,7 +146,7 @@ def _combined_lease_usage(
             SourceRef(
                 "contract_event",
                 item.event_key,
-                {"member": "rated_amount", "value": money.format_money(item.amount, mu)},
+                {"member": "realised_amount", "value": money.format_money(item.amount, mu)},
             )
             for item in realised
         ]

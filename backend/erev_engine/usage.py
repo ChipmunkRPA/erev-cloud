@@ -249,6 +249,7 @@ def right_to_invoice(
     booking: Mapping[str, object],
     at: date,
     admits: Callable[[EventView], bool],
+    component_keys: Sequence[str] = (),
 ) -> RtiRealisation:
     """The right to invoice of one obligation at ``at`` over the events ``admits`` accepts.
 
@@ -256,10 +257,41 @@ def right_to_invoice(
     non-royalty ``USAGE_REPORTED`` events whose ``usage_period_end`` is on or before ``at`` (an
     unrated event is reported, not priced); (2) with no usage event, the net delivered quantity
     (``DELIVERY_RECORDED`` less ``RETURN_RECORDED``) × the booking line's ``unit_price``, when the
-    line carries one; (3) otherwise the invoiced amounts (``BILLING_RECORDED`` ``amount`` less any
-    ``tax_amount``) net of ``CREDIT_MEMO_RECORDED`` amounts. Invoices without performance create no
+    line carries one; (3) otherwise the invoiced amounts (``BILLING_RECORDED.amount``, already
+    net of tax under T-CON-05 / OQ-AKI-10) net of ``CREDIT_MEMO_RECORDED`` amounts.
+    Invoices without performance create no
     revenue under (1) and (2) because they are not read there.
     """
+    if component_keys:
+        # Each original pricing line keeps its own source priority and unit price. A rated
+        # service must not suppress delivery/invoice consideration on the associated lease.
+        selected: dict[str, RtiItem] = {}
+        unrated: set[str] = set()
+        sources: set[str] = set()
+        for key in sorted(set(component_keys) | {obligation_key}):
+            result = right_to_invoice(
+                measure_events,
+                contract_key=contract_key,
+                obligation_key=key,
+                subject_key=f"{_encode(contract_key)}/{_encode(key)}",
+                booking=booking,
+                at=at,
+                admits=admits,
+            )
+            sources.add(result.source)
+            unrated.update(result.unrated)
+            for item in result.items:
+                previous = selected.get(item.event_key)
+                if previous is not None and previous.amount != item.amount:
+                    raise ValueError(
+                        "Combined RTI event names components with different priced amounts"
+                    )
+                selected[item.event_key] = item
+        # Retain stream order: the above-stated-price boundary is cumulative in event order.
+        combined_items = tuple(
+            selected[ev.event_key] for ev in measure_events if ev.event_key in selected
+        )
+        return RtiRealisation("+".join(sorted(sources)), combined_items, tuple(sorted(unrated)))
     own = _own_events(
         measure_events,
         contract_key=contract_key,
@@ -287,8 +319,8 @@ def right_to_invoice(
     for ev in own:
         if ev.event_type == "BILLING_RECORDED":
             amount = _fraction(ev.payload, "amount") or ZERO
-            tax = _fraction(ev.payload, "tax_amount") or ZERO
-            items.append(RtiItem(ev.event_key, amount - tax))
+            # The source amount already excludes separately supplied tax (OQ-AKI-10).
+            items.append(RtiItem(ev.event_key, amount))
         elif ev.event_type == "CREDIT_MEMO_RECORDED":
             items.append(RtiItem(ev.event_key, -(_fraction(ev.payload, "amount") or ZERO)))
     return RtiRealisation(SOURCE_INVOICED_NET, tuple(items), ())

@@ -265,10 +265,11 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Combined usage persistence — October 23, 2026
+## Combined right-to-invoice — October 23, 2026
 
-- Original lease/service usage fees now verified through public event submission, independent
-  approval, persisted computation and scope-report jobs: 108,000 + 300 = 108,300, zero 606
-  revenue/RPO, identical saved rerun. Existing activation fixture is reused.
-- RTI, other payment measures, modifications and in-scope combined visibility remain open;
-  see CURRENT-DEVELOPMENT-SCOPE. No deployment.
+- Original components retain their own usage/delivery/invoice source priority and rates;
+  shared events count once. Billing and tax attribution resolve original members to the host.
+- Fixed/excess consideration follows the reviewed 606/842 routing; all-member pricing guards
+  apply. Corrected duplicate tax deduction from already-net invoice amounts.
+- 38 focused cases and scoped lint/types pass. Other measures, modifications and in-scope
+  combination visibility remain open. No deployment.
