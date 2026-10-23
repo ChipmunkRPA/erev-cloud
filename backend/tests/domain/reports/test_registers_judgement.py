@@ -1037,14 +1037,25 @@ def test_latest_status_shows_in_scope_combination_and_retains_saved_evidence(
     assert exclusions == []
 
 
+@pytest.mark.parametrize("mixed_ssp_bases", [False, True])
 def test_combined_original_component_price_change_approval_and_reporting(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    mixed_ssp_bases: bool,
 ) -> None:
     from support.modifications import confirm_answers
     from support.worlds import run_now
 
     lease = br06_lease(
-        app, keyring, clock, files, lessor_combination=True, nonlease_predominates=True
+        app,
+        keyring,
+        clock,
+        files,
+        lessor_combination=True,
+        nonlease_predominates=True,
+        mixed_ssp_bases=mixed_ssp_bases,
     )
     world = lease.report
     listed = get(app, f"/api/v1/contracts/{lease.contract_id}/obligations", world.maya)
@@ -1087,6 +1098,38 @@ def test_combined_original_component_price_change_approval_and_reporting(
     detail = get(app, path, world.maya).json()
     assert detail["status"] == "APPLIED", detail
     assert detail["lines"][0]["obligation_key"] == "L1-LEASE"
+    if mixed_ssp_bases:
+        import json
+
+        from erev_api.explain.store import load_trace
+        from erev_engine.trace import reevaluate
+
+        with world.place.uow() as uow:
+            latest = uow.session.scalar(
+                select(contract_version.c.id)
+                .where(
+                    contract_version.c.combination_group_id
+                    == UUID(str(world.contracts[BR06_EXTERNAL_ID].combination_group["id"]))
+                )
+                .order_by(contract_version.c.version_no.desc())
+                .limit(1)
+            )
+            assert latest is not None
+            trace = load_trace(uow.session, latest)
+        assert trace is not None
+        weights = [node for node in trace.nodes if "remaining_component_scales" in node.params]
+        assert weights
+        scales = json.loads(weights[0].params["remaining_component_scales"])
+        assert len(scales) == 2
+        assert {scale.get("series_basis", "AMOUNT") for scale in scales} == {
+            "AMOUNT",
+            "PER_INCREMENT",
+        }
+        assert (
+            next(scale for scale in scales if "series_basis" in scale)["series_quantity_unit"]
+            == "SERVICE_UNITS"
+        )
+        assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
     clock.advance(STEP)
     run, rows = report_run(
         world,

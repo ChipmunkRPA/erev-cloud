@@ -2035,6 +2035,7 @@ def br06_lease(
     lessor_combination: bool = False,
     rated_usage: bool = False,
     nonlease_predominates: bool = False,
+    mixed_ssp_bases: bool = False,
 ) -> Br06World:
     """The facts of answer key ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT through the product's
     commands (PRD §2.10 BR-06): Maya, Priya and Marcus as in ``k03_castellan``; AVM-US (USD) with
@@ -2126,7 +2127,14 @@ def br06_lease(
         effective_from="2026-01-01",
         entries=[
             point_entry(ROBOT_LEASE, "90000.00"),
-            point_entry(DAAS_SERVICE, "30000.00", value_basis="AMOUNT"),
+            (
+                {
+                    **point_entry(DAAS_SERVICE, "1000.00", value_basis="PER_INCREMENT"),
+                    "quantity_unit": "SERVICE_UNITS",
+                }
+                if mixed_ssp_bases
+                else point_entry(DAAS_SERVICE, "30000.00", value_basis="AMOUNT")
+            ),
         ],
     )
     published_mapping(app, maya, marcus)

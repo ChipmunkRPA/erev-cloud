@@ -866,3 +866,18 @@ mypy and scoped lint passes. This closes the native mixed-basis rejection for th
 price-change path; it does not claim public mixed-basis approval/Reporting workflow verification.
 Quantity/removal/term reassessment, other recognition measures, portfolio application and final
 publication checks remain unfinished. No deployment; the overall development goal remains open.
+
+## October 23 mixed-basis public workflow — verified
+
+The combined original-component price-change API workflow now runs with both the existing
+AMOUNT SSP entries and a mixed AMOUNT/PER_INCREMENT (SERVICE_UNITS) book created through public
+SSP publication. Both paths classify, preview, submit and independently approve the original
+lease-member price increase. Latest Contract Status reports the combined 109,000 allocation
+and original membership; saved report replay produces an identical output hash.
+
+The mixed path additionally reads the persisted, hash-checked calculation trace, verifies that
+two original-component scale records retain AMOUNT and PER_INCREMENT/SERVICE_UNITS, and
+reevaluates the entire trace to its stored values. Both API paths passed; the mixed case passed
+again after adding the retained-trace assertions. Scoped lint passes, excluding existing import
+ordering. This closes the prior public mixed-basis verification gap for this price-only path.
+Quantity/removal/term reassessment and the broader unfinished scope remain open. No deployment.

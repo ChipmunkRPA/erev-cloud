@@ -269,5 +269,6 @@ Current outstanding implementation and verification gaps remain in
 
 - Combined price changes now calculate each original series component using its own SSP basis
   and quantity unit before summing remaining weights. Trace parameters preserve each calculation.
-- 42 focused native cases and scoped lint/types pass. Public mixed-basis workflow verification,
-  quantity/removal/term reassessment and final publication checks remain open. No deployment.
+- 42 native cases and scoped lint/types pass. Public classification, preview, approval and saved
+  Reporting now pass for mixed bases, including retained trace reevaluation. Quantity/removal/term
+  reassessment and final publication checks remain open. No deployment.
