@@ -39,14 +39,6 @@ review and publish changes without PR accumulation, and do not deploy.
   targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Publication checks and backlog audit — October 23, 2026
-
-- On 47db35bf: secrets scan 4,183 files / nine allow-lists / zero findings; runtime licence
-  check 142 packages / eight allow-lists / zero findings. Research directories remain untracked;
-  PolyForm Noncommercial remains intact. No deployment.
-- Confirmed existing unassigned-approval alerts and warning UI; historical C-6 is superseded by
-  the October 7 B1-15 completion. B2-2/C-7 was reproduced and repaired below.
-- Earlier waterfall checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
 ## Close-variance offsetting effects — October 22, 2026
 
@@ -260,3 +252,11 @@ Current outstanding implementation and verification gaps remain in
   termination terms, with matching data-model declarations. All 12 catalogue checks pass.
 - Export permissions and retention execution are unchanged. The separate revision-0166 schema
   parser issue remains open. This supersedes the privacy omission in the preceding checkpoint.
+
+## Migration/schema verification — October 23, 2026
+
+- Fixed multiline constraint and quoted-comma parsing; full migration-chain comparison now runs.
+  Corrected document-only primary-key/default/header omissions; no runtime schema change.
+- Ten architecture and twelve privacy checks pass, including mismatch-detection witnesses.
+  Supersedes the previous parser gap. Release-candidate verification remains outstanding.
+- Publication audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.

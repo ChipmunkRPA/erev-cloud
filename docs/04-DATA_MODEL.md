@@ -2459,10 +2459,12 @@ integration remain outstanding.
 | `seq` | integer | N | | Append-only portion sequence |
 | `upgrade_state` | erev.upgrade_processing_state | N | | |
 | `contract_computation_id` | uuid | Y | | |
-| `subledger_posting_ids` | uuid[] | N | | |
-| `unresolved_origin_period_keys` | text[] | N | | |
+| `subledger_posting_ids` | uuid[] | N | `'{}'` | |
+| `unresolved_origin_period_keys` | text[] | N | `'{}'` | |
 | `reason` | text | Y | | |
 | SC-C | | | | Creation stamps |
+
+Keys: `PRIMARY KEY (tenant_id, id)`.
 
 Columns (draft §4b verbatim; rev 1.14 per portion): SC-T; `release_validation_id` N; `release_validation_attempt_id` N (the accepted attempt); `combination_group_id` N; `entity_id` uuid N; `book_code` erev.book_code N; `seq` integer N; `upgrade_state` E-130 (`PENDING`, `DEFERRED_NO_OPEN_PERIOD`, `SETTLED_NO_POSTING`, `POSTED`); `contract_computation_id` Y; `subledger_posting_ids` uuid[] N default `'{}'`; `unresolved_origin_period_keys` text[] N default `'{}'`; `reason` text Y; SC-C.
 
@@ -5740,6 +5742,8 @@ Historical extract readers must verify coverage and entity scope before using a 
 | `is_baseline` | boolean | N | | Migration-time initial observation |
 | `document` | jsonb | N | | Full header without tenant_id, or id/code only for labels |
 
+Keys: `PRIMARY KEY (tenant_id, id)`.
+
 Capture validates the document against the actual source row and derives its timestamp and
 sequence. Updates/deletes/truncation are forbidden. Populated history prevents downgrade.
 Sandbox restores regenerate history from restored rows; source-tenant historical coverage is
@@ -6132,15 +6136,17 @@ Keys: `PRIMARY KEY (tenant_id, id)`. One active refresh per scenario, one record
   independently of SBX-03 snapshots, which never copy journals. Revision 0186.
 - **Class.** IM-A; RLS-T; SC-C. One record per production tenant and snapshot. Not copied to sandboxes.
 
-| Column | Type | Null | Constraints and notes |
-|---|---|---|---|
-| SC-T | | | Tenant-scoped primary key |
-| `tenant_snapshot_id` | uuid | N | Tenant FK to snapshot; unique with tenant_id |
-| `known_at` | timestamptz | N | Exact snapshot cutoff |
-| `dataset_file_id` | uuid | N | Tenant FK to encrypted file_object, purpose SNAPSHOT_DATASET |
-| `dataset_sha256` | char(64) | N | Canonical data digest |
-| `entity_ids` | jsonb | N | Array of captured entity UUID strings |
-| SC-C | | | Requester and creation time |
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant-scoped primary key |
+| `tenant_snapshot_id` | uuid | N | | Tenant FK to snapshot; unique with tenant_id |
+| `known_at` | timestamptz | N | | Exact snapshot cutoff |
+| `dataset_file_id` | uuid | N | | Tenant FK to encrypted file_object, purpose SNAPSHOT_DATASET |
+| `dataset_sha256` | char(64) | N | | Canonical data digest |
+| `entity_ids` | jsonb | N | | Array of captured entity UUID strings |
+| SC-C | | | | Requester and creation time |
+
+Keys: `PRIMARY KEY (tenant_id, id)`.
 
 The file holds ASC606 and IFRS15 captures, each with its source tenant, cutoff, entity scope,
 and acknowledged revenue lines with original transaction/functional debits and credits.
@@ -8764,6 +8770,8 @@ neither opens archived report downloads nor grants access to unrelated scenarios
 | `entity_ids` | uuid[] | Y | | Required source scope; NULL means all entities |
 | SC-C | | | | |
 
+Keys: `PRIMARY KEY (tenant_id, id)`.
+
 Revision 0188. Tenant-scoped append-only (IM-A, RLS-T) retained dependency links for a
 contract sample or access-review capture (the original table name is retained). Standard tenant/id and SC-C columns; `evidence_pack_id` and `file_id`
 are required tenant foreign keys. Unique `(tenant_id, evidence_pack_id, file_id)`.
@@ -8880,16 +8888,18 @@ incomplete historical source formats; the public parent lifecycle remains to be 
 
 Revision 0192. Tenant-scoped append-only accounting evidence (IM-A, RLS-T).
 
-| Column | Type | Null | Constraints and notes |
-|---|---|---|---|
-| SC-T | | | Tenant-scoped primary key |
-| `subledger_posting_id` | uuid | N | Tenant FK to sealed posting |
-| `combination_group_id` | uuid | N | Tenant FK to source group |
-| `pass_name` | text | N | Explicit engine pass |
-| `entry_numbers` | jsonb | N | Selected posting entry numbers |
-| `file_id` | uuid | N | Tenant FK to encrypted file_object |
-| `document_sha256` | char(64) | N | Canonical envelope digest |
-| SC-C | | | Requester and creation time |
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant-scoped primary key |
+| `subledger_posting_id` | uuid | N | | Tenant FK to sealed posting |
+| `combination_group_id` | uuid | N | | Tenant FK to source group |
+| `pass_name` | text | N | | Explicit engine pass |
+| `entry_numbers` | jsonb | N | | Selected posting entry numbers |
+| `file_id` | uuid | N | | Tenant FK to encrypted file_object |
+| `document_sha256` | char(64) | N | | Canonical envelope digest |
+| SC-C | | | | Requester and creation time |
+
+Keys: `PRIMARY KEY (tenant_id, id)`.
 
  Required tenant foreign keys `subledger_posting_id`,
 `combination_group_id` and `file_id`; unique `(tenant_id, subledger_posting_id, combination_group_id)`.

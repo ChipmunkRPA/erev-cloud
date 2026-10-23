@@ -299,3 +299,18 @@ catalogue checks now pass, including complete code-column coverage and bidirecti
 agreement. This supersedes the 11-column omission reported in the preceding checkpoint.
 The separate offline schema parser failure remains open; its first failure is revision 0166,
 where a trailing constraint fragment is incorrectly interpreted as a column.
+
+## October 23 migration/schema verification repair — completed
+
+The offline migration interpreter now splits CREATE/ALTER clauses by top-level commas while
+preserving nested parentheses, multiline constraints and SQL quoted text. Transactional LOCK
+TABLE statements are explicitly recognized as having no column-definition effect. This fixes
+the revision-0166 constraint-fragment failure and permits replay of the complete current chain.
+The resulting comparison exposed documentation omissions: five composite primary keys, two
+array defaults, and two nonstandard column-table headers. These declarations now match the ORM
+and migration definitions; no production schema or accounting behavior changed.
+
+All ten architecture checks and all twelve privacy catalogue checks pass. The architecture
+checks include negative witnesses for type/scale, nullability and primary-key mismatches,
+plus the new multiline/quoted-comma witness. This supersedes the earlier parser gap. It is an
+offline definition comparison, not a new database upgrade/downgrade or full release-suite run.

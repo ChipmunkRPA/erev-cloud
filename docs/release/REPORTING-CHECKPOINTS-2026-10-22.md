@@ -97,3 +97,12 @@
   recognize generated findings and retain in-progress items; royalty titles are readable.
   Extended backend lifecycle and two focused UI cases pass, with frontend types/lint.
 - Earlier disaggregation checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+
+## Publication checks and backlog audit — October 23, 2026
+
+- On 47db35bf: secrets scan 4,183 files / nine allow-lists / zero findings; runtime licence
+  check 142 packages / eight allow-lists / zero findings. Research directories remain untracked;
+  PolyForm Noncommercial remains intact. No deployment.
+- Confirmed existing unassigned-approval alerts and warning UI; historical C-6 is superseded by
+  the October 7 B1-15 completion. B2-2/C-7 was reproduced and repaired below.
+- Earlier waterfall checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.

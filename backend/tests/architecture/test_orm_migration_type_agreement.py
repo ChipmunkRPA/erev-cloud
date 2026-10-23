@@ -71,8 +71,9 @@ from typing import Any
 
 import alembic.op
 import sqlalchemy as sa
-from erev_api.db import migration_ops, tables, types
 from sqlalchemy.schema import Computed, DefaultClause
+
+from erev_api.db import migration_ops, tables, types
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA_MODEL = ROOT / "docs" / "04-DATA_MODEL.md"
@@ -89,6 +90,7 @@ PARTITIONED_PARENTS = frozenset({"audit_event", "schedule_line", "subledger_line
 PARTITION_ENUMERATING_REVISIONS = frozenset({"0040"})
 # Statement heads the interpreter skips on purpose (grants, RLS, triggers, indexes, seeds).
 SKIPPED_HEADS = (
+    "LOCK TABLE ",  # Transaction synchronization does not alter column definitions.
     "GRANT ",
     "REVOKE ",
     "COMMENT ON ",
@@ -438,7 +440,7 @@ def _create_table(schema: Schema, statement: str, revision: str) -> None:
     assert close > 0, f"{revision}: CREATE TABLE {name} without a closing line"
     if re.search(r"\)\s*PARTITION BY\b", body[close:]):
         assert name in PARTITIONED_PARENTS, f"{revision}: {name} is partitioned but unlisted"
-    entries = [entry.strip().rstrip(",").strip() for entry in body[:close].split("\n")]
+    entries = [re.sub(r"\s+", " ", entry) for entry in _split_actions(body[:close])]
     columns: dict[str, Column] = {}
     pk: set[str] = set()
     for entry in entries:
@@ -473,21 +475,33 @@ def _create_table(schema: Schema, statement: str, revision: str) -> None:
 
 
 def _split_actions(rest: str) -> list[str]:
-    """Top-level comma-separated ALTER TABLE actions (commas inside parentheses stay put)."""
+    """Split SQL clauses on top-level commas, preserving quoted text and nested expressions."""
     actions: list[str] = []
     depth = 0
-    current: list[str] = []
-    for char in rest:
-        if char == "(":
+    quote: str | None = None
+    start = 0
+    index = 0
+    while index < len(rest):
+        char = rest[index]
+        if quote is not None:
+            if char == quote:
+                if index + 1 < len(rest) and rest[index + 1] == quote:
+                    index += 2  # SQL escaped quote, still within the same literal/identifier.
+                    continue
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char == "(":
             depth += 1
         elif char == ")":
             depth -= 1
-        if char == "," and depth == 0:
-            actions.append("".join(current).strip())
-            current = []
-        else:
-            current.append(char)
-    actions.append("".join(current).strip())
+            assert depth >= 0, "Unbalanced SQL clause parentheses"
+        elif char == "," and depth == 0:
+            actions.append(rest[start:index].strip())
+            start = index + 1
+        index += 1
+    assert quote is None and depth == 0, "Unterminated SQL quote or parentheses"
+    actions.append(rest[start:].strip())
     return [action for action in actions if action]
 
 
@@ -974,3 +988,23 @@ def test_witness_inline_column_primary_key_is_refused_by_name() -> None:
         assert str(refused).startswith("r2: ALTER TABLE t ADD COLUMN: inline column PRIMARY KEY")
     else:
         raise AssertionError("an inline column PRIMARY KEY in ADD COLUMN was not refused")
+
+
+def test_multiline_constraints_and_quoted_commas_preserve_column_boundaries() -> None:
+    create = """CREATE TABLE erev.t (
+        a UUID NOT NULL,
+        label TEXT DEFAULT 'it''s ), still text',
+        amount NUMERIC(24, 4),
+        CONSTRAINT t_amount CHECK (
+            amount IN (1, 2)
+        ),
+        PRIMARY KEY (a)
+)"""
+    schema = interpret([("r1", create)])
+    assert set(schema.tables["t"]) == {"a", "label", "amount"}
+    assert schema.tables["t"]["a"].pk
+    assert schema.tables["t"]["label"].default == "'it''s ), still text'"
+    assert _split_actions("ADD COLUMN label TEXT DEFAULT 'a,b', DROP COLUMN amount") == [
+        "ADD COLUMN label TEXT DEFAULT 'a,b'",
+        "DROP COLUMN amount",
+    ]
