@@ -347,6 +347,13 @@ def rollforward_balances(
     if cutover is None or period.end_date >= cutover:
         if functional:
             relief = _functional(ctx, records, entity, unit, period, previous, cutover, lines)
+            consumption = ctx.policies.value(_POL_126, entity=entity, period=period.period_key)
+            if consumption == _WITHIN_POB:
+                from .functional_pob import classify
+
+                classify(ctx, records, own, entity, period, previous, lines)
+            elif consumption != _WITHIN_CONTRACT:
+                raise ValueError(f"{_POL_126} is {_WITHIN_CONTRACT} or {_WITHIN_POB} (POL-126)")
         else:
             relief = _transaction(ctx, records, own, entity, unit, period, previous, cutover, lines)
             memo = _memo(ctx, records, own, period, cutover)

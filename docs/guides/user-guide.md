@@ -1077,3 +1077,8 @@ reconcile to the functional range total before translation. Opening balances ret
 closing rate; because rates differ, translated relief can exceed the translated opening.
 Combined group deltas are rounded once per period, without allocating relief to members.
 Earlier saved reports retain their original disclosed method.
+
+Native engine functional rollforwards also apply this POB policy for supported principal contracts,
+using original invoice shares and cumulative functional revenue. Missing complete original sources
+produce an error rather than silently applying contract-level FIFO. Special acquired, agent,
+cross-entity and original frozen POB histories remain subject to the limitations above.

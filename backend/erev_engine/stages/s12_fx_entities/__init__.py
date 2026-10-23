@@ -42,6 +42,7 @@ from erev_engine.stages.s12_fx_entities.intercompany import IcPair, PairBook
 from erev_engine.stages.s12_fx_entities.layers import (
     ControlFlow,
     FxTarget,
+    BillingAttribution,
     LayerBalance,
     LayerMovement,
     RateRef,
@@ -154,6 +155,7 @@ class FxState:
     functional_member_balances: tuple[Target, ...] = ()
     # Disclosure-only original billing allocation; never producer targets for posting.
     billing_disclosure_targets: tuple[FxTarget, ...] = ()
+    billing_attribution_sources: tuple[BillingAttribution, ...] = ()
 
 
 Flow = ControlFlow | MonetaryFlow | ReceivableFlow
@@ -176,6 +178,7 @@ def run(
     balances: list[LayerBalance] = []
     functional: list[FxTarget] = []
     billing_disclosure: list[FxTarget] = []
+    billing_sources: list[BillingAttribution] = []
     remeasurement: list[FxTarget] = []
     gain_loss: list[FxTarget] = []
     ic_pairs: list[IcPair] = []
@@ -227,6 +230,7 @@ def run(
         balances.extend(result.balances)
         functional.extend(result.functional_targets)
         billing_disclosure.extend(result.billing_disclosure_targets)
+        billing_sources.extend(result.billing_attribution_sources)
         # D-88 L7-6-Q-6 as amended by D-91: the functional JET-14 release (the posted ordinary
         # release of the stage 10 set) at historical carrying (POL-164).
         functional.extend(release_targets(book, _consideration(st), result.functional_targets))
@@ -238,6 +242,7 @@ def run(
         allocated=allocated,
         costs=st,
         billing_disclosure_targets=tuple(billing_disclosure),
+        billing_attribution_sources=tuple(billing_sources),
         layer_movements=tuple(movements),
         layer_balances=tuple(balances),
         functional_targets=tuple(functional),

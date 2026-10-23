@@ -1173,3 +1173,30 @@ Native S15 foreign-functional policy classification remains unfinished. Partial/
 agent/cross-entity, acquired opening sources and combined/locked foreign special histories still
 need their remaining implementation/evidence; this checkpoint does not assert their completion.
 No deployment or independent-accounting approval gate was introduced.
+
+## October 23 native foreign-functional POL-126 classification
+
+S12 now carries immutable original signed document/obligation shares alongside its existing
+disclosure-only cumulative targets. They include original source keys, posting periods, transaction
+and functional amounts and trace node IDs. These are not posting targets or liability-layer
+ownership allocations. Native S15 reads the exact source population for the opening, validates it
+against S10 document attribution (including each signed transaction share), and reconciles
+cumulative functional revenue against original transaction flows at both ends. It then applies
+POB eligibility and the group opening/actual consumption caps to the two revenue captions.
+Total revenue, closing balances, layer movements and journal targets are unchanged. The existing
+frozen group-opening cap still applies after a supplied opening replaces the restated balance.
+
+The supported path is principal obligations performed by the contracting entity with complete
+original documents. Missing, duplicated or inconsistent sources refuse instead of silently using
+contract FIFO. Acquired opening sources, partial/mixed-date billing, agent/cross-entity attribution
+and authoritative frozen per-obligation history still need their remaining work; a group cap alone
+is not evidence of original lock-time POB ownership. This supersedes the ordinary native foreign
+classification gap above, not those special histories.
+
+Necessary verification: a connected S09/S10/S11/S12/S15 foreign-currency example bills EUR 3,000
+in advance to one of two obligations, then recognizes EUR 1,500 on each. At original 1.1 FX,
+contract FIFO calls USD 3,300 opening consumption; POB classification correctly calls USD 1,650
+opening and USD 1,650 other consumption, preserving total revenue and all balance ties. Removing
+original document sources is rejected. Complete trace replay and the existing foreign invoice/
+credit rounding test pass, together with 11 native rollforward cases. Four production modules
+pass scoped type checks and lint. No database migration or deployment.

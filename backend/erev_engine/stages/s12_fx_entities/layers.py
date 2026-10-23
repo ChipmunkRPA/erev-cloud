@@ -218,6 +218,19 @@ class LayerBalance:
 
 
 @dataclass(frozen=True, slots=True)
+class BillingAttribution:
+    """Original signed document shares, solely for disclosure coverage and attribution."""
+
+    entity: str
+    source_key: str
+    subject_key: str
+    period_key: str
+    amount_txn: int
+    amount_functional: int
+    node_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class FxTarget:
     """A cumulative stage 12 target in both currencies (REQ-FX-001; L2-5-Q-13).
 
@@ -301,6 +314,7 @@ class UnitResult:
     gain_loss_targets: tuple[FxTarget, ...]
     findings: tuple[Finding, ...]
     billing_disclosure_targets: tuple[FxTarget, ...] = ()
+    billing_attribution_sources: tuple[BillingAttribution, ...] = ()
 
 
 class UnitBook:
@@ -330,6 +344,7 @@ class UnitBook:
         self.billing_attribution: dict[str, dict[str, tuple[int, str]]] = {}
         self.billing_obligation_evidence: dict[str, Running] = {}
         self.billing_disclosure_targets: list[FxTarget] = []
+        self.billing_attribution_sources: list[BillingAttribution] = []
         self.remeasurement: dict[tuple[str, str], Running] = {}
         self.gain_loss = Running("fx_gain_loss", self.unit_key, None, "FX_GAIN_LOSS")
         self.functional_targets: list[FxTarget] = []
@@ -345,6 +360,7 @@ class UnitBook:
             tuple(self.gain_loss_targets),
             tuple(self.findings),
             tuple(self.billing_disclosure_targets),
+            tuple(self.billing_attribution_sources),
         )
 
     # --- policies and dates ----------------------------------------------------------------------
@@ -571,6 +587,17 @@ class UnitBook:
                 },
                 exact=Fraction(amount, 10**self.mu_fn) * weights[index] / sum(weights),
                 narrative_key="alloc.largest_remainder",
+            )
+            self.billing_attribution_sources.append(
+                BillingAttribution(
+                    self.entity,
+                    flow.source_key,
+                    name,
+                    period.period_key,
+                    attributed[name][0],
+                    sign * share,
+                    allocated_node,
+                )
             )
             running = self.billing_obligation_evidence.setdefault(
                 name, Running("billed_obligation_cum", name, None, None)

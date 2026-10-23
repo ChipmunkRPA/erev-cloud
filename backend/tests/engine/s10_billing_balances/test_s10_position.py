@@ -1014,3 +1014,91 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
         O2: 0,
         O3: 0,
     }
+
+
+def test_native_foreign_pob_classification_uses_original_billing_and_revenue():
+    import pytest
+    from erev_engine.bundle import FxRateInput
+    from erev_engine.errors import EngineError
+    from erev_engine.stages import s12_fx_entities
+    from erev_engine.stages.s15_disclosures.rollforward import balance_inputs, rollforward_balances
+    from erev_engine.stages.state import RateIndex
+    from support import bundles
+
+    ctx = dataclasses.replace(
+        book_context(entity(months=2), currency="EUR"),
+        currencies=bundles.currencies("EUR", "USD"),
+        horizon={bundles.ENTITY_CODE: "FY2026-P02"},
+    )
+    invoice = event_view(
+        CONTRACT_KEY,
+        2,
+        "BILLING_RECORDED",
+        INCEPTION,
+        {
+            "invoice_number": "POB-ADVANCE",
+            "line_external_id": "LINE-1",
+            "obligation_key": "P1",
+            "amount": Decimal("3000.00"),
+            "issue_date": INCEPTION,
+        },
+    )
+    st = allocated_state(
+        [_service(key, "1500.00", date(2026, 2, 1), date(2026, 2, 28)) for key in ("P1", "P2")],
+        events=[invoice],
+    )
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    balances, _ = _run(ctx, st, tb=tb)
+    costs = s11_costs_loss.run(ctx, balances, tb)
+    fx = s12_fx_entities.run(
+        ctx,
+        s13_books.costs_view(ctx, costs),
+        tb,
+        rates=RateIndex(
+            (
+                FxRateInput(
+                    "ORIGINAL-SPOT",
+                    "TEST@v1",
+                    "spot",
+                    "EUR",
+                    "USD",
+                    INCEPTION,
+                    None,
+                    Decimal("1.1"),
+                ),
+            )
+        ),
+    )
+    assert fx.findings == ()
+    records = balance_inputs(ctx, balances, fx, (), None)
+    baseline = rollforward_balances(
+        ctx, st, records, bundles.ENTITY_CODE, "FY2026-P02", view="FUNCTIONAL"
+    )
+    pob_ctx = dataclasses.replace(
+        ctx,
+        policies=PolicyResolver(
+            tuple(
+                dataclasses.replace(policy, value="FIFO_WITHIN_POB")
+                if policy.code == "rollforward.opening_liability_consumption"
+                else policy
+                for policy in ctx.policies.all()
+            )
+        ),
+    )
+    result = rollforward_balances(
+        pob_ctx, st, records, bundles.ENTITY_CODE, "FY2026-P02", view="FUNCTIONAL"
+    )
+    assert baseline.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OPENING_BALANCE"] == -330000
+    assert result.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OPENING_BALANCE"] == -165000
+    assert result.lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OTHER_INCREASES"] == -165000
+    assert result.balanced
+    assert result.revenue_relief == baseline.revenue_relief
+    broken = dataclasses.replace(
+        records, fx=dataclasses.replace(fx, billing_attribution_sources=())
+    )
+    with pytest.raises(EngineError, match="population"):
+        rollforward_balances(
+            pob_ctx, st, broken, bundles.ENTITY_CODE, "FY2026-P02", view="FUNCTIONAL"
+        )
+    trace = tb.build(root_measures={})
+    assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}

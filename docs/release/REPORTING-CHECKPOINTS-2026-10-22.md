@@ -390,3 +390,12 @@
 - Foreign advance-billing and same-currency report/rerun cases, 12 focused cases and scoped
   lint/types pass. Reporting currency and native foreign S15 classification remain open.
 - Functional billing checkpoint archived. No deployment.
+
+## Public reporting-currency POB consumption — October 23, 2026
+
+- Reporting opening-liability reports now translate signed period changes in POB eligibility
+  against one original range opening, with retained average rates and one combined group total.
+  Functional deltas reconcile before translation; prior reports retain their original method.
+- Public foreign-currency report/rerun and functional regression pass; focused reversal/rate
+  checks and scoped types/lint pass. Native foreign S15 and special attribution remain open.
+- Functional checkpoint archived. No deployment.
