@@ -3697,6 +3697,7 @@ Append protocol (DB-08): `UPDATE contract SET head_stream_version = head_stream_
 | `noncash_consideration` | jsonb | Y | | Array of API-S-NoncashConsideration items (§16.1). NULL = unchanged; an array replaces the contract's list from `effective_date` and is copied to the `CONTRACT_AMENDED` payload (rev 1.2; ENGINE_SPEC OQ-A-07). |
 | `consideration_payable` | jsonb | Y | | Array of API-S-ConsiderationPayable items (§16.1); NULL = unchanged; replacement as for `noncash_consideration` (rev 1.2; ENGINE_SPEC OQ-A-08). |
 | `scope_605_35` | boolean | Y | | NULL = unchanged; otherwise the contract flag from `effective_date`, copied to the `CONTRACT_AMENDED` payload (rev 1.2; ENGINE_SPEC_B OQ-B-12). |
+| `termination` | jsonb | Y | | Replacement termination terms for the amended contract; NULL leaves terms unchanged. Classified as confidential contract terms, with the modification audit retention rule. |
 | `currency` | erev.currency_code | N | | |
 | `proposed_treatments` | jsonb | N | `'{}'` | Obligation key → `modification_treatment`, from the engine decision tree. |
 | `chosen_treatments` | jsonb | N | `'{}'` | Obligation key → `modification_treatment`; differences from proposed require `judgement_record_id` (REQ-MOD-002). |
@@ -5107,6 +5108,36 @@ from posting facts in the computation transaction.
 | SC-C | | | | Stamped with the posting (the T-SL-04 lines of the same posting carry the same values). |
 
 Keys: `PRIMARY KEY (tenant_id, subledger_line_id, contract_event_id)`; `ux_subledger_line_event__ordinal (tenant_id, subledger_line_id, ordinal)`; `ix_subledger_line_event__event (tenant_id, contract_event_id)`.
+
+### T-SL-13 `subledger_posting_commit`
+
+- **Purpose.** Retain the original posting transaction identity and its observed server commit time for historical report cutoffs. An unresolved commit time remains unknown, never replaced with an application timestamp.
+- **Classification.** Internal identity/timing metadata; audit retention, matching the source posting. No personal-data erasure path is introduced by this catalogue entry.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| `tenant_id` | uuid | N | | Tenant scope. |
+| `subledger_posting_id` | uuid | N | | Source posting identity. |
+| `source_transaction` | text | N | | Original database transaction identifier. |
+| `committed_server_at` | timestamptz | Y | | Server commit timestamp, populated once when available. |
+
+Keys: `PRIMARY KEY (tenant_id, subledger_posting_id)`.
+
+### T-SL-14 `historical_source_commit`
+
+- **Purpose.** Retain source transaction commit evidence for historical reports. Source-kind admission and write-once commit stamping remain governed by the existing database constraints and triggers.
+- **Classification.** Internal identity/timing metadata; audit retention, matching the source evidence. This registry does not change export access or retention execution.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| `tenant_id` | uuid | N | | Tenant scope. |
+| `source_kind` | text | N | | Source table kind admitted by the database constraint. |
+| `source_id` | uuid | N | | Source record identity. |
+| `source_transaction` | text | N | | Original database transaction identifier. |
+| `committed_server_at` | timestamptz | Y | | Server commit timestamp, populated once when available. |
+| `source_occurred_at` | timestamptz | Y | | Audit-event partition locator; required for audit_event sources and absent otherwise. |
+
+Keys: `PRIMARY KEY (tenant_id, source_kind, source_id)`.
 
 ## 9. Close tables
 

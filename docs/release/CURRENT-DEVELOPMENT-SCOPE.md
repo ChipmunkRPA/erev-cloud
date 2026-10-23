@@ -287,3 +287,15 @@ omits 11 columns (historical_source_commit, subledger_posting_commit and modific
 and the offline ORM/migration comparison parser fails while reading revision 0166. The full
 privacy coverage check and five dependent schema comparisons therefore do not pass. New fx_inputs
 is classified and documented; these results are not a full-suite or release-candidate pass.
+
+## October 23 privacy field catalogue reconciliation — completed
+
+Added the two existing historical commit-evidence tables (10 identity/timing columns) and
+modification.termination to the classification registry and data-model declarations. Commit
+identifiers and timestamps use the existing internal-metadata rule and audit retention;
+termination terms use the existing confidential-contract-terms rule. These entries do not
+implement or change export authorization, deletion or retention execution. All 12 privacy
+catalogue checks now pass, including complete code-column coverage and bidirectional document
+agreement. This supersedes the 11-column omission reported in the preceding checkpoint.
+The separate offline schema parser failure remains open; its first failure is revision 0166,
+where a trailing constraint fragment is incorrectly interpreted as a column.

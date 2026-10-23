@@ -2074,7 +2074,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols(
                 "effective_date template_mode reference questionnaire lines price_change_amount "
-                "noncash_consideration consideration_payable scope_605_35 currency "
+                "noncash_consideration consideration_payable scope_605_35 termination currency "
                 "proposed_treatments chosen_treatments treatment_summary ssp_basis rationale "
                 "classification"
             ),
@@ -2801,6 +2801,25 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "created_by_kind"
             ),
             SPEC_C2_LEDGER: _cols("subledger_line_period_end_date"),
+        },
+    ),
+    _table(
+        "subledger_posting_commit",
+        "T-SL-13",
+        "Original posting transaction identity and server commit time for historical cutoffs.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {R01: _cols("tenant_id subledger_posting_id source_transaction committed_server_at")},
+    ),
+    _table(
+        "historical_source_commit",
+        "T-SL-14",
+        "Original source transaction identity, partition locator and observed server commit time.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id source_kind source_id source_transaction committed_server_at "
+                "source_occurred_at"
+            ),
         },
     ),
     # ---- CLS tables (04 T-CLS-nn)

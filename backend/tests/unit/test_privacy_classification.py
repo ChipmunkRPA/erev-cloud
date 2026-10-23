@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Final
 
 import pytest
+
 from erev_api.db import tables
 from erev_api.privacy.classification import (
     CLASSIFICATION,
@@ -476,7 +477,8 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # + T-CON-27 private contract navigation history (0159) = 162.
     # + computation_evidence promoted from hybrid (0160) = 163.
     # Release processing and attribution promoted from prose (0166/0168); + history (0174).
-    assert formats == {"literal": 174}, formats
+    # Posting/source commit evidence registries add two literal tables.
+    assert formats == {"literal": 176}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 

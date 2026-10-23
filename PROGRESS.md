@@ -253,3 +253,10 @@ Current outstanding implementation and verification gaps remain in
 - Existing audit gaps surfaced: 11 unclassified older columns and the schema interpreter's
   revision-0166 parse error. These remain open; this is not a full-suite pass.
 - Forecast re-export and close-assessment checkpoints moved to REPORTING-CHECKPOINTS-2026-10-22.
+
+## Privacy field catalogue — October 23, 2026
+
+- Reconciled all 11 missing columns: historical commit identity/timing evidence and modification
+  termination terms, with matching data-model declarations. All 12 catalogue checks pass.
+- Export permissions and retention execution are unchanged. The separate revision-0166 schema
+  parser issue remains open. This supersedes the privacy omission in the preceding checkpoint.
