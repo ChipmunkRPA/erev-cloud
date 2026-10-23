@@ -198,7 +198,7 @@ from erev_api.db.tables import (
     sync_run,
 )
 from erev_api.domain.close import quarantines, reconciliation_balances, run_inputs
-from erev_api.domain.contracts import period_ends
+from erev_api.domain.contracts import fx_input_freshness, period_ends
 from erev_api.domain.journals import completeness as completeness_rules
 from erev_api.domain.platform import jobs as platform_jobs
 from erev_api.domain.reference import period_redirty_job
@@ -1656,6 +1656,10 @@ def close_run_facts(
     if row[2] is not None and row[3] is not None:
         recorded = run_inputs.RunInputs(rates=str(row[2]), registry=str(row[3]))
         changed = run_inputs.changed(recorded, run_inputs.standing(session, scope, known_at))
+    if fx_input_freshness.stale_groups(
+        session, entity_id=scope.entity_id, book_code=scope.book_code, through=scope.end_date
+    ):
+        changed = (*changed, "contract calculation exchange rates")
     return CloseRunFacts(number, status, len(held) - len(waived), changed)
 
 

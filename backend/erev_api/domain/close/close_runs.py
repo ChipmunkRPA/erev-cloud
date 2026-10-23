@@ -142,7 +142,7 @@ from erev_api.domain.close import (
     reconciliations,
     snapshots,
 )
-from erev_api.domain.contracts import compute_job
+from erev_api.domain.contracts import compute_job, fx_input_freshness
 from erev_api.domain.contracts.queries import primary_book
 from erev_api.domain.imports import exceptions
 from erev_api.domain.journals import commands as journal_commands
@@ -1050,8 +1050,16 @@ def _await_children(
 
 def _recompute_dirty(jc: JobContext, run: _Run) -> StepResult:
     """``RECOMPUTE_DIRTY`` (05 RCP-19, RCP-20; REQ-CLS-013): the module docstring."""
+    with jc.unit_of_work() as uow:
+        stale = fx_input_freshness.mark(
+            uow,
+            entity_id=run.scope.entity_id,
+            book_code=run.scope.book_code,
+            through=run.scope.end_date,
+        )
+        uow.commit()
     with jc.read_session() as session:
-        dirty = _dirty_groups(session, run.scope.entity_id)
+        dirty = sorted(set(_dirty_groups(session, run.scope.entity_id)) | set(stale), key=str)
         waived = _waived_quarantines(session, dirty)
     todo = [group_id for group_id in dirty if group_id not in waived]
     children: dict[UUID, list[UUID]] = {}

@@ -445,6 +445,7 @@ computation_evidence: Final = Table(
     Column("output_sha256", CHAR(64), nullable=False),
     Column("book_codes", ARRAY(Text()), nullable=False),
     Column("codec", JSONB(), nullable=False),
+    Column("fx_inputs", JSONB(), nullable=True),
     Column("ledger_cutoff", JSONB(), nullable=False),
     Column("previous_computation_id", Uuid(), nullable=True),
     Column("captured", Text(), nullable=False),

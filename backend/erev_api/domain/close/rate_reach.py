@@ -72,7 +72,10 @@ finds the rates its bundle pinned in force and refuses (REQ-FX-006), the computa
 ``FAILED`` and the group stays owed — measured the same without this module's hook, which only
 lengthens the approval's transaction by the wait for the rows it marks. Closing the limit needs
 a lock the approval and a computation share, or a net at the period's lock (04 T-REF-11 names
-both); neither is built here.
+both). The close worker and lock gate now provide that net through
+``contracts.fx_input_freshness``: retained original economic inputs are checked against current
+committed rates, and stale heads are marked for the next close to recompute. This module
+continues to limit the immediate approval-time mark to committed reach.
 
 THE MARK (``marked``): ``dirty_since`` is the later of the stamp that stands and the approval's
 instant — a mark is never moved back (05 RCP-17 rev 1.207), so a computation whose bundle was
@@ -96,7 +99,6 @@ from datetime import date
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from erev_engine.dates import POSTABLE_STATES
 from sqlalchemy import (
     Select,
     Text,
@@ -131,6 +133,7 @@ from erev_api.domain.close import rate_changes
 from erev_api.domain.contracts import bundles
 from erev_api.enums import ComputationTrigger, RateType
 from erev_api.logging import get_logger
+from erev_engine.dates import POSTABLE_STATES
 
 if TYPE_CHECKING:
     from erev_api.uow import UnitOfWork

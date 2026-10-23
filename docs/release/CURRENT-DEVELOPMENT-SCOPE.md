@@ -238,8 +238,8 @@ Read against main `47db35bfc3db6de9ad624823dbca085823b31e51`:
   This was code/evidence inspection, not a fresh approval-workflow test run.
 - Close-run input freshness compares retained rate/policy signatures with the current standing
   inputs. This is distinct from historical B2-2/C-7's per-contract pinned-rate race. The latter
-  still needs a dedicated current-state audit of the computation/approval/lock ordering; the
-  existence of `run_inputs.standing` alone is not completion evidence for it.
+  was reproduced and addressed by the retained-input check described below;
+  `run_inputs.standing` alone was not completion evidence for it.
 - Secret-pattern scan: 4,183 tracked/nonignored files, nine allow-listed matches, zero findings
   and zero unused exceptions. It does not inspect ignored local credentials or all Git history.
 - Runtime dependency licences: 142 packages (86 Python, 56 npm), eight allow-listed packages,
@@ -261,3 +261,29 @@ any as either open or complete. Registration of all report definitions alone is 
 
 This index incorporates subsequent October 22 feature checkpoints recorded in PROGRESS.md. No independent accounting sign-off is requested
 as part of this development scope.
+
+## October 23 contract FX freshness at close — implemented
+
+Migration 0340 retains each new computation's actual currency set and economic FX inputs.
+The lock gate compares those inputs with currently committed rates through the closing date,
+including contracting groups and groups with posted activity for the performing entity/book.
+The close worker marks stale heads FX_REPUBLISH and uses the existing computation worker to
+repair them before period-end passes. Original computations and their postings remain immutable.
+Identical economic values under a new version and changes dated after the closing period do not
+by themselves fail this comparison. The check conservatively covers available inputs for the
+recorded currencies, not only rates individually stamped on posted lines. Legacy heads without
+this evidence fail closed until a fresh computation records it; current rates are never passed
+off as original historical inputs. A populated downgrade refuses to discard the new evidence.
+
+Bounded verification: both native concurrency witnesses (approval commits after computation,
+and approval published after computation cutoff) detect a clean stale head at the lock gate;
+the actual close worker repairs revenue from 5,550 to 5,600 under FX_REPUBLISH and clears the
+freshness mismatch. The third ordering still refuses the stale computation before posting.
+The ordinary K01 close/rerun passes, as do economic-signature checks, scoped lint/types and
+12 selected unit/privacy checks. Migration 0340 was applied in these populated database runs.
+
+Two pre-existing verification gaps were surfaced and remain outstanding: the privacy catalogue
+omits 11 columns (historical_source_commit, subledger_posting_commit and modification.termination),
+and the offline ORM/migration comparison parser fails while reading revision 0166. The full
+privacy coverage check and five dependent schema comparisons therefore do not pass. New fx_inputs
+is classified and documented; these results are not a full-suite or release-candidate pass.

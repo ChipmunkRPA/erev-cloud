@@ -35,6 +35,16 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+from fastapi import FastAPI
+from sqlalchemy import and_, select, text
+from support import close_run_worlds, worlds
+from support import close_runs as runs
+from support.close_world import periods_closed_before
+from support.db import TestDatabase
+from support.factories import booked_contract
+from support.interleave import await_lock_wait, backend_pid, observing_checkouts
+from support.reference import PERIODS, approve, get, post, slug
+
 from erev_api import problems
 from erev_api.approvals import subjects
 from erev_api.auth.keyring import KeyRing
@@ -51,22 +61,14 @@ from erev_api.db.tables import (
     subledger_line,
     subledger_posting,
 )
-from erev_api.domain.contracts import compute_job, period_ends
+from erev_api.domain.close import gates
+from erev_api.domain.contracts import compute_job, fx_input_freshness, period_ends
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import out_of_period_register as register
 from erev_api.enums import ComputationStatus, ComputationTrigger
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from erev_api.uow import UnitOfWork
-from fastapi import FastAPI
-from sqlalchemy import and_, select, text
-from support import close_run_worlds, worlds
-from support import close_runs as runs
-from support.close_world import periods_closed_before
-from support.db import TestDatabase
-from support.factories import booked_contract
-from support.interleave import await_lock_wait, backend_pid, observing_checkouts
-from support.reference import PERIODS, approve, get, post, slug
 
 AVM_US = worlds.AVM_US
 JULY, AUGUST, SEPTEMBER = "FY2026-P07", "FY2026-P08", "FY2026-P09"
@@ -887,8 +889,15 @@ def test_a_group_a_computation_in_flight_puts_into_the_reach_is_not_marked(
     and commits after it (``_a_first_delivery_across_the_approval``). Both are in force: the
     delivery's revenue stands at 1.110000 — USD 5,550.00 where the rate in force gives 5,600.00
     — and the group is clean and carries no trigger. The group's next computation posts the
-    50.00, under the trigger its caller names."""
+    50.00 automatically in the next close run, under FX_REPUBLISH. The lock gate identifies
+    the retained stale inputs even though the group was clean."""
     world = close_run_worlds.eur_receivable(app, keyring, clock, files)
+    _soft_closed(world, AUGUST, "August close")
+    august = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=AUGUST)
+    assert august["status"] == "SUCCEEDED", str(august)
+    _soft_closed(world, SEPTEMBER, "September close")
+    before = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert before["status"] == "SUCCEEDED", str(before)
     world, contract_id, group_id, seen = _a_first_delivery_across_the_approval(
         world, clock, monkeypatch, the_approval_commits_first=False
     )
@@ -897,12 +906,7 @@ def test_a_group_a_computation_in_flight_puts_into_the_reach_is_not_marked(
     assert seen["trigger_then"] is None  # the approval read the group at rest: no mark of its own
     assert _mark(world, group_id) == (None, None)  # clean, and on the earlier rate
     assert _revenue(world, contract_id) == Decimal("-5550.00")
-    with world.place.uow() as uow:
-        again = compute_job.compute_group(uow, group_id, trigger=ComputationTrigger.COMMAND)
-        uow.commit()
-    assert again.status is ComputationStatus.SUCCEEDED and again.computation is not None
-    assert _computations(world, group_id)[-1] == ("COMMAND", 2)
-    assert _revenue(world, contract_id) == Decimal("-5600.00")
+    _close_repairs_stale_rates(world, monkeypatch, contract_id, group_id)
 
 
 def test_a_computation_that_posts_after_the_approval_has_committed_is_not_stored(
@@ -965,9 +969,16 @@ def test_a_version_published_after_a_computations_cutoff_is_not_read_by_it(
     When the computation posts, the version is committed and is not in force at its cutoff:
     the rates its bundle pinned still answer. It is stored on the earlier rate — USD 5,550.00
     — and the group is clean and unmarked, as where the computation commits before the
-    approval does. The next computation, begun at the version's instant, posts the 50.00."""
+    approval does. Lock-time freshness rejects that head; the next close automatically
+    recomputes and posts the 50.00 under FX_REPUBLISH."""
     world = close_run_worlds.eur_receivable(app, keyring, clock, files)
     world = worlds.on_record_clock(world, clock)
+    _soft_closed(world, AUGUST, "August close")
+    august = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=AUGUST)
+    assert august["status"] == "SUCCEEDED", str(august)
+    _soft_closed(world, SEPTEMBER, "September close")
+    before = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert before["status"] == "SUCCEEDED", str(before)
     world, contract_id, group_id, seen = _a_first_delivery_across_the_approval(
         world,
         clock,
@@ -980,9 +991,42 @@ def test_a_version_published_after_a_computations_cutoff_is_not_read_by_it(
     assert seen["trigger_then"] is None
     assert _mark(world, group_id) == (None, None)  # clean, and on the earlier rate
     assert _revenue(world, contract_id) == Decimal("-5550.00")
+    _close_repairs_stale_rates(world, monkeypatch, contract_id, group_id)
+
+
+def _close_repairs_stale_rates(
+    world: worlds.ReportWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    contract_id: UUID,
+    group_id: UUID,
+) -> None:
+    state = worlds.period_state(world, AVM_US, SEPTEMBER)
     with world.place.uow() as uow:
-        again = compute_job.compute_group(uow, group_id, trigger=ComputationTrigger.COMMAND)
-        uow.commit()
-    assert again.status is ComputationStatus.SUCCEEDED and again.computation is not None
-    assert _computations(world, group_id)[-1] == ("COMMAND", 2)
+        scope = gates.scope_of_period(
+            uow.session,
+            UUID(str(state["entity"]["id"])),
+            "ASC606",
+            UUID(str(state["period"]["id"])),
+        )
+        assert scope is not None
+        stale = fx_input_freshness.stale_groups(
+            uow.session, entity_id=scope.entity_id, book_code="ASC606", through=scope.end_date
+        )
+        assert group_id in stale
+        facts = gates.close_run_facts(uow.session, scope, known_at=uow.now)
+        assert facts is not None
+        assert "contract calculation exchange rates" in facts.inputs_changed
+    repaired = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert repaired["status"] == "SUCCEEDED", str(repaired)
+    assert _computations(world, group_id)[-1] == (FX_REPUBLISH, 2)
     assert _revenue(world, contract_id) == Decimal("-5600.00")
+    assert _mark(world, group_id) == (None, None)
+    with world.place.uow() as uow:
+        assert (
+            fx_input_freshness.stale_groups(
+                uow.session, entity_id=scope.entity_id, book_code="ASC606", through=scope.end_date
+            )
+            == []
+        )
+        facts = gates.close_run_facts(uow.session, scope, known_at=uow.now)
+        assert facts is not None and facts.inputs_changed == ()

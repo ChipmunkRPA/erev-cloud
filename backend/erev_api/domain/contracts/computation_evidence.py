@@ -11,13 +11,14 @@ import io
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from erev_engine import upgrade
-from erev_engine.bundle import InputBundle, OutputBundle
 from sqlalchemy import insert, select
 
 from erev_api.db.tables import computation_evidence, ledger_chain_head
+from erev_api.domain.contracts import fx_input_freshness
 from erev_api.enums import FilePurpose
 from erev_api.files.store import store_file
+from erev_engine import upgrade
+from erev_engine.bundle import InputBundle, OutputBundle
 
 if TYPE_CHECKING:
     from erev_api.uow import UnitOfWork
@@ -84,6 +85,7 @@ def retain(
                 "format_version": bundle.format_version,
                 "engine_version": bundle.engine_version,
             },
+            fx_inputs=fx_input_freshness.capture(bundle),
             ledger_cutoff=cutoffs,
             previous_computation_id=previous_computation_id,
             captured="AT_COMPUTATION",

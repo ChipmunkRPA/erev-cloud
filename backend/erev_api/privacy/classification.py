@@ -2535,7 +2535,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "output_file_id output_file_sha256 output_sha256 codec previous_computation_id "
                 "captured backfill_verification_id created_at created_by created_by_kind"
             ),
-            SPEC_C2_LEDGER: _cols("book_codes ledger_cutoff"),
+            SPEC_C2_LEDGER: _cols("book_codes ledger_cutoff fx_inputs"),
         },
     ),
     _table(

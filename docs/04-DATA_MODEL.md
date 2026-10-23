@@ -4575,6 +4575,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_calc_trace__version (tenant_id, contrac
 | `book_codes` | text[] | N | | Books with a contract version. |
 | `codec` | jsonb | N | | format_version and engine_version. `{format_version, engine_version}` of the bytes |
 | `ledger_cutoff` | jsonb | N | | Per-book ledger_chain_head last_chain_seq before this computation posts. `{book_code: chain_seq}` = `ledger_chain_head.last_chain_seq` per book read in the assembling transaction before its own posting; the original `posted` is reproducible from sealed lines with `subledger_posting_seal.chain_seq <= cutoff` as a cross-check |
+| `fx_inputs` | jsonb | Y | | Migration 0340: original computation currency set and economic FX inputs (set identity, type, pair, date, period and value). Immutable lock-time freshness evidence; legacy null requires recomputation, never current-rate backfill. |
 | `previous_computation_id` | uuid | Y | | Tenant FK to the preceding contract_computation. source of `previous_stream_heads` |
 | `captured` | text | N | | AT_COMPUTATION; verified backfill is not admitted yet. `CHECK (captured IN ('AT_COMPUTATION','BACKFILL_VERIFIED'))`; `backfill_verification_id` uuid Y → T-CON-26 |
 | `backfill_verification_id` | uuid | Y | | Must be null until T-CON-26 backfill is implemented. |

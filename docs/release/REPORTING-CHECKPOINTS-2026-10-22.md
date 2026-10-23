@@ -78,3 +78,22 @@
 - Three populated API/cell/rerun workflows and the remaining guard check pass; existing
   date-bucket unit cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
 - Earlier late-event checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+
+## Original forecast report re-export — October 23, 2026
+
+- Original forecast reports now accept the rerun API, binding the verified saved publication
+  through the catalogue adapter without recomputing the forecast. Existing UI flow is unchanged.
+- Populated forecast lifecycle passes: JSON/CSV/XLSX original and catalogue reruns preserve
+  dataset hashes and bound sources; source-access checks remain. Scoped lint/types pass.
+
+## VC / royalty close assessment controls — October 23, 2026
+
+- Final close passes now persist native reassessment/accrual gaps as blocking exceptions with
+  book/period scope and input hashes. Successful rechecks settle only superseded findings;
+  no extra engine pass or approval workflow. Existing engine coverage limits remain explicit.
+- Normal close and injected-gap lifecycle workflows pass, including cross-book gate isolation
+  and settlement; two native gap cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
+- UI follow-through: VC counts/links use the same book-specific blocking scope; element banners
+  recognize generated findings and retain in-progress items; royalty titles are readable.
+  Extended backend lifecycle and two focused UI cases pass, with frontend types/lint.
+- Earlier disaggregation checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.

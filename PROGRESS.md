@@ -20,13 +20,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Original forecast report re-export — October 23, 2026
-
-- Original forecast reports now accept the rerun API, binding the verified saved publication
-  through the catalogue adapter without recomputing the forecast. Existing UI flow is unchanged.
-- Populated forecast lifecycle passes: JSON/CSV/XLSX original and catalogue reruns preserve
-  dataset hashes and bound sources; source-access checks remain. Scoped lint/types pass.
-
 ## Modification causal reporting — October 22, 2026
 
 - Owner-selected sequential causal analysis is now exposed in the modification register.
@@ -52,21 +45,8 @@ review and publish changes without PR accumulation, and do not deploy.
   check 142 packages / eight allow-lists / zero findings. Research directories remain untracked;
   PolyForm Noncommercial remains intact. No deployment.
 - Confirmed existing unassigned-approval alerts and warning UI; historical C-6 is superseded by
-  the October 7 B1-15 completion. Per-contract stale-rate race B2-2/C-7 still needs a dedicated
-  audit; close-run input freshness alone is not proof. See CURRENT-DEVELOPMENT-SCOPE.
+  the October 7 B1-15 completion. B2-2/C-7 was reproduced and repaired below.
 - Earlier waterfall checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
-
-## VC / royalty close assessment controls — October 23, 2026
-
-- Final close passes now persist native reassessment/accrual gaps as blocking exceptions with
-  book/period scope and input hashes. Successful rechecks settle only superseded findings;
-  no extra engine pass or approval workflow. Existing engine coverage limits remain explicit.
-- Normal close and injected-gap lifecycle workflows pass, including cross-book gate isolation
-  and settlement; two native gap cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
-- UI follow-through: VC counts/links use the same book-specific blocking scope; element banners
-  recognize generated findings and retain in-progress items; royalty titles are readable.
-  Extended backend lifecycle and two focused UI cases pass, with frontend types/lint.
-- Earlier disaggregation checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
 ## Close-variance offsetting effects — October 22, 2026
 
@@ -263,3 +243,13 @@ The earlier build-loop notebook is preserved in
 [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 Current outstanding implementation and verification gaps remain in
 [the release limitations](docs/release/LIMITS-1.0.md).
+
+## Contract FX freshness at close — October 23, 2026
+
+- Migration 0340 retains original FX inputs. Lock checks identify stale clean heads and the
+  next close repairs them through FX_REPUBLISH, including approval/computation races.
+- Two native races, the refused-post ordering and ordinary close/rerun pass; scoped lint/types
+  and economic-input/privacy checks pass. No deployment. See CURRENT-DEVELOPMENT-SCOPE for bounds.
+- Existing audit gaps surfaced: 11 unclassified older columns and the schema interpreter's
+  revision-0166 parse error. These remain open; this is not a full-suite pass.
+- Forecast re-export and close-assessment checkpoints moved to REPORTING-CHECKPOINTS-2026-10-22.
