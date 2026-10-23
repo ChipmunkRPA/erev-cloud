@@ -27,7 +27,7 @@ dependencies = [
   "pydantic-settings>=2.7",
   "pyotp>=2.9",
   # Worker PDF extraction with context-local parser limits (AIA-13; BSD-3-Clause).
-  "pypdf>=6.20.1,<7",
+  "pypdf>=6.21.1,<7",
   "python-multipart>=0.0.20",
   "pyyaml>=6.0",
   "sqlalchemy>=2.0.36",
@@ -116,4 +116,11 @@ markers = [
   "pg: isolation, immutability, chain, invariant, lint and migration suite (G6)",
   "perf: performance benchmark (G9)",
   "slow: a single test that takes more than 10 seconds",
+]
+
+[tool.uv]
+# Security floors for transitive TLS trust and W3C trace-header parsing dependencies.
+constraint-dependencies = [
+  "certifi>=2026.10.19",
+  "opentelemetry-api>=1.45.1",
 ]

@@ -247,7 +247,7 @@ These checks need current release-candidate evidence. Historical October 3 resul
 remain in the dated build history; they do not verify current main. This list does
 not authorize deployment, provisioning or changes to a live database.
 
-- make audit-deps passed on clean 74bd148 (October 15): all 86 pinned Python runtime packages and npm runtime dependencies report zero advisories. Rerun on the final candidate.
+- October 22: fixed six new Python dependency advisories; patched-lock audit is clean (86 runtime packages; npm also clean). See [dependency checkpoint](docs/release/DEPENDENCY-SECURITY-2026-10-22.md). Refresh on the final candidate.
 - make docker-build passed on clean b4b8210 (October 15); rerun on the final candidate.
 - make compose-verify passed on clean 74bd148 (October 15), including cleanup. Rerun on the final candidate.
 - make zap-baseline passed on clean 4c4b583 (October 15), including cleanup; one documented low COEP warning and three informational alerts remain. Unauthenticated surface only; rerun on the final candidate.
