@@ -103,7 +103,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
-from sqlalchemy import Text, and_, cast, select
+from sqlalchemy import Text, and_, cast, or_, select
 
 from erev_api.db.tables import (
     approval_request,
@@ -900,8 +900,15 @@ def late_rows(
                 contract_event,
                 and_(
                     contract_event.c.tenant_id == tenant,
-                    exception_item.c.dedupe_key
-                    == "ENGINE:LATE_EVENT:" + cast(contract_event.c.id, Text),
+                    or_(
+                        exception_item.c.dedupe_key
+                        == "ENGINE:LATE_EVENT:" + cast(contract_event.c.id, Text),
+                        exception_item.c.dedupe_key
+                        == "ENGINE:LATE_EVENT:"
+                        + cast(contract_event.c.id, Text)
+                        + ":"
+                        + exception_item.c.source_payload["book_code"].astext,
+                    ),
                     exception_item.c.contract_id == contract_event.c.contract_id,
                 ),
             )

@@ -46,6 +46,15 @@ review and publish changes without PR accumulation, and do not deploy.
   targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
+## Secondary-book late-event reporting — October 23, 2026
+
+- New computations record late-event evidence separately for each enabled entity book, with
+  that book's posting period. The register reads secondary identities without duplicating the
+  primary row; historical evidence and saved reports stay unchanged (migration 0338).
+- Two producer cases, the extended K07 report workflow and eight catalogue cases pass;
+  metadata equality and scoped lint/types pass. Scope and test boundaries are recorded in
+  CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
 ## GL automatic certification — October 23, 2026
 
 - Attached GL comparisons now use published kind-specific rules for automatic certification.

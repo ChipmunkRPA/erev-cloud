@@ -1741,7 +1741,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fx_rate_set_version",
         ),
         joins=(
-            "ENGINE LATE_EVENT exception dedupe key binds contract_event.id",
+            "ENGINE LATE_EVENT exception dedupe key binds contract_event.id; secondary-book keys "
+            "append the stored book code; legacy unsuffixed findings retain their original "
+            "book scope",
             "subledger_line.contract_event_id = contract_event.id",
             "subledger_line.contract_id = contract.id",
             "subledger_line.period_id = period.id (posting period)",

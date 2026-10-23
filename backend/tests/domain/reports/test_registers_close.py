@@ -997,6 +997,31 @@ def test_out_of_period_register_k07(
     assert len(built(cutoff=finding["created_at"]).rows) == 1
     assert built(origin_period_key=SEPTEMBER_2026).rows == ()
     assert built(book="IFRS15").rows == ()  # A primary-book finding is not another book's evidence.
+    # A distinct stored finding for the secondary book supplies its own unposted row.
+    from erev_api.domain.imports.exceptions import raise_exception_item
+    from erev_api.enums import ExceptionSeverity, ExceptionSource
+
+    with report.place.uow() as uow:
+        raise_exception_item(
+            uow,
+            source=ExceptionSource.ENGINE,
+            code="LATE_EVENT",
+            severity=ExceptionSeverity.WARNING,
+            message="IFRS15 late event",
+            dedupe=f"{finding['dedupe_key']}:IFRS15",
+            contract_id=finding["contract_id"],
+            entity_id=finding["entity_id"],
+            period_id=finding["period_id"],
+            combination_group_id=finding["combination_group_id"],
+            source_payload={**finding["source_payload"], "book_code": "IFRS15"},
+        )
+        uow.commit()
+    secondary = built(book="IFRS15")
+    assert len(secondary.rows) == 1
+    assert secondary.rows[0]["event_amount"] == row["event_amount"]
+    assert secondary.rows[0]["revenue_effect"] == row["revenue_effect"]
+    assert len(built().rows) == 1  # The secondary finding is never double counted in ASC606.
+
     assert built(from_period_key=AUGUST_2026, to_period_key=AUGUST_2026).rows == ()
 
 

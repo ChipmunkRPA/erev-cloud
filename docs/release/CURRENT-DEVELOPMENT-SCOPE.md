@@ -153,6 +153,23 @@ No policy is created or published automatically. Necessary verification covers p
 attachment with/without policy, differences under the same policy, source-free drafts, and
 existing billing certification, plus transition-migration parity and scoped lint/types.
 
+## Secondary-book late-event reporting
+
+New computations retain separate late-event findings for each book kept by the contracting
+entity, using that book's actual posting-period resolution. Engine diagnostics and fallback
+findings share book-specific identities; a primary-book diagnostic cannot suppress a secondary
+finding. The out-of-period register accepts these identities and keeps its existing book,
+entity, known-at and ledger-deduplication filters. Legacy findings retain their original book
+scope; no historical findings or saved reports are rewritten. This does not restate historical
+balance classification. Migration 0338 records the source join interpretation.
+
+Necessary verification: two producer unit cases cover different posting periods, entity-book
+membership, prior inclusion and diagnostic deduplication; a populated K07 report workflow covers
+original import computation, currency views, cutoff/origin filters and separately stored IFRS15
+finding visibility without ASC606 duplication. The secondary finding in that database witness
+is fixture evidence, not a full second-book lock/computation lifecycle. Eight catalogue checks,
+migration metadata equality and scoped lint/types pass.
+
 ## Repository completion evidence still required
 
 After feature completion, refresh the bounded release-candidate checks recorded in PROGRESS.md

@@ -472,6 +472,7 @@ def _raise_diagnostics(
     found = bundles.index(session, bundle)
     events = {event.event_key: event for event in bundle.events}
     raised: dict[tuple[str, str], UUID] = {}
+    primary = queries.primary_book(session)
     for item in output.diagnostics:
         event = None if item.event_key is None else events.get(item.event_key)
         contract_key = None if event is None else event.contract_key
@@ -487,6 +488,8 @@ def _raise_diagnostics(
         subject: object = event_id or (
             obligation_row["id"] if obligation_row is not None else group_id
         )
+        if item.code == LATE_EVENT and event_id and item.book_code and item.book_code != primary:
+            subject = f"{event_id}:{item.book_code}"
         if (item.code, str(subject)) in raised:
             continue
         entity_id = None if contract_row is None else contract_row["contracting_entity_id"]
@@ -534,58 +537,66 @@ def _raise_late_events(
     same open item."""
     session = uow.session
     previous = dict(bundle.group.previous_stream_heads)
-    book_code = BookCode(queries.primary_book(session))
+    primary = queries.primary_book(session)
     for event in bundle.events:
         if event.stream_version <= previous.get(event.contract_key, 0):
             continue
         event_id = found.events.get((event.contract_key, event.stream_version))
         contract_row = found.contracts.get(event.contract_key)
-        if event_id is None or contract_row is None or (LATE_EVENT, str(event_id)) in raised:
+        if event_id is None or contract_row is None:
             continue
         entity_id = UUID(str(contract_row["contracting_entity_id"]))
-        try:
-            posting, origin = posting_period(
-                session,
+        entity_code = _entity_code(found, entity_id)
+        for book in bundle.books:
+            if entity_code not in book.entity_codes:
+                continue
+            book_code = BookCode(book.book_code)
+            subject = str(event_id) if book.book_code == primary else f"{event_id}:{book.book_code}"
+            if (LATE_EVENT, subject) in raised:
+                continue
+            try:
+                posting, origin = posting_period(
+                    session,
+                    entity_id=entity_id,
+                    book_code=book_code,
+                    effective_date=event.effective_date,
+                )
+            except Problem:
+                continue
+            if origin is None:
+                continue
+            obligation_ids = [
+                UUID(str(row["id"]))
+                for row in found.obligations.values()
+                if row["contract_id"] == contract_row["id"]
+                and str(row["obligation_key"]) in event.obligation_keys
+            ]
+            item = raise_exception_item(
+                uow,
+                source=ExceptionSource.ENGINE,
+                code=LATE_EVENT,
+                severity=ExceptionSeverity.WARNING,
+                # PRD IMP-39.
+                message=(
+                    f"Effective {event.effective_date.isoformat()} in closed period "
+                    f"{origin.period_key}. The effect posts to {posting.period_key} with origin "
+                    f"period {origin.period_key}."
+                ),
+                dedupe=dedupe_key(ExceptionSource.ENGINE, LATE_EVENT, subject),
+                contract_id=UUID(str(contract_row["id"])),
+                obligation_id=obligation_ids[0] if len(obligation_ids) == 1 else None,
+                combination_group_id=group_id,
                 entity_id=entity_id,
-                book_code=book_code,
-                effective_date=event.effective_date,
+                period_id=origin.id,
+                source_payload={
+                    "book_code": book_code.value,
+                    "event_key": event.event_key,
+                    "origin_period_key": origin.period_key,
+                    "posting_period_key": posting.period_key,
+                    "rule": "S08-R-10",
+                },
             )
-        except Problem:
-            continue
-        if origin is None:
-            continue
-        obligation_ids = [
-            UUID(str(row["id"]))
-            for row in found.obligations.values()
-            if row["contract_id"] == contract_row["id"]
-            and str(row["obligation_key"]) in event.obligation_keys
-        ]
-        item = raise_exception_item(
-            uow,
-            source=ExceptionSource.ENGINE,
-            code=LATE_EVENT,
-            severity=ExceptionSeverity.WARNING,
-            # PRD IMP-39.
-            message=(
-                f"Effective {event.effective_date.isoformat()} in closed period "
-                f"{origin.period_key}. The effect posts to {posting.period_key} with origin "
-                f"period {origin.period_key}."
-            ),
-            dedupe=dedupe_key(ExceptionSource.ENGINE, LATE_EVENT, event_id),
-            contract_id=UUID(str(contract_row["id"])),
-            obligation_id=obligation_ids[0] if len(obligation_ids) == 1 else None,
-            combination_group_id=group_id,
-            entity_id=entity_id,
-            period_id=origin.id,
-            source_payload={
-                "book_code": book_code.value,
-                "event_key": event.event_key,
-                "origin_period_key": origin.period_key,
-                "posting_period_key": posting.period_key,
-                "rule": "S08-R-10",
-            },
-        )
-        raised[(LATE_EVENT, str(event_id))] = item.id
+            raised[(LATE_EVENT, subject)] = item.id
 
 
 def compute_group(
