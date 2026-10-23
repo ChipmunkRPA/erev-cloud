@@ -20,6 +20,14 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Current gap index — October 22, 2026
+
+[CURRENT-DEVELOPMENT-SCOPE.md](docs/release/CURRENT-DEVELOPMENT-SCOPE.md) separates confirmed
+remaining features from completed priorities and owner exclusions. Code inspection confirms
+that per-event modification causes are lost when S13 aggregates functional revenue flows by
+period; actual event FX attribution needs native source evidence, not report-side conversion.
+The goal remains active. No new accounting functionality is claimed by this scope audit.
+
 ## Revenue-source compatibility and zero-share reversals — October 22, 2026
 
 - Reporting now accepts native cumulative revenue's transaction-currency evidence, verifies
