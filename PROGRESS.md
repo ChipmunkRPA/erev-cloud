@@ -55,14 +55,14 @@ review and publish changes without PR accumulation, and do not deploy.
   date-bucket unit cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
 - Earlier late-event checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Cross-calendar revenue disaggregation — October 23, 2026
+## VC / royalty close assessment controls — October 23, 2026
 
-- New runs combine only identical actual date intervals, with separate columns for different
-  periods and retained entity/local-period mappings. Same-calendar labels and legacy bindings
-  keep their existing interpretation. No partial-period reallocation (migration 0339).
-- Populated mixed-calendar totals and saved reruns, existing journal tie-out and currency
-  workflows, two interval-layout cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
-- Earlier GL checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+- Final close passes now persist native reassessment/accrual gaps as blocking exceptions with
+  book/period scope and input hashes. Successful rechecks settle only superseded findings;
+  no extra engine pass or approval workflow. Existing engine coverage limits remain explicit.
+- Normal close and injected-gap lifecycle workflows pass, including cross-book gate isolation
+  and settlement; two native gap cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
+- Earlier disaggregation checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
 ## Close-variance offsetting effects — October 22, 2026
 

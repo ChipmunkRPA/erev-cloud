@@ -776,6 +776,10 @@ def _open_exceptions(scope: PeriodScope) -> ColumnElement[bool]:
             item.severity == ExceptionSeverity.BLOCKING.value,
         ),
         item.code != CONTROL_TOTALS_MISMATCH,
+        or_(
+            item.source_payload["assessment"].astext.is_distinct_from("close_period_v1"),
+            item.source_payload["book_code"].astext == scope.book_code,
+        ),
         not_(_failed_before_commit()),
         or_(item.period_id.is_(None), item.period_id == scope.period_id),
         item_of_entity(scope.entity_id),

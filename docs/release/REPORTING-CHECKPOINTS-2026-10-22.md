@@ -60,3 +60,12 @@
 - Two producer cases, the extended K07 report workflow and eight catalogue cases pass;
   metadata equality and scoped lint/types pass. Scope and test boundaries are recorded in
   CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
+## Cross-calendar revenue disaggregation — October 23, 2026
+
+- New runs combine only identical actual date intervals, with separate columns for different
+  periods and retained entity/local-period mappings. Same-calendar labels and legacy bindings
+  keep their existing interpretation. No partial-period reallocation (migration 0339).
+- Populated mixed-calendar totals and saved reruns, existing journal tie-out and currency
+  workflows, two interval-layout cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
+- Earlier GL checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.

@@ -142,7 +142,7 @@ from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import combination_group, contract, period, period_state, subledger_line
-from erev_api.domain.close import pass_evidence, run_inputs
+from erev_api.domain.close import assessment_findings, pass_evidence, run_inputs
 from erev_api.domain.contracts import bundles, computation, period_ends, repo
 from erev_api.domain.contracts.period_ends import (
     CLOSE_RELEASE,
@@ -494,8 +494,13 @@ def _group_lines(
             trigger_code=bundle.trigger,
         )
         return None
+    close_facts: list[dict[str, Any]] = []
     try:
-        output = engine_pass(bundle, pass_name)
+        output = (
+            engine_pass(bundle, pass_name, close_facts=close_facts)
+            if pass_name == NETTING_RECLASS
+            else engine_pass(bundle, pass_name)
+        )
     except EngineError as error:
         raise _refused(pass_name, code, error) from error
     days = _period_days(bundle, scope.entity_code)
@@ -552,6 +557,10 @@ def _group_lines(
         )
         lines += book_lines
         entries += len(intents)
+    if pass_name == NETTING_RECLASS:
+        assessment_findings.record(
+            uow, scope, group_id, found, close_facts, input_sha256=bundle.sha256()
+        )
     return _GroupPass(
         code=code, lines=lines, entries=entries, earlier=None, evidence=tuple(evidence)
     )

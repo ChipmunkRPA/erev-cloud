@@ -96,6 +96,7 @@ from uuid import UUID
 
 from erev_engine import (
     ENGINE_VERSION,
+    _allocated_of,
     assemble_output,
     assert_identities,
     dates,
@@ -209,7 +210,9 @@ def _bound(spec: StageSpec, pass_name: str) -> StageSpec:
     return dataclasses.replace(spec, entry=run)
 
 
-def engine_pass(bundle: InputBundle, pass_name: str) -> OutputBundle:
+def engine_pass(
+    bundle: InputBundle, pass_name: str, *, close_facts: list[dict[str, Any]] | None = None
+) -> OutputBundle:
     """One close-run pass of the engine over the framework books of a ``CLOSE_RELEASE`` bundle
     (module docstring). ``EngineError`` as ``erev_engine.compute`` raises it."""
     if pass_name not in PASSES:
@@ -233,6 +236,30 @@ def engine_pass(bundle: InputBundle, pass_name: str) -> OutputBundle:
         results = s13_books.run_books(cb, specs, check=blocking.check)
         output = assemble_output(value, cb, results)
         assert_identities(output, results)
+        if close_facts is not None:
+            from erev_engine.stages.s08_estimates_late_events.late import close_gate_facts
+            from erev_engine.stages.s09_recognition import RecognitionState
+
+            for result in results:
+                allocated = _allocated_of(result)
+                if allocated is None:
+                    raise EngineError("ENGINE_INVARIANT_VIOLATED", "Close assessment lacks state")
+                ctx = s13_books.book_context(cb, cb.books[result.book])
+                for fact in close_gate_facts(ctx, allocated):
+                    close_facts.append({"book_code": result.book, **dataclasses.asdict(fact)})
+                recognition = result.states.get("09")
+                if not isinstance(recognition, RecognitionState):
+                    raise EngineError(
+                        "ENGINE_INVARIANT_VIOLATED", "Close assessment lacks recognition"
+                    )
+                for gap in recognition.close_gate_facts:
+                    close_facts.append(
+                        {
+                            "book_code": result.book,
+                            "code": "ROYALTY_ACCRUAL_MISSING",
+                            **dataclasses.asdict(gap),
+                        }
+                    )
     guards.no_floats(output)
     return output
 

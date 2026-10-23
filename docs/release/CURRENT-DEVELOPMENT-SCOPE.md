@@ -201,6 +201,28 @@ retained rerun rows. The remaining calendar-guard workflow passes. Six existing 
 unit cases check source separation and retained layout; scoped lint/types pass. No new financial
 calculation, API schema or database migration was needed for this entry-point change.
 
+## Period-end VC and royalty assessment controls
+
+The final NETTING_RECLASS close pass now collects native VC reassessment and royalty coverage
+facts from the engine states it already calculated, without another engine pass or changing
+financial output serialization. Applicable facts become blocking CLOSE exceptions for the
+selected entity/book/period, retaining subject/version or usage dates and the exact input hash.
+The existing exception gate prevents lock while those findings remain open. The close run can
+finish so the accountant can inspect and remedy its findings.
+
+Rechecks use stable contract-based identities, including after combination membership moves,
+and settle only previously generated findings for the same book/period and assessed contracts
+that are no longer present. Failed or skipped groups do not clear findings. Legacy/manual
+exceptions retain existing scope. No new approval workflow is introduced.
+
+Necessary verification: existing normal close workflow; an injected-gap end-to-end close
+workflow proving persistence, book-specific gate counts and subsequent automatic settlement;
+the native stage-08 reassessment and stage-09 royalty coverage cases; scoped lint/types.
+The lifecycle witness injects both fact types rather than representing a full royalty contract
+through the API. Existing engine limits remain: VC follows the enforced reassessment election;
+royalty coverage requires a satisfied licence, accrual policy, prior covered usage and a
+whole-month cadence. This does not invent an initial reporting cadence where none is recorded.
+
 ## Repository completion evidence still required
 
 After feature completion, refresh the bounded release-candidate checks recorded in PROGRESS.md

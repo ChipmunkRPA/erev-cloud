@@ -681,8 +681,8 @@ def _unbalanced_passes(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every posting intent of a pass out of balance by 1.00 on its first line."""
     real = period_end.engine_pass
 
-    def bent(bundle: InputBundle, pass_name: str) -> OutputBundle:
-        output = real(bundle, pass_name)
+    def bent(bundle: InputBundle, pass_name: str, **kwargs: Any) -> OutputBundle:
+        output = real(bundle, pass_name, **kwargs)
         books = []
         for book in output.books:
             intents = []
@@ -1327,3 +1327,88 @@ def test_sandbox_close_run_export_step(
     batches = _rows(sandbox, select(journal_batch.c.adapter, journal_batch.c.state))
     assert [(str(row["adapter"]), str(row["state"])) for row in batches] == [("CSV", "draft")]
     assert _count(sandbox, select(func.count()).select_from(job)) == 0
+
+
+def test_close_assessment_gaps_block_only_their_book_and_settle_after_recheck(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise real close-pass persistence and gate scoping with explicit engine gap fixtures."""
+    from erev_api.db.tables import period_state
+    from erev_api.domain.close import gates
+
+    world = worlds.k01_pellworth(app, keyring, clock, files)
+    real = period_end.engine_pass
+    emit = True
+
+    def assessed(bundle: InputBundle, pass_name: str, **kwargs: Any) -> OutputBundle:
+        output = real(bundle, pass_name, **kwargs)
+        if emit and kwargs.get("close_facts") is not None:
+            contract_key = bundle.contracts[0].external_id
+            kwargs["close_facts"].extend(
+                [
+                    {
+                        "code": "VC_REASSESSMENT_MISSING",
+                        "book_code": BOOK,
+                        "entity": AVM_US,
+                        "period_key": SEPTEMBER,
+                        "contract_key": contract_key,
+                        "estimate_key": "VC-TEST",
+                        "version_key": "VC-TEST:1",
+                    },
+                    {
+                        "code": "ROYALTY_ACCRUAL_MISSING",
+                        "book_code": BOOK,
+                        "entity": AVM_US,
+                        "period_key": SEPTEMBER,
+                        "contract_key": contract_key,
+                        "subject_key": "ROYALTY-TEST",
+                        "usage_period_start": date(2026, 9, 1),
+                        "usage_period_end": date(2026, 9, 30),
+                    },
+                ]
+            )
+        return output
+
+    monkeypatch.setattr(period_end, "engine_pass", assessed)
+    first = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert first["status"] == "SUCCEEDED", first
+    findings = world.place.rows(
+        select(exception_item).where(
+            exception_item.c.source_payload["assessment"].astext == "close_period_v1"
+        )
+    )
+    assert {f["code"] for f in findings} == {"VC_REASSESSMENT_MISSING", "ROYALTY_ACCRUAL_MISSING"}
+    with world.place.uow() as uow:
+        state_id = uow.session.scalar(
+            select(period_state.c.id).where(
+                period_state.c.entity_id == findings[0]["entity_id"],
+                period_state.c.period_id == findings[0]["period_id"],
+                period_state.c.book_code == BOOK,
+            )
+        )
+        scope = gates.period_scope(uow.session, state_id)
+        assert scope is not None
+
+        def counted(selected):
+            return set(
+                uow.session.scalars(
+                    select(exception_item.c.id).where(
+                        exception_item.c.source_payload["assessment"].astext == "close_period_v1",
+                        gates.blocking_exceptions(selected),
+                    )
+                )
+            )
+
+        assert counted(scope) == {f["id"] for f in findings}
+        assert counted(dataclasses.replace(scope, book_code="IFRS15")) == set()
+    emit = False
+    second = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert second["status"] == "SUCCEEDED"
+    resolved = world.place.rows(
+        select(exception_item.c.status).where(exception_item.c.id.in_([f["id"] for f in findings]))
+    )
+    assert [str(f["status"]) for f in resolved] == ["RESOLVED", "RESOLVED"]

@@ -85,9 +85,10 @@ period becomes ``SUCCEEDED`` with the lock and the user who decided it.
 
 [J] The ledger invariant is the one 04 DB-06 enforces at every seal, read again for the period as
 a whole: per transaction currency the lines' transaction amounts sum to zero, and their functional
-amounts sum to zero. The close-gate facts of 05 (``VC_REASSESSMENT_MISSING``,
-``ROYALTY_ACCRUAL_MISSING``) join the step with BUILD_SPEC CLO-18, when the engine states them
-(item ENG-S10-GATE-FACTS-1).
+amounts sum to zero. The final NETTING_RECLASS pass also records engine assessment facts
+(``VC_REASSESSMENT_MISSING``, ``ROYALTY_ACCRUAL_MISSING``) as book/period-scoped CLOSE
+exceptions. A later successful assessment settles only the gaps it no longer finds; the
+existing exception gate blocks lock while an applicable gap remains.
 
 [J] A journal run is not calculated when the period has one and nothing new to journalise: an
 empty ``draft`` run per close run would only ask for approvals of nothing.
