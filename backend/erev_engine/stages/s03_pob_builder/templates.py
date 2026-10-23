@@ -197,6 +197,7 @@ class PobDraft:
     option_ssp: Fraction | None = None  # S03-R-07; None: stage 05 resolves the entry (S05-R-08)
     gross_amount_memo: Fraction | None = None  # S03-R-09 gross consideration P (REQ-POB-009)
     gross_to_net: Mapping[str, str] | None = None  # S03-R-09 agent basis, retained and supplier
+    lessor_judgement_keys: tuple[str, ...] = ()  # POL-231 reviewed combination evidence
     recognition_start_date: date | None = None  # S03-R-10 earliest revenue date (V5; POL-025)
 
 

@@ -20,6 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Lessor combination initial computation — October 23, 2026
+
+- POL-231 now combines reviewed eligible components at inception, retains their prices and
+  membership, and routes by assessed predominance. Reads the associated lease product policy;
+  IFRS, unelected and ineligible cases stay separate. Strict assessment fields use OTHER.
+- Twelve targeted cases (including two full-engine paths), eight existing election cases and
+  scoped lint/types pass. UI, populated approval, modification/variable-payment integration
+  and Reporting remain open; see CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
 ## Shared-estimate audit history — October 23, 2026
 
 - Definitions and draft version changes now identify their audited object; versions retain
@@ -29,16 +38,6 @@ review and publish changes without PR accumulation, and do not deploy.
   Full audit architecture scan still reports 29 pre-existing findings in forecast,
   release-validation and sandbox dispatch. Track these separately; no full-suite claim.
 - Shared approval/application still await the two calculation choices. No deployment.
-
-## Shared-estimate supporting evidence — October 23, 2026
-
-- Added upload/attach, download and uploader-only reasoned void on saved portfolio drafts.
-  Failed attachment retry reuses the uploaded file and command key.
-- Reproduced and repaired the attachment registry's tenant-level fallback for shared versions:
-  current/former member scope now guards list/content/attach and file reference resolution.
-- Populated API, seven registry and seven UI cases plus scoped lint/types pass. Approval,
-  calculation and Reporting integration remain; two calculation choices await the owner.
-  No deployment.
 
 ## Legacy FX-evidence refresh — October 23, 2026
 

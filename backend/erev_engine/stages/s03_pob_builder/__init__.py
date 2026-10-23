@@ -27,6 +27,7 @@ from erev_engine.stages.s03_pob_builder import (
     bundles,
     distinct,
     elections,
+    lessor,
     licences,
     measure,
     options,
@@ -153,7 +154,8 @@ def run(ctx: BookContext, st: IdentifiedState, tb: TraceBuilder) -> PobState:
         mapping = ctx.policies.value("migration.nondistinct_mapping", contract=contract_key)
         merging[contract_key] = mapping != "SINGLE_POB"  # POL-211
     kept, routed = scope.split(drafts)  # S03-R-11
-    merged = elections.franchisor_single(ctx, st, elections.shipping(ctx, st, kept))
+    combined = lessor.combine(ctx, st, kept)
+    merged = elections.franchisor_single(ctx, st, elections.shipping(ctx, st, combined))
     grouped = elections.immaterial(ctx, distinct.group(merged, merging))  # S03-R-05, S03-R-13
     obligations = tuple(sorted(grouped, key=lambda draft: draft.subject_key))
     ordered = tuple(sorted(findings, key=Finding.sort_key))
@@ -418,6 +420,14 @@ def _emit(
 
 def _template_params(draft: PobDraft) -> dict[str, str]:
     return {
+        **(
+            {
+                "lessor_judgement_keys": ",".join(draft.lessor_judgement_keys),
+                "lessor_scope": draft.scope_flag.value,
+            }
+            if draft.lessor_judgement_keys
+            else {}
+        ),
         "basis": draft.template_basis,
         "rule_key": draft.rule_key or "",
         "template_code": draft.template_code,

@@ -586,3 +586,31 @@ member key, scoped writer classification, lint and types. The full writer archit
 scan reports 29 unrelated existing findings: release_validation and forecast audit object
 types are unclassified, and sandbox_reset_job has an unregistered computed writer.
 These remain outstanding; this checkpoint does not establish a full architecture pass.
+
+## October 23 lessor component combination — initial computation implemented
+
+POL-231 now reads the election resolved for the associated lease obligation (including product
+policy). A reviewed OTHER assessment on each nonlease obligation provides:
+obligation_key, lessor_lease_obligation_key, lessor_asset_class,
+lessor_same_transfer_pattern, lessor_operating_lease and lessor_nonlease_predominates.
+All three assessments are strict booleans and all fields are required together. The existing
+judgement API schema validates these fields; existing review/bundle selection still determines
+which records reach computation. Unrelated later OTHER assessments do not mask this assessment.
+
+At inception, eligible associated components combine under S03-R-11. Their prices and original
+member identities are retained; the nonlease host supplies its transfer measure when nonlease
+predominates, otherwise the lease host routes the entire amount out. Contradictory dates,
+unknown lease targets, inconsistent group predominance/asset class and differing nonlease
+transfer measures refuse computation. IFRS remains separate, as do absent assessments,
+unelected policies and components failing either eligibility criterion. Trace parameters retain
+the reviewed judgement keys and resulting scope. Predominance is never inferred from price.
+
+Necessary verification: 12 targeted cases include both full engine allocation/revenue paths,
+strict input validation, product-level election, unrelated OTHER records and absent/ineligible/
+IFRS cases. Eight existing scope/election cases pass; scoped lint and types pass.
+
+This is NOT completion of POL-231. Remaining: dedicated assessment entry UI, populated public
+create/review-to-computation verification, modification/variable-payment handling across combined
+members, and scope-exclusion/reporting display of the full combined population and assessment.
+Those paths must be inspected and completed before claiming this policy is release-ready.
+No deployment.

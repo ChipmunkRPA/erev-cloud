@@ -215,3 +215,13 @@
 - Populated API and existing contract constraint workflows, six UI cases and scoped lint/types
   pass; the computation head is unchanged. Approval/application/reporting remain pending,
   with the two owner estimation choices still open. No deployment.
+
+## Shared-estimate supporting evidence — October 23, 2026
+
+- Added upload/attach, download and uploader-only reasoned void on saved portfolio drafts.
+  Failed attachment retry reuses the uploaded file and command key.
+- Reproduced and repaired the attachment registry's tenant-level fallback for shared versions:
+  current/former member scope now guards list/content/attach and file reference resolution.
+- Populated API, seven registry and seven UI cases plus scoped lint/types pass. Approval,
+  calculation and Reporting integration remain; two calculation choices await the owner.
+  No deployment.

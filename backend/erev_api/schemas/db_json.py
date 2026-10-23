@@ -193,6 +193,11 @@ class BillAndHoldQuestionnaire(_Questionnaire):
 
 
 class OtherQuestionnaire(_Questionnaire):
+    lessor_lease_obligation_key: StrictStr | None = None
+    lessor_asset_class: StrictStr | None = None
+    lessor_same_transfer_pattern: StrictBool | None = None
+    lessor_operating_lease: StrictBool | None = None
+    lessor_nonlease_predominates: StrictBool | None = None
     pol_044_override: StrictBool | None = None
     claim_enforceable: StrictBool | None = None
     returns_immaterial: StrictBool | None = None
@@ -202,6 +207,25 @@ class OtherQuestionnaire(_Questionnaire):
 
     @model_validator(mode="after")
     def _keys_named(self) -> Self:
+        lessor = (
+            self.lessor_lease_obligation_key,
+            self.lessor_asset_class,
+            self.lessor_same_transfer_pattern,
+            self.lessor_operating_lease,
+            self.lessor_nonlease_predominates,
+        )
+        if any(value is not None for value in lessor):
+            if any(value is None for value in lessor) or not self.obligation_key:
+                raise ValueError(
+                    "POL-231 requires component keys, asset class and all assessments."
+                )
+            if (
+                not (self.lessor_lease_obligation_key or "").strip()
+                or not (self.lessor_asset_class or "").strip()
+            ):
+                raise ValueError("POL-231 component key and asset class must not be blank.")
+            if self.obligation_key == self.lessor_lease_obligation_key:
+                raise ValueError("POL-231 lease and nonlease components must differ.")
         estimate_flags = (self.pol_044_override, self.claim_enforceable)
         if any(flag is not None for flag in estimate_flags) and self.estimate_key is None:
             raise ValueError("pol_044_override and claim_enforceable come with estimate_key.")
