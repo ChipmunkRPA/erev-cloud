@@ -894,3 +894,90 @@ def test_combined_lessor_scope_register_retains_members_and_review_evidence(
         {"limit": "200"},
     )
     assert restored.json()["items"] == rows
+
+
+def test_combined_lease_usage_public_approval_persists_full_scope_amount(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    from erev_api.db.tables import contract, contract_event
+
+    lease = br06_lease(app, keyring, clock, files, lessor_combination=True, rated_usage=True)
+    world = lease.report
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+    )
+    events = [
+        {
+            "event_type": "USAGE_REPORTED",
+            "effective_date": "2026-09-10",
+            "payload": {
+                "obligation_key": key,
+                "usage_period_start": "2026-09-01",
+                "usage_period_end": "2026-09-10",
+                "metric": "UNITS",
+                "quantity": "1",
+                "rated_amount": {"amount": amount, "currency": "USD"},
+            },
+        }
+        for key, amount in (("L1-LEASE", "200.00"), ("L2-SERVICE", "100.00"))
+    ]
+    submitted = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/events",
+        world.maya,
+        {"events": events},
+        if_match=f'"s{head}"',
+    )
+    assert submitted.status_code == 201, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.priya)
+    assert approved.status_code == 200, approved.text
+    stored = world.place.rows(
+        select(contract_event).where(
+            contract_event.c.contract_id == lease.contract_id,
+            contract_event.c.event_type == "USAGE_REPORTED",
+        )
+    )
+    assert len(stored) == 2
+    assert {row["payload"]["obligation_key"] for row in stored} == {"L1-LEASE", "L2-SERVICE"}
+    clock.advance(STEP)
+    run, rows = report_run(
+        world,
+        "scope_exclusion_register",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "period_key": SEPTEMBER_2026,
+        },
+    )
+    assert run["status"] == "SUCCEEDED", run
+    assert len(rows) == 1
+    assert rows[0]["out_of_scope_amount"] == usd("108300.00")
+    assert run["control_totals"]["out_of_scope_amount_total"] == {"USD": "108300.00"}
+
+    saved = world.place.rows(
+        select(contract_version)
+        .where(
+            contract_version.c.combination_group_id
+            == UUID(str(world.contracts[BR06_EXTERNAL_ID].combination_group["id"]))
+        )
+        .order_by(contract_version.c.version_no.desc())
+        .limit(1)
+    )[0]
+    assert saved["out_of_scope_amount"] == Decimal("108300.00")
+    assert saved["transaction_price"] == 0
+    assert saved["revenue_cum"] == saved["rpo_amount"] == 0
+
+    from support import worlds
+
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.json()["items"] == rows

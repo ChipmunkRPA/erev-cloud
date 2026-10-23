@@ -692,3 +692,17 @@ Remaining: public event-entry/persistence and report verification for these new 
 RIGHT_TO_INVOICE source selection across original components; variable payments where the host
 uses a different recognition method; contract modifications; in-scope combined-component
 visibility. Do not describe all variable-payment handling as complete. No deployment.
+
+## October 23 combined usage public persistence — verified
+
+The USAGE implementation above now has a populated public event-submission workflow: Maya
+submits rated fees on both original components, Priya independently approves, and both source
+events retain their original obligation keys. Persisted contract output and the public scope
+report agree on 108,300 (108,000 fixed plus 200 and 100 usage), with zero ASC606 transaction
+price, revenue and RPO. The saved report reruns with an identical output hash and row data.
+The helper uses the existing activation fixture; this is not a new public activation test.
+
+This checkpoint adds necessary end-to-end evidence for the previous implementation, not a new
+payment mode. The selected workflow and scoped test lint (excluding existing import-order drift)
+pass. RIGHT_TO_INVOICE across original members, other host recognition methods, modifications
+and in-scope combined-component visibility remain unfinished. No deployment.
