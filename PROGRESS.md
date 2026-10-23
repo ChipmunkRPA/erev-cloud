@@ -27,7 +27,9 @@ review and publish changes without PR accumulation, and do not deploy.
 - Parent ETags, audit facts and contract/entity permissions protect writes; reads/counts omit
   hidden members. Stale metadata edits stay visible until the user explicitly reloads.
 - Populated API workflow, four UI cases, 24 route checks and scoped lint/types pass; existing
-  computation head is unchanged. Shared estimate application and populated restore remain.
+  computation head is unchanged. Shared estimate application remains.
+- Actual copy and LATEST refresh jobs now preserve populated member history; a successor
+  sandbox membership edit leaves production unchanged. The focused database workflow passes.
   Two previously asked estimation choices still await the owner. No deployment.
 
 ## Material-right product defaults — October 23, 2026

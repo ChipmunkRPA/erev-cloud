@@ -481,3 +481,18 @@ OpenAPI/types include the new routes; existing API path definitions remain uncha
 This completes population management only. Shared estimate approval/application, per-member
 calculation/reporting and populated snapshot restoration remain. The two previously asked
 estimation choices remain unapproved. No deployment or accounting-signoff gate is introduced.
+
+## October 23 portfolio sandbox refresh — populated verification complete
+
+A populated K01 workflow now exercises the actual TENANT_SNAPSHOT copy and SANDBOX_RESET
+LATEST handlers with portfolio data. It creates a portfolio and member through public APIs,
+loads the original sandbox, closes and rejoins that member in production, then refreshes the
+sandbox from production. Both retained member intervals and identifiers match the source.
+An authorized member removal in the successor sandbox leaves production's current member
+and complete history unchanged. The real copy/load/recompute jobs succeed on this population;
+no copy implementation change was needed. The focused database workflow and file lint pass.
+
+This closes populated portfolio/member restoration and isolation coverage noted above.
+It does not establish shared-estimate application or restoration of portfolio estimate
+versions that the public authoring/approval workflow does not yet implement. Those calculation
+and reporting paths, along with the two owner estimation choices, remain outstanding.

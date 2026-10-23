@@ -29,6 +29,32 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+from fastapi import FastAPI
+from sqlalchemy import func, insert, select, update
+from support.clock import FROZEN_AT
+from support.db import TestDatabase
+from support.factories import stamp_test_release
+from support.http import HttpResponse
+from support.principals import (
+    Actor,
+    Signed,
+    colleague,
+    enrolled,
+    member,
+    select_tenant,
+)
+from support.reference import assign, get, post, put, slug
+from support.rows import tenant_snapshot_values
+from support.snapshots import (
+    confirm_retention,
+    cutoff_after,
+    enter_workspace,
+    load_outcome,
+    run_dispatched_snapshot,
+    work_job,
+)
+from support.worlds import K01, k01_pellworth, k03_castellan, k03_change_order, k03_september
+
 from erev_api.approvals import routing
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
@@ -67,31 +93,6 @@ from erev_api.files.store import LocalFileStore
 from erev_api.jobs import registry
 from erev_api.jobs.context import JobRuntime
 from erev_api.main import create_app
-from fastapi import FastAPI
-from sqlalchemy import func, insert, select, update
-from support.clock import FROZEN_AT
-from support.db import TestDatabase
-from support.factories import stamp_test_release
-from support.http import HttpResponse
-from support.principals import (
-    Actor,
-    Signed,
-    colleague,
-    enrolled,
-    member,
-    select_tenant,
-)
-from support.reference import assign, get, post, put, slug
-from support.rows import tenant_snapshot_values
-from support.snapshots import (
-    confirm_retention,
-    cutoff_after,
-    enter_workspace,
-    load_outcome,
-    run_dispatched_snapshot,
-    work_job,
-)
-from support.worlds import k03_castellan, k03_change_order, k03_september
 
 API = "/api/v1"
 RESET = f"{API}/tenant/reset"
@@ -1219,3 +1220,78 @@ def test_a_member_of_a_workspace_and_its_copy_is_told_once(
             and str(payload["subject"]).startswith("Approved")
         )
     assert (granted, emails) == ((201, "ACTIVE", True), ["Approved: Grant Viewer to Maya"])
+
+
+def test_latest_refresh_preserves_portfolio_history_and_isolates_member_edits(
+    app: FastAPI,
+    files: LocalFileStore,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    runtime: JobRuntime,
+) -> None:
+    """Actual copy and LATEST jobs load portfolios; sandbox edits cannot change production."""
+    world = k01_pellworth(app, keyring, clock, files)
+    assign(world.marcus.member, "revenue_accountant")
+    created = post(
+        app,
+        f"{API}/portfolios",
+        world.maya,
+        {"code": "COPY-RETURNS", "name": "Shared returns population"},
+    )
+    assert created.status_code == 201, created.text
+    path = created.headers["location"]
+    contract_id = str(world.contracts[K01].contract["id"])
+    payload = {"contract_id": contract_id, "rationale": "Similar product return experience"}
+    joined = post(app, path + "/members", world.maya, payload, if_match=created.headers["etag"])
+    assert joined.status_code == 201, joined.text
+    copied = _copy(world.marcus, runtime, clock, "Portfolio refresh")
+    sandbox_actor = enter_workspace(app, clock, world.marcus, copied.sandbox_id)
+    old_members = get(app, path + "/members", sandbox_actor)
+    assert old_members.status_code == 200, old_members.text
+    assert [row["id"] for row in old_members.json()["items"]] == [joined.json()["id"]]
+
+    source_actor = enter_workspace(app, clock, world.marcus, copied.production_id)
+    current = get(app, path, source_actor)
+    clock.advance(timedelta(seconds=1))
+    ended = post(
+        app,
+        path + f"/members/{contract_id}/remove",
+        source_actor,
+        {"rationale": "Updated production classification"},
+        if_match=current.headers["etag"],
+    )
+    assert ended.status_code == 200, ended.text
+    clock.advance(timedelta(seconds=1))
+    rejoined = post(app, path + "/members", source_actor, payload, if_match=ended.headers["etag"])
+    assert rejoined.status_code == 201, rejoined.text
+    production_history = get(
+        app, path + "/members", source_actor, {"include_history": "true"}
+    ).json()["items"]
+    assert len(production_history) == 2
+    sandbox_actor = enter_workspace(app, clock, world.marcus, copied.sandbox_id)
+    accepted = _reset(app, sandbox_actor, mode="LATEST", reason="Refresh portfolio from production")
+    assert accepted.status_code == 202, accepted.text
+    successor_id = UUID(accepted.headers["X-Erev-Sandbox-Tenant-Id"])
+    result = _run_reset(accepted, copied.sandbox_id, runtime)
+    assert result["state"] == "SUCCEEDED", result["problem"]
+    successor = enter_workspace(app, clock, world.marcus, successor_id)
+    refreshed = get(app, path + "/members", successor, {"include_history": "true"})
+    assert refreshed.status_code == 200, refreshed.text
+    assert refreshed.json()["items"] == production_history
+    clock.advance(timedelta(seconds=1))
+    latest = get(app, path, successor)
+    edited = post(
+        app,
+        path + f"/members/{contract_id}/remove",
+        successor,
+        {"rationale": "Sandbox experiment only"},
+        if_match=latest.headers["etag"],
+    )
+    assert edited.status_code == 200, edited.text
+    assert get(app, path + "/members", successor).json()["items"] == []
+    source_actor = enter_workspace(app, clock, world.marcus, copied.production_id)
+    assert (
+        get(app, path + "/members", source_actor, {"include_history": "true"}).json()["items"]
+        == production_history
+    )
+    assert len(get(app, path + "/members", source_actor).json()["items"]) == 1
