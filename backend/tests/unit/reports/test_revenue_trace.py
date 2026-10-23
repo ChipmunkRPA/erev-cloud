@@ -448,6 +448,65 @@ def test_split_role_replays_original_rounding_and_preserves_source(
     )
     with pytest.raises(InvalidRevenueTrace, match="unique original source"):
         read(split_sources, split_rows)
+    # A role explicitly switched to zero weight must reverse its earlier share,
+    # even after additional original layers enter the gross population.
+    zero_params = {
+        **params,
+        "weights": "0|1",
+        "amount_functional": "0",
+        "time": "0",
+        "time_functional": "0",
+        "input_time_txn": "0",
+        "input_time_functional": "0",
+    }
+    zero_nodes = (*split_sources[:-1], replace(nodes[-1], value="0", params=zero_params))
+    zero = read(zero_nodes, split_rows)
+    assert zero.amount == zero.time_amount == 0
+    assert zero.movements == ()
+    assert zero.source_ids == (UUID(int=1), UUID(int=2))
+    from erev_api.domain.reports.revenue_trace import posting_delta
+
+    reversal = posting_delta(
+        zero,
+        result,
+        basis="ALL",
+        paid=(),
+        expected_paid=Fraction(0),
+        expected_delta=-result.amount,
+    )
+    assert reversal.amount == -result.amount
+    assert {item.layer_key for item in reversal.movements} == {"original-layer"}
+    # A small nonzero weight rounded to zero does not erase source ambiguity.
+    with pytest.raises(InvalidRevenueTrace, match="unique original source"):
+        read(
+            (
+                *zero_nodes[:-1],
+                replace(
+                    zero_nodes[-1],
+                    params={
+                        **zero_params,
+                        "weights": "1/1000000|1",
+                    },
+                ),
+            ),
+            split_rows,
+        )
+    with pytest.raises(InvalidRevenueTrace, match="transaction sources"):
+        read(zero_nodes, ({**split_rows[0], "amount_txn": "49.99"}, split_rows[1]))
+    with pytest.raises(InvalidRevenueTrace, match="formula or TIME"):
+        read(
+            (
+                *zero_nodes[:-1],
+                replace(
+                    zero_nodes[-1],
+                    params={
+                        **zero_params,
+                        "amount_functional": "1",
+                    },
+                ),
+            ),
+            split_rows,
+        )
     scalar = read(split_sources, split_rows, attribute=False)
     assert scalar.amount == result.amount and scalar.time_amount == result.time_amount
     assert not scalar.movements
@@ -557,3 +616,41 @@ def test_mixed_period_retains_exact_time_for_one_period_origin(view: str, sign: 
         project(held=(*sources, replace(sources[1], contract_id=UUID(int=33))))
     with pytest.raises(InvalidRevenueTrace, match="finer source"):
         project(config={"input_period_classes": params["input_period_classes"]})
+
+
+@pytest.mark.parametrize("corruption", [None, "amount", "currency", "scale", "missing", "row"])
+def test_cumulative_transaction_evidence_is_verified(corruption: str | None) -> None:
+    from dataclasses import replace
+
+    trace, rows = sources()
+    rows = [dict(row, amount_txn=row["amount_functional"], txn_currency="GBP") for row in rows]
+    nodes = []
+    for node in trace.nodes:
+        if node.formula_id == "fx.revenue_functional.v1":
+            params = {
+                **node.params,
+                "amount_txn": str(int(Fraction(node.value) * 100)),
+                "txn_currency": "GBP",
+                "txn_minor_unit": "2",
+            }
+            if node.id == "prior":
+                if corruption == "amount":
+                    params["amount_txn"] = "9999"
+                elif corruption == "currency":
+                    params["txn_currency"] = "USD"
+                elif corruption == "scale":
+                    params["txn_minor_unit"] = "3"
+                elif corruption == "missing":
+                    del params["amount_txn"]
+            node = replace(node, params=params)
+        nodes.append(node)
+    if corruption == "row":
+        rows[0]["amount_txn"] = Decimal("79.99")
+    updated = replace(trace, nodes=tuple(nodes))
+    if corruption:
+        with pytest.raises(InvalidRevenueTrace, match="transaction evidence"):
+            project(updated, "current", rows, currency="GBP")
+    else:
+        result = project(updated, "current", rows, currency="GBP")
+        assert sum(item.amount for item in result) == 0
+        assert len(result) == 4  # opposing signed sources survive a net-zero target

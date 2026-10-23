@@ -1,5 +1,31 @@
 # Retained revenue source classes — October 20, 2026
 
+
+## Current correction — October 22, 2026
+
+The implementation has advanced beyond the historical checkpoints below: supplier history
+and gross-control/net-revenue reconciliation are implemented in `revenue_attribution`.
+Those older statements of missing integration are not the current scope.
+
+This correction makes the source reader compatible with native cumulative revenue's retained
+`amount_txn`, `txn_currency` and `txn_minor_unit`. Every populated metadata group must be
+complete and reconcile to the original signed source amounts, including intermediate nodes;
+functional totals remain independently checked. Old traces without the fields remain readable.
+
+A split role explicitly assigned zero weight can now retain a verified empty current source
+population across multiple gross origins and reverse previously attributed shares. Both currency
+amounts and TIME components must reproduce zero. A nonzero weight merely rounded to zero does
+not qualify, and source identities are retained. Nonzero multi-origin split attribution still
+requires finer original evidence; this does not implement proportional source allocation.
+
+Necessary verification passed: 46 focused reader/native-engine cases, including the actual
+merchant/agency calculation output; all four existing public agent source-history scenarios
+(single/multiple deposits, zero fee, combined contracts), covering transaction/functional/reporting
+views and retained reruns; scoped Ruff/mypy and diff checks. The explicit transition to zero
+weight is covered at the reader/delta level, not claimed as a new public workflow test.
+No deployment.
+
+
 Posting role targets now retain `input_classes` in the same order as their signed inputs,
 and `time_functional` in functional minor units. Uniform part contributions are classified
 TIME or EVENT from both original currency amounts. A part containing both classes is

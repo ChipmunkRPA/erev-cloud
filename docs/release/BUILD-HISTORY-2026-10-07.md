@@ -12248,3 +12248,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Fixed a pre-existing current-catalogue seed helper failure reproduced against committed main:
   valid JSON regex/text escapes are now preserved, with JSON round-trip coverage. The historical
   migration seed remains byte-for-byte frozen. No deployment; final release verification remains.
+
+## Prior-period attribution reference population — October 22, 2026
+
+- New prior-period revenue reports retain the original entity/period-to-contract-version
+  reference population, including empty selections. Bound runs use those references before
+  selecting their original versions and replaying trace attribution/identity checks, rather than
+  rediscovering current revenue-line references. Book and period/entity scope must match.
+- Modern bindings missing reference evidence fail explicitly. Older bindings that declared their
+  reference population live retain that qualified behavior. Migration 0324 documents the source
+  contract. Migration reconciliation is now the only wholly OPEN report strategy and remains
+  outside the owner-authorized migration-to-live completion scope; this is not a claim that
+  every Reporting business gap is closed.
+- Necessary verification passed: 44 focused prior-period/source-binding cases including native
+  attribution traces, later reference additions, scope mismatch and old/new binding behavior;
+  actual K01 API/worker empty-report rerun with matching rows/hash. Scoped lint/types and frozen
+  metadata parity passed. Foreign-contract modification functional TP/catch-up evidence remains
+  a separate unresolved business gap; no ordinary FX conversion has replaced those amounts.
+  No deployment; final repository verification remains open.

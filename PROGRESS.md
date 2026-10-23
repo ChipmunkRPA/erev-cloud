@@ -2,7 +2,7 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
-## Current owner-authorized goal — October 21, 2026
+## Current owner-authorized goal — October 22, 2026
 
 Finish the repository for public source publication under its noncommercial license;
 prioritize feature completion with necessary targeted validation. Continue directly on main,
@@ -19,6 +19,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Independent accounting review belongs to the owner and is not a development completion gate.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
+
+## Revenue-source compatibility and zero-share reversals — October 22, 2026
+
+- Reporting now accepts native cumulative revenue's transaction-currency evidence, verifies
+  its currency/precision and signed source total at each cumulative node, and retains the
+  existing functional-currency check. The previous reader rejected these new native fields.
+- Explicit zero-weight agent roles now produce a verified empty current source population,
+  allowing prior attributed amounts to reverse even when gross sources span multiple layers.
+  A rounded/net zero with nonzero weight still requires original attribution; no proportional
+  source split is inferred. Original source identities remain retained.
+- Necessary verification: focused reader/native-engine scenarios and public agent-report
+  compatibility; see the source-class release note for results. No deployment.
+- Nonzero multi-origin split-role attribution and actual functional per-event modification
+  attribution remain open; the royalty post-exit correction decision remains pending.
 
 ## Royalty RPO exemption for pending performance — October 22, 2026
 
@@ -214,24 +228,6 @@ review and publish changes without PR accumulation, and do not deploy.
   functional-member/cross-entity cases. The new case proves EUR 150 uses historical USD 170,
   rather than current-spot USD 210, and EUR -20 uses actual USD -26 credit pieces; cumulative
   targets remain USD 170/144. Scoped lint/types passed. No deployment or release-complete claim.
-
-## Prior-period attribution reference population — October 22, 2026
-
-- New prior-period revenue reports retain the original entity/period-to-contract-version
-  reference population, including empty selections. Bound runs use those references before
-  selecting their original versions and replaying trace attribution/identity checks, rather than
-  rediscovering current revenue-line references. Book and period/entity scope must match.
-- Modern bindings missing reference evidence fail explicitly. Older bindings that declared their
-  reference population live retain that qualified behavior. Migration 0324 documents the source
-  contract. Migration reconciliation is now the only wholly OPEN report strategy and remains
-  outside the owner-authorized migration-to-live completion scope; this is not a claim that
-  every Reporting business gap is closed.
-- Necessary verification passed: 44 focused prior-period/source-binding cases including native
-  attribution traces, later reference additions, scope mismatch and old/new binding behavior;
-  actual K01 API/worker empty-report rerun with matching rows/hash. Scoped lint/types and frozen
-  metadata parity passed. Foreign-contract modification functional TP/catch-up evidence remains
-  a separate unresolved business gap; no ordinary FX conversion has replaced those amounts.
-  No deployment; final repository verification remains open.
 
 ## Outstanding release verification
 

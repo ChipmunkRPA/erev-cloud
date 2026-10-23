@@ -15,6 +15,7 @@ from fractions import Fraction
 from typing import Any
 from uuid import UUID
 
+from erev_engine.currencies import ISO_4217
 from erev_engine.trace import Trace
 
 
@@ -143,7 +144,8 @@ def project(
             if (
                 node.formula_id != "fx.revenue_functional.v1"
                 or "signs" not in node.params
-                or set(node.params) - {"signs", "minor_unit"}
+                or set(node.params)
+                - {"signs", "minor_unit", "amount_txn", "txn_currency", "txn_minor_unit"}
             ):
                 raise InvalidRevenueTrace("Revenue has an unattributed calculation source.")
             signs = node.params["signs"].split("|") if node.inputs else []
@@ -157,6 +159,28 @@ def project(
                 for leaf, value in visit(child).items():
                     values[leaf] = values.get(leaf, 0) + int(sign) * value
             active.remove(key)
+            if {"amount_txn", "txn_currency", "txn_minor_unit"} & node.params.keys():
+                try:
+                    txn_currency = node.params["txn_currency"]
+                    scale = ISO_4217[txn_currency].minor_unit
+                    if int(node.params["txn_minor_unit"]) != scale or any(
+                        str(leaves[leaf]["txn_currency"]).strip() != txn_currency for leaf in values
+                    ):
+                        raise ValueError("Mismatched transaction currency.")
+                    expected = Fraction(int(node.params["amount_txn"]), 10**scale)
+                    actual = sum(
+                        (
+                            value * Fraction(leaves[leaf]["amount_txn"])
+                            for leaf, value in values.items()
+                        ),
+                        Fraction(0),
+                    )
+                    if actual != expected:
+                        raise ValueError("Mismatched transaction amount.")
+                except (KeyError, TypeError, ValueError) as error:
+                    raise InvalidRevenueTrace(
+                        "Signed revenue sources differ from retained transaction evidence."
+                    ) from error
         if (
             sum(
                 (
@@ -373,7 +397,7 @@ def split_role_target(
     attribute: bool = True,
     period_ends: Mapping[str, date] | None = None,
 ) -> RevenueTarget:
-    """Replay both split amounts; source attribution additionally requires one provenance.
+    """Replay both split amounts; nonzero split attribution requires one provenance.
 
     With attribute=False the caller receives scalar target evidence only (no movements),
     which must never be used as an attributed posting delta.
@@ -414,26 +438,6 @@ def split_role_target(
         sources = ()
     else:
         sources = project(trace, functional, movements, currency=currency)
-    if (
-        attribute
-        and sources
-        and (
-            len(
-                {
-                    (
-                        item.contract_id,
-                        item.layer_key,
-                        item.movement_kind,
-                        item.effective_date,
-                        item.source_key,
-                    )
-                    for item in sources
-                }
-            )
-            != 1
-        )
-    ):
-        raise AmbiguousSplitSource("Split revenue requires unique original source attribution.")
     raw = {item["id"]: item for item in movements}
     transaction = sum(
         (item.coefficient * Fraction(raw[item.movement_id]["amount_txn"]) for item in sources),
@@ -484,6 +488,42 @@ def split_role_target(
         raise InvalidRevenueTrace("Invalid split revenue currency view.")
     if not sources and (time_txn or time_functional):
         raise InvalidRevenueTrace("Empty split baseline has nonzero TIME amounts.")
+    # A retained zero weight assigns no source to this role, even when the gross
+    # population has multiple owners. Reproduce both currencies and TIME above
+    # before accepting it; a rounded/net zero with a nonzero weight is not enough.
+    zero_weight = (
+        "weights" in node.params
+        and Fraction(node.params["weights"].split("|")[int(node.params["index"])]) == 0
+    )
+    if zero_weight:
+        if transaction_share or functional_share or time_txn or time_functional:
+            raise InvalidRevenueTrace("Zero-weight revenue role has nonzero retained amounts.")
+        return RevenueTarget(
+            Fraction(0),
+            Fraction(0),
+            (),
+            tuple(sorted((item.movement_id for item in sources), key=str)),
+        )
+    if (
+        attribute
+        and sources
+        and (
+            len(
+                {
+                    (
+                        item.contract_id,
+                        item.layer_key,
+                        item.movement_kind,
+                        item.effective_date,
+                        item.source_key,
+                    )
+                    for item in sources
+                }
+            )
+            != 1
+        )
+    ):
+        raise AmbiguousSplitSource("Split revenue requires unique original source attribution.")
     amount = transaction_share if view == "transaction" else functional_share
     time = time_txn if view == "transaction" else time_functional
     return RevenueTarget(
