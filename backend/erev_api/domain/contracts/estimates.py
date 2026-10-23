@@ -88,7 +88,7 @@ from erev_api.db.tables import (
     modification,
     obligation,
 )
-from erev_api.domain.contracts import bundles, computation, queries, repo
+from erev_api.domain.contracts import bundles, computation, estimate_cost_scope, queries, repo
 from erev_api.domain.contracts.activation import engine_problem
 from erev_api.domain.contracts.compute_job import ESTIMATE_PREVIEW_MODE
 from erev_api.domain.contracts.events import impact_summary
@@ -699,9 +699,16 @@ def _version_errors(
     return normalized, errors
 
 
-def costs_incurred_to_date(session: Session, element: Mapping[str, Any], through: date) -> Decimal:
+def costs_incurred_to_date(
+    session: Session,
+    element: Mapping[str, Any],
+    through: date,
+    *,
+    parameters: Mapping[str, Any] | None = None,
+) -> Decimal:
     """``COST_INCURRED`` progress inputs of the element's contract through ``through``, not voided,
-    and of the element's obligation when it names one (04 §16.14 estimates; ERR-13)."""
+    using explicit EAC coverage when supplied, otherwise the historical element filter
+    (04 §16.14 estimates; ERR-13)."""
     if element["contract_id"] is None:
         return Decimal(0)
     contract_id = _uuid(element["contract_id"])
@@ -710,11 +717,7 @@ def costs_incurred_to_date(session: Session, element: Mapping[str, Any], through
         contract_event.c.event_type == ContractEventType.EVENT_VOIDED.value,
         contract_event.c.supersedes_event_id.is_not(None),
     )
-    key: str | None = None
-    if element["obligation_id"] is not None:
-        key = session.execute(
-            select(obligation.c.obligation_key).where(obligation.c.id == element["obligation_id"])
-        ).scalar_one_or_none()
+    keys = estimate_cost_scope.keys(session, element, parameters or {})
     total = Decimal(0)
     for (payload,) in session.execute(
         select(contract_event.c.payload).where(
@@ -726,7 +729,18 @@ def costs_incurred_to_date(session: Session, element: Mapping[str, Any], through
     ):
         if not isinstance(payload, Mapping) or payload.get("purpose") != PROGRESS_INPUT:
             continue
-        if key is not None and payload.get("obligation_key") != key:
+        if keys is not None and payload.get("obligation_key") not in keys:
+            if payload.get("obligation_key") is None and (parameters or {}).get("eac_scope"):
+                raise _failed(
+                    [
+                        _error(
+                            "parameters.eac_scope",
+                            "COMBINED_EAC_SCOPE",
+                            "Assign unallocated progress costs to original members "
+                            "before validating a partial-member EAC.",
+                        )
+                    ]
+                )
             continue
         amount = payload.get("amount")
         value = amount.get("amount") if isinstance(amount, Mapping) else amount
@@ -740,7 +754,9 @@ def _eac_check(session: Session, element: Mapping[str, Any], values: Mapping[str
     total = values["expected_total_amount"]
     if _text(element["estimate_kind"]) != EstimateKind.EAC.value or total is None:
         return
-    costs = costs_incurred_to_date(session, element, values["effective_date"])
+    costs = costs_incurred_to_date(
+        session, element, values["effective_date"], parameters=values["parameters"]
+    )
     if total >= costs:
         return
     currency = str(values["currency"])
@@ -2039,7 +2055,9 @@ def version_outs(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[Es
         costs = None
         ratio = None
         if kind == EstimateKind.EAC.value:
-            incurred = costs_incurred_to_date(session, element, row["effective_date"])
+            incurred = costs_incurred_to_date(
+                session, element, row["effective_date"], parameters=values["parameters"]
+            )
             costs = _money(incurred, currency)
             total = values["expected_total_amount"]
             if total is not None and total != 0:

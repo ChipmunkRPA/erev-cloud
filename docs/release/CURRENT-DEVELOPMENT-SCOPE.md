@@ -4,6 +4,23 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Scoped EAC incurred-cost validation and display — October 23, 2026
+
+- The public EAC cost-floor check and displayed incurred-cost/progress figures now use the
+  version's explicit coverage. MEMBERS includes the named obligation/target union once;
+  COMBINATION resolves one complete original member set from a hash-verified current trace.
+  Missing or ambiguous combination identity requires recomputation/clarification.
+- Full-contract coverage includes unassigned contract-level progress costs. Partial-member
+  coverage refuses unassigned costs rather than silently ignoring or allocating them. Existing
+  versions without explicit coverage retain their prior filter. Date and void filters remain.
+- Populated event approval/report replay and EAC API checks passed: whole/member/member-union
+  costs are 300/100/300; another unassigned 50 raises the whole threshold to 350 and prevents
+  partial-member validation. The existing ordinary EAC cost-floor workflow also passes.
+  Scoped lint/types passed; the disposable database was stopped. No deployment.
+- Broader Reporting source gaps and combined progress/reassessment development remain open;
+  the pending owner choice for percentage/milestone progress is not inferred here.
+
+
 ## Hours-only combined EAC entry and calculation — October 23, 2026
 
 - EAC versions may now be entered with expected hours and no invented cost amount. The

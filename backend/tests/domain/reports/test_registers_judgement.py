@@ -1300,3 +1300,100 @@ def test_combined_original_cost_approval_and_reporting(app, keyring, clock, file
     replay = run_now(world, UUID(rerun.json()["id"]))
     assert replay["state"] == "SUCCEEDED", replay
     assert replay["result"]["output_sha256_equal"] is True
+
+    # Public EAC validation and displayed progress must use the same explicit coverage.
+    for code, scope, named, targets, low, accepted, incurred in (
+        ("WHOLE-EAC", "COMBINATION", "L2-SERVICE", [], "250.00", "400.00", "300.00"),
+        ("MEMBER-EAC", "MEMBERS", "L2-SERVICE", [], "90.00", "150.00", "100.00"),
+        ("MEMBERS-EAC", "MEMBERS", None, ["L1-LEASE", "L2-SERVICE"], "250.00", "500.00", "300.00"),
+    ):
+        element = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/estimates",
+            world.maya,
+            {
+                "estimate_kind": "EAC",
+                "element_code": code,
+                "method": "COST_BUILDUP",
+                "obligation_key": named,
+                "allocation_target": "OBLIGATIONS" if targets else "CONTRACT",
+                "target_obligation_keys": targets,
+                "allocation_criteria_evidence": "Estimate for the named original components."
+                if targets
+                else None,
+            },
+        )
+        assert element.status_code == 201, element.text
+        path = f"/api/v1/estimates/{element.json()['id']}/versions"
+        body = {
+            "effective_date": "2026-09-30",
+            "expected_total_amount": low,
+            "parameters": {"eac_scope": scope},
+            "rationale": "Reassess original component cost coverage.",
+        }
+        refused = post(app, path, world.maya, body)
+        assert refused.status_code == 422, refused.text
+        assert refused.json()["type"].endswith("eac-below-costs-incurred"), refused.text
+        created = post(app, path, world.maya, {**body, "expected_total_amount": accepted})
+        assert created.status_code == 201, created.text
+        assert created.json()["costs_incurred_to_date"] == usd(incurred)
+        assert Decimal(created.json()["progress_ratio"]) == Decimal(incurred) / Decimal(accepted)
+
+    # Contract-wide costs belong to a full combination, but cannot be guessed onto one member.
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+    )
+    extra = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/events",
+        world.maya,
+        {
+            "events": [
+                {
+                    "event_type": "COST_INCURRED",
+                    "effective_date": "2026-09-11",
+                    "payload": {
+                        "purpose": "PROGRESS_INPUT",
+                        "amount": {"amount": "50.00", "currency": "USD"},
+                    },
+                }
+            ],
+            "evidence_file_ids": [evidence_file(app, world.maya)],
+        },
+        if_match=f'"s{head}"',
+    )
+    assert extra.status_code == 201, extra.text
+    approved = approve(app, extra.json()["approval_request_id"], world.priya)
+    assert approved.status_code == 200, approved.text
+    for scope, amount in [("COMBINATION", "325.00"), ("MEMBERS", "1000.00")]:
+        element = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/estimates",
+            world.maya,
+            {
+                "estimate_kind": "EAC",
+                "element_code": f"UNASSIGNED-{scope}",
+                "method": "COST_BUILDUP",
+                "obligation_key": "L2-SERVICE",
+                "allocation_target": "CONTRACT",
+                "target_obligation_keys": [],
+            },
+        )
+        assert element.status_code == 201, element.text
+        refused = post(
+            app,
+            f"/api/v1/estimates/{element.json()['id']}/versions",
+            world.maya,
+            {
+                "effective_date": "2026-09-30",
+                "expected_total_amount": amount,
+                "parameters": {"eac_scope": scope},
+                "rationale": "Verify coverage of contract-wide progress costs.",
+            },
+        )
+        assert refused.status_code == 422, refused.text
+        if scope == "COMBINATION":
+            assert refused.json()["type"].endswith("eac-below-costs-incurred"), refused.text
+            assert "350.00" in refused.json()["detail"]
+        else:
+            assert "unallocated progress costs" in refused.json()["detail"]

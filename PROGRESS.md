@@ -20,19 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Hours-only combined EAC entry and calculation — October 23, 2026
+## Scoped EAC incurred-cost validation and display — October 23, 2026
 
-- EAC versions may now be entered with expected hours and no invented cost amount. The
-  form requires at least one measure and the estimate list displays hours for hours-only EACs.
-- Combined EAC aggregates each measure only when every selected member supplies it. Labour
-  progress no longer fails merely because cost estimates or cost-material parameters are absent;
-  cost progress still refuses missing member cost totals. Missing member hours block recognition
-  through the existing EXPECTED_HOURS_MISSING finding, instead of using a partial denominator.
-- Full-engine valid hours-only calculation, missing-hours and missing-cost rejection, retained
-  trace replay and existing scope cases pass; form submission models, scoped types/lint pass.
-- This completes expected-hours input and denominator selection, not original-member actual-hour
-  aggregation. Owner choice for combined percentage/milestone progress remains pending.
-  Other documented development gaps remain open. No deployment.
+- The public EAC cost-floor check and displayed incurred-cost/progress figures now use the
+  version's explicit coverage. MEMBERS includes the named obligation/target union once;
+  COMBINATION resolves one complete original member set from a hash-verified current trace.
+  Missing or ambiguous combination identity requires recomputation/clarification.
+- Full-contract coverage includes unassigned contract-level progress costs. Partial-member
+  coverage refuses unassigned costs rather than silently ignoring or allocating them. Existing
+  versions without explicit coverage retain their prior filter. Date and void filters remain.
+- Populated event approval/report replay and EAC API checks passed: whole/member/member-union
+  costs are 300/100/300; another unassigned 50 raises the whole threshold to 350 and prevents
+  partial-member validation. The existing ordinary EAC cost-floor workflow also passes.
+  Scoped lint/types passed; the disposable database was stopped. No deployment.
+- Broader Reporting source gaps and combined progress/reassessment development remain open;
+  the pending owner choice for percentage/milestone progress is not inferred here.
 
 ## Rollforward Other explanation — October 23, 2026
 
