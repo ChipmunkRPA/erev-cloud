@@ -25,7 +25,7 @@ semantics to manufacture such ownership.
 The register already has native event TP/catch-up/components, analytical spot equivalents,
 source drill, and a limited original functional calculation path for an exclusively explained
 period. These remain distinct from the new causal analysis. Close variance already supports
-individual event replay; the modification register integration is still outstanding.
+individual event replay; the modification register integration is implemented below.
 
 Implement the selected mode using authorized retained computation inputs and fixed reference,
 currency and reporting-period bases. Replay events in effective-date/record-sequence/key order;
@@ -60,27 +60,33 @@ parameter/drill cases; scoped lint/types and catalogue checks. These are bounded
 not proof of every contract/currency combination. Original posted event ownership is no longer
 required for this owner-selected causal-analysis feature.
 
-### Mixed original sources in revenue attribution
+### Mixed original sources — aggregate presentation implemented
 
-`revenue_trace.split_role_target` still refuses nonzero split roles with multiple original
-provenances. Gross agent control can be reconciled to net revenue and supplier amounts, and
-explicit zero-weight roles can reverse previous attributed amounts, but these do not establish
-an individual owner/layer allocation for every nonzero component.
+The owner selected net revenue totals with complete original source membership, without
+inventing individual layer amounts. BBR revenue cells now retain verified transaction and
+functional ledger totals, source contract/layer/date/key identities, prior postings and evidence
+hashes. Scalar histories verify independently of source ownership, including mixed TIME/EVENT
+inputs. Source identities carry no net amount. Saved reruns preserve this evidence; older reports
+keep their prior drill. Missing original evidence is explicitly unavailable. Source details are
+withheld when they span entities outside the viewer's access scope. Migration 0336 records IPE.
 
-`split_mixed_sources` also requires finer evidence for a within-period TIME/EVENT mixture
-spanning different original sources. Separately classified periods and the supported
-single-origin path already work. Complete these through retained native source classification,
-with signed amounts and independent transaction/functional reconciliation; do not replace
-missing provenance with a ratio.
+Necessary verification: two populated multi-deposit agent workflows, including a combined
+contract, public BBR cells and identical retained cell reruns; 50 revenue-trace/BBR unit cases;
+eight catalogue cases; populated migration/catalogue parity and scoped lint/types pass.
 
-### Royalty correction after collectibility exit
+Gross-control aging continues to use actual gross sources. Per-layer net allocation and finer
+within-period TIME/EVENT ownership remain deliberately unavailable where native evidence does
+not determine them; the owner-selected aggregate presentation does not assert such ownership.
 
-A delivered royalty licence corrected downward while still outside contract status can have
-allocation 1,400 against frozen recognized revenue 1,600, failing S09-INV-03. The revenue rule
-for this case remains an owner decision: reverse previously recognized revenue during exit,
-or defer the correction's recognition effect until re-entry. The question has been raised;
-no choice is assumed. See ROYALTY-EXIT-CORRECTION.md for the concrete reproducer and neighbors.
-Other engineering is not blocked by this decision.
+### Royalty correction after collectibility exit — implemented
+
+The owner selected reductions of already recognized income, with no new income while excluded.
+Stage 09 now revisits previously recognized usage periods in original event order, allowing the
+1,600 to 1,400 correction while preserving the frozen licence satisfaction and minimum guarantee.
+Upward corrections, later satisfaction and newly reported usage periods cannot create income;
+an upward revision after a reduction does not re-recognize that reduction before re-entry.
+Trace nodes retain the actual statement/estimate inputs of the reduced target. Existing same-day
+re-entry behavior is retained. See ROYALTY-EXIT-CORRECTION.md for bounded verification.
 
 ## Implemented priorities, with bounded claims
 

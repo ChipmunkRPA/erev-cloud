@@ -17,7 +17,7 @@ from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize import encode_key
 from sqlalchemy.orm import Session
 
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import revenue_source_sets, tie_outs
 from erev_api.domain.reports.builders import (
     ReportParams,
     bbr_bookings,
@@ -354,6 +354,15 @@ def cell(
                 "Reporting equivalent; source retains its original currency. "
                 "Rounded per entity/period/measure; source pennies reconcile to that total.",
             ]
+        source_set = {}
+        if source.source_type == "subledger_line" and params.binding is not None:
+            retained = params.binding.evidence.get(revenue_source_sets.EVIDENCE)
+            if retained is not None:
+                held_sources = retained[str(source.source_id)]
+                source_set = {
+                    "_source_set_details": revenue_source_sets.details(held_sources),
+                    "_source_set_entity_ids": held_sources.get("source_entity_ids", []),
+                }
         items.append(
             {
                 "object_type": source.source_type,
@@ -362,6 +371,7 @@ def cell(
                 "value": tie_outs.money(amount, currency),
                 "href": href,
                 **({"details": details} if details else {}),
+                **source_set,
             }
         )
     return row[column_key], items

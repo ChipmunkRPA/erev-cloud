@@ -2569,6 +2569,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "combination_group_member",
             "contract_version",
             "subledger_line",
+            "contract_computation",
+            "computation_evidence",
+            "close_pass_evidence",
             "subledger_posting_seal",
             "journal_line",
             "journal_entry",
@@ -2583,6 +2586,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "fx_rate_set_version",
         ),
         joins=(
+            "Net revenue cells retain verified transaction/functional totals and complete "
+            "original source membership without assigning per-layer net amounts; retained "
+            "reruns preserve evidence and source details respect entity access",
             "modification applied_event_id binds its original application group and "
             "contract_version; predecessor supplies price delta",
             "subledger_line joins its posting seal; journal lines join entries, batches and "

@@ -2432,6 +2432,7 @@ def _export_requester(
     """Recheck before transitions, completed-job replay, building and output persistence."""
     if str(run["report_code"]) in {
         "book_bridge",
+        "bookings_billings_revenue",
         "rpo",
         "rpo_rollforward",
         "contract_balance_rollforward",
@@ -3186,6 +3187,20 @@ def explain_cell(
     for item in contributors:
         owner = owners[UUID(str(item["id"]))]
         if owner in reached:
+            item = dict(item)
+            source_details = item.pop("_source_set_details", [])
+            source_entities = {
+                UUID(identity) for identity in item.pop("_source_set_entity_ids", [])
+            }
+            if source_details:
+                item["details"] = [
+                    *item.get("details", []),
+                    *(
+                        source_details
+                        if source_entities <= reached
+                        else ["Original source set includes entities outside your access scope."]
+                    ),
+                ]
             named.append(item)
         else:
             amount = Decimal(str(item["value"]["amount"]))

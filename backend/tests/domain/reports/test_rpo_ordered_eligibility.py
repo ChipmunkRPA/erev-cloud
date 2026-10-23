@@ -229,9 +229,7 @@ def test_returns_and_delivery_follow_original_eligibility_order(after, exited, e
     assert result.lines["UNEXPLAINED"] == 0, result.lines
 
 
-@pytest.mark.parametrize("after", [False, True])
-@pytest.mark.parametrize("delivered_early", [False, True])
-def test_royalty_guarantee_correction_and_satisfaction_across_eligibility(after, delivered_early):
+def royalty_exit_bundle(after, delivered_early, *, reenter=True, correction=800, rebound=None):
     from support import cpc_worlds
 
     jan, exited = date(2026, 1, 1), date(2026, 2, 10)
@@ -272,15 +270,25 @@ def test_royalty_guarantee_correction_and_satisfaction_across_eligibility(after,
     events = statement(events, exited, date(2026, 2, 1), exited, 1000)
     if not after:
         events = worlds.not_probable(events, exited)
-    events = worlds.criteria_met(events, exited)
+    if reenter:
+        events = worlds.criteria_met(events, exited)
     if not delivered_early:
         events = worlds.delivered(events, date(2026, 3, 15), worlds.SERVICE)
-    events = statement(events, date(2026, 3, 20), date(2026, 2, 1), exited, 800)
+    events = statement(events, date(2026, 3, 20), date(2026, 2, 1), exited, correction)
+    if rebound is not None:
+        events = statement(events, date(2026, 3, 25), date(2026, 2, 1), exited, rebound)
     bundle = replace(
         bundle,
         events=tuple(events),
         known_at=max(bundle.known_at, *(event.recorded_at for event in events)),
     )
+    return bundle
+
+
+@pytest.mark.parametrize("after", [False, True])
+@pytest.mark.parametrize("delivered_early", [False, True])
+def test_royalty_guarantee_correction_and_satisfaction_across_eligibility(after, delivered_early):
+    bundle = royalty_exit_bundle(after, delivered_early)
     before, end = date(2026, 1, 31), date(2026, 3, 31)
     store, eid, vid, oid, book, cuts = report_store(bundle, before, end, performance=True)
     (result,) = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied={})
@@ -291,6 +299,32 @@ def test_royalty_guarantee_correction_and_satisfaction_across_eligibility(after,
     assert result.lines["REVENUE"] == ((200 if after else -200) if delivered_early else -1400)
     assert result.lines["CLOSING"] == 0
     assert result.lines["UNEXPLAINED"] == 0, result.lines
+
+
+@pytest.mark.parametrize(
+    "correction,rebound,expected", [(800, None, 1400), (1200, None, 1600), (800, 1200, 1400)]
+)
+@pytest.mark.parametrize("after,delivered", [(False, True), (True, True), (False, False)])
+def test_royalty_exit_allows_only_historical_reductions(
+    correction, rebound, expected, after, delivered
+):
+    from erev_engine.trace import reevaluate
+
+    bundle = royalty_exit_bundle(
+        after, delivered, reenter=False, correction=correction, rebound=rebound
+    )
+    book = compute(bundle).books[0]
+    nodes = {node.id: node for node in book.trace.nodes}
+    expected = expected if not after and delivered else 1200 if delivered else 0
+    subject = f"{worlds.CONTRACT}/{worlds.SERVICE}"
+    assert Decimal(nodes[f"revenue_cum:{subject}:FY2026-P03"].value) == expected
+    assert Decimal(nodes[f"revenue_cum:{subject}:FY2026-P04"].value) == expected
+    assert dict(reevaluate(book.trace)) == {node.id: node.value for node in book.trace.nodes}
+    store, eid, *_ = report_store(bundle, date(2026, 1, 31), date(2026, 3, 31), performance=True)
+    (result,) = rpo.rollforward_lines(
+        store, ranges={eid: (date(2026, 1, 31), date(2026, 3, 31))}, applied={}
+    )
+    assert result.lines["UNEXPLAINED"] == 0
 
 
 @pytest.mark.parametrize("delivered", [False, True])

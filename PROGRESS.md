@@ -95,8 +95,7 @@ review and publish changes without PR accumulation, and do not deploy.
   source split is inferred. Original source identities remain retained.
 - Necessary verification: focused reader/native-engine scenarios and public agent-report
   compatibility; see the source-class release note for results. No deployment.
-- Nonzero multi-origin split-role attribution and actual functional per-event modification
-  attribution remain open; the royalty post-exit correction decision remains pending.
+- Superseded by owner-selected aggregate source sets and sequential modification causal analysis.
 
 ## Royalty RPO exemption for pending performance — October 22, 2026
 
@@ -112,18 +111,17 @@ review and publish changes without PR accumulation, and do not deploy.
   12,000 guarantee produces a 3,000 exemption before satisfaction and no royalty remainder
   afterward. Scoped types/lint and frozen metadata parity pass. No deployment.
 - Missing dated royalty evidence requires recomputation; no inferred quota is substituted.
-  The separate post-exit downward-correction failure still awaits the owner's revenue-treatment
-  choice and remains unresolved. Actual functional per-event posted attribution also remains open.
+  Post-exit correction is implemented below; event reporting uses owner-selected causal analysis.
 
-## Confirmed royalty lifecycle gap — October 22, 2026
+## Owner-selected revenue completion — October 22, 2026
 
-- Reproduced a native calculation failure for a delivered licence whose royalty is corrected
-  downward after collectibility exit, with no re-entry. Allocation becomes 1,400 while frozen
-  revenue stays 1,600; S09-INV-03 rejects the -200 remainder. Three neighboring no-reentry
-  combinations compute and reconcile. This is a confirmed gap, not a completed feature.
-- Requested the owner's revenue-treatment choice; no choice inferred and no calculation
-  semantics changed. Exact conditions and the separate POL-199 awaiting-satisfaction gap are
-  recorded in [ROYALTY-EXIT-CORRECTION.md](docs/release/ROYALTY-EXIT-CORRECTION.md).
+- BBR income cells retain net totals and complete original source sets, with no invented layer
+  amounts; saved reruns and entity access controls preserve the evidence. Migration 0336.
+- Royalty historical corrections can reduce income during exit (1,600 → 1,400); new income
+  and upward rebounds remain blocked until re-entry. Native traces and RPO reconcile.
+- Two populated agent/report workflows, 39 royalty/RPO cases, 50 trace/BBR cases and eight
+  catalogue cases pass; scoped lint/types and populated metadata parity pass. No deployment.
+- See CURRENT-DEVELOPMENT-SCOPE and ROYALTY-EXIT-CORRECTION for scope and verification.
 
 ## GL detail uploads — October 22, 2026
 

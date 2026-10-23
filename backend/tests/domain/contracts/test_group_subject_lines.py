@@ -1462,10 +1462,17 @@ def test_intercompany_due_to_sources_support_progress_reversal(
 )
 def test_agent_supplier_sources_retain_original_paid_history(
     fx: FxWorld,  # noqa: F811
+    monkeypatch,
     net_fee: str,
     deposits: int,
     combined: bool,
 ) -> None:  # noqa: F811
+    from erev_api.jobs import registry
+
+    def fail_immediately(*args, error, **kwargs):
+        raise error
+
+    monkeypatch.setattr(registry, "fail_attempt", fail_immediately)
     from erev_api.db.tables import account_mapping_rule, judgement_record
     from erev_api.domain.reports.revenue_attribution import for_control, read, verify_component
     from sqlalchemy import insert
@@ -1610,6 +1617,8 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     read(uow, suppliers[-1]["id"], view=view)
                 later = verify_component(uow, suppliers[-1]["id"], view=view)
                 assert later.amount == suppliers[-1][amount]
+                assert len({item.layer_key for item in later.sources}) == 2
+                assert all(not hasattr(item, "amount") for item in later.sources)
             else:
                 later = read(uow, suppliers[-1]["id"], view=view)
                 assert later.delta.amount == suppliers[-1][amount]
@@ -1637,6 +1646,53 @@ def test_agent_supplier_sources_retain_original_paid_history(
         entity_id=fx.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK)),
         contracts={},
     )
+    if deposits == 2:
+        from sqlalchemy import func
+
+        original_time, original_reporting = fx.place.clock.now(), reporting
+        fx.place.clock.set(fx.place.scalar(select(func.clock_timestamp())))
+        reporting = worlds.resigned(reporting)
+        run, data = worlds.report_run(
+            reporting,
+            "bookings_billings_revenue",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": "transaction" if combined else "functional",
+                "from_period_key": AUGUST,
+                "to_period_key": AUGUST,
+            },
+        )
+        assert data, run
+        explained = get(
+            fx.app,
+            f"/api/v1/explain/report-runs/{run['id']}/cell",
+            reporting.maya,
+            {"row_key": data[0]["row_key"], "column_key": "revenue"},
+        )
+        assert explained.status_code == 200, explained.text
+        source_details = [
+            detail
+            for item in explained.json()["contributors"]["items"]
+            for detail in item.get("details", [])
+        ]
+        assert any("no per-layer net amounts" in detail for detail in source_details), (
+            source_details
+        )
+        assert sum(detail.startswith("Source ") for detail in source_details) >= 2
+        restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", reporting.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        repeated = get(
+            fx.app,
+            f"/api/v1/explain/report-runs/{restarted.headers['x-erev-report-run-id']}/cell",
+            reporting.maya,
+            {"row_key": data[0]["row_key"], "column_key": "revenue"},
+        )
+        assert repeated.status_code == 200 and repeated.json() == explained.json(), repeated.text
+        fx.place.clock.set(original_time)
+        reporting = original_reporting
     for code in ("contract_balance_rollforward", "revenue_from_opening_liability"):
         for view in ("transaction", "functional", "reporting"):
             run, data = worlds.report_run(

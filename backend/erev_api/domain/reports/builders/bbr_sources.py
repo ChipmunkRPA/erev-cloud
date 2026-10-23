@@ -18,7 +18,8 @@ from erev_engine.canonical import canonical_bytes
 from sqlalchemy import func, select
 
 from erev_api.db.tables import contract_event, modification, subledger_line, subledger_posting_seal
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import revenue_source_sets, tie_outs
+from erev_api.domain.reports.book_bridge_replay import reader
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import (
     BillingSourceEvent,
@@ -165,6 +166,19 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
                     }
                 )
             )
+        )
+        source_sets = {}
+        for row in result["revenue"]:
+            try:
+                source_sets[row["id"]] = revenue_source_sets.capture(
+                    reader(uow, params), UUID(row["id"])
+                )
+            except ValueError as error:
+                source_sets[row["id"]] = {"basis": "unavailable", "reason": str(error)}
+        tie_outs.record_evidence(
+            params,
+            revenue_source_sets.EVIDENCE,
+            json.loads(canonical_bytes(source_sets)),
         )
         tie_outs.record_evidence(params, EVIDENCE, result)
     validate(result, params, cutoff=cutoff, period_ids=wanted_periods)

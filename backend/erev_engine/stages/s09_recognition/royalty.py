@@ -26,7 +26,7 @@ Standard library only (DG-ARC-02).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from fractions import Fraction
 from types import MappingProxyType
@@ -179,6 +179,68 @@ def target(
         formula_id=formula_id,
         params=MappingProxyType(dict(sorted(params.items()))),
     )
+
+
+def corrections_during_exit(
+    ctx: BookContext,
+    st: AllocatedState,
+    ob: ObligationState,
+    frozen: RoyaltyPart,
+    boundary: Position,
+    d: date,
+    *,
+    position: Position | None,
+    mu: int,
+) -> RoyaltyPart:
+    """Allow only reductions of previously recognized royalties until re-entry.
+
+    Revisit the original usage periods in event order. New usage periods and later
+    satisfaction cannot create revenue. Retain the lowest historical target so an
+    upward revision after a reduction cannot recognize income during exclusion.
+    The chosen original statements/estimates remain the calculation node's inputs.
+    """
+    if not frozen.recognised:
+        return frozen
+    keys = {event.order_key for event in st.measure_events}
+    keys.update(pin.event_order_key for pins in st.estimates.pins.values() for pin in pins)
+    best = frozen
+    for key in sorted(keys):
+        if key <= boundary.order_key or key[0] > d:
+            continue
+        if position is not None and not position.admits(key):
+            continue
+        candidate = target(
+            ctx,
+            st,
+            ob,
+            key[0],
+            satisfied=frozen.satisfied,
+            position=Position(key, inclusive=True),
+            mu=mu,
+        )
+        statements = {(item.start, item.end): item for item in candidate.realisation.statements}
+        accruals = {(item.start, item.end): item for item in candidate.realisation.accruals}
+        selected_statements = []
+        selected_accruals = []
+        for original in frozen.realisation.statements:
+            selected_statements.append(statements.get((original.start, original.end), original))
+        for original_accrual in frozen.realisation.accruals:
+            window = (original_accrual.start, original_accrual.end)
+            if window in statements:
+                selected_statements.append(statements[window])
+            else:
+                selected_accruals.append(accruals.get(window, original_accrual))
+        found = royalties.Realisation(tuple(selected_statements), tuple(selected_accruals))
+        amount = max(0, _minor(found.total, mu, ob, "a corrected royalty") - frozen.guarantee)
+        if amount < best.recognised:
+            best = replace(
+                frozen,
+                realised=amount,
+                recognised=amount,
+                realisation=found,
+                params=MappingProxyType({**frozen.params, "as_of": key[0].isoformat()}),
+            )
+    return best
 
 
 def rational_param_minor(amount: int, mu: int) -> str:

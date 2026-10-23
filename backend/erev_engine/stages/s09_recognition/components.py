@@ -700,6 +700,7 @@ class Evaluator:
 
     def _evaluate_segments(self, d: date, position: Position | None) -> Evaluation:
         ctx, st, contract, ob = self.ctx, self.st, self.contract, self.ob
+        requested_position = position
         guard, as_of, frozen_position = status_boundary(ctx, contract, d, position)
         if frozen_position is not None:
             position = frozen_position
@@ -743,6 +744,17 @@ class Evaluator:
             satisfied = fixed is not None and fixed.progress.value > 0
             royalties = royalty.target(
                 ctx, st, ob, as_of, satisfied=satisfied, position=position, mu=self.mu
+            )
+        if royalties is not None and frozen_position is not None:
+            royalties = royalty.corrections_during_exit(
+                ctx,
+                st,
+                ob,
+                royalties,
+                frozen_position,
+                d,
+                position=requested_position,
+                mu=self.mu,
             )
         realised_minor = sum(item.amount for item in realised)
         recognised = 0 if royalties is None else royalties.recognised

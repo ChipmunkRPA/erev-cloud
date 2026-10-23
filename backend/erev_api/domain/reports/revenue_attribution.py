@@ -34,6 +34,18 @@ class Attribution:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceIdentity:
+    """Original source membership, deliberately without a per-source net amount."""
+
+    movement_id: UUID
+    contract_id: UUID
+    layer_key: str
+    movement_kind: str
+    effective_date: date
+    source_key: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class AmountProof:
     """Verified component amount and paid history, without assigning source ownership."""
 
@@ -41,6 +53,7 @@ class AmountProof:
     paid_line_ids: tuple[UUID, ...]
     evidence: tuple[tuple[UUID, str], ...]
     view: str
+    sources: tuple[SourceIdentity, ...] = ()
 
 
 def read(
@@ -262,6 +275,7 @@ def _read(
         parts: list[revenue_trace.RevenueMovement] = []
         identities: set[UUID] = set()
         transaction = Fraction(0)
+        sourced_amount = Fraction(0)
         sourced_time_txn = Fraction(0)
         sourced_time_functional = Fraction(0)
         for index, (child, sign, is_time) in enumerate(
@@ -291,6 +305,15 @@ def _read(
                     raise ValueError("Functional revenue target has missing original sources.")
                 continue
             original_sources = revenue_trace.project(trace, functional, raw, currency=currency)
+            sourced_amount += int(sign) * sum(
+                (
+                    part.amount
+                    if view == "functional"
+                    else part.coefficient * Fraction(raw_by_id[part.movement_id]["amount_txn"])
+                    for part in original_sources
+                ),
+                Fraction(0),
+            )
             if is_time is None:
                 time_in_txn, time_in_functional = revenue_trace.input_time(
                     node.params, len(node.inputs), index
@@ -309,6 +332,10 @@ def _read(
                 )
                 if total_txn != int(sign) * Fraction(nodes[child].value):
                     raise ValueError("Mixed input transaction sources do not reconcile.")
+                if _amounts_only:
+                    # Native TIME totals are verified separately from source membership.
+                    # No source receives an invented TIME/EVENT or net allocation.
+                    continue
                 parts.extend(
                     revenue_trace.split_mixed_sources(
                         original_sources,
@@ -350,7 +377,7 @@ def _read(
                 )
         if transaction != txn:
             raise ValueError("Revenue target transaction sources do not reconcile.")
-        if _amounts_only and sum((item.amount for item in parts), Fraction(0)) != amount:
+        if _amounts_only and sourced_amount != amount:
             raise ValueError("Revenue component sources differ from its original target amount.")
         if sourced_time_txn != time_txn or sourced_time_functional != time_functional:
             raise ValueError("Revenue TIME sources do not reconcile in both currencies.")
@@ -377,6 +404,17 @@ def _read(
         previous=None if before is None else str(delta.inputs[1]).rsplit(":", 1)[-1],
         basis=basis,
     )
+    source_identities = {
+        identity: SourceIdentity(
+            identity,
+            raw_by_id[identity]["contract_id"],
+            raw_by_id[identity]["layer_key"],
+            raw_by_id[identity]["movement_kind"],
+            raw_by_id[identity]["effective_date"],
+            raw_by_id[identity].get("source_key"),
+        )
+        for identity in {*current.source_ids, *(before.source_ids if before else ())}
+    }
     paid: list[revenue_trace.RevenueMovement] = []
     paid_txn = Fraction(0)
     paid_functional = Fraction(0)
@@ -426,6 +464,8 @@ def _read(
         )
         if isinstance(found, Attribution):
             paid.extend(found.delta.movements)
+        else:
+            source_identities.update((item.movement_id, item) for item in found.sources)
         paid_ids.update((identity, *found.paid_line_ids))
         evidence.update(found.evidence)
         for owner, layer, created in found.layer_dates if isinstance(found, Attribution) else ():
@@ -457,7 +497,11 @@ def _read(
                 "Revenue component delta differs from original targets and paid history."
             )
         proof = AmountProof(
-            verified, tuple(sorted(paid_ids, key=str)), tuple(sorted(evidence, key=str)), view
+            verified,
+            tuple(sorted(paid_ids, key=str)),
+            tuple(sorted(evidence, key=str)),
+            view,
+            tuple(source_identities[key] for key in sorted(source_identities, key=str)),
         )
         amount_cache[line_id] = proof
         return proof
