@@ -69,3 +69,12 @@
 - Populated mixed-calendar totals and saved reruns, existing journal tie-out and currency
   workflows, two interval-layout cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
 - Earlier GL checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+
+## Cross-calendar waterfall selections — October 23, 2026
+
+- Explicit fiscal-key ranges now reach the existing date-aligned waterfall implementation.
+  Each entity's local intervals and contributor sources stay distinct; month/quarter/year
+  totals and retained reruns match separate entity reports. Other report guards remain.
+- Three populated API/cell/rerun workflows and the remaining guard check pass; existing
+  date-bucket unit cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
+- Earlier late-event checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.

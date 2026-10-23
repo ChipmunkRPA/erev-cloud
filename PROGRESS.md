@@ -46,14 +46,15 @@ review and publish changes without PR accumulation, and do not deploy.
   targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Cross-calendar waterfall selections — October 23, 2026
+## Publication checks and backlog audit — October 23, 2026
 
-- Explicit fiscal-key ranges now reach the existing date-aligned waterfall implementation.
-  Each entity's local intervals and contributor sources stay distinct; month/quarter/year
-  totals and retained reruns match separate entity reports. Other report guards remain.
-- Three populated API/cell/rerun workflows and the remaining guard check pass; existing
-  date-bucket unit cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
-- Earlier late-event checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+- On 47db35bf: secrets scan 4,183 files / nine allow-lists / zero findings; runtime licence
+  check 142 packages / eight allow-lists / zero findings. Research directories remain untracked;
+  PolyForm Noncommercial remains intact. No deployment.
+- Confirmed existing unassigned-approval alerts and warning UI; historical C-6 is superseded by
+  the October 7 B1-15 completion. Per-contract stale-rate race B2-2/C-7 still needs a dedicated
+  audit; close-run input freshness alone is not proof. See CURRENT-DEVELOPMENT-SCOPE.
+- Earlier waterfall checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
 ## VC / royalty close assessment controls — October 23, 2026
 

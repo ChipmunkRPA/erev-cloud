@@ -227,6 +227,30 @@ through the API. Existing engine limits remain: VC follows the enforced reassess
 royalty coverage requires a satisfied licence, accrual policy, prior covered usage and a
 whole-month cadence. This does not invent an initial reporting cadence where none is recorded.
 
+## October 23 publication and historical-backlog audit
+
+Read against main `47db35bfc3db6de9ad624823dbca085823b31e51`:
+
+- Approval availability is implemented, not a new development task. `_notify_assigned` sends
+  APPROVAL_UNASSIGNED alerts to independently scoped access administrators; pending-request UI
+  hides the warning when content is withheld. LIMITS already records B1-15 closed in its dated
+  October 7 entry; its later historical C-6 table must not be treated as a new missing feature.
+  This was code/evidence inspection, not a fresh approval-workflow test run.
+- Close-run input freshness compares retained rate/policy signatures with the current standing
+  inputs. This is distinct from historical B2-2/C-7's per-contract pinned-rate race. The latter
+  still needs a dedicated current-state audit of the computation/approval/lock ordering; the
+  existence of `run_inputs.standing` alone is not completion evidence for it.
+- Secret-pattern scan: 4,183 tracked/nonignored files, nine allow-listed matches, zero findings
+  and zero unused exceptions. It does not inspect ignored local credentials or all Git history.
+- Runtime dependency licences: 142 packages (86 Python, 56 npm), eight allow-listed packages,
+  zero findings and zero allow-list errors. This is a licence check, not a vulnerability audit.
+- `git ls-files research-harness docs/research` returns no paths. LICENSE remains PolyForm
+  Noncommercial 1.0.0; the repository is source-available under a noncommercial restriction,
+  not an OSI open-source licence. No deployment or external accounting approval was attempted.
+
+The rest of the release-candidate verification below remains outstanding; these two refreshed
+checks do not certify the whole repository or replace feature-specific evidence.
+
 ## Repository completion evidence still required
 
 After feature completion, refresh the bounded release-candidate checks recorded in PROGRESS.md
