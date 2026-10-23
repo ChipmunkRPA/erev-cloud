@@ -37,7 +37,9 @@ Implemented for complete retained principal/same-entity sources:
 Remaining implementation/evidence:
 - Negative redistribution caused by cumulative largest-remainder rounding: a presentation/source
   choice is pending; do not assign negative changes to positive invoice FX weights.
-- Agent/cross-entity attribution and acquired/baseline openings with complete original sources.
+- Positive-opening agent/cross-entity attribution and acquired/baseline openings with complete
+  original sources. Zero-opening functional/reporting contracting-entity rows are admitted as
+  described in the latest checkpoint, with no assertion about historical ownership.
 - Native frozen per-obligation opening history; combined/locked foreign special histories require
   the missing connected evidence. A smaller frozen group cap alone does not prove POB ownership.
 - Credit populations where only a subset of a source document belongs to the admitted position,
@@ -1292,3 +1294,23 @@ verification limitation. A 25-to-26-cent largest-remainder redistribution exampl
 negative increments do not receive invented FX sources. The focused suite passes 32 cases and
 scoped type/lint checks pass. Partial credit memos, source-based negative redistribution and the
 remaining agent/cross-entity/acquired/frozen-history paths remain unfinished. No deployment.
+
+## October 23 zero-opening functional/reporting special contracts
+
+The POB reader previously refused an agent or cross-entity performer before checking its
+already-reconciled zero group opening. That unnecessarily prevented a report from showing actual
+period revenue even though opening consumption is conclusively zero. The functional path now
+applies its existing ZERO_GROUP_OPENING basis before requiring principal-only opening sources
+or loading an opening trace. It still validates current/original obligation membership and every
+posted revenue line identity, retaining signed net revenue and all line IDs. The reporting path
+uses this same functional result before translation. Existing supported zero-opening evidence
+keeps the same shape; transaction behavior is unchanged.
+
+This supports contracting-entity rows with a retained obligation population. It does not invent
+performing-entity ownership, bypass original lock-source authentication, or admit positive-opening
+agent/cross-entity attribution. Those remain separate requirements. Necessary verification: agent
+and cross-entity-performer cases retain 50 less 10 of posted income, return zero opening relief
+without reading a historical trace, reject unknown subjects, and continue to reject positive
+openings. Eleven focused POB/frozen/range-translation cases pass, with scoped types/lint. No
+posting changes, database migration or deployment. Combined-component quantity/removal/term
+reassessment remains unfinished; this change does not alter reviewed combination decisions.

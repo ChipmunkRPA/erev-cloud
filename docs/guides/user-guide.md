@@ -1094,3 +1094,8 @@ A credit memo for part of an invoice uses the original credited-invoice allocati
 functional amount. Both invoice and credit remain in the source set, including when they fully
 cancel in transaction currency but leave a functional FX residual. This ordinary partial credit
 is supported; a missing subset of an admitted source population is a separate limitation.
+
+For functional/reporting views, a reconciled zero group opening gives zero opening consumption
+while retaining actual posted income and its line identities, including contracting-entity rows
+with agent obligations or another performing entity. Positive-opening special attribution still
+requires the original sources described above; zero does not imply historical member ownership.

@@ -264,12 +264,11 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Partial-credit audit — October 23, 2026
+## Zero-opening special-contract disclosure — October 23, 2026
 
-- Ordinary partial-amount credits already retain credited-invoice weights, original functional
-  amounts and all source identities. Two connected full/partial-credit cases and public readers
-  verify signed amounts, FX residuals, complete trace replay and unchanged posting targets.
-- Removed the blanket partial-credit gap from current status; consolidated POB implementation
-  and gaps in CURRENT-DEVELOPMENT-SCOPE.md.
-- Negative redistribution pending; shared-line checkpoint archived.
-- No accounting-rule change or deployment.
+- Functional/reporting POB calculations now admit zero-opening contracting-entity rows for
+  agents and cross-entity performers, retaining signed posted revenue and line identities.
+  A verified zero group cap requires no invented historical attribution or opening trace.
+- Positive openings retain special-source restrictions; unknown posting subjects still refuse.
+  Eleven focused cases and scoped types/lint pass. Other contract/reassessment gaps remain.
+- Partial-credit checkpoint archived. No deployment.

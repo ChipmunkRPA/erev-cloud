@@ -426,3 +426,13 @@
 - True single-document multi-line, differing-rate, partial-opening and refusal cases pass with
   relevant regressions (32 cases), scoped types/lint. No posting or balance logic changed.
 - Direct-line checkpoint archived. No deployment.
+
+## Partial-credit audit — October 23, 2026
+
+- Ordinary partial-amount credits already retain credited-invoice weights, original functional
+  amounts and all source identities. Two connected full/partial-credit cases and public readers
+  verify signed amounts, FX residuals, complete trace replay and unchanged posting targets.
+- Removed the blanket partial-credit gap from current status; consolidated POB implementation
+  and gaps in CURRENT-DEVELOPMENT-SCOPE.md.
+- Negative redistribution pending; shared-line checkpoint archived.
+- No accounting-rule change or deployment.

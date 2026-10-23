@@ -135,3 +135,52 @@ def test_combination_cap_is_applied_once_after_member_eligibility(monkeypatch):
         "1000"
     )
     assert pob.group_total([candidate, candidate], opening=D("2000"), consumed=D("900")) == D("900")
+
+
+@pytest.mark.parametrize("role,performer", [("AGENT", UUID(int=1)), ("PRINCIPAL", UUID(int=9))])
+def test_zero_functional_opening_keeps_special_contract_revenue_without_invented_sources(
+    monkeypatch, role, performer
+):
+    session, row, _ = fixture(monkeypatch)
+    obligations = [
+        {"obligation_key": "S", "performing_entity_id": performer, "principal_agent": role}
+    ]
+    session.execute = lambda *a: NS(mappings=lambda: NS(all=lambda: obligations))
+    monkeypatch.setattr(
+        pob.store, "load_trace", lambda *a: pytest.fail("Zero cap needs no opening trace")
+    )
+    amount, facts = pob.calculate(
+        session,
+        row,
+        NS(key="P03"),
+        [entry(1, "S", "50"), entry(2, "S", "-10")],
+        D(0),
+        D(40),
+        functional_currency="USD",
+    )
+    assert amount == 0
+    assert facts["basis"] == "ZERO_GROUP_OPENING"
+    assert facts["obligations"] == {"C/S": {"posted_revenue": "40"}}
+    assert len(facts["posted_lines"]) == 2
+    # Positive openings still need the unresolved special attribution; this is no FIFO fallback.
+    with pytest.raises(Problem):
+        pob.calculate(
+            session,
+            row,
+            NS(key="P03"),
+            [entry(1, "S", "40")],
+            D(1),
+            D(40),
+            functional_currency="USD",
+        )
+    # A zero cap does not bypass posted-source membership validation.
+    with pytest.raises(Problem):
+        pob.calculate(
+            session,
+            row,
+            NS(key="P03"),
+            [entry(1, "UNKNOWN", "40")],
+            D(0),
+            D(40),
+            functional_currency="USD",
+        )

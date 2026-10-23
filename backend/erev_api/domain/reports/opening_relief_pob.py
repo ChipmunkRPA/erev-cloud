@@ -35,6 +35,7 @@ def calculate(
     Locked openings must supply the authenticated lock-time source row, or proven absence.
     A range is evaluated once, never as a sum of monthly opening-consumption disclosures.
     """
+    zero_functional_opening = functional_currency is not None and opening <= 0
     obligations = (
         session.execute(
             select(obligation_version).where(
@@ -46,9 +47,13 @@ def calculate(
         .mappings()
         .all()
     )
-    if not obligations or any(
-        item["performing_entity_id"] != row.entity_id or str(item["principal_agent"]) != "PRINCIPAL"
-        for item in obligations
+    if not obligations or (
+        not zero_functional_opening
+        and any(
+            item["performing_entity_id"] != row.entity_id
+            or str(item["principal_agent"]) != "PRINCIPAL"
+            for item in obligations
+        )
     ):
         raise tie_outs.invalid(
             "currency_view",
@@ -74,10 +79,13 @@ def calculate(
             .mappings()
             .all()
         )
-        if not prior_obligations or any(
-            item["performing_entity_id"] != row.entity_id
-            or str(item["principal_agent"]) != "PRINCIPAL"
-            for item in prior_obligations
+        if not prior_obligations or (
+            not zero_functional_opening
+            and any(
+                item["performing_entity_id"] != row.entity_id
+                or str(item["principal_agent"]) != "PRINCIPAL"
+                for item in prior_obligations
+            )
         ):
             raise tie_outs.invalid(
                 "currency_view", "The original opening obligations need special attribution."
@@ -86,10 +94,6 @@ def calculate(
             obligation_subject_key(row.external_id, item["obligation_key"])
             for item in prior_obligations
         }
-    trace = store.load_trace(session, source.version_id)
-    if trace is None:
-        raise tie_outs.invalid("currency_view", "Per-obligation opening relief requires a trace.")
-    nodes = {node.id: node for node in trace.nodes}
     recognized: dict[str, Decimal] = defaultdict(Decimal)
     posted: list[str] = []
     for entry in entries:
@@ -101,7 +105,7 @@ def calculate(
             )
         recognized[entry.subject_key] += entry.flow.amount
         posted.append(str(entry.line_id))
-    if functional_currency is not None and opening <= 0:
+    if zero_functional_opening:
         return ZERO, {
             "version": str(row.version_id),
             "opening_period": None if previous is None else previous.key,
@@ -115,6 +119,10 @@ def calculate(
             "relief": "0",
             "basis": "ZERO_GROUP_OPENING",
         }
+    trace = store.load_trace(session, source.version_id)
+    if trace is None:
+        raise tie_outs.invalid("currency_view", "Per-obligation opening relief requires a trace.")
+    nodes = {node.id: node for node in trace.nodes}
     facts: dict[str, Any] = {}
     formula = ZERO
     for subject in sorted(subjects | opening_subjects):
