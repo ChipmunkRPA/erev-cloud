@@ -1126,9 +1126,10 @@ def test_opening_pob_uses_locked_source_versions(app, keyring, clock, app_settin
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("locked", [False, True])
 @pytest.mark.parametrize("view", ["functional", "reporting"])
 def test_functional_pob_report_uses_original_invoice_fx(
-    app, keyring, clock, app_settings, monkeypatch, view
+    app, keyring, clock, app_settings, monkeypatch, view, locked
 ):
     from datetime import date
     from types import SimpleNamespace
@@ -1143,7 +1144,11 @@ def test_functional_pob_report_uses_original_invoice_fx(
     from support.factories import appended, computed
 
     world = close_run_worlds.eur_receivable(
-        app, keyring, clock, LocalFileStore(app_settings.file_root), quantity="200",
+        app,
+        keyring,
+        clock,
+        LocalFileStore(app_settings.file_root),
+        quantity="200",
         reporting_currency="EUR" if view == "reporting" else "USD",
     )
     held = world.contracts[close_run_worlds.EUR_CONTRACT]
@@ -1170,6 +1175,40 @@ def test_functional_pob_report_uses_original_invoice_fx(
         ],
     )
     computed(world.place, UUID(str(held.combination_group["id"])))
+    if locked:
+        from datetime import timedelta
+        from support import close_runs
+        from support.close_world import periods_closed_before
+        from support.reference import approve
+
+        world = worlds.on_record_clock(world, clock)
+        state = worlds.period_state(world, AVM_US, "FY2026-P08")
+        periods_closed_before(
+            world.place,
+            app,
+            world.maya,
+            entity_id=UUID(str(state["entity"]["id"])),
+            before="FY2026-P08",
+            entity_code=AVM_US,
+        )
+        state = worlds.period_state(world, AVM_US, "FY2026-P08")
+        started = post(
+            app,
+            f"/api/v1/periods/{state['id']}/start-close",
+            world.maya,
+            {"comment": "Freeze original POB sources"},
+            if_match=f'"r{state["row_version"]}"',
+        )
+        assert started.status_code == 200, started.text
+        closed = close_runs.closed(world, monkeypatch, entity_code=AVM_US, period_key="FY2026-P08")
+        assert closed["status"] == "SUCCEEDED", closed
+        world = close_run_worlds.journal_and_reconciliations(world, clock, closed)
+        requested = close_run_worlds.request_lock(world)
+        assert requested.status_code == 200, requested.text
+        clock.advance(timedelta(minutes=1))
+        world = worlds.verified(world, clock, "marcus")
+        approved = approve(app, requested.json()["approval_request_id"], world.marcus)
+        assert approved.status_code == 200, approved.text
     worlds.approved_manual_events(
         world.place,
         world.priya,
@@ -1198,6 +1237,18 @@ def test_functional_pob_report_uses_original_invoice_fx(
         select(saved_run.c.source_binding).where(saved_run.c.id == UUID(run["id"]))
     )
     assert binding["evidence"][f"opening_relief_{view}_pob_v1"]
+    if locked:
+        for group in binding["evidence"][f"opening_relief_{view}_pob_v1"].values():
+            for member in group["members"].values():
+                frozen = member["frozen_opening"]
+                assert frozen["version"] != member["version"]
+                original = world.place.scalar(
+                    select(saved_run.c.source_binding).where(
+                        saved_run.c.id == UUID(frozen["source_run_id"])
+                    )
+                )
+                assert frozen["version"] in original["versions"]["ASC606"]
+                assert any(detail["opening_nodes"] for detail in member["obligations"].values())
     monkeypatch.setattr(
         policy,
         "resolve",

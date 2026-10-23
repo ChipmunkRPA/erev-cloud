@@ -20,17 +20,18 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Cost-progress original-source drill — October 23, 2026
+## Locked foreign POB opening — October 23, 2026
 
-- Cost recovery/cost-to-cost progress nodes now link original admitted cost events and the
-  selected EAC version. Period, event-endpoint and scheduled progress retain those references.
-- Version-2 formulas verify source amounts against costs/EAC before the unchanged calculation;
-  source roles retain waste/uninstalled distinctions. Version 1 remains available for old traces.
-- Evidence revision 3 refreshes existing computation evidence once without duplicate postings.
-- 35 focused native cases, three evidence-codec checks and two populated database workflows pass:
-  original member costs approve into revenue of 300, saved reporting reruns match, and evidence
-  refresh creates no extra posting lines. Scoped lint/types pass. No deployment.
-- Separate-member EAC scope and the other documented feature gaps remain unfinished.
+- Connected the existing functional/reporting POB scenario to the actual August close run,
+  journal acknowledgement, reviewed reconciliation gate and approved period lock, followed
+  by September performance. Both populated cases pass and saved reruns reproduce all rows.
+- USD opening/relief are 11,000. Reporting EUR opening is 9,954.75 and relief is 9,909.91,
+  preserving the different retained closing/average rates. The original opening version
+  differs from the current version and belongs to the authenticated lock-time child report.
+- This verifies existing public report behavior for a single principal, same-entity foreign
+  contract with positive opening liability; no production calculation change was needed.
+  Combined foreign lock histories and native frozen per-POB inputs remain separate gaps.
+  No deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

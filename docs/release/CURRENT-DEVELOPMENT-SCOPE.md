@@ -45,6 +45,19 @@ not decide whether a host EAC represents its component or the entire combination
   refresh creates no extra posting lines. Scoped lint/types pass. No deployment.
 - Separate-member EAC scope and the other documented feature gaps remain unfinished.
 
+## Locked foreign POB opening — October 23, 2026
+
+- Connected the existing functional/reporting POB scenario to the actual August close run,
+  journal acknowledgement, reviewed reconciliation gate and approved period lock, followed
+  by September performance. Both populated cases pass and saved reruns reproduce all rows.
+- USD opening/relief are 11,000. Reporting EUR opening is 9,954.75 and relief is 9,909.91,
+  preserving the different retained closing/average rates. The original opening version
+  differs from the current version and belongs to the authenticated lock-time child report.
+- This verifies existing public report behavior for a single principal, same-entity foreign
+  contract with positive opening liability; no production calculation change was needed.
+  Combined foreign lock histories and native frozen per-POB inputs remain separate gaps.
+  No deployment.
+
 ## Reporting implementation status
 
 ### Aligned range reports across separate calendars — implemented October 23
@@ -109,8 +122,8 @@ Remaining implementation/evidence:
 - Positive-opening agent/cross-entity attribution and acquired/baseline openings with complete
   original sources. Zero-opening functional/reporting contracting-entity rows are admitted as
   described in the latest checkpoint, with no assertion about historical ownership.
-- Native frozen per-obligation opening history; combined/locked foreign special histories require
-  the missing connected evidence. A smaller frozen group cap alone does not prove POB ownership.
+- Native frozen per-obligation opening history and combined foreign lock histories still require
+  connected implementation/evidence. Single-contract public foreign locked openings are verified above. A smaller frozen group cap alone does not prove POB ownership.
 - Credit populations where only a subset of a source document belongs to the admitted position,
   if such a retained lifecycle population is encountered. This is **not** a normal partial-amount
   credit memo, which already uses credited-invoice weights and has been verified.
