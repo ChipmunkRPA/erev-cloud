@@ -13,6 +13,15 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Combined original-component cost recognition — October 23, 2026
+
+- COST_RECOVERY and COST_TO_COST now consume original combined-component costs once per
+  event, including events naming several members. Waste treatment remains method-specific.
+- Eight full-engine cases and 27 existing input-progress cases pass; original event sources,
+  trace replay, scoped lint and types verified. Uses the existing single combined EAC.
+- Separate component EAC consolidation, cumulative hours/percentage measures and
+  quantity/removal/term reassessment remain open. No deployment.
+
 ## Reporting implementation status
 
 ### Aligned range reports across separate calendars — implemented October 23

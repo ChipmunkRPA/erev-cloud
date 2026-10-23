@@ -168,6 +168,15 @@ def names(st: AllocatedState, ev: EventView, ob: ObligationState) -> bool:
     """The event names the obligation, or names none on a sole-obligation contract (S01-R-16)."""
     if concerns(ev, ob):
         return True
+    # Costs are additive original facts. A combined obligation consumes each event once,
+    # even when it names several members. Cumulative hours/ratios are not additive facts.
+    if ev.event_type == _COST_EVENT and ev.contract_key == ob.contract_key:
+        keys = ob.combined_component_keys
+        if ev.payload.get("obligation_key") in keys or any(
+            obligation_subject_key(ob.contract_key, key) in ev.obligation_subject_keys
+            for key in keys
+        ):
+            return True
     return (
         ev.contract_key == ob.contract_key
         and ev.payload.get("obligation_key") is None

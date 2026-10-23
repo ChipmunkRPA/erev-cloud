@@ -462,3 +462,22 @@
 - Populated combined totals equal separate runs and retained reruns match; mixed-date refusal
   and the existing calendar-guard workflow pass, with scoped types/lint. No deployment.
 - POB evidence-refresh checkpoint archived.
+
+## Combined-component rated usage — October 23, 2026
+
+- USAGE price/recognition now includes original component events once, preserving their ids.
+  Nonlease-predominant fees enter revenue; lease-predominant fees enter the excluded allocation.
+- Fixed lease-scope trace collision and total allocation: 10,000 + 300 routes out as 10,300
+  with zero revenue/RPO. Three full-engine cases plus 26 existing cases, lint/types pass.
+- Other payment modes, public persistence/report evidence, modifications and in-scope visibility
+  remain open; this does not complete all variable payments. No deployment.
+
+
+## Lessor assessment workbench — October 23, 2026
+
+- Contract Step 2 now provides explicit component/asset/eligibility/predominance entry and
+  independent review submission, plus retained answers and rationale for readers.
+- Failed submission reuses the created record; answers freeze through uncertain retries.
+  Original component keys remain selectable from retained assessments after combination.
+- Two interaction cases, TypeScript and scoped ESLint pass. Modification/variable-payment
+  integration and in-scope combined visibility remain open. No deployment.
