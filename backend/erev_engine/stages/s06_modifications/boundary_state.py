@@ -267,3 +267,62 @@ def emit_price_change(
         exact=after.total.exact - before.total.exact,
         narrative_key="rec.activity_sum",
     )
+
+    # Retain each signed contribution, including posting-rounding residuals. Memo
+    # exclusions (tax, out-of-scope and excluded VC) are not part of TP.
+    component_nodes = []
+    component_total = 0
+    for component in (
+        "fixed",
+        "vc_constrained",
+        "expected_returns",
+        "consideration_payable",
+        "financing_adjustment",
+        "noncash",
+    ):
+        old, new = getattr(before, component), getattr(after, component)
+        delta = new.posted - old.posted
+        component_total += delta
+        component_nodes.append(
+            tb.node(
+                measure=f"modification_tp_component_{component}@{ev.event_key}",
+                subject_key=group,
+                period_key=None,
+                value=delta,
+                currency=ctx.txn_currency,
+                minor_unit=minor,
+                formula_id="rec.allocation.v1",
+                inputs=[
+                    SourceRef(
+                        "contract_event",
+                        ev.event_key,
+                        {"component": component, "value": format_exact(Fraction(delta, 10**minor))},
+                    )
+                ],
+                params={
+                    "allocated": str(delta),
+                    "kind": "posted",
+                    "before": str(old.posted),
+                    "after": str(new.posted),
+                    "as_of": ev.effective_date.isoformat(),
+                },
+                exact=new.exact - old.exact,
+                narrative_key="rec.allocation",
+            )
+        )
+    tb.node(
+        measure=f"modification_tp_component_rounding@{ev.event_key}",
+        subject_key=group,
+        period_key=None,
+        value=after.total.posted - before.total.posted - component_total,
+        currency=ctx.txn_currency,
+        minor_unit=minor,
+        formula_id="rec.activity_sum.v1",
+        inputs=[f"modification_tp_change@{ev.event_key}:{group}:-", *component_nodes],
+        params={
+            "signs": "+," + ",".join("-" for _ in component_nodes),
+            "as_of": ev.effective_date.isoformat(),
+        },
+        exact=Fraction(after.total.posted - before.total.posted - component_total, 10**minor),
+        narrative_key="rec.activity_sum",
+    )

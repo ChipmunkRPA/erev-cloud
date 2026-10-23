@@ -898,3 +898,18 @@ button that opens a form for that exact run. Changing parameters or paging the c
 your selected run. Choose contract or revenue-category rows and a period
 range inside its horizon, then run the comparison. File formats require export permission;
 the completed job links to the standard report page. Populated accounting acceptance is still outstanding.
+
+
+### Contract modification price composition
+
+New modification-register runs include the transaction-price change split into fixed
+consideration, constrained variable consideration, expected returns, consideration payable,
+financing, noncash consideration and posting rounding. These columns retain the original
+contract currency, including when the report also displays reporting-currency equivalents.
+Their sum reconciles to the modification's transaction-price change. Amounts repeat on each
+obligation row, but control totals count each modification once.
+
+The breakdown requires a calculation containing the component evidence. Older calculations
+and approval previews without that evidence show empty component cells; an empty cell is not
+zero. Previously retained reports keep their original columns. These contributions explain
+transaction price, not the functional-currency posting of revenue catch-ups.

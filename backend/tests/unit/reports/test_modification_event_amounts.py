@@ -69,6 +69,42 @@ def test_two_modifications_are_read_independently_from_one_native_trace():
         (Decimal("20000"), Decimal("10000")),
         (Decimal("-10000"), Decimal("-5000")),
     ]
+    assert values[0].components == {
+        "fixed": Decimal("20000"),
+        "vc_constrained": Decimal(0),
+        "expected_returns": Decimal(0),
+        "consideration_payable": Decimal(0),
+        "financing_adjustment": Decimal(0),
+        "noncash": Decimal(0),
+        "rounding": Decimal(0),
+    }
+    assert sum(values[1].components.values()) == values[1].tp_change
+    incomplete = replace(
+        trace,
+        nodes=tuple(
+            node
+            for node in trace.nodes
+            if not node.measure.startswith("modification_tp_component_noncash@")
+        ),
+    )
+    # Remove dependent rounding nodes too, so this tests component completeness,
+    # independently of the trace replay's missing-node protection.
+    incomplete = replace(
+        incomplete,
+        nodes=tuple(
+            node
+            for node in incomplete.nodes
+            if not node.measure.startswith("modification_tp_component_rounding@")
+        ),
+    )
+    with pytest.raises(ValueError, match="incomplete"):
+        read(
+            incomplete,
+            event_key=events[0],
+            contract_key=CONTRACT,
+            obligation_keys=["O1"],
+            currency="USD",
+        )
     assert set(values[0].node_ids).isdisjoint(values[1].node_ids)
     legacy = replace(
         trace,

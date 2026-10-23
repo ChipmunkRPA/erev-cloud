@@ -1,5 +1,18 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Modification price composition — October 22, 2026
+
+- New modification-register runs expose original-currency TP contributions: fixed consideration,
+  constrained VC, returns, consideration payable, financing, noncash and posting rounding.
+  Native traces retain before/after component amounts and original event references; the reader
+  verifies complete composition and reconciliation to the event TP change.
+- Totals count each modification once across obligation rows. Unknown historical composition
+  stays empty. Retained runs without the new feature flag keep their original column shape.
+- Necessary validation: 29 report/catalogue cases, 15 engine boundary cases and both populated
+  modification report scenarios passed; K02 verifies the served fixed contribution of 60,000.
+  Scoped lint/types passed. Foreign functional per-event allocation remains open. No deployment.
+
+
 ## Per-event modification amounts — October 22, 2026
 
 - Native calculations now retain transaction price before/after each successful modification

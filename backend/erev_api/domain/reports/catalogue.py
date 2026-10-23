@@ -1585,6 +1585,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "Native event TP composition shows fixed, constrained variable, returns, "
+            "payable, financing, noncash and posting-rounding contributions in original "
+            "currency; components reconcile to event TP change, totals count each "
+            "modification once, missing historical evidence remains empty, and retained "
+            "runs preserve their original column shape",
             "new native traces provide event-position TP changes and per-obligation catch-ups; "
             "verified trace hashes and node identities distinguish batched modifications; older "
             "traces retain version deltas with exact predecessors and refuse shared catch-ups",

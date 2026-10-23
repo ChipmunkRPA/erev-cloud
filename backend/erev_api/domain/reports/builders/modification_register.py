@@ -245,6 +245,7 @@ class Source:
     applied_event_key: str | None
     preparer: str
     approvers: str | None
+    tp_components: Mapping[str, Decimal] | None = None
 
 
 def applied_event_reference(owner: tuple[str, int] | None) -> str | None:
@@ -569,6 +570,7 @@ def _applied_measures(
     rows: Sequence[Mapping[str, Any]],
     cutoff: datetime,
     params: ReportParams | None = None,
+    components: dict[UUID, Mapping[str, Decimal]] | None = None,
 ) -> dict[UUID, tuple[Decimal | None, dict[str, Decimal]]]:
     """Per APPLIED modification: (``tp_change``, catch-up per obligation key) from the run's
     book as of ``cutoff`` — the application version bound deterministically
@@ -737,6 +739,8 @@ def _applied_measures(
         except (ValueError, EngineError) as error:
             raise ModificationRegisterRefusal("catch_up_amount", str(error)) from error
         if measured is not None:
+            if components is not None and measured.components is not None:
+                components[modification_id] = measured.components
             found[modification_id] = (measured.tp_change, measured.catch_up)
             if params is not None:
                 tie_outs.record_members(
@@ -918,8 +922,14 @@ def sources(
             .where(contract_event.c.id.in_(event_ids))
         ):
             event_owners[UUID(str(event_id))] = (str(external_id), int(stream_version))
+    component_values: dict[UUID, Mapping[str, Decimal]] = {}
     applied = _applied_measures(
-        session, book_code=book_code, rows=rows, cutoff=cutoff, params=params
+        session,
+        book_code=book_code,
+        rows=rows,
+        cutoff=cutoff,
+        params=params,
+        components=component_values,
     )
     names = approval_queries.display_names(
         session,
@@ -989,6 +999,7 @@ def sources(
                 ),
                 currency=str(row["currency"]).strip(),
                 tp_change=tp_change,
+                tp_components=component_values.get(modification_id),
                 catch_up=catch_up,
                 approval_request_no=None if request_id is None else request_nos.get(request_id),
                 approved_at=None if request_id is None else approved_at.get(request_id),
@@ -1128,6 +1139,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "from_date": from_date,
                 "to_date": to_date,
                 "sources": [asdict(item) for item in found],
+                "tp_component_breakdown": True,
                 "reporting_currency": target,
                 "translations": [
                     {
@@ -1162,6 +1174,8 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
             if values["catch_up"] is None
             else {key: Decimal(value) for key, value in values["catch_up"].items()}
         )
+        if values.get("tp_components") is not None:
+            values["tp_components"] = {k: Decimal(v) for k, v in values["tp_components"].items()}
         values["obligation_keys"] = tuple(values["obligation_keys"])
         found.append(Source(**values))
     view = retained["currency_view"]
@@ -1187,6 +1201,36 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
     else:
         rows = dataset_rows(found)
         totals = control_totals(rows)
+    if retained.get("tp_component_breakdown"):
+        labels = (
+            "Fixed consideration",
+            "Constrained variable consideration",
+            "Expected returns",
+            "Consideration payable",
+            "Financing adjustment",
+            "Noncash consideration",
+            "Posting rounding",
+        )
+        columns += tuple(
+            Column("tp_" + key, label + " change (original currency)", "money")
+            for key, label in zip(modification_event_amounts.COMPONENTS, labels, strict=True)
+        )
+        by_modification = {item.modification_no: item for item in found}
+        component_totals: dict[str, dict[str, Decimal]] = {}
+        counted: set[str] = set()
+        for row in rows:
+            item = by_modification[str(row["modification_no"])]
+            for key in modification_event_amounts.COMPONENTS:
+                amount = None if item.tp_components is None else item.tp_components.get(key)
+                row["tp_" + key] = _money(amount, item.currency)
+                if amount is not None and item.modification_no not in counted:
+                    tie_outs.add(component_totals.setdefault(key, {}), item.currency, amount)
+            counted.add(item.modification_no)
+        for key in modification_event_amounts.COMPONENTS:
+            totals["tp_" + key + "_total"] = tie_outs.by_currency(component_totals.get(key, {}))
+        totals["tp_component_basis"] = (
+            "Original event-position TP components; empty when unavailable"
+        )
     check_key_columns(rows)
     totals["from_date"] = retained["from_date"]
     totals["to_date"] = retained["to_date"]

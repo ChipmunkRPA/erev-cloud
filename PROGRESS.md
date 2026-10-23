@@ -20,6 +20,18 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Modification price composition — October 22, 2026
+
+- New modification-register runs expose original-currency TP contributions: fixed consideration,
+  constrained VC, returns, consideration payable, financing, noncash and posting rounding.
+  Native traces retain before/after component amounts and original event references; the reader
+  verifies complete composition and reconciliation to the event TP change.
+- Totals count each modification once across obligation rows. Unknown historical composition
+  stays empty. Retained runs without the new feature flag keep their original column shape.
+- Necessary validation: 29 report/catalogue cases, 15 engine boundary cases and both populated
+  modification report scenarios passed; K02 verifies the served fixed contribution of 60,000.
+  Scoped lint/types passed. Foreign functional per-event allocation remains open. No deployment.
+
 ## Per-event modification amounts — October 22, 2026
 
 - Native calculations now retain transaction price before/after each successful modification
@@ -220,19 +232,6 @@ review and publish changes without PR accumulation, and do not deploy.
   16-obligation latest-status API/worker workflow, including identical rerun rows/output hash;
   scoped lint/types and frozen metadata parity. No deployment; remaining documented work and
   final repository verification are not claimed complete.
-
-## SoD conflict retained reconstruction — October 22, 2026
-
-- New runs retain the original scoped conflict population, rule functions, held role permissions,
-  delegation permissions/names/end dates and candidate exception approval/revocation/validity
-  inputs. Same-source reruns validate tenant/entity scope and as-of selection, recalculate
-  conflict predicates and exception coverage, and rebuild rows/totals without live access reads.
-- Necessary verification passed: 61 focused access/source-binding cases plus the actual report
-  API/worker exception-revocation flow. Fresh reports show an uncovered conflict; saved covered
-  and empty runs reproduce identical rows/output hashes. Scoped lint/types and migration 0319
-  catalogue parity passed. Original historical-cutoff limits and older OPEN-run behavior remain.
-- This preserves selected report inputs; it does not add role-permission history or expand
-  approvals. Saved-run access still uses current authorization. No deployment.
 
 ## Outstanding release verification
 

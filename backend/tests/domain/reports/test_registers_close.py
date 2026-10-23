@@ -122,6 +122,8 @@ def test_modification_register_k02(k02: K02World, runtime: JobRuntime, clock: Fr
     assert event_evidence["node_ids"][0].startswith("modification_tp_change@")
     assert collector.members["modification_event_traces"] == {event_evidence["trace_id"]}
     assert register.data_from_inputs(collector.evidence[register.EVIDENCE]) == data
+    assert data.rows[0]["tp_fixed"]["amount"] == "60000.00"
+    assert data.control_totals["tp_fixed_total"] == {"USD": "60000.00"}
     (row,) = data.rows
     head = k02.place.rows(
         select(contract.c.head_stream_version, contract.c.external_id).where(

@@ -598,3 +598,44 @@ def test_applied_price_change_requires_original_predecessor() -> None:
         with pytest.raises(ModificationRegisterRefusal, match="prior transaction price") as refused:
             register.applied_price_change(current, predecessors, modification_no="MOD-1")
         assert refused.value.column == "tp_change"
+
+
+def test_component_breakdown_retains_original_currency_and_counts_each_modification_once():
+    import json
+    from dataclasses import asdict
+
+    from erev_engine.canonical import canonical_bytes
+
+    source = _source(
+        obligation_keys=("O1", "O2"),
+        tp_components={
+            "fixed": Decimal("70000"),
+            "vc_constrained": Decimal("-10000"),
+            "expected_returns": Decimal(0),
+            "consideration_payable": Decimal(0),
+            "financing_adjustment": Decimal(0),
+            "noncash": Decimal(0),
+            "rounding": Decimal(0),
+        },
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(source)],
+                "currency_view": "transaction",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+                "tp_component_breakdown": True,
+            }
+        )
+    )
+    data = register.data_from_inputs(retained)
+    assert len(data.rows) == 2
+    assert data.rows[0]["tp_fixed"] == {"amount": "70000.00", "currency": "USD"}
+    assert data.control_totals["tp_fixed_total"] == {"USD": "70000.00"}
+    assert data.rows[1]["tp_vc_constrained"]["amount"] == "-10000.00"
+    # The original retained shape remains stable for earlier report runs.
+    del retained["tp_component_breakdown"]
+    old = register.data_from_inputs(retained)
+    assert "tp_fixed" not in old.rows[0]
+    assert old.columns == COLUMNS
