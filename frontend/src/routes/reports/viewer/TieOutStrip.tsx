@@ -57,26 +57,32 @@ export function TieOutStrip({ results, testIdPrefix = "SF-08" }: TieOutStripProp
           const expected = amounts(item.expected);
           const actual = amounts(item.actual);
           const differences = amounts(item.difference);
+          const currencies = [
+            ...new Set([...expected, ...actual, ...differences].map((money) => money.currency)),
+          ];
           return (
             <li key={item.code} className="flex flex-wrap items-center gap-x-4 gap-y-1">
               {chip === null ? null : <StatusChip status={chip.status} caption={chip.caption} />}
               <span className="text-body-sm font-medium text-fg-1">{tieOutName(item.code)}</span>
-              {expected.map((money) => {
-                const pair = actual.find((other) => other.currency === money.currency);
-                const difference = differences.find((other) => other.currency === money.currency);
+              {currencies.map((currency) => {
+                const money = expected.find((other) => other.currency === currency);
+                const pair = actual.find((other) => other.currency === currency);
+                const difference = differences.find((other) => other.currency === currency);
                 return (
                   <span
-                    key={money.currency}
+                    key={currency}
                     className="flex flex-wrap gap-x-4 text-body-sm text-fg-2"
                   >
                     <span className="num">
-                      {t("reports.tieOuts.expected", { amount: inline(money) })}
+                      {t("reports.tieOuts.expected", {
+                        amount: money === undefined ? NO_VALUE : inline(money),
+                      })}
                     </span>
-                    {pair === undefined ? null : (
-                      <span className="num">
-                        {t("reports.tieOuts.actual", { amount: inline(pair) })}
-                      </span>
-                    )}
+                    <span className="num">
+                      {t("reports.tieOuts.actual", {
+                        amount: pair === undefined ? NO_VALUE : inline(pair),
+                      })}
+                    </span>
                     {item.result === "FAIL" && difference !== undefined ? (
                       <span className="num text-fg-1">
                         {t("reports.tieOuts.difference", { amount: inline(difference) })}

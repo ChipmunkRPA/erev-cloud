@@ -20,6 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Multi-currency tie-out display completeness — October 22, 2026
+
+- The report viewer now displays the union of currencies in expected, actual and difference
+  evidence. A currency appearing only in actual or difference is no longer silently hidden.
+  Missing balances display the standard unavailable marker; the browser does not invent zeros
+  or recompute monetary differences. Existing FAIL-only difference presentation is preserved.
+- Necessary verification: all four targeted viewer tie-out cases passed, including actual-only
+  and difference-only currency coverage. No deployment; remaining report attribution work stays open.
+
 ## Functional activity recognition provenance — October 22, 2026
 
 - Native S13 revenue control flows now carry their upstream recognition source node into S12

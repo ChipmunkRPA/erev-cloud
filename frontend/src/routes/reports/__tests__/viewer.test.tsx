@@ -934,6 +934,40 @@ describe("SF-08:report viewer", () => {
     expect(within(failing as HTMLElement).getAllByText(/^Difference /)).toHaveLength(1);
   });
 
+  it("tie-out includes currencies present only in actual or difference", async () => {
+    const results: TieOutResult[] = [{
+      code: "TO_RPO_ROLLFORWARD_EQ_RPO",
+      result: "FAIL",
+      expected: [money("20.00")],
+      actual: [money("5.00", "EUR")],
+      difference: [money("-20.00"), money("5.00", "EUR")],
+    }];
+    serve(WATERFALL, { [RUN_ID]: reportRun({ tie_out_results: results }) }, WATERFALL_ROWS);
+    renderApp(`/reports/revenue_waterfall?${CONTEXT}&run=${RUN_ID}`, {
+      me: MARCUS, screenRoutes: SCREEN_ROUTES,
+    });
+    const strip = await screen.findByRole("region", { name: "Tie-outs (0 pass, 1 fail)" });
+    expect(within(strip).getByText(/^Expected USD\s20\.00$/)).toBeTruthy();
+    expect(within(strip).getByText(/^Actual EUR\s5\.00$/)).toBeTruthy();
+    expect(within(strip).getByText(/^Difference EUR\s5\.00$/)).toBeTruthy();
+    expect(within(strip).queryByText(/^Expected EUR\s0\.00$/)).toBeNull();
+    expect(within(strip).queryByText(/^Actual USD\s0\.00$/)).toBeNull();
+  });
+
+  it("tie-out preserves a difference-only currency when both balances are unavailable", async () => {
+    serve(WATERFALL, { [RUN_ID]: reportRun({ tie_out_results: [{
+      code: "TO_RPO_ROLLFORWARD_EQ_RPO", result: "FAIL",
+      expected: [], actual: [], difference: [money("7.25", "EUR")],
+    }] }) }, WATERFALL_ROWS);
+    renderApp(`/reports/revenue_waterfall?${CONTEXT}&run=${RUN_ID}`, {
+      me: MARCUS, screenRoutes: SCREEN_ROUTES,
+    });
+    const strip = await screen.findByRole("region", { name: "Tie-outs (0 pass, 1 fail)" });
+    expect(within(strip).getByText(/^Difference EUR\s7\.25$/)).toBeTruthy();
+    expect(within(strip).queryByText(/^Expected EUR/)).toBeNull();
+    expect(within(strip).queryByText(/^Actual EUR/)).toBeNull();
+  });
+
   it("empty run keeps stamp", async () => {
     const empty = reportRun({
       report: { code: "rpo", version: 1, name: "Remaining performance obligations" },
