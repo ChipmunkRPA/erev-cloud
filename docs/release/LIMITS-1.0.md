@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Modification transaction-price predecessor evidence — October 22, 2026
+
+- Applied modification TP change now requires the exact referenced predecessor in the same
+  combination group, book and transaction currency, with an admissible known/commit cutoff.
+  Missing predecessors no longer silently become zero and turn the whole contract price into
+  a modification delta. Only an application with no previous-version reference starts at zero.
+- New runs retain predecessor identities and price/scope evidence alongside their application
+  version evidence. Previously retained report inputs preserve their original interpretation.
+- Necessary verification passed: 19 focused register cases including missing/wrong-scope/future
+  predecessors, negative delta and genuine first version; the populated K02 report still yields
+  USD 60,000 TP change in transaction and reporting views. Scoped lint/types passed.
+- This repairs the transaction-price provenance chain. Foreign functional per-event attribution
+  remains incomplete; no unsupported currency view has been enabled. No deployment.
+
+
 ## Latest-production sandbox refresh — October 22, 2026
 
 - Added LATEST to the existing reset command and the Sandbox copies reset dialog. The worker

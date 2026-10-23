@@ -526,6 +526,34 @@ def _application_groups(session: Session, event_ids: Sequence[UUID]) -> dict[UUI
     return found
 
 
+def applied_price_change(
+    version: Mapping[str, Any],
+    predecessors: Mapping[UUID, Mapping[str, Any]],
+    *,
+    modification_no: str,
+) -> Decimal:
+    """Compare an application with its own same-book/group/currency predecessor."""
+    previous_id = version["previous_version_id"]
+    if previous_id is None:
+        return Decimal(str(version["transaction_price"]))
+    previous = predecessors.get(UUID(str(previous_id)))
+    if (
+        previous is None
+        or any(
+            previous[key] != version[key]
+            for key in ("combination_group_id", "book_code", "transaction_currency")
+        )
+        or previous["known_at"] > version["known_at"]
+    ):
+        raise ModificationRegisterRefusal(
+            "tp_change",
+            f"The register cannot attribute the transaction-price change of {modification_no}: "
+            "its original predecessor version is unavailable or has another scope. "
+            "The prior transaction price cannot be assumed to be zero.",
+        )
+    return Decimal(str(version["transaction_price"])) - Decimal(str(previous["transaction_price"]))
+
+
 def _applied_measures(
     session: Session,
     *,
@@ -555,6 +583,9 @@ def _applied_measures(
                 contract_version.c.id,
                 contract_version.c.combination_group_id,
                 contract_version.c.transaction_price,
+                contract_version.c.book_code,
+                contract_version.c.transaction_currency,
+                contract_version.c.known_at,
                 contract_version.c.previous_version_id,
                 contract_version.c.cause_event_ids,
             ).where(
@@ -611,14 +642,34 @@ def _applied_measures(
         },
         key=str,
     )
-    previous_prices: dict[UUID, Decimal] = {}
+    predecessors: dict[UUID, Mapping[str, Any]] = {}
     if previous_ids:
-        for version_id, price in session.execute(
-            select(contract_version.c.id, contract_version.c.transaction_price).where(
-                contract_version.c.id.in_(previous_ids)
+        predecessors = {
+            UUID(str(row["id"])): dict(row)
+            for row in session.execute(
+                select(
+                    contract_version.c.id,
+                    contract_version.c.transaction_price,
+                    contract_version.c.combination_group_id,
+                    contract_version.c.book_code,
+                    contract_version.c.transaction_currency,
+                    contract_version.c.known_at,
+                ).where(
+                    contract_version.c.id.in_(previous_ids),
+                    contract_version.c.known_at <= cutoff,
+                    *tie_outs.version_commit_where(params, cutoff),
+                )
+            ).mappings()
+        }
+        if params is not None:
+            tie_outs.record_members(params, "modification_predecessor_versions", predecessors)
+            tie_outs.record_evidence(
+                params,
+                "modification_predecessor_versions_v1",
+                json.loads(
+                    canonical_bytes({str(key): dict(value) for key, value in predecessors.items()})
+                ),
             )
-        ):
-            previous_prices[UUID(str(version_id))] = Decimal(str(price))
     version_rows = [
         dict(row)
         for row in session.execute(
@@ -644,10 +695,6 @@ def _applied_measures(
                     modification_no=source["modification_no"], count=shared_catch_up(causes)
                 ),
             )
-        previous = version["previous_version_id"]
-        before = (
-            Decimal(0) if previous is None else previous_prices.get(UUID(str(previous)), Decimal(0))
-        )
         keys = [
             str(line["obligation_key"])
             for line in (source["lines"] or ())
@@ -655,7 +702,9 @@ def _applied_measures(
         ]
         version_id = UUID(str(version["id"]))
         found[modification_id] = (
-            Decimal(str(version["transaction_price"])) - before,
+            applied_price_change(
+                version, predecessors, modification_no=str(source["modification_no"])
+            ),
             applied_catch_up(
                 (r for r in version_rows if UUID(str(r["contract_version_id"])) == version_id),
                 contract_id=UUID(str(source["contract_id"])),

@@ -569,3 +569,32 @@ def test_retained_modifications_recompute_without_live_reads(view):
         register.build(SimpleNamespace(principal=SimpleNamespace(tenant_id=uuid4())), params)
     retained["sources"][0].update(tp_change=None, catch_up=None)
     assert register.build(uow, params).rows[0]["tp_change"] is None
+
+
+def test_applied_price_change_requires_original_predecessor() -> None:
+    previous_id, group = uuid4(), uuid4()
+    current = {
+        "previous_version_id": previous_id,
+        "combination_group_id": group,
+        "book_code": "ASC606",
+        "transaction_currency": "EUR",
+        "known_at": ENTERED,
+        "transaction_price": Decimal("540.00"),
+    }
+    previous = {**current, "transaction_price": Decimal("600.00")}
+    assert register.applied_price_change(
+        current, {previous_id: previous}, modification_no="MOD-1"
+    ) == Decimal("-60.00")
+    assert register.applied_price_change(
+        {**current, "previous_version_id": None}, {}, modification_no="MOD-1"
+    ) == Decimal("540.00")
+    for predecessors in (
+        {},
+        {previous_id: {**previous, "book_code": "IFRS15"}},
+        {previous_id: {**previous, "combination_group_id": uuid4()}},
+        {previous_id: {**previous, "transaction_currency": "USD"}},
+        {previous_id: {**previous, "known_at": ENTERED + timedelta(seconds=1)}},
+    ):
+        with pytest.raises(ModificationRegisterRefusal, match="prior transaction price") as refused:
+            register.applied_price_change(current, predecessors, modification_no="MOD-1")
+        assert refused.value.column == "tp_change"

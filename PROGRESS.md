@@ -20,6 +20,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Modification transaction-price predecessor evidence — October 22, 2026
+
+- Applied modification TP change now requires the exact referenced predecessor in the same
+  combination group, book and transaction currency, with an admissible known/commit cutoff.
+  Missing predecessors no longer silently become zero and turn the whole contract price into
+  a modification delta. Only an application with no previous-version reference starts at zero.
+- New runs retain predecessor identities and price/scope evidence alongside their application
+  version evidence. Previously retained report inputs preserve their original interpretation.
+- Necessary verification passed: 19 focused register cases including missing/wrong-scope/future
+  predecessors, negative delta and genuine first version; the populated K02 report still yields
+  USD 60,000 TP change in transaction and reporting views. Scoped lint/types passed.
+- This repairs the transaction-price provenance chain. Foreign functional per-event attribution
+  remains incomplete; no unsupported currency view has been enabled. No deployment.
+
 ## Latest-production sandbox refresh — October 22, 2026
 
 - Added LATEST to the existing reset command and the Sandbox copies reset dialog. The worker
@@ -205,23 +219,6 @@ review and publish changes without PR accumulation, and do not deploy.
   catalogue parity passed. Original historical-cutoff limits and older OPEN-run behavior remain.
 - This preserves selected report inputs; it does not add role-permission history or expand
   approvals. Saved-run access still uses current authorization. No deployment.
-
-## User access retained reconstruction — October 22, 2026
-
-- New runs retain member names/status, role/entity grants, MFA state, last login, grantor,
-  revocation timestamps and SoD exception references with the resolved as-of instant. Bound
-  reruns validate tenant/entity scope and selection, restore typed members/grants and rebuild
-  rows and membership/assignment totals without current identity or access-state reads.
-- Necessary verification passed: all 60 focused access/source-binding cases and actual membership
-  removal/report API and worker workflow. Fresh reports omit the removed member; the saved report
-  reconstructs original grants and identical rows/output hash. Scoped lint/types and migration
-  0318 IPE parity passed. Existing ad-hoc historical limitations remain; older OPEN runs keep
-  their original behavior. Reading saved runs still requires current report authorization.
-- Resolved the three previously recorded stale permission tests: expected inventory now includes
-  both composite evidence packs and their audit/contract/export requirements; visibility checks
-  distinguish the run-permission split from additional evidence-pack SQL predicates. The entire
-  focused access test file now passes. No production permission policy was changed.
-  No deployment; other documented Reporting/repository gaps remain.
 
 ## Outstanding release verification
 

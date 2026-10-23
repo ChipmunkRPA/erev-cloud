@@ -12157,3 +12157,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the preceding committed framework, so this feature does not introduce them. They remain an
   explicit verification cleanup item; the full access test file is not claimed green.
   No deployment; other documented Reporting/repository gaps remain.
+
+## User access retained reconstruction — October 22, 2026
+
+- New runs retain member names/status, role/entity grants, MFA state, last login, grantor,
+  revocation timestamps and SoD exception references with the resolved as-of instant. Bound
+  reruns validate tenant/entity scope and selection, restore typed members/grants and rebuild
+  rows and membership/assignment totals without current identity or access-state reads.
+- Necessary verification passed: all 60 focused access/source-binding cases and actual membership
+  removal/report API and worker workflow. Fresh reports omit the removed member; the saved report
+  reconstructs original grants and identical rows/output hash. Scoped lint/types and migration
+  0318 IPE parity passed. Existing ad-hoc historical limitations remain; older OPEN runs keep
+  their original behavior. Reading saved runs still requires current report authorization.
+- Resolved the three previously recorded stale permission tests: expected inventory now includes
+  both composite evidence packs and their audit/contract/export requirements; visibility checks
+  distinguish the run-permission split from additional evidence-pack SQL predicates. The entire
+  focused access test file now passes. No production permission policy was changed.
+  No deployment; other documented Reporting/repository gaps remain.
