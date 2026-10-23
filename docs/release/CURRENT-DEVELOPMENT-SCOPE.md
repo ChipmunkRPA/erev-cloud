@@ -170,6 +170,22 @@ finding visibility without ASC606 duplication. The secondary finding in that dat
 is fixture evidence, not a full second-book lock/computation lifecycle. Eight catalogue checks,
 migration metadata equality and scoped lint/types pass.
 
+## Cross-calendar revenue disaggregation
+
+New disaggregation runs align selected whole fiscal periods by actual start/end dates. Identical
+intervals combine even when local period keys differ; different or partially overlapping
+intervals get separate date-labelled columns. Aligned calendars retain existing fiscal labels.
+Control totals retain entity/local-period/date-to-column mappings and explain that supplied keys
+select local fiscal periods. No partial-period reallocation is implied. The report can now run
+across entity calendars; other reports' compatibility guards remain in place.
+
+A retained layout marker preserves new reruns; older saved bindings keep their original fiscal
+columns. Existing transaction/functional/reporting amount logic and journal comparison remain.
+Migration 0339 freezes the catalogue interpretation. Necessary checks cover two interval-layout
+cases, a populated mixed-calendar report compared to separate entity runs and a saved rerun,
+existing journal tie-out and retained functional/reporting rate workflows, plus scoped lint/types
+and migration metadata equality. These do not claim common-month allocation of 4-4-5 periods.
+
 ## Repository completion evidence still required
 
 After feature completion, refresh the bounded release-candidate checks recorded in PROGRESS.md

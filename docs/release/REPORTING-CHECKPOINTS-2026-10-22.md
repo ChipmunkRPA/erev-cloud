@@ -43,3 +43,11 @@
   totals; membership functional endpoints also match. Scoped lint/types and metadata parity pass.
 - Original per-event journal ownership in the modification register remains open. This completes
   a user-selectable causal replay capability, not that separate feature. No deployment.
+
+## GL automatic certification — October 23, 2026
+
+- Attached GL comparisons now use published kind-specific rules for automatic certification.
+  Only complete, nonempty zero-variance comparisons qualify; no policy is created automatically.
+  Write-once rule IDs, CTL-025/026 and audit evidence retain the decision (migration 0337).
+- Two populated GL/billing workflows and transition parity checks pass; scoped lint/types pass.
+  See CURRENT-DEVELOPMENT-SCOPE.md. No deployment.

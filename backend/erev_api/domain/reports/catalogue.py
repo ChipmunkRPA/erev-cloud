@@ -1397,6 +1397,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "their period average rates, retained for reruns",
             "grouped by dimension_code and, with include_timing, the timing of transfer",
             _as_locked("DISAGGREGATION"),
+            "New runs align complete selected periods by start/end dates across entity calendars; "
+            "identical intervals combine, different or partially overlapping intervals stay "
+            "separate; retained legacy runs preserve fiscal-key columns",
         ),
         tie_outs=("TO_DISAGGREGATION_EQ_JE_REVENUE",),
     ),

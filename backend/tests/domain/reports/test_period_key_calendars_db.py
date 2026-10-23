@@ -250,7 +250,11 @@ def test_a_period_named_by_key_is_refused_for_entities_of_two_calendars(
         *((f"{code} without a key", code, {"entity_codes": BOTH, **BOOK}) for code in columns),
         *((f"{code} of every entity in scope, without a key", code, BOOK) for code in columns),
     ]
-    answered = [(what, started(world, code, parameters)) for what, code, parameters in cases]
+    answered = [
+        (what, started(world, code, parameters))
+        for what, code, parameters in cases
+        if code != "disaggregation"
+    ]
     assert [what for what, response in answered if response.status_code != 422] == []
     for what, response in answered:
         refused(response, what)
@@ -317,3 +321,45 @@ def test_a_run_stored_before_the_rule_is_read_and_not_run_again(
     data = get(world.app, f"{REPORT_RUNS}/{run['id']}/data", world.maya, {"limit": "200"})
     assert data.status_code == 200, data.text
     assert total(list(data.json()["items"])) == US_SEPTEMBER
+
+
+def test_disaggregation_aligns_dates_and_retains_rerun(world: ReportWorld) -> None:
+    """Mixed fiscal keys expose date intervals; source-bound reruns keep their columns/totals."""
+    params = {
+        "entity_codes": BOTH,
+        **BOOK,
+        "from_period_key": JAN_SEPTEMBER,
+        "to_period_key": JAN_SEPTEMBER,
+    }
+    combined, rows = run_of(world, "disaggregation", params)
+    total_row = next(row for row in rows if row["row_key"] == "TOTAL:USD")
+    columns = combined["control_totals"]["period_columns"]
+    assert len({column["column_key"] for column in columns}) == 2
+    expected_total = Decimal(0)
+    for code in BOTH:
+        single, single_rows = run_of(world, "disaggregation", {**params, "entity_codes": [code]})
+        expected = total(single_rows) if single_rows else Decimal(0)
+        expected_total += expected
+        (column,) = [c for c in columns if c["entity_code"] == code]
+        assert Decimal(total_row[column["column_key"]]["amount"]) == expected
+    assert total(rows) == expected_total
+    # Default date selection reads each entity's actual September, despite different local keys.
+    same_dates, same_rows = run_of(world, "disaggregation", {"entity_codes": BOTH, **BOOK})
+    selected = same_dates["control_totals"]["period_columns"]
+    assert len({c["period_key"] for c in selected}) == 2
+    assert len({c["column_key"] for c in selected}) == 1
+    independent = Decimal(0)
+    for code in BOTH:
+        _, one = run_of(world, "disaggregation", {"entity_codes": [code], **BOOK})
+        independent += total(one)
+    assert total(same_rows) == independent > 0
+    again = post(world.app, f"{REPORT_RUNS}/{combined['id']}/rerun", world.maya, {})
+    assert again.status_code == 202, again.text
+    assert worlds.run_now(world, UUID(again.json()["id"]))["state"] == "SUCCEEDED"
+    from support.worlds import REPORT_RUN_ID_HEADER
+
+    rerun_id = again.headers[REPORT_RUN_ID_HEADER]
+    reread = get(world.app, f"{REPORT_RUNS}/{rerun_id}", world.maya).json()
+    data = get(world.app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"}).json()
+    assert data["items"] == rows
+    assert reread["control_totals"] == combined["control_totals"]

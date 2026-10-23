@@ -28,6 +28,7 @@ D-87 L6-3-Q-29: a run that omits ``include_timing`` stores it as true, the SCREE
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
@@ -39,7 +40,7 @@ from erev_api.domain.reports import elections, locked_ends, reporting_currency, 
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as balances
 from erev_api.domain.reports.outputs import Column, ReportData
-from erev_api.domain.reports.tie_outs import ZERO, add
+from erev_api.domain.reports.tie_outs import ZERO, PeriodRef, add
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "disaggregation"
@@ -47,6 +48,36 @@ TIMINGS: Final = {"POINT_IN_TIME": "Point in time", "OVER_TIME": "Over time"}
 UNASSIGNED: Final = "Unassigned"
 PERIOD_PREFIX: Final = "period:"
 TOTAL_PREFIX: Final = "TOTAL:"
+
+
+CALENDAR_COLUMNS: Final = "disaggregation_calendar_columns_v1"
+
+
+def period_layout(
+    periods: Mapping[UUID, Sequence[PeriodRef]], *, dated: bool
+) -> tuple[dict[UUID, str], dict[str, str]]:
+    """Keep legacy fiscal labels, or align complete intervals with identical dates."""
+    if not dated:
+        ordered_legacy = sorted(
+            {p for selected in periods.values() for p in selected}, key=lambda p: p.start
+        )
+        return (
+            {p.id: p.key for selected in periods.values() for p in selected},
+            {p.key: p.name for p in ordered_legacy},
+        )
+    signatures = {tuple((p.key, p.start, p.end) for p in selected) for selected in periods.values()}
+    aligned = len(signatures) <= 1
+    key_of: dict[UUID, str] = {}
+    labels: dict[str, str] = {}
+    ordered = sorted(
+        (p for selected in periods.values() for p in selected),
+        key=lambda p: (p.start, p.end, p.key, str(p.id)),
+    )
+    for p in ordered:
+        key = f"date_{p.start}_{p.end}" if dated and not aligned else p.key
+        key_of[p.id] = key
+        labels[key] = f"{p.start} – {p.end}" if dated and not aligned else p.name
+    return key_of, labels
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
@@ -78,14 +109,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         for entity_id, value in elected.items()
         if value.is_elected(elections.DISAGGREGATION_RELIEF)
     }
-    ordered = sorted(
-        {item for items in periods.values() for item in items}, key=lambda item: item.start
-    )
-    keys = []
-    for item in ordered:
-        if item.key not in keys:
-            keys.append(item.key)
-    key_of = {item.id: item.key for items in periods.values() for item in items}
+    dated = params.binding is None or params.binding.evidence.get(CALENDAR_COLUMNS) is True
+    if params.binding is None:
+        tie_outs.record_evidence(params, CALENDAR_COLUMNS, True)
+    key_of, period_labels = period_layout(periods, dated=dated)
+    keys = list(period_labels)
     type Group = tuple[str, str, str | None, str]  # (label, timing, timing label, currency)
     grouped: dict[Group, dict[str, Decimal]] = {}
     if key_of and params.entity_ids:
@@ -243,7 +271,6 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "total": tie_outs.money(total, currency),
             }
         )
-    period_labels = {item.key: item.name for item in ordered}
     columns = (
         # D-98 85 (CLO-7c): the dimension code, the dimension value and the timing code are the
         # row's identity in the frozen dataset; the label columns are display attributes.
@@ -274,6 +301,22 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         functional=view in {"functional", "reporting"},
     )
     control: dict[str, Any] = {"revenue_total": tie_outs.by_currency(revenue), "notes": notes}
+    if dated:
+        control["period_columns"] = [
+            {
+                "column_key": f"{PERIOD_PREFIX}{key_of[p.id]}",
+                "entity_code": entity.code,
+                "period_key": p.key,
+                "start_date": p.start.isoformat(),
+                "end_date": p.end.isoformat(),
+            }
+            for entity in found
+            for p in periods[entity.id]
+        ]
+        control["period_selection_basis"] = (
+            "Fiscal keys select each entity's local periods; columns combine only identical "
+            "whole-period date intervals. Partial periods are not redistributed."
+        )
     check = tie_outs.compared(
         tie_outs.TO_DISAGGREGATION_EQ_JE_REVENUE,
         expected,
