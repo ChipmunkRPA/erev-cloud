@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Verified functional revenue activity reader — October 22, 2026
+
+- Added a report-layer reader for the new S12 activity evidence. It replays the trace, validates
+  obligation/entity/currency identities, checks every signed functional piece with multiplicity,
+  and reconciles both transaction and functional movement sums against current-minus-prior
+  cumulative revenue. It returns original dated signed flows with source references.
+- Missing older activity, altered transaction counters, inconsistent formula results and currency
+  mismatches fail explicitly. A matching net alone is insufficient: the source-piece population
+  must also match. Period-aggregated flows are not assumed to be individual modification events.
+- Necessary verification passed: the new reader checks on actual S12 historical-layer and negative
+  revenue traces plus all 13 FX-layer cases (15 total); scoped lint/types passed. The historical
+  USD 170 movement and subsequent USD -26 delta are reconstructed from their actual sources.
+- This is a reusable report reading layer, not yet a served foreign modification currency view.
+  Event-to-flow attribution and transaction-price currency presentation remain required before
+  changing that report's admission. No deployment or overall completion claim.
+
 ## Functional revenue activity evidence — October 22, 2026
 
 - Stage 12 now emits a revenue_activity_functional disclosure node for each positive/negative
@@ -207,21 +223,6 @@ review and publish changes without PR accumulation, and do not deploy.
   display, timestamps, studies, date selection and scope/filter refusal. Scoped lint/types and
   migration 0314 frozen IPE parity passed. Ad-hoc historical mutable-state limitations remain.
   No deployment; remaining SSP and other documented Reporting gaps are still open.
-
-## SSP version diff retained reconstruction — October 22, 2026
-
-- New SSP-diff runs retain the resolved chosen/comparison version IDs and complete entries/ranges
-  from both sides. Same-source reruns validate tenant/entity scope and comparison filters, then
-  recompute entry classification, exact values, mid-change ratios and totals without live reads.
-  Default prior-version selection is resolved once. Older OPEN runs keep new-evaluation behavior.
-- Necessary verification passed: 42 focused SSP/source-binding cases; actual draft SSP API and
-  report worker workflow. Deleting AVM-PLAT-100 from the draft produces Removed in a fresh report;
-  the saved comparison reproduces its original no-difference rows and identical output hash.
-  No-session tests verify ratios recalculate when retained values change, removed-entry counts
-  and scope/filter refusal. Scoped lint/types and migration 0313 frozen IPE parity passed.
-- Ad-hoc historical reads of editable draft entries still require evidence and retain their
-  existing refusal. Remaining SSP registers and other documented Reporting gaps remain open.
-  No deployment.
 
 ## Outstanding release verification
 

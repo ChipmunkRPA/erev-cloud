@@ -12079,3 +12079,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   two minutes, making the lock appear later than subsequent database-recorded events. Removing
   that advance restores the intended chronology without changing production lock behavior.
   No deployment; other documented Reporting and repository gaps remain.
+
+## SSP version diff retained reconstruction — October 22, 2026
+
+- New SSP-diff runs retain the resolved chosen/comparison version IDs and complete entries/ranges
+  from both sides. Same-source reruns validate tenant/entity scope and comparison filters, then
+  recompute entry classification, exact values, mid-change ratios and totals without live reads.
+  Default prior-version selection is resolved once. Older OPEN runs keep new-evaluation behavior.
+- Necessary verification passed: 42 focused SSP/source-binding cases; actual draft SSP API and
+  report worker workflow. Deleting AVM-PLAT-100 from the draft produces Removed in a fresh report;
+  the saved comparison reproduces its original no-difference rows and identical output hash.
+  No-session tests verify ratios recalculate when retained values change, removed-entry counts
+  and scope/filter refusal. Scoped lint/types and migration 0313 frozen IPE parity passed.
+- Ad-hoc historical reads of editable draft entries still require evidence and retain their
+  existing refusal. Remaining SSP registers and other documented Reporting gaps remain open.
+  No deployment.

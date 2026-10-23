@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Verified functional revenue activity reader — October 22, 2026
+
+- Added a report-layer reader for the new S12 activity evidence. It replays the trace, validates
+  obligation/entity/currency identities, checks every signed functional piece with multiplicity,
+  and reconciles both transaction and functional movement sums against current-minus-prior
+  cumulative revenue. It returns original dated signed flows with source references.
+- Missing older activity, altered transaction counters, inconsistent formula results and currency
+  mismatches fail explicitly. A matching net alone is insufficient: the source-piece population
+  must also match. Period-aggregated flows are not assumed to be individual modification events.
+- Necessary verification passed: the new reader checks on actual S12 historical-layer and negative
+  revenue traces plus all 13 FX-layer cases (15 total); scoped lint/types passed. The historical
+  USD 170 movement and subsequent USD -26 delta are reconstructed from their actual sources.
+- This is a reusable report reading layer, not yet a served foreign modification currency view.
+  Event-to-flow attribution and transaction-price currency presentation remain required before
+  changing that report's admission. No deployment or overall completion claim.
+
+
 ## Functional revenue activity evidence — October 22, 2026
 
 - Stage 12 now emits a revenue_activity_functional disclosure node for each positive/negative
