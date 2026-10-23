@@ -40,12 +40,10 @@ Sequence (04 T-PLT-34 rev 1.67; 05 SBX-04):
    version in its exported PUBLISHED / TESTED / APPROVED status only there. Its four compensating
    controls live in that one function; no later step carries the scope.
 4. **target** — ``tenant_snapshot.target_tenant_id`` set under the requesting user's context.
-5. **periods / recompute / replay** — every period of the source's ``period_state`` dataset opens
-   (``future`` then ``open`` with their transitions), every ``combination_group`` is recomputed with
-   trigger ``MIGRATION`` in its own transaction (the load FAILS by name when the budget is exceeded,
-   listing the groups not recomputed — never a partial success), then the source's transitions and
-   locks are replayed through the DB-03 transition kernel; a refused step is the WARNING
-   ``SANDBOX_REPLAY_BLOCKED`` and the period stays at its last reachable state.
+5. **periods / recompute** — periods previously opened in the source are opened in the sandbox;
+   future periods remain future. Every ``combination_group`` is recomputed with trigger
+   ``MIGRATION`` in its own transaction (the load fails if the budget is exceeded). Source close
+   transitions and locks are intentionally not replayed, so the copy remains editable.
 6. **verify / report / audit** — ``derived_mismatches`` per (group, book) against the source's
    latest version as of ``known_at`` (05 SBX-05 rev 1.50): the MONETARY STATE of the two versions
    — stored version, balances, obligation versions and schedule lines without the per-version
@@ -154,7 +152,7 @@ SANDBOX_ID_HEADER: Final = "X-Erev-Sandbox-Tenant-Id"  # API-R-04 rev 1.67
 EXCEPTION_DETERMINISM: Final = "SANDBOX_DETERMINISM_MISMATCH"
 EXCEPTION_REPLAY_BLOCKED: Final = "SANDBOX_REPLAY_BLOCKED"
 LOAD_REPORT_PURPOSE: Final = "AUDIT_DIGEST"
-LOAD_REPORT_FORMAT_VERSION: Final = 1
+LOAD_REPORT_FORMAT_VERSION: Final = 2
 # Load refusals ride existing slugs as rule_ids (04 rev 1.67; D-98 candidate 137 amendment 1).
 RULE_NOT_LOADABLE: Final = "SNAPSHOT_NOT_LOADABLE"  # 412 precondition-failed
 RULE_REGISTRY: Final = "SNAPSHOT_REGISTRY_MISMATCH"  # 412 precondition-failed
@@ -747,6 +745,7 @@ def _json_default(value: Any) -> Any:
 def report_document(report: LoadReport) -> dict[str, Any]:
     return {
         "format_version": report.format_version,
+        "period_state_policy": "OPEN_FOR_EXPERIMENTATION",
         "sandbox_tenant_id": str(report.sandbox_tenant_id),
         "source_tenant_id": str(report.source_tenant_id),
         "tenant_snapshot_id": str(report.tenant_snapshot_id),
@@ -874,13 +873,12 @@ def _tenant_facts(session: Session, tenant_id: UUID) -> Mapping[str, Any]:
 
 
 def require_point_in_time(session: Session, tenant_id: UUID) -> None:
-    """05 SBX-04 (rev 1.20; rev 1.64): a consumer that requires point-in-time equivalence with
-    the source — a replay, a scenario refresh, a forecast run — calls this before it reads a
-    derived figure of the sandbox ``tenant_id`` (the session's tenant) and is refused by name
-    while ``blocked_periods`` is non-empty: those periods stopped short of their source state, so
-    postings the source holds in a closed period sit elsewhere here. 412 ``precondition-failed``,
-    rule id ``SANDBOX_PERIODS_BLOCKED``, naming the period states. A production tenant, a sandbox
-    created empty and a sandbox with no blocked period pass."""
+    """Retain the historical blocked-load guard for older copies.
+
+    The legacy function name is not a promise of production lock-history equivalence. New
+    copies intentionally retain open periods for experimentation; forecast calculations use
+    those sandbox periods. Older partially replayed copies still require refresh before use.
+    """
     loaded = sandbox_load_of(session, _tenant_facts(session, tenant_id))
     if loaded is None or not loaded["blocked_periods"]:
         return
@@ -1686,10 +1684,9 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
     except ValueError as error:
         raise not_loadable(f"the replay reference datasets are inconsistent: {error}") from None
     beat()
-    # 5a'. the period-ready precondition of the recompute (05 SBX-04: open periods → recompute →
-    # close replay; Codex 1713 §3 R1): every source period state is created `future` and every
-    # `future → open` of the plan replays NOW, through the governed DB-07 path as the requesting
-    # user's copied membership — the closing / lock steps wait until the groups are recomputed.
+    # Initialize the sandbox for experimentation: retain future periods, open every period
+    # previously opened in the source, and leave production close/lock history in the source.
+    # The ordinary DB-07 opening path still supplies valid period states for recomputation.
     actor = sandbox_actor(load.sandbox_tenant_id, load.requested_by, at=now)
     period_replay = sandbox_periods.Replay(
         prepared, runtime=runtime, actor=actor, request_prefix=f"job-{jc.job_id}", beat=beat
@@ -1791,10 +1788,9 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
         key=str,
     )
 
-    # 5c. replay the source's period states and locks through the close domain's governed
-    # commands as the requesting user's copied membership (PERIOD-1, LOCK-3; D-98 137 (3)).
-    period_replay.close_periods()
-    replayed = period_replay.result()
+    # Verify the intentionally open sandbox state. Production locks are not replayed:
+    # refreshed data must remain editable, without close-gate warnings for omitted locks.
+    replayed = period_replay.result(open_only=True)
     blocked: list[BlockedPeriod] = list(replayed.blocked)
 
     # 6. verify (05 SBX-05 rev 1.50): per (group, book), the source's latest version as of
@@ -1946,6 +1942,7 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
                 "derived_mismatches": report.derived_mismatches,
                 "blocked_periods": [str(b.period_state_id) for b in blocked],
                 "audit_history_carried": False,
+                "period_state_policy": "OPEN_FOR_EXPERIMENTATION",
             },
         )
         if report.derived_mismatches:

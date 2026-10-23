@@ -662,6 +662,12 @@ Users are global identities with one membership per workspace. A workspace is sh
 
 ## Sandboxes and scenarios
 
+New copies and snapshot resets leave previously opened periods open for experimentation;
+future periods remain future. Production close and lock history is not replayed. The load
+report records `OPEN_FOR_EXPERIMENTATION`; matching recomputed monetary totals do not promise
+identical posting periods or production lock evidence. Read production lock reports in the
+source workspace. Existing sandboxes retain their current state until copied or reset.
+
 A sandbox is a workspace of kind `SANDBOX`: it runs the same engine, it can never export journals through an adapter (the command answers 403 `sandbox-restricted`), it cannot be converted to production and it cannot write to a production workspace. A production workspace is never overwritten, rolled back or dropped by any user or API operation.
 
 - Copy production into a sandbox: `POST /api/v1/tenant/snapshots` with `known_at` (the instant the copy is taken as of), `purpose` `SANDBOX_COPY` and the sandbox `name`; the `TENANT_SNAPSHOT` job answers 202 with `Location` and the `X-Erev-Tenant-Snapshot-Id` header, and `GET /api/v1/tenant/snapshots/{tenant_snapshot_id}` shows the status, the row counts, the target sandbox and the manifest (`…/manifest`). The command needs `tenant.snapshot` for all entities and a fresh authenticator code, and it is audited in both workspaces.

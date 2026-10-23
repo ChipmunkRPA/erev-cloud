@@ -1,62 +1,9 @@
-"""SNP-2 period replay through the governed close path (05 §10 SBX-04; 04 DB-07, T-CLS-04, D-98
-61; D-98 candidate 137 amendment 3 — Codex production-20260921-1623 §1 PERIOD-1 / REPLAY-2 /
-LOCK-3). DB-bound, lane F-SNP, written without a database; first measured in a lane database by
-lane FIX-D1 (2026-09-29), which added the row-for-row copy witness at the end of the module.
+"""Sandbox snapshot loading through the public job and real JSONL datasets.
 
-The source's lock chain is written directly (the sanctioned precedent of ``tests/domain/close/
-test_gates.py::_lock`` and ``test_reopen.py::_lock_by_writer``), exported through the registered
-``TENANT_SNAPSHOT`` job as real JSONL, and REPLAYED by the loader through the close domain's
-commands with the copied approval evidence — nothing is monkeypatched. ``test_replay_reaches_the_
-source_lock_chain`` is the acceptance of the FINISHED path and is pinned ``xfail(strict=True)``
-by supervisor ruling R-10 (2026-09-29) until SNP-2b "sandbox-side close replay" lands: measured
-in a lane database (lane FIX-D1), the first ``LOCK`` of the replay is refused ``close-gates-
-failed`` by FOUR gates — ``BATCHES_ACKNOWLEDGED``, ``JE_BALANCED``, ``JE_COMPLETE`` and
-``RECONCILIATIONS_GENERATED`` — because the sandbox has no calculated journal run of its own, no
-acknowledged batch and no reconciliation (none is copied, all are REGENERATED), i.e. it needs
-CLO-14, CLO-16 / CLO-17 and the close run of CLO-19 / CLO-20. The docstring's earlier prediction
-(green once CLO-10's ``JE_COMPLETE`` evaluated) was wrong. What the same world reaches today is
-``test_replay_on_the_k01_chain_restores_everything_the_sandbox_can_reach``, and the governed
-behaviour until SNP-2b is 05 SBX-04's blocked path (D-98 137 (3)), witnessed by
-``test_replay_refused_by_a_gate_is_a_warning``: an open BLOCKING exception of the entity makes
-``EXCEPTIONS_CLEARED`` fail, so the lock is refused by name (``close-gates-failed``), the period
-stays ``closing`` and the load SUCCEEDS with the ``SANDBOX_REPLAY_BLOCKED`` warning (ruling (3);
-IMP-116).
-
-D-98 137 amendment 4 (Codex production-20260921-1713 §3): the source's approval evidence is
-built through the LIVE decision guard (a PENDING request and an ACTIVE step take the decisions,
-then the DB-03 kernel applies the permitted finalization — R2) and the loader restores the
-finalized graph the same governed way (``snapshot_dataset.FINALIZATIONS`` — R3: the sandbox's
-requests are APPROVED with their decided_at, the steps APPROVED, every decision present by id);
-the lock chain and the recompute witness live on ``support.worlds.k01_pellworth`` — Pellworth's
-activated, billed and computed contract — so the recompute runs on OPEN sandbox periods with a
-real posting target (R1: the computation SUCCEEDS with the ``MIGRATION`` trigger, its schedule
-lines exist in the sandbox, no group is left un-recomputed, ``derived_mismatches = 0``) BEFORE the
-close replay. Postings of the subledger are released by the journal run, not by the recompute;
-the witness asserts the computed schedule and the SUCCEEDED computation — the posting targets
-CV-13 refused while the periods were absent.
-
-D-98 137 amendment 5 (Codex production-20260921-1739 §1–§2): the loader restores approval graphs
-root by root in submission order (APPROVAL-UNIQUE-1: the lock and the re-lock of one period state
-are never PENDING together under ``ux_approval_request__pending_subject``) and the witness compares
-the restored graphs EXACTLY with the source (every column but the remapped tenant); the recompute
-witness asserts that the recompute is THIS load's (WITNESS-1 — by the request id of its audit
-event: 04 NC-06 leaves no ``job_id`` a sandbox row could carry, supervisor ruling R-8), the exact
-source period-state ids and states
-(WITNESS-2: nine opened FY2026 periods, January closed with its re-lock where the chain applies,
-every other row ``future`` — never a subset); the source record-time timeline is world → chain →
-cutoff (WITNESS-3).
-
-D-98 137 amendment 6 (Codex production-20260921-1757 §1–§2): a copied membership that ended
-SUSPENDED / REMOVED loads in its activation state so the approver's historical decisions pass the
-live 0013 guard, and its final status is applied after the approval graphs (MEMBERSHIP-1 —
-``test_suspended_approver_s_decision_is_restored``); the shared injected clock advances to the
-cutoff before every dispatch (WITNESS-3 residual).
-
-D-98 137 amendment 7 (Codex production-20260921-1824 §1): a finalized membership row carries the
-sandbox's own DB-02 stamps — the exact comparison excludes ``updated_at`` and ``row_version`` by
-name and asserts ``row_version`` = source + 1 and a later ``updated_at`` (STAMPS-1); a supported
-refusal after the membership load settles the held final statuses before it returns
-(``test_refusal_after_the_membership_load_leaves_no_member_reactivated``; REFUSAL-1).
+Copies preserve business inputs and approval evidence and recompute their own output. Source
+periods that had opened stay open in the sandbox; future periods stay future. Production lock
+chains are not replayed, per owner scope. The source's period rows must remain unchanged.
+Independent lower-level replay tests retain validation of historical reference parsing.
 """
 
 from __future__ import annotations
@@ -1011,14 +958,7 @@ def _schedule_total(tenant_id: UUID) -> Decimal:
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SNP-2b (supervisor ruling R-10, 2026-09-29): sandbox-side close replay needs CLO-14, "
-        "CLO-16/17 and CLO-19/20; SBX-04 blocked path governs until then"
-    ),
-)
-def test_replay_reaches_the_source_lock_chain(
+def test_copy_opens_source_closed_periods_without_changing_source(
     committed_db: TestDatabase,
     app: FastAPI,
     files: LocalFileStore,
@@ -1027,157 +967,41 @@ def test_replay_reaches_the_source_lock_chain(
     app_settings: Settings,
     job: ModuleType,
 ) -> None:
-    """Acceptance of the finished path, pinned until SNP-2b (module docstring; the assertions are
-    unchanged). What is missing is NOT CLO-10 alone, as this docstring once predicted: the first
-    ``LOCK`` of the replay is refused ``close-gates-failed`` by ``BATCHES_ACKNOWLEDGED``,
-    ``JE_BALANCED``, ``JE_COMPLETE`` and ``RECONCILIATIONS_GENERATED`` — the sandbox has no
-    calculated journal run, no acknowledged batch and no reconciliation of its own, so January
-    stays ``closing`` (SANDBOX_REPLAY_BLOCKED) and every assertion about the lock chain below is
-    unreachable. When the path works: the exported January chain — open, closing, LOCK, REOPEN,
-    closing, re-LOCK — is replayed through the governed commands with the copied approvals, so
-    the sandbox's January is
-    ``closed`` with the SOURCE relock as its current lock; the three locks keep their ids, kinds,
-    transitions and ``previous_lock_id`` chain (LOCK ← REOPEN ← re-LOCK); every transition keeps
-    its id and its ``period_lock_id``; the re-lock stores its diff report (CLO-7); February is
-    ``open``; no period is blocked and the load SUCCEEDED. On the k01 world (R1): Pellworth's
-    group recomputed SUCCEEDED with the ``MIGRATION`` trigger on the OPEN sandbox periods before
-    the close replay, its schedule lines exist, no group is left un-recomputed and
-    ``derived_mismatches = 0``; the finalized approval graph is restored (R3)."""
+    """Owner scope: copies are editable experiments, not replicas of the source lock chain."""
     world = _k01_world(app, keyring, clock, files)
     chain = _k01_chain(world)
-    runtime = world.runtime
-    sandbox_id, result = _copy(chain, runtime, "Replay chain", clock=clock)
+    source_before = _period_rows(world.tenant_id)
+    sandbox_id, result = _copy(chain, world.runtime, "Editable copy", clock=clock)
     assert result["state"] == "SUCCEEDED", result["problem"]
     counts = result["result"]["counts"]
-    assert counts["blocked_periods"] == 0 and counts["derived_mismatches"] == 0, load_outcome(
-        counts
-    )
+    assert (counts["blocked_periods"], counts["derived_mismatches"]) == (0, 0)
     assert counts["groups_recomputed"] == 1 and counts["groups_not_recomputed"] == 0
     assert chain.group_id is not None
     computed = _computation_rows(sandbox_id, chain.group_id)
-    (recomputed,) = computed["computations"]  # REGENERATED: the sandbox's own, none copied
+    (recomputed,) = computed["computations"]
     assert recomputed["status"] == "SUCCEEDED" and recomputed["trigger"] == "MIGRATION"
-    assert computed["schedule_lines"] > 0  # the posting targets CV-13 refused without periods
-    rows = _period_rows(sandbox_id)
-    _assert_approval_graph_restored(sandbox_id, chain)
-    source_states = _state_map(world.tenant_id)
-    assert (
-        _state_map(sandbox_id) == source_states
-    )  # WITNESS-2: exact ids and states, never a subset
-    assert source_states[chain.january_state_id] == ("closed", chain.relock_id)
-    assert sum(1 for state, _ in source_states.values() if state == "open") == 8  # P02..P09
-    assert all(state in ("open", "closed", "future") for state, _ in source_states.values())
-    january = rows["states"][chain.january_state_id]
-    assert january["state"] == "closed" and january["current_lock_id"] == chain.relock_id
-    assert rows["states"][chain.february_state_id]["state"] == "open"
-    assert rows["states"][chain.february_state_id]["current_lock_id"] is None
-    locks = rows["locks"]
-    assert set(locks) == {chain.lock_id, chain.reopen_id, chain.relock_id}
-    assert (
-        locks[chain.lock_id]["kind"] == "LOCK" and locks[chain.lock_id]["previous_lock_id"] is None
-    )
-    assert locks[chain.reopen_id]["kind"] == "REOPEN"
-    assert locks[chain.reopen_id]["previous_lock_id"] == chain.lock_id
-    assert locks[chain.relock_id]["kind"] == "LOCK"
-    assert locks[chain.relock_id]["previous_lock_id"] == chain.reopen_id
-    assert locks[chain.relock_id]["diff_report_file_id"] is not None  # CLO-7 re-lock diff
-    for key, lock_id in (
-        ("january:closing>closed#1", chain.lock_id),
-        ("january:closed>reopened", chain.reopen_id),
-        ("january:closing>closed#2", chain.relock_id),
-    ):
-        transition = rows["transitions"][chain.transitions[key]]
-        assert transition["period_lock_id"] == lock_id
-        assert locks[lock_id]["period_state_transition_id"] == chain.transitions[key]
-    for key, transition_id in chain.transitions.items():
-        assert transition_id in rows["transitions"], key  # every source transition, by id
-    assert (
-        rows["transitions"][chain.transitions["january:closing>closed#2"]]["created_by"]
-        == chain.admin.user_id
-    )  # the replay's actor is the requester's copied membership, not the source approver
-    assert rows["warnings"] == []
-    report = _load_report(sandbox_id, runtime, keyring)
-    assert report["groups_recomputed"] == 1 and report["mismatches"] == []
-
-
-def test_replay_on_the_k01_chain_restores_everything_the_sandbox_can_reach(
-    committed_db: TestDatabase,
-    app: FastAPI,
-    files: LocalFileStore,
-    keyring: KeyRing,
-    clock: FrozenClock,
-    app_settings: Settings,
-    job: ModuleType,
-) -> None:
-    """What ``test_replay_reaches_the_source_lock_chain`` asserts and the product delivers TODAY
-    (split out by supervisor ruling R-10, so its strict xfail covers only the unreachable part),
-    on the same world and the same copy. The load SUCCEEDS. R1: Pellworth's group recomputes
-    SUCCEEDED with the ``MIGRATION`` trigger on the OPEN sandbox periods before the close replay,
-    its schedule lines exist, no group is left un-recomputed and ``derived_mismatches = 0``. R3:
-    the finalized approval graph of the lock, the reopen and the re-lock is restored exactly.
-    WITNESS-2 on the reachable part: every period state but January's equals the source's by id
-    and state; February is ``open`` without a lock.
-
-    January is where the path stops, as 05 SBX-04 rules it (D-98 137 (3)): the replay opens it
-    and starts its close, and the first ``LOCK`` is refused ``close-gates-failed`` by exactly five
-    gates — ``BATCHES_ACKNOWLEDGED``, ``CLOSE_RUN_COMPLETED``, ``JE_BALANCED``, ``JE_COMPLETE``,
-    ``RECONCILIATIONS_GENERATED`` — so the period stays ``closing`` without a lock row, is named
-    ONCE in ``blocked_periods`` and raises one ``SANDBOX_REPLAY_BLOCKED`` warning. The pin is
-    exact on purpose: the day a gate stops failing here, SNP-2b has moved and this case and the
-    xfail are to be merged back.
-
-    ``CLOSE_RUN_COMPLETED`` is the fifth since 04 rev 1.172 (item CLO-GATE-RUN-1; supervisor
-    ruling R-116 (e); 05 SBX-04 rev 1.111): a replayed lock takes that gate from the source lock's
-    certification, and the chain's locks, written directly, certify nothing
-    (``_lock_values``) — a source lock without the result leaves the sandbox's own evaluation, and
-    the sandbox has no close run. A chain whose locks carry the result loses this gate here."""
-    world = _k01_world(app, keyring, clock, files)
-    chain = _k01_chain(world)
-    runtime = world.runtime
-    sandbox_id, result = _copy(chain, runtime, "Replay chain, reachable", clock=clock)
-    assert result["state"] == "SUCCEEDED", result["problem"]
-    counts = result["result"]["counts"]
-    assert counts["derived_mismatches"] == 0, load_outcome(counts)
-    assert counts["groups_recomputed"] == 1 and counts["groups_not_recomputed"] == 0
-    assert chain.group_id is not None
-    computed = _computation_rows(sandbox_id, chain.group_id)
-    (recomputed,) = computed["computations"]  # REGENERATED: the sandbox's own, none copied
-    assert recomputed["status"] == "SUCCEEDED" and recomputed["trigger"] == "MIGRATION"
-    assert computed["schedule_lines"] > 0  # the posting targets CV-13 refused without periods
-    rows = _period_rows(sandbox_id)
+    assert computed["schedule_lines"] > 0
     _assert_approval_graph_restored(sandbox_id, chain)
     source_states = _state_map(world.tenant_id)
     assert source_states[chain.january_state_id] == ("closed", chain.relock_id)
-    assert sum(1 for state, _ in source_states.values() if state == "open") == 8  # P02..P09
-    assert all(state in ("open", "closed", "future") for state, _ in source_states.values())
-    reached = _state_map(sandbox_id)
-    january = chain.january_state_id
-    assert set(reached) == set(source_states)  # every source period state, by id
-    assert {key: value for key, value in reached.items() if key != january} == {
-        key: value for key, value in source_states.items() if key != january
+    assert _state_map(sandbox_id) == {
+        key: ("future" if state == "future" else "open", None)
+        for key, (state, _) in source_states.items()
     }
-    assert rows["states"][chain.february_state_id]["state"] == "open"
-    assert rows["states"][chain.february_state_id]["current_lock_id"] is None
-    report = _load_report(sandbox_id, runtime, keyring)
+    rows = _period_rows(sandbox_id)
+    assert rows["locks"] == {} and rows["warnings"] == []
+    assert all(row["to_state"] in ("future", "open") for row in rows["transitions"].values())
+    assert _period_rows(world.tenant_id) == source_before
+    report = _load_report(sandbox_id, world.runtime, keyring)
     assert report["groups_recomputed"] == 1 and report["mismatches"] == []
-    # where the path stops: January, at its last reachable state
-    assert counts["blocked_periods"] == 1
-    assert reached[january] == ("closing", None) and rows["locks"] == {}
-    assert chain.transitions["january:open>closing#1"] in rows["transitions"]
-    assert chain.transitions["january:closing>closed#1"] not in rows["transitions"]
-    (blocked,) = report["blocked_periods"]
-    assert blocked["period_state_id"] == str(january)
-    assert (blocked["attempted"], blocked["reached"]) == ("closing → closed", "closing")
-    assert str(blocked["reason"]).startswith(
-        "close-gates-failed "
-        "[BATCHES_ACKNOWLEDGED, CLOSE_RUN_COMPLETED, JE_BALANCED, JE_COMPLETE, "
-        "RECONCILIATIONS_GENERATED]"
+    assert report["blocked_periods"] == []
+    assert report["period_state_policy"] == "OPEN_FOR_EXPERIMENTATION"
+    assert load_chain(sandbox_id).summary["detail"]["period_state_policy"] == (
+        "OPEN_FOR_EXPERIMENTATION"
     )
-    (warning,) = rows["warnings"]
-    assert warning["severity"] == "WARNING" and warning["period_id"] == chain.january_id
 
 
-def test_blocked_periods_are_queryable_and_refuse_point_in_time_consumers(
+def test_open_copy_load_evidence_is_queryable(
     committed_db: TestDatabase,
     app: FastAPI,
     files: LocalFileStore,
@@ -1186,28 +1010,15 @@ def test_blocked_periods_are_queryable_and_refuse_point_in_time_consumers(
     app_settings: Settings,
     job: ModuleType,
 ) -> None:
-    """05 SBX-04 rev 1.64 (supervisor ruling R-43 (d)): ``blocked_periods`` has a queryable home
-    and the refusal the rule promises consumers. On the k01 chain world January's lock cannot be
-    replayed (SNP-2b). The sandbox's API-S-Tenant — ``GET /tenant`` as Marcus inside it —
-    answers ``sandbox_load`` with the seed snapshot, ``derived_mismatches = 0``,
-    ``blocked_periods`` = January's period state, and the load report's id and SHA-256 as the
-    summary event carries them. ``sandboxes.require_point_in_time`` refuses in that sandbox with
-    412 ``precondition-failed``, rule id ``SANDBOX_PERIODS_BLOCKED``, naming the period state;
-    it passes in the source, where the question does not arise."""
+    """Intentionally open copies expose successful load evidence without a false blocked warning."""
     world = _k01_world(app, keyring, clock, files)
     chain = _k01_chain(world)
     sandbox_id, result = _copy(chain, world.runtime, "Blocked, queryable", clock=clock)
     assert result["state"] == "SUCCEEDED", result["problem"]
     counts = result["result"]["counts"]
-    assert (counts["blocked_periods"], counts["derived_mismatches"]) == (1, 0), load_outcome(counts)
-    january = chain.january_state_id
+    assert (counts["blocked_periods"], counts["derived_mismatches"]) == (0, 0), load_outcome(counts)
     with tenant_session(_context(sandbox_id), read_only=True) as session:
-        with pytest.raises(Problem) as refused:
-            sb.require_point_in_time(session, sandbox_id)
-    assert (refused.value.slug, refused.value.status) == ("precondition-failed", 412)
-    (error,) = refused.value.errors
-    assert (error.field, error.rule_id) == ("blocked_periods", sb.RULE_PERIODS_BLOCKED)
-    assert str(january) in error.message
+        sb.require_point_in_time(session, sandbox_id)
     with tenant_session(_context(world.tenant_id), read_only=True) as session:
         sb.require_point_in_time(session, world.tenant_id)
     marcus = enter_workspace(app, clock, world.marcus, sandbox_id)
@@ -1216,7 +1027,7 @@ def test_blocked_periods_are_queryable_and_refuse_point_in_time_consumers(
     assert shown.headers["X-Erev-Tenant-Kind"] == "sandbox"
     loaded = shown.json()["sandbox_load"]
     detail = load_chain(sandbox_id).summary["detail"]
-    assert loaded["blocked_periods"] == [str(january)] == detail["blocked_periods"]
+    assert loaded["blocked_periods"] == [] == detail["blocked_periods"]
     assert loaded["derived_mismatches"] == 0
     assert loaded["tenant_snapshot_id"] == str(UUID(int=int(sandbox_id) ^ 1))  # ``_copy``
     assert loaded["load_report_file_id"] == detail["load_report_file_id"]
@@ -1319,19 +1130,14 @@ def periods_transitions(tenant_id: UUID, entity_id: UUID) -> list[dict[str, Any]
         ]
 
 
-def test_replay_refused_by_a_gate_is_a_warning(
+def test_copy_does_not_apply_production_close_gates(
     committed_db: TestDatabase,
     keyring: KeyRing,
     clock: FrozenClock,
     app_settings: Settings,
     job: ModuleType,
 ) -> None:
-    """The genuine guarded refusal (ruling (3)): an OPEN BLOCKING exception of the entity in
-    January is copied into the sandbox, so ``EXCEPTIONS_CLEARED`` fails and the first LOCK is
-    refused by name (``close-gates-failed``) — the period stays ``closing`` (its last reachable
-    state), no lock row exists, the later steps of that period are skipped, February still opens,
-    the load SUCCEEDS, the load report and the ``tenant.snapshot_loaded`` event name the blocked
-    period, and one ``SANDBOX_REPLAY_BLOCKED`` WARNING item (IMP-116) is raised in the sandbox."""
+    """Copied business exceptions do not trigger a production close replay in the sandbox."""
     chain = _chain(keyring, clock)
     with tenant_session(_context(chain.admin.tenant_id)) as session:
         session.execute(
@@ -1347,28 +1153,26 @@ def test_replay_refused_by_a_gate_is_a_warning(
     runtime = _runtime(app_settings, keyring, clock)
     sandbox_id, result = _copy(chain, runtime, "Replay blocked", clock=clock)
     assert result["state"] == "SUCCEEDED", result["problem"]
-    assert result["result"]["counts"]["blocked_periods"] == 1
+    assert result["result"]["counts"]["blocked_periods"] == 0
     rows = _period_rows(sandbox_id)
     january = rows["states"][chain.january_state_id]
-    assert january["state"] == "closing" and january["current_lock_id"] is None
+    assert january["state"] == "open" and january["current_lock_id"] is None
     assert rows["locks"] == {}
     assert rows["states"][chain.february_state_id]["state"] == "open"
     expected = dict(_state_map(chain.admin.tenant_id))
-    expected[chain.january_state_id] = ("closing", None)  # the last reachable state (ruling (3))
+    expected[chain.january_state_id] = ("open", None)
     assert _state_map(sandbox_id) == expected  # WITNESS-2: every source period state by id
-    assert chain.transitions["january:open>closing#1"] in rows["transitions"]
+    assert chain.transitions["january:open>closing#1"] not in rows["transitions"]
     assert chain.transitions["january:closing>closed#1"] not in rows["transitions"]
     _assert_approval_graph_restored(sandbox_id, chain)  # R3 is independent of the gates
-    (warning,) = rows["warnings"]
-    assert warning["severity"] == "WARNING" and warning["period_id"] == chain.january_id
-    assert "close-gates-failed" in warning["message"]
+    assert rows["warnings"] == []
     with tenant_session(_context(sandbox_id), read_only=True) as session:
         from erev_api.db.tables import audit_event
 
         detail = session.execute(
             select(audit_event.c.detail).where(audit_event.c.action == sb.ACTION_LOADED)
         ).scalar_one()
-    assert detail["blocked_periods"] == [str(chain.january_state_id)]
+    assert detail["blocked_periods"] == []
 
 
 def test_the_end_of_a_soft_close_under_reopen_replays_through_the_governed_move(
@@ -1394,9 +1198,8 @@ def test_the_end_of_a_soft_close_under_reopen_replays_through_the_governed_move(
     transition to reopened without its period_lock row", which the loader answers not-loadable —
     a tenant whose history holds the pair could not be loaded as a sandbox.
 
-    The step is applied to the tenant the rows were written in, not to a loaded sandbox: a load
-    stops at a period's first LOCK until SNP-2b (``test_replay_reaches_the_source_lock_chain``,
-    strict xfail), so no sandbox period reaches a soft close under a REOPEN record today."""
+    This tests the retained historical replay primitive directly. New sandbox copies only
+    apply creation/opening steps and do not run the close replay."""
     chain = _chain(keyring, clock)
     tenant_id = chain.admin.tenant_id
     common = {
@@ -1973,13 +1776,13 @@ def test_a_late_event_in_a_closed_source_period_verifies_and_posts_elsewhere(
     source January is CLOSED (the lock chain of this module) when a bonus effective 15 January
     is approved — a late event: the source recomputes with January closed and posts the catch-up
     where its periods allow. The sandbox recomputes with every period open and its January then
-    stays ``closing`` (the blocked path of SBX-04).
+    stays open for experimentation.
 
     The MONETARY STATE is equal all the same — no schedule line, balance or version amount
     depends on the state a period had when the source computed — so ``derived_mismatches = 0``.
     The LEDGER differs, exactly as the rule says: both tenants carry the same revenue in total,
-    and not in the same periods. That difference is SNP-2b's, and the load names the period it
-    could not close in ``blocked_periods``."""
+    and not in the same periods. This is intentional for an editable sandbox and does not
+    produce a blocked-period warning or claim to reproduce production posting history."""
     world = _k01_world(app, keyring, clock, files)
     chain = _k01_chain(world)  # January closed in the source
     assert chain.group_id is not None
@@ -1998,14 +1801,12 @@ def test_a_late_event_in_a_closed_source_period_verifies_and_posts_elsewhere(
     assert counts["groups_recomputed"] == 1 and counts["derived_mismatches"] == 0, load_outcome(
         counts
     )
-    assert counts["blocked_periods"] == 1
+    assert counts["blocked_periods"] == 0
     report = _load_report(sandbox_id, world.runtime, keyring)
     assert (report["compared"], report["mismatches"]) == (1, [])
-    assert [b["period_state_id"] for b in report["blocked_periods"]] == [
-        str(chain.january_state_id)
-    ]
+    assert report["blocked_periods"] == []
     assert _state_map(world.tenant_id)[chain.january_state_id][0] == "closed"
-    assert _state_map(sandbox_id)[chain.january_state_id] == ("closing", None)
+    assert _state_map(sandbox_id)[chain.january_state_id] == ("open", None)
     ledger, replayed = _revenue_by_period(world.tenant_id), _revenue_by_period(sandbox_id)
     assert sum(ledger.values()) == sum(replayed.values()) != 0  # the same revenue in total
     assert ledger != replayed  # carried in other periods: not SBX-05's subject

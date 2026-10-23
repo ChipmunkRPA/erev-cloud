@@ -20,6 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Editable sandbox periods after copy/reset — October 22, 2026
+
+- Implemented the owner's sandbox scope in the shared snapshot loader: periods previously opened
+  in production stay open in a new sandbox; future periods stay future. Production close/lock
+  transitions are no longer replayed. Copy, restore and snapshot reset use the same behavior.
+- Load report v2 and sandbox audit evidence name OPEN_FOR_EXPERIMENTATION. UI copy and the user
+  guide explain that production locks are not copied. Old sandboxes retain their existing state
+  until replaced; historical blocked-load guards remain for those old records. Matching monetary
+  state does not claim equal posting-period history, as the late-event case demonstrates.
+- Replaced obsolete lock-chain acceptance with editable-copy acceptance and source-period
+  immutability. Necessary checks cover populated copy, open-period computation, late events,
+  load evidence, source close-gate independence and populated reset. Updated old test evidence
+  inventories for existing computation/audit commit records, retaining source business-row checks.
+- This does not add a one-click refresh from the latest production state: the current reset UI
+  still offers its original seed or empty. That owner-requested workflow remains to be completed.
+  Reporting foreign modification attribution and final candidate verification also remain open.
+
 ## Multi-currency tie-out display completeness — October 22, 2026
 
 - The report viewer now displays the union of currencies in expected, actual and difference
@@ -204,37 +221,6 @@ review and publish changes without PR accumulation, and do not deploy.
   the preceding committed framework, so this feature does not introduce them. They remain an
   explicit verification cleanup item; the full access test file is not claimed green.
   No deployment; other documented Reporting/repository gaps remain.
-
-## Allocation lineage retained reconstruction — October 22, 2026
-
-- New allocations-by-SSP-version runs retain each segment's first/latest obligation-version
-  inputs, cause, allocation date and contract-chain number, with version membership. Bound reruns
-  validate tenant/entity scope and book/date/SSP selection, then recalculate original or remaining
-  SSP lineage, range status, adjustments, currency totals and TOTAL rows without live reads.
-- Necessary validation passed: 45 focused SSP/source-binding cases; actual override approval,
-  recomputation and report API/worker flow. Fresh allocation rows use the corrected SSP pin and
-  override flag, while the saved report reproduces the original allocation rows and identical
-  output hash. No-session checks cover chain numbering, amount/adjustment/total recalculation,
-  date selection and scope refusal. Scoped lint/types and migration 0316 IPE parity passed.
-- All four SSP reports now support retained same-source reconstruction for new runs. Older OPEN
-  runs keep their original behavior. This report remains transaction-currency-only as specified;
-  the change does not add functional allocation measures. Other documented Reporting/repository
-  gaps remain open. No deployment.
-
-## SSP override retained reconstruction — October 22, 2026
-
-- New runs retain obligation/product identifiers, original default/override version labels,
-  approval requests/decisions, justification and actor names. Same-source reruns validate
-  tenant/entity scope and date filters, restore approval inputs, reapply the approved-date
-  selection and rebuild rows without live reads. Request membership is recorded.
-- Necessary verification passed: 44 focused SSP/source-binding cases; actual SSP override
-  approval/computation/report API and worker workflow. After approval, fresh reports show the
-  override while the pre-approval saved report still rebuilds empty; both pre/post approval
-  saved reports reproduce original rows and hashes. No-session checks cover labels, reasons,
-  actor display, approval timestamps, status selection and scope refusal. Scoped lint/types and
-  migration 0315 frozen IPE parity passed. Older OPEN runs retain new-evaluation behavior.
-- This report lists version overrides and approval evidence, not monetary allocation amounts.
-  Remaining allocation and other documented Reporting gaps remain open. No deployment.
 
 ## Outstanding release verification
 

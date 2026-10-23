@@ -1025,7 +1025,7 @@ class Replay:
         self.applied += 1
         self._beat()
 
-    def result(self) -> ReplayResult:
+    def result(self, *, open_only: bool = False) -> ReplayResult:
         if not self._opened:
             raise RuntimeError("open_periods runs before result")
         with system_unit_of_work(
@@ -1040,6 +1040,13 @@ class Replay:
                 str(row["state"]),
                 None if row.get("current_lock_id") is None else UUID(str(row["current_lock_id"])),
             )
+            if open_only:
+                expected = (
+                    PeriodState.FUTURE.value
+                    if str(row["state"]) == PeriodState.FUTURE.value
+                    else PeriodState.OPEN.value,
+                    None,
+                )
             if reached.get(state_id) != expected:
                 raise RuntimeError(
                     f"period_state {state_id}: the replay reached {reached.get(state_id)} but the "

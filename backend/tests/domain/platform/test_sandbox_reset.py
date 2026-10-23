@@ -98,7 +98,9 @@ REASON = "Rehearsal complete"  # PRD J-25.3
 RETENTION_FROM = FROZEN_AT - timedelta(days=1)
 # What the reset itself writes in the sandbox it supersedes: its job, its events, the stored
 # answer of the request. Everything else must be exactly as it was — nothing is deleted.
-_RESET_WRITES = frozenset({"job", "audit_event", "idempotency_record", "outbox_message"})
+_RESET_WRITES = frozenset(
+    {"job", "audit_event", "idempotency_record", "outbox_message", "historical_source_commit"}
+)
 
 
 @pytest.fixture
@@ -244,6 +246,13 @@ def _business_rows(tenant_id: UUID) -> dict[str, list[dict[str, Any]]]:
                 for row in session.execute(
                     select(table)
                     .where(table.c.tenant_id == tenant_id)
+                    # Audit commit evidence follows the permitted reset audit writes. All
+                    # other historical business-source evidence must remain unchanged.
+                    .where(
+                        table.c.source_kind != "audit_event"
+                        if table.name == "historical_source_commit"
+                        else True
+                    )
                     .order_by(*table.primary_key.columns)
                 ).mappings()
             ]
@@ -401,7 +410,12 @@ def test_reset_to_copy(
     # production: only its own provenance records of the new sandbox were added
     production_after = _row_counts(copied.production_id)
     changed = {n for n in production_after if production_after[n] != production_before[n]}
-    assert changed <= {"audit_event", "notification", "outbox_message"}, changed
+    assert changed <= {
+        "audit_event",
+        "notification",
+        "outbox_message",
+        "historical_source_commit",
+    }, changed
     assert _business_rows(copied.production_id) == business_before
 
 

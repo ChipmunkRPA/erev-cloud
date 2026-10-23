@@ -1,5 +1,23 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Editable sandbox periods after copy/reset — October 22, 2026
+
+- Implemented the owner's sandbox scope in the shared snapshot loader: periods previously opened
+  in production stay open in a new sandbox; future periods stay future. Production close/lock
+  transitions are no longer replayed. Copy, restore and snapshot reset use the same behavior.
+- Load report v2 and sandbox audit evidence name OPEN_FOR_EXPERIMENTATION. UI copy and the user
+  guide explain that production locks are not copied. Old sandboxes retain their existing state
+  until replaced; historical blocked-load guards remain for those old records. Matching monetary
+  state does not claim equal posting-period history, as the late-event case demonstrates.
+- Replaced obsolete lock-chain acceptance with editable-copy acceptance and source-period
+  immutability. Necessary checks cover populated copy, open-period computation, late events,
+  load evidence, source close-gate independence and populated reset. Updated old test evidence
+  inventories for existing computation/audit commit records, retaining source business-row checks.
+- This does not add a one-click refresh from the latest production state: the current reset UI
+  still offers its original seed or empty. That owner-requested workflow remains to be completed.
+  Reporting foreign modification attribution and final candidate verification also remain open.
+
+
 ## Multi-currency tie-out display completeness — October 22, 2026
 
 - The report viewer now displays the union of currencies in expected, actual and difference

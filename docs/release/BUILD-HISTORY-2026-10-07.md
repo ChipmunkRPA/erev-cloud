@@ -12109,3 +12109,34 @@ cleanup in the shared database session kernel was also repaired and regression-t
   display, timestamps, studies, date selection and scope/filter refusal. Scoped lint/types and
   migration 0314 frozen IPE parity passed. Ad-hoc historical mutable-state limitations remain.
   No deployment; remaining SSP and other documented Reporting gaps are still open.
+
+## SSP override retained reconstruction — October 22, 2026
+
+- New runs retain obligation/product identifiers, original default/override version labels,
+  approval requests/decisions, justification and actor names. Same-source reruns validate
+  tenant/entity scope and date filters, restore approval inputs, reapply the approved-date
+  selection and rebuild rows without live reads. Request membership is recorded.
+- Necessary verification passed: 44 focused SSP/source-binding cases; actual SSP override
+  approval/computation/report API and worker workflow. After approval, fresh reports show the
+  override while the pre-approval saved report still rebuilds empty; both pre/post approval
+  saved reports reproduce original rows and hashes. No-session checks cover labels, reasons,
+  actor display, approval timestamps, status selection and scope refusal. Scoped lint/types and
+  migration 0315 frozen IPE parity passed. Older OPEN runs retain new-evaluation behavior.
+- This report lists version overrides and approval evidence, not monetary allocation amounts.
+  Remaining allocation and other documented Reporting gaps remain open. No deployment.
+
+## Allocation lineage retained reconstruction — October 22, 2026
+
+- New allocations-by-SSP-version runs retain each segment's first/latest obligation-version
+  inputs, cause, allocation date and contract-chain number, with version membership. Bound reruns
+  validate tenant/entity scope and book/date/SSP selection, then recalculate original or remaining
+  SSP lineage, range status, adjustments, currency totals and TOTAL rows without live reads.
+- Necessary validation passed: 45 focused SSP/source-binding cases; actual override approval,
+  recomputation and report API/worker flow. Fresh allocation rows use the corrected SSP pin and
+  override flag, while the saved report reproduces the original allocation rows and identical
+  output hash. No-session checks cover chain numbering, amount/adjustment/total recalculation,
+  date selection and scope refusal. Scoped lint/types and migration 0316 IPE parity passed.
+- All four SSP reports now support retained same-source reconstruction for new runs. Older OPEN
+  runs keep their original behavior. This report remains transaction-currency-only as specified;
+  the change does not add functional allocation measures. Other documented Reporting/repository
+  gaps remain open. No deployment.

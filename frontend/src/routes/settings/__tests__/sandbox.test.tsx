@@ -272,7 +272,7 @@ describe("SF-15:sandbox", () => {
     const dialog = await screen.findByRole("dialog", { name: "Restore into a new sandbox" });
     expect(
       within(dialog).getByText(
-        "A new sandbox is created from this snapshot. Production is not changed.",
+        "A new sandbox is created from this snapshot with previously opened periods left open for experimentation. Production is not changed.",
       ),
     ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Restore into a new sandbox" }));
@@ -454,7 +454,7 @@ describe("SF-15:sandbox", () => {
     const dialog = await screen.findByRole("dialog", { name: "Create sandbox copy" });
     expect(
       within(dialog).getByText(
-        "The copy includes reference data, events, versions and memberships as known at the chosen time. Derived figures are recomputed in the sandbox.",
+        "The copy includes reference data, events, versions and memberships as known at the chosen time. Derived figures are recomputed in the sandbox. Previously opened periods stay open for experimentation; production locks are not copied.",
       ),
     ).toBeTruthy();
     const knownAt = within(dialog).getByRole("radiogroup", { name: "Known at" });

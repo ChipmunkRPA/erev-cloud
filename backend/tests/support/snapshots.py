@@ -315,6 +315,7 @@ LOAD_RECOMPUTE_ACTIONS: Final = frozenset(
             f"{name}.{computation.CREATE}"
             for name in (
                 computation.COMPUTATION_OBJECT,
+                "computation_evidence",
                 computation.VERSION_OBJECT,
                 computation.TRACE_OBJECT,
                 computation.OBLIGATION_VERSION_OBJECT,
