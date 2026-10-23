@@ -69,7 +69,9 @@ def _money(value: Fraction, currency: str) -> dict[str, str]:
     return {"amount": ("-" if value < 0 else "") + text, "currency": currency}
 
 
-def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
+def dataset(
+    pair: Pair, replay: variance_groups.GroupReplay, *, retain_offsets: bool = True
+) -> Presentation:
     """Present both sections, preserving drill evidence separately from grid values."""
     if replay.required_entity_ids != pair.required_entity_ids:
         raise _refuse("the replay access scope differs from its source pair.")
@@ -125,12 +127,31 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
         for driver, amount in by_driver.items():
             driver_key = key.currency, key.measure, driver
             drivers[driver_key] = drivers.get(driver_key, zero) + amount
-            if amount:
+            if (
+                amount
+                or retain_offsets
+                and any(effect.driver == driver and effect.amount for effect in change.effects)
+            ):
                 driver_contributors.setdefault(driver_key, []).append(
                     {
                         "contract_external_id": key.contract_external_id,
                         "group_id": group_id,
                         "change": _money(amount, key.currency),
+                        **(
+                            {
+                                "effects": [
+                                    {
+                                        "change": _money(effect.amount, key.currency),
+                                        "event_keys": list(effect.event_keys),
+                                        "value_after": _money(effect.value_after, key.currency),
+                                    }
+                                    for effect in change.effects
+                                    if effect.driver == driver
+                                ]
+                            }
+                            if retain_offsets
+                            else {}
+                        ),
                         "event_keys": [
                             event
                             for effect in change.effects
@@ -139,7 +160,9 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
                         ],
                     }
                 )
-        if not change.total:
+        if not change.total and (
+            not retain_offsets or not any(effect.amount for effect in change.effects)
+        ):
             continue
         row_key = "change:" + ":".join(
             encode_key(part)
@@ -159,7 +182,15 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
                 "earlier_value": _money(was, key.currency),
                 "later_value": _money(now, key.currency),
                 "change": _money(change.total, key.currency),
-                "driver_label": ", ".join(DRIVER_LABELS[d] for d in DRIVERS if by_driver[d]),
+                "driver_label": ", ".join(
+                    DRIVER_LABELS[d]
+                    for d in DRIVERS
+                    if (
+                        any(effect.driver == d and effect.amount for effect in change.effects)
+                        if retain_offsets
+                        else by_driver[d]
+                    )
+                ),
             }
         )
         contributors[row_key] = {
@@ -186,7 +217,7 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
         raise _refuse("group driver totals differ from the contract decompositions.")
     summary: list[dict[str, Any]] = []
     for (currency, measure, driver), amount in sorted(drivers.items()):
-        if amount:
+        if amount or retain_offsets and driver_contributors.get((currency, measure, driver)):
             summary.append(
                 {
                     "row_key": f"driver:{currency}:{measure}:{driver}",
@@ -248,7 +279,8 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
         },
     }
     # Totals remain separate by measure and currency. Do not invent visible rows
-    # for an identical pair: the viewer's empty state then remains truthful.
+    # for an unchanged replay. Net-zero replays with nonzero intermediate effects
+    # retain rows and drill evidence rather than looking like no activity.
     active = {(row["currency"], row["measure"]) for row in (*summary, *rows)}
     total_rows = []
     for section, label in ((1, "Change by driver"), (2, "Changes by contract")):

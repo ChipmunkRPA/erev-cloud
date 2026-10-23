@@ -987,3 +987,18 @@ under POL-200, the rules are applied in order and listed separately without exce
 remaining amount. Translated exemption rows reconcile to the translated excluded total.
 New runs require original dated royalty evidence; older calculations missing it need
 recomputation. Previously retained RPO runs keep their original exemption interpretation.
+
+
+### Offsetting changes between closes
+
+A zero net change does not always mean there was no activity. The variance-between-closes
+report keeps contract and driver rows when their original replay effects offset each other.
+Open the Change amount to inspect the positive and negative amounts and their event references.
+For example, a modification increase of 25 and a progress decrease of 25 remain visible with
+a total change of zero. Earlier saved runs retain their original row population. Opposing
+amounts across contracts remain available under the driver's
+zero-total row as well. A replay with no nonzero effects still produces an empty result.
+
+The effects explain the recorded sequence of calculations; one effect can cover several
+consecutive events of the same driver. The display does not claim a separate amount for each
+such event and does not change the underlying accounting calculations.

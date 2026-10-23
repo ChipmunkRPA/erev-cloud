@@ -20,6 +20,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Close-variance offsetting effects — October 22, 2026
+
+- Retain contract rows whose nonzero replay effects offset to zero, including repeated runs
+  of one driver. Retain driver summary rows when opposing contract contributions net to zero.
+  Unchanged replays still render empty; section totals remain the original net amounts.
+- Drill evidence includes signed intermediate effects and event references. The cell reader
+  checks each retained effect population against its contract/driver amount before displaying it;
+  original source/hash/entity checks remain. New bindings pin offset details; older bound runs
+  preserve their original row population and evidence without the additive details works.
+- Migration 0330 documents the presentation scope. Necessary checks cover native replay/export
+  compatibility, authored offset witnesses, contributor reads, corrupt effects, catalogue parity
+  and scoped types/lint. No engine calculation, event grouping or deployment changed.
+- Individual amounts within a consecutive same-driver event run remain an implementation gap.
+
 ## Modification functional calculation evidence — October 22, 2026
 
 - New register runs expose original functional catch-up calculations and period/basis when a
@@ -218,22 +232,6 @@ The goal remains active. No new accounting functionality is claimed by this scop
   amounts or show clearly labelled currency equivalents. Pending a response, preserve actual
   evidence and do not allocate period totals to a single event without proof. Other engineering
   can continue. No deployment; overall development remains incomplete.
-
-## Verified functional revenue activity reader — October 22, 2026
-
-- Added a report-layer reader for the new S12 activity evidence. It replays the trace, validates
-  obligation/entity/currency identities, checks every signed functional piece with multiplicity,
-  and reconciles both transaction and functional movement sums against current-minus-prior
-  cumulative revenue. It returns original dated signed flows with source references.
-- Missing older activity, altered transaction counters, inconsistent formula results and currency
-  mismatches fail explicitly. A matching net alone is insufficient: the source-piece population
-  must also match. Period-aggregated flows are not assumed to be individual modification events.
-- Necessary verification passed: the new reader checks on actual S12 historical-layer and negative
-  revenue traces plus all 13 FX-layer cases (15 total); scoped lint/types passed. The historical
-  USD 170 movement and subsequent USD -26 delta are reconstructed from their actual sources.
-- This is a reusable report reading layer, not yet a served foreign modification currency view.
-  Event-to-flow attribution and transaction-price currency presentation remain required before
-  changing that report's admission. No deployment or overall completion claim.
 
 ## Outstanding release verification
 

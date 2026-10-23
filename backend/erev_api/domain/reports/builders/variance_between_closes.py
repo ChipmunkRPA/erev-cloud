@@ -117,6 +117,12 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
     }
     if view != "transaction":
         identity["currency_view"] = view
+    # New reports retain offset evidence; bound older reports keep their row population.
+    if (
+        params.binding is None
+        or params.binding.evidence.get(BINDING, {}).get("offset_details") is True
+    ):
+        identity["offset_details"] = True
     if params.binding is not None and (
         params.binding.strategy != ADAPTER
         or params.binding.report_version != params.report_version
@@ -132,7 +138,12 @@ def calculate(prepared: Prepared, *, engine: Engine) -> Calculated:
     replay = variance_groups.execute(
         prepared.pair, engine=engine, currency_view=prepared.currency_view
     )
-    return Calculated(prepared.identity, variance_presentation.dataset(prepared.pair, replay))
+    return Calculated(
+        prepared.identity,
+        variance_presentation.dataset(
+            prepared.pair, replay, retain_offsets=prepared.identity.get("offset_details") is True
+        ),
+    )
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:

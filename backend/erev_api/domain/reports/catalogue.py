@@ -2611,6 +2611,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "two locks of one entity, book and period; the later recorded after the earlier",
             "locks of an entity in entity_codes",
             "changes attributed to drivers",
+            "Net-zero contract and driver rows remain visible when nonzero replay effects "
+            "offset; contributor details retain signed effect amounts and event keys; "
+            "unchanged replays remain empty; older bound runs preserve "
+            "their original row population",
         ),
     ),
     _definition(

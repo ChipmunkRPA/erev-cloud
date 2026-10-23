@@ -64,6 +64,7 @@ def cell(
                     "contract_external_id": point["contract_external_id"],
                     "group_id": point["group_id"],
                     "change": value,
+                    "effects": point["effects"],
                     "event_keys": [
                         key for effect in point["effects"] for key in effect["event_keys"]
                     ],
@@ -142,6 +143,25 @@ def cell(
                 "Drivers: " + ", ".join(dict.fromkeys(DRIVER_LABELS[driver] for driver in drivers))
             )
             details.extend(f"Event: {key}" for key in source["event_keys"])
+            effects = source.get("effects")
+            if effects is not None:
+                if (
+                    any(effect["change"]["currency"] != currency for effect in effects)
+                    or sum(
+                        (Fraction(effect["change"]["amount"]) for effect in effects), Fraction(0)
+                    )
+                    != amount
+                ):
+                    raise _refuse()
+                for effect in effects:
+                    effect_amount = Fraction(effect["change"]["amount"])
+                    if not effect_amount:
+                        continue
+                    label = DRIVER_LABELS[effect.get("driver", point.get("driver"))]
+                    rendered = _money(effect_amount, currency)
+                    events = ", ".join(effect["event_keys"])
+                    detail = f"{label}: {rendered['amount']} {currency}"
+                    details.append(detail + (f"; Events: {events}" if events else ""))
             for step in group["executions"]:
                 if step["driver"] in drivers and step.get("changed_fields"):
                     details.append("Changed inputs: " + ", ".join(step["changed_fields"]))

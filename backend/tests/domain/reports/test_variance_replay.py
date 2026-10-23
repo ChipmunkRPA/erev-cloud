@@ -782,6 +782,138 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     with pytest.raises(Problem, match="no retained source"):
         variance_groups.execute(replace(pair, later=replace(pair.later, contract_computations={})))
 
+    # Presentation witnesses: unchanged endpoints can still have opposing
+    # intermediate effects. Do not make those facts disappear from the drill path.
+    from erev_engine.stages.s15_disclosures.variance import (
+        Decomposition,
+        DriverEffect,
+        totals_by_driver,
+    )
+
+    zero_pair = Pair(
+        side(before, 1), side(replace(before, known_at=after.known_at), 3), (entity_id,)
+    )
+    unchanged = variance_groups.execute(zero_pair)
+    assert not variance_presentation.dataset(zero_pair, unchanged).data.rows
+    for same_driver in (False, True):
+        changed_measures = dict(unchanged.measures)
+        changed_groups = dict(unchanged.groups)
+        driver_totals = dict(unchanged.driver_totals)
+        for index, key in enumerate(sorted(k for k in changed_measures if k.measure == "REVENUE")):
+            was = changed_measures[key].metric_before
+            amount = Fraction(25 if index == 0 else -25)
+            effects = (
+                DriverEffect("MODIFICATION", amount, (f"change-{index}-1",), was + amount),
+                DriverEffect(
+                    "PROGRESS",
+                    Fraction(0) if same_driver else -amount,
+                    (),
+                    was + amount if same_driver else was,
+                ),
+                *(
+                    (DriverEffect("MODIFICATION", -amount, (f"change-{index}-2",), was),)
+                    if same_driver
+                    else ()
+                ),
+            )
+            measured = Decomposition(was, was, effects)
+            changed_measures[key] = measured
+            source_id = zero_pair.later.contract_computations[key.contract_external_id]
+            group_id = zero_pair.later.computations[source_id].group_id
+            original = changed_groups[group_id]
+            changed_groups[group_id] = replace(
+                original,
+                replay=replace(
+                    original.replay, measures={**original.replay.measures, key: measured}
+                ),
+            )
+            for driver, amount in totals_by_driver(effects).items():
+                identity = (key.currency, key.measure, driver)
+                driver_totals[identity] = driver_totals.get(identity, Fraction(0)) + amount
+        offset = replace(
+            unchanged, measures=changed_measures, groups=changed_groups, driver_totals=driver_totals
+        )
+        assert not variance_presentation.dataset(zero_pair, offset, retain_offsets=False).data.rows
+        shown = variance_presentation.dataset(zero_pair, offset)
+        detail_rows = [
+            row
+            for row in shown.data.rows
+            if row["section"] == 2 and not row["row_key"].startswith("TOTAL:")
+        ]
+        driver_rows = [
+            row
+            for row in shown.data.rows
+            if row["section"] == 1 and not row["row_key"].startswith("TOTAL:")
+        ]
+        assert len(detail_rows) == 2
+        assert len(driver_rows) == (1 if same_driver else 2)
+        assert all(row["change"]["amount"] == "0.00" for row in shown.data.rows)
+        assert all("Modifications" in row["driver_label"] for row in detail_rows)
+        for row in driver_rows:
+            held = shown.evidence["contributors"][row["row_key"]]["contracts"]
+            assert len(held) == 2
+            assert any(
+                Fraction(effect["change"]["amount"]) for item in held for effect in item["effects"]
+            )
+        # Use the original source-scope checks on the newly retained zero rows.
+        zero_sides = identities(zero_pair)
+        zero_binding = replace(
+            binding,
+            row_keys=frozenset(row["row_key"] for row in shown.data.rows),
+            evidence={
+                "close_variance_sources": {
+                    "version": 1,
+                    "sides": zero_sides,
+                    "required_entity_ids": [str(entity_id)],
+                },
+                "close_variance_contributors": shown.evidence,
+                "close_variance_evidence_sha256": sha256_hex(shown.evidence),
+            },
+        )
+        zero_params = replace(
+            params,
+            binding=zero_binding,
+            parameters={
+                "from_period_lock_id": zero_sides[0]["lock_id"],
+                "to_period_lock_id": zero_sides[1]["lock_id"],
+            },
+        )
+
+        class ZeroLookup:
+            def execute(self, statement):
+                name = statement.compile().params["external_id_1"]
+                return SimpleNamespace(scalar_one_or_none=lambda: contract_ids[name])
+
+        for row in (*detail_rows, *driver_rows):
+            value, items = variance_cells.cell(
+                cast(Session, ZeroLookup()), zero_params, row["row_key"], "change"
+            )
+            assert value["amount"] == "0.00"
+            assert any("25.00 USD" in detail for item in items for detail in item["details"])
+
+        # A retained driver's internal effects must reconcile, even when its
+        # overall amount is zero and the outer evidence hash is self-consistent.
+        import copy
+
+        broken = copy.deepcopy(shown.evidence)
+        chosen = driver_rows[0]["row_key"]
+        broken["contributors"][chosen]["contracts"][0]["effects"][0]["change"]["amount"] = "99.00"
+        broken_binding = replace(
+            zero_binding,
+            evidence={
+                **zero_binding.evidence,
+                "close_variance_contributors": broken,
+                "close_variance_evidence_sha256": sha256_hex(broken),
+            },
+        )
+        with pytest.raises(Problem, match="contributors are unavailable"):
+            variance_cells.cell(
+                cast(Session, ZeroLookup()),
+                replace(zero_params, binding=broken_binding),
+                chosen,
+                "change",
+            )
+
     for entering in (True, False):
         population_pair = Pair(
             side(before, 1, (0,) if entering else (0, 1)),
