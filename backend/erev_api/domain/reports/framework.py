@@ -1393,6 +1393,23 @@ def _calendar_errors(
     ).scalar_one()
     if calendars < 2:
         return []
+    # Snapshot totals are comparable across distinct calendar records only when every
+    # selected entity resolves the explicit period to the same complete date interval.
+    # This does not relax range reports whose implicit endpoints or interior periods differ.
+    if code in {rpo_builder.CODE, contract_balances_builder.CODE} and parameters.get("period_key"):
+        selected = session.execute(
+            select(period.c.calendar_id, period.c.start_date, period.c.end_date).where(
+                period.c.calendar_id.in_(
+                    select(legal_entity.c.calendar_id).where(legal_entity.c.id.in_(entity_ids))
+                ),
+                period.c.period_key == str(parameters["period_key"]),
+            )
+        ).all()
+        if (
+            len(selected) == calendars
+            and len({(row.start_date, row.end_date) for row in selected}) == 1
+        ):
+            return []
     return [_finding(f"parameters.{ENTITY_CODES}", CALENDARS_DIFFER, RULE_CALENDARS)]
 
 

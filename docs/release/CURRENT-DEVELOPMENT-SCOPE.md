@@ -15,6 +15,23 @@ refresh from production must preserve isolation and allow experimentation.
 
 ## Reporting implementation status
 
+### Snapshot reports across separate calendars — implemented October 23
+
+RPO and contract balances accept an explicitly selected fiscal period across different calendar
+records when every selected calendar contains that key and its start/end dates are identical.
+The framework proves date equality before creating a report. Different or missing intervals
+retain CALENDARS_DIFFER. This does not enable unmatched dates or range reports with implicit
+endpoints/interior-period differences. Existing currency conversion, source retention and saved
+rerun behavior remain unchanged; there is no new schema or accounting interpretation.
+
+Necessary verification: a populated duplicate January calendar/entity with a separate contract
+runs both report types alongside the original January entity. Every monetary total equals the
+sum of independent entity runs; saved rerun rows are identical. Adding the April-calendar entity
+still refuses the mixed September/December population. The existing all-report calendar-guard
+workflow also passes, as do scoped types/lint. Other calendar restrictions remain where the
+builders lack date alignment. No deployment.
+
+
 ### Opening-liability POB attribution — current consolidated status, October 23
 
 The dated sections below are checkpoints; this current summary supersedes their earlier blanket

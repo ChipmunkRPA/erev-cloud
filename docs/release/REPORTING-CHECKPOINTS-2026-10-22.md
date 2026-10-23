@@ -445,3 +445,11 @@
 - Positive openings retain special-source restrictions; unknown posting subjects still refuse.
   Eleven focused cases and scoped types/lint pass. Other contract/reassessment gaps remain.
 - Partial-credit checkpoint archived. No deployment.
+
+## POB evidence refresh for existing contracts — October 23, 2026
+
+- Current bundles now declare evidence revision 2, so unchanged monetary inputs do not reuse
+  revision-1 calculations lacking original document/line POB evidence. Original history stays intact.
+- Populated recompute creates fresh evidence with zero new postings and unchanged income;
+  repetition reuses the new result. Two codec/hash/accounting cases and scoped lint pass.
+- Zero-opening checkpoint archived. No deployment or database migration.
