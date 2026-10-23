@@ -238,6 +238,7 @@ class ReconciliationItemOut(BaseModel):
     contract: ReconciliationContractOut | None
     invoice_number: str | None
     gl_document_reference: str | None
+    origin_period_key: str | None = None
     currency: str
     subledger_amount: MoneyOut | None
     source_amount: MoneyOut | None

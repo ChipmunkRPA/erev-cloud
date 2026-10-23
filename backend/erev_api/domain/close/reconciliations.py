@@ -450,6 +450,7 @@ class Document:
     currency: str
     amount: Decimal
     contract_id: UUID | None = None
+    origin_period_id: UUID | None = None
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -471,6 +472,7 @@ class Difference:
     is_high_risk: bool = False
     gl_document_reference: str | None = None
     account_role: str | None = None
+    origin_period_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -577,6 +579,7 @@ def match_billing(source: Sequence[Document], billed: Sequence[Document]) -> Out
         else:
             item_kind = UNMATCHED_SOURCE if subledger_amount is None else UNMATCHED_SUBLEDGER
         del kind
+        origins = {item.origin_period_id for item in [*(in_source or ()), *(in_subledger or ())]}
         differences.append(
             Difference(
                 item_kind=item_kind,
@@ -586,6 +589,7 @@ def match_billing(source: Sequence[Document], billed: Sequence[Document]) -> Out
                 source_amount=source_amount,
                 contract_id=_one_contract(in_subledger or in_source or ()),
                 invoice_number=number,
+                origin_period_id=next(iter(origins)) if len(origins) == 1 else None,
             )
         )
     return Outcome(
@@ -638,13 +642,17 @@ def _payload_money(payload: Mapping[str, object]) -> tuple[Decimal, str]:
 
 
 def source_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[Document], int]:
-    """The entity's source invoices and credit memos issued in the period: the newest stored
+    """The entity's source documents assigned by issue date and receipt-time lock history: newest
     version of each (``source_system``, ``external_invoice_id``), with the contract its lines name
     when they name one contract of the tenant; and the number of stored rows read — every
     version (``gates.source_invoices_of``)."""
+    from .billing_periods import routing, source_received
+
+    origin, _ = routing(scope, source_invoice, source_invoice.c.issue_date, source_received())
     rows = session.execute(
         select(
             source_invoice.c.id,
+            origin.label("origin_period_id"),
             source_invoice.c.source_system,
             source_invoice.c.external_invoice_id,
             source_invoice.c.external_version,
@@ -696,6 +704,9 @@ def source_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[D
             Document(
                 document_kind=str(row["document_kind"]),
                 invoice_number=str(row["invoice_number"]),
+                origin_period_id=row["origin_period_id"]
+                if row["origin_period_id"] != scope.period_id
+                else None,
                 currency=str(row["currency"]).strip(),
                 amount=Decimal(row["total_amount"]),
                 contract_id=next(iter(found)) if len(found) == 1 else None,
@@ -705,16 +716,24 @@ def source_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[D
 
 
 def billed_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[Document], int]:
-    """The contract billing events of the entity dated in the period, one document per contract,
+    """Contract billing events assigned to the period, including receipts after an origin lock,
     kind, number and currency: kept ``BILLING_RECORDED`` lines (S10-R-07) and
     ``CREDIT_MEMO_RECORDED`` events, without voided events and voided contracts. The identity of
     a line is fixed over the contract's stream in the order of effective date, so the streams
     are read from their beginning through the period's last day, with every void
     (``gates.billing_streams_of``: an event dated later cannot change which events of the period
     are lines); and the number of stream events read."""
+    from .billing_periods import routing
+
+    origin, target = routing(
+        scope, contract_event, contract_event.c.effective_date, contract_event.c.recorded_at
+    )
+    assignments = {}
     rows = session.execute(
         select(
             contract_event.c.id,
+            origin.label("origin_period_id"),
+            target.label("reconciliation_period_id"),
             contract_event.c.contract_id,
             contract_event.c.event_type,
             contract_event.c.effective_date,
@@ -730,6 +749,10 @@ def billed_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[D
     voided_contracts: set[UUID] = set()
     read = 0
     for row in rows:
+        assignments[row["id"]] = (
+            row["origin_period_id"],
+            row["reconciliation_period_id"],
+        )
         read += 1
         event_type = _text(row["event_type"])
         contract_id = UUID(str(row["contract_id"]))
@@ -755,13 +778,20 @@ def billed_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[D
         for event in events
         if event.event_id not in voided_events and event.contract_id not in voided_contracts
     ]
-    sums: dict[tuple[str, str, str, UUID], Decimal] = {}
+    sums: dict[tuple[str, str, str, UUID, UUID | None], Decimal] = {}
 
     def add(event: _StoredEvent, kind: str, number: object, sign: int) -> None:
-        if not scope.start_date <= event.effective_date <= scope.end_date:
+        if assignments[event.event_id][1] != scope.period_id:
             return
         amount, currency = _payload_money(event.payload)
-        key = (kind, str(number), currency, event.contract_id)
+        origin_id = assignments[event.event_id][0]
+        key = (
+            kind,
+            str(number),
+            currency,
+            event.contract_id,
+            origin_id if origin_id != scope.period_id else None,
+        )
         sums[key] = sums.get(key, Decimal(0)) + sign * amount
 
     for line in billing_identity.kept_lines(kept):
@@ -776,8 +806,9 @@ def billed_documents(session: Session, scope: gates.PeriodScope) -> tuple[list[D
             currency=currency,
             amount=amount,
             contract_id=contract_id,
+            origin_period_id=origin_id,
         )
-        for (kind, number, currency, contract_id), amount in sorted(
+        for (kind, number, currency, contract_id, origin_id), amount in sorted(
             sums.items(), key=lambda item: (item[0][0], item[0][1], item[0][2], str(item[0][3]))
         )
     ], read
@@ -1022,6 +1053,11 @@ def snapshot(held: _Held, items: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 "account_role": item["account_role"],
                 "contract_id": item["contract_id"],
                 "invoice_number": item["invoice_number"],
+                **(
+                    {"origin_period_id": item["origin_period_id"]}
+                    if item.get("origin_period_id") is not None
+                    else {}
+                ),
                 "gl_document_reference": item["gl_document_reference"],
                 "currency": str(item["currency"]).strip(),
                 "subledger_amount": shown(item["subledger_amount"], str(item["currency"])),
@@ -1506,6 +1542,7 @@ def _insert_items(
             "account_role": item.account_role,
             "contract_id": item.contract_id,
             "invoice_number": item.invoice_number,
+            "origin_period_id": item.origin_period_id,
             "subledger_amount": item.subledger_amount,
             "source_amount": item.source_amount,
             "difference": item.difference,
@@ -3143,6 +3180,17 @@ def items_statement(reconciliation_id: UUID) -> Select[Any]:
 
 def item_outs(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[ReconciliationItemOut]:
     names = approval_queries.display_names(session, (row["resolved_by"] for row in rows))
+    origins = {row["origin_period_id"] for row in rows if row["origin_period_id"] is not None}
+    origin_keys = (
+        {
+            identity: key
+            for identity, key in session.execute(
+                select(period.c.id, period.c.period_key).where(period.c.id.in_(origins))
+            ).tuples()
+        }
+        if origins
+        else {}
+    )
     found: list[ReconciliationItemOut] = []
     for row in rows:
         currency = str(row["currency"]).strip()
@@ -3160,6 +3208,7 @@ def item_outs(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[Recon
                     else {"id": row["contract_id"], "external_id": row["contract_external_id"]},
                     "invoice_number": row["invoice_number"],
                     "gl_document_reference": row["gl_document_reference"],
+                    "origin_period_key": origin_keys.get(row["origin_period_id"]),
                     "currency": currency,
                     "subledger_amount": _money(row["subledger_amount"], currency),
                     "source_amount": _money(row["source_amount"], currency),

@@ -1276,6 +1276,7 @@
   "close.reconciliation.items.column.contract": "Contract",
   "close.reconciliation.items.column.explanation": "Explanation",
   "close.reconciliation.items.column.kind": "Kind",
+  "close.reconciliation.items.column.originPeriod": "Origin period",
   "close.reconciliation.items.column.reference": "Reference",
   "close.reconciliation.items.column.resolved": "Resolved",
   "close.reconciliation.items.column.risk": "Risk",

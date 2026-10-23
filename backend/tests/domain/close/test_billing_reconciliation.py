@@ -613,3 +613,74 @@ def test_certified_reconciliation_frozen(
     assert [(row["explanation"], str(row["status"])) for row in stored] == [
         (EXPLANATION, "CERTIFIED")
     ]
+
+    # A newly received January invoice must enter February after January is locked.
+    clock.advance(timedelta(minutes=1))
+    late = list(recon.K01_INVOICES[0])
+    late[2], late[8], late[12] = "INV-LATE-JAN", "INV-LATE-JAN-1", "123.00"
+    recon.ingested(app, maya, priya, runtime, "late-january.csv", recon.invoices_csv([late]))
+    february = recon.generated(app, maya, runtime, entity_code="AVM-US", period_key="FY2026-P02")
+    assert february["totals"] == [_total("123.00", "123.00", "0.00", "USD")]
+    assert not recon.items_of(app, maya, february["id"])
+    with tenant_session(context) as session:
+        from erev_api.domain.close import reconciliations as service
+
+        feb_id = next(
+            item["period"]["id"]
+            for item in periods(app, maya, entity="AVM-US")
+            if item["period"]["period_key"] == "FY2026-P02"
+        )
+        scope = service.period_scope_of(session, pellworth.entity_id, "ASC606", UUID(feb_id))
+        source, _ = service.source_documents(session, scope)
+        billed, _ = service.billed_documents(session, scope)
+        assert [(d.invoice_number, d.origin_period_id) for d in source] == [
+            ("INV-LATE-JAN", period_id)
+        ]
+        assert [(d.invoice_number, d.origin_period_id) for d in billed] == [
+            ("INV-LATE-JAN", period_id)
+        ]
+        # Removing one side for the pure comparison retains origin evidence for the difference.
+        assert service.match_billing(source, []).differences[0].origin_period_id == period_id
+
+    assert recon.prepare(app, maya, february["id"]).status_code == 200
+    assert recon.sign(app, priya, february["id"]).status_code == 200
+    # A second late document on only one side is visible with its original period.
+    cid = UUID(str(next(iter(pellworth.contracts.values())).contract["id"]))
+    head = pellworth.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == cid)
+    )
+    appended(
+        pellworth.place,
+        cid,
+        int(head),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=date(2026, 1, 25),
+                payload=BillingRecordedV1(
+                    invoice_number="INV-LATE-ONLY",
+                    line_external_id="1",
+                    obligation_key="O1",
+                    amount=MoneyIn(amount="7.00", currency="USD"),
+                    issue_date=date(2026, 1, 25),
+                ),
+            )
+        ],
+    )
+    with tenant_session(context) as session:
+        from erev_api.domain.close import gates
+
+        assert (
+            session.scalar(
+                select(reconciliation.c.id).where(
+                    reconciliation.c.id == UUID(february["id"]), gates.overtaken(scope)
+                )
+            )
+            is not None
+        )
+    changed = recon.generated(app, maya, runtime, entity_code="AVM-US", period_key="FY2026-P02")
+    (late_item,) = recon.items_of(app, maya, changed["id"])
+    assert late_item["invoice_number"] == "INV-LATE-ONLY"
+    assert late_item["origin_period_key"] == "FY2026-P01"
+    assert late_item["difference"] == _usd("-7.00")
+    assert recon.shown(app, maya, second["id"])["status"] == "CERTIFIED"

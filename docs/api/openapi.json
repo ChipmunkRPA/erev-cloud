@@ -33123,6 +33123,17 @@
             "title": "Item Kind",
             "type": "string"
           },
+          "origin_period_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Period Key"
+          },
           "reconciliation_id": {
             "format": "uuid",
             "title": "Reconciliation Id",

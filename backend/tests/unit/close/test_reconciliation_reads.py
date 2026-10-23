@@ -17,11 +17,12 @@ again when it is first computed.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
-from erev_api.db.tables import reconciliation
+from erev_api.db.tables import contract_event, reconciliation, source_invoice
 from erev_api.domain.close import gates, reconciliations
 from erev_api.domain.close.gates import PeriodScope
 from sqlalchemy import select
@@ -144,14 +145,35 @@ _STREAMS_READ = (
     "FROM erev.contract_event WHERE {streams} ORDER BY erev.contract_event.effective_date, "
     "erev.contract_event.record_seq, erev.contract_event.id"
 )
-_LEDGER_COUNTED = "SELECT {ledger} AS anon_1"
+_LEDGER_COUNTED = "SELECT {ledger} AS anon_N"
 
 
 def _sql(statement: Any) -> str:
     compiled = statement.compile(
         dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
     )
-    return " ".join(str(compiled).split())
+    return re.sub(r"\b(min|coalesce|anon)_\d+\b", r"\1_N", " ".join(str(compiled).split()))
+
+
+# The routing subqueries are exercised against real lock history in the domain test.
+# Keep this test focused on the shared read/freshness predicates and ledger conditions.
+SOURCE_INVOICES = _sql(select(source_invoice.c.id).where(*gates.source_invoices_of(SCOPE))).split(
+    " WHERE ", 1
+)[1]
+BILLING_STREAMS = _sql(select(contract_event.c.id).where(*gates.billing_streams_of(SCOPE))).split(
+    " WHERE ", 1
+)[1]
+OVERTAKEN = _OVERTAKEN.format(
+    later_seal=_LATER_SEAL.format(line=LINE_OF_PERIOD),
+    line_by_time=_LINE_BY_TIME.format(line=LINE_OF_PERIOD),
+    source_moved=_SOURCE_MOVED.format(invoices=SOURCE_INVOICES),
+    subledger_moved=_SUBLEDGER_MOVED.format(
+        streams=BILLING_STREAMS,
+        ledger=_LEDGER_DOCUMENTS.format(
+            first=3, second=4, events=EVENTS_THROUGH, recorded="", known=""
+        ),
+    ),
+)
 
 
 class _Session:
@@ -229,6 +251,7 @@ def test_a_generation_counts_every_row_it_read() -> None:
     invoice counts though only the newest is compared, and a void counts though it is no
     document — a new version or a new void changes the comparison."""
     invoice = {
+        "origin_period_id": PERIOD,
         "source_system": "CSV_V2",
         "external_invoice_id": "INV-US-1001",
         "invoice_number": "INV-US-1001",
@@ -246,6 +269,8 @@ def test_a_generation_counts_every_row_it_read() -> None:
     contract_id = UUID(int=7)
     billed = {
         "id": UUID(int=11),
+        "origin_period_id": PERIOD,
+        "reconciliation_period_id": PERIOD,
         "contract_id": contract_id,
         "event_type": "BILLING_RECORDED",
         "effective_date": date(2026, 1, 5),
@@ -259,6 +284,8 @@ def test_a_generation_counts_every_row_it_read() -> None:
     }
     void = {
         "id": UUID(int=12),
+        "origin_period_id": PERIOD,
+        "reconciliation_period_id": PERIOD,
         "contract_id": contract_id,
         "event_type": "EVENT_VOIDED",
         "effective_date": date(2026, 1, 5),

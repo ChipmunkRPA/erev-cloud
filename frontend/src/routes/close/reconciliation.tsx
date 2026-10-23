@@ -1456,6 +1456,15 @@ function DifferencesGrid({
         },
         width: 128,
       },
+      {
+        id: "origin_period",
+        header: t("close.reconciliation.items.column.originPeriod"),
+        kind: "text",
+        value: (item) => item.origin_period_key ?? null,
+        render: (item) =>
+          item.origin_period_key ? <Mono>{item.origin_period_key}</Mono> : <NoValue />,
+        width: 136,
+      },
       ...(single === null
         ? [
             {
@@ -1548,7 +1557,7 @@ function DifferencesGrid({
     (): GridColumnState =>
       initialColumnState(
         columns,
-        billing ? ["account", "risk", "resolved"] : ["contract", "resolved"],
+        billing ? ["account", "risk", "resolved"] : ["contract", "resolved", "origin_period"],
       ),
     [columns, billing],
   );

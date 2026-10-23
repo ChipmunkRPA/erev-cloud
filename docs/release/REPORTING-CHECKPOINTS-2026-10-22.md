@@ -16,3 +16,14 @@
 - Migration 0333 pins IPE metadata. Necessary validation: 14 waterfall unit cases, populated
   report/retained-rerun workflow, date-label frontend case, scoped lint/types and metadata parity.
   No partial-period allocation or change to native amounts; no deployment.
+
+
+## Modification amount source drill — October 22, 2026
+
+- Money cells rebuild saved inputs and link original native trace nodes. Analytical equivalents
+  show pinned spot/average rates separately. Retained UUIDs resolve source visibility only;
+  old runs without identity, missing cells and scope changes refuse. Internal-link filtering
+  rejects external/API destinations. Migration 0332 freezes IPE metadata.
+- Necessary checks: 22 register and eight catalogue cases, populated K02 source/component/
+  catch-up/spot/reporting drills and refusals, four frontend cases, scoped lint/types and
+  metadata parity. No deployment; per-event functional posting ownership remains open.

@@ -845,6 +845,17 @@ describe("SF-05:reconciliations", () => {
 });
 
 describe("SF-05:reconciliation", () => {
+  it("shows the original period of a late billing difference", async () => {
+    serve({
+      generations: [reconciliation({ variance_count: 1 })],
+      items: { [REC_BILLING]: [unmatchedInvoice({ origin_period_key: "FY2026-P01" })] },
+    });
+    open(detailPath(REC_BILLING), MAYA);
+    const grid = await differences();
+    expect(await within(grid).findByText("FY2026-P01")).toBeTruthy();
+    expect(within(grid).getByRole("columnheader", { name: /Origin period/ })).toBeTruthy();
+  });
+
   it("high risk item", async () => {
     serve({
       generations: [generalLedger()],

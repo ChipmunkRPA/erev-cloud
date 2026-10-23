@@ -37,15 +37,14 @@ review and publish changes without PR accumulation, and do not deploy.
 - BBR reporting currency (0334) and waterfall calendar columns (0333) checkpoints moved to
   REPORTING-CHECKPOINTS-2026-10-22.md; current scope remains in CURRENT-DEVELOPMENT-SCOPE.
 
-## Modification amount source drill — October 22, 2026
+## Late billing reconciliation — October 23, 2026
 
-- Money cells rebuild saved inputs and link original native trace nodes. Analytical equivalents
-  show pinned spot/average rates separately. Retained UUIDs resolve source visibility only;
-  old runs without identity, missing cells and scope changes refuse. Internal-link filtering
-  rejects external/API destinations. Migration 0332 freezes IPE metadata.
-- Necessary checks: 22 register and eight catalogue cases, populated K02 source/component/
-  catch-up/spot/reporting drills and refusals, four frontend cases, scoped lint/types and
-  metadata parity. No deployment; per-event functional posting ownership remains open.
+- Post-lock invoices now reconcile in the first later period open at receipt on both sides;
+  differences show the origin period and sign-offs retain it. Reviewed populations detect new
+  late entries. Existing certified origin periods remain unchanged.
+- Four populated billing workflows, five focused unit cases and two UI cases pass across
+  targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
+- Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
 ## Optional per-event close variance — October 22, 2026
 

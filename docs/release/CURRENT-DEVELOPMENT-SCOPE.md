@@ -114,6 +114,9 @@ re-entry behavior is retained. See ROYALTY-EXIT-CORRECTION.md for bounded verifi
 - GL reconciliation: balance plus document CSV/XLSX uploads, shared connector/file difference
   attribution, retained comparisons and role-level report reconciliation. Document amounts
   are not added to closing balances.
+- Billing reconciliation: post-lock invoices enter the first later period open at receipt on
+  both sides; origin periods persist in differences and sign-off evidence, and new late documents
+  invalidate reviewed comparisons. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Combined-contract aging: original receiving-contract aging and separate member allocation
   adjustments.
 - Sandbox: production refresh and editable isolated periods; production lock-history replay

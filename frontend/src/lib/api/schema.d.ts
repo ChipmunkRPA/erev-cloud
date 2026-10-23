@@ -20423,6 +20423,8 @@ export interface components {
         | "DIRECT_GL_ENTRY"
         | "OTHER"
         | "NOT_STATED";
+      /** Origin Period Key */
+      origin_period_key?: string | null;
       /**
        * Reconciliation Id
        * Format: uuid

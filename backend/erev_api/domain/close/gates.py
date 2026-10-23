@@ -1240,24 +1240,26 @@ def later_than(row: Mapping[str, Any]) -> ColumnElement[bool]:
 
 
 def source_invoices_of(scope: PeriodScope) -> tuple[ColumnElement[bool], ...]:
-    """The billing system's documents of the entity issued in the period — every stored version
-    (the billing-to-subledger reconciliation compares the newest of each)."""
-    return (
-        source_invoice.c.legal_entity_code == scope.entity_code,
-        source_invoice.c.issue_date >= scope.start_date,
-        source_invoice.c.issue_date <= scope.end_date,
-    )
+    """Source documents routed by their origin and lock history at receipt."""
+    from .billing_periods import routing, source_received
+
+    _, target = routing(scope, source_invoice, source_invoice.c.issue_date, source_received())
+    return (source_invoice.c.legal_entity_code == scope.entity_code, target == scope.period_id)
 
 
 def billed_contracts_of(scope: PeriodScope) -> Select[tuple[UUID]]:
-    """The contracts of the entity that hold a billing event dated in the period."""
+    """Contracts with billing documents assigned to this reconciliation period."""
+    from .billing_periods import routing
+
+    _, target = routing(
+        scope, contract_event, contract_event.c.effective_date, contract_event.c.recorded_at
+    )
     return (
         select(contract_event.c.contract_id)
         .where(
             contract_event.c.contracting_entity_id == scope.entity_id,
             contract_event.c.event_type.in_(BILLING_EVENT_TYPES),
-            contract_event.c.effective_date >= scope.start_date,
-            contract_event.c.effective_date <= scope.end_date,
+            target == scope.period_id,
         )
         .distinct()
     )
@@ -1265,7 +1267,8 @@ def billed_contracts_of(scope: PeriodScope) -> Select[tuple[UUID]]:
 
 def billing_streams_of(scope: PeriodScope) -> tuple[ColumnElement[bool], ...]:
     """The stream events a billing-to-subledger reconciliation depends on, of the contracts that
-    hold a billing event dated in the period: their billing events dated on or before the
+    hold a billing event assigned to the period (including post-lock receipts): their billing
+    events dated on or before the
     period's last day, and their voids of any date.
 
     The identity of a billed line is fixed over the contract's stream in the order of effective
