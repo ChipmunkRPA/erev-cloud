@@ -36,7 +36,17 @@ them to a modification. Labels and cell evidence must say causal analysis, not p
 
 Execute engine calls outside database transactions, with worker heartbeats. Saved report reruns
 must use their bound results, and source access must cover the full computation group. Keep old
-saved reports unchanged. Necessary completion evidence includes multiple same-period positive
+saved reports unchanged.
+
+Calculation checkpoint: `modification_causal.calculate` now verifies the retained original
+output, executes fixed-cutoff event prefixes as DRY_RUN, and retains execution hashes and
+signed per-event revenue effects using the shared decomposition. Nine native cases cover
+transaction/functional/reporting views, offsetting net-zero changes, an unselected amendment,
+a delivery between modifications and a mismatched original output. A delivery's effect stays
+separate from modifications. This calculation is not yet connected to the register worker,
+report output, cell drill or retained rerun; those are the next implementation work.
+
+Necessary completion evidence includes multiple same-period positive
 and negative modifications, transaction/functional/reporting reconciliation and a populated
 public report/cell/rerun workflow after subsequent source changes. This work is not yet complete.
 
