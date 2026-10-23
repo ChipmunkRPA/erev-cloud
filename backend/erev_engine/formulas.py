@@ -224,6 +224,35 @@ def _right_to_invoice(inputs: Sequence[Fraction], params: Mapping[str, str]) -> 
     return progress.right_to_invoice_fraction(_rational(params, "realised"), stated, base)
 
 
+def _cost_progress_evidence(
+    inputs: Sequence[Fraction], params: Mapping[str, str], *, recovery: bool
+) -> Fraction:
+    """Version 2 verifies original source totals before replaying the unchanged arithmetic."""
+    roles = params.get("source_roles", "").split(",") if params.get("source_roles") else []
+    _require_arity(inputs, len(roles), "rec.progress.cost_evidence.v2")
+    totals = {key: Fraction(0) for key in ("margin", "wasted", "uninstalled", "eac")}
+    for role, value in zip(roles, inputs, strict=True):
+        if role not in totals or value < 0:
+            raise ValueError("Invalid cost progress source")
+        totals[role] += value
+    expected = totals["margin"] + (totals["wasted"] + totals["uninstalled"] if recovery else 0)
+    if expected != _rational(params, "costs"):
+        raise ValueError("Original cost sources do not reconcile to progress costs")
+    if not recovery and (roles.count("eac") != 1 or totals["eac"] != _rational(params, "eac")):
+        raise ValueError("Original EAC source does not reconcile to progress EAC")
+    if recovery and "eac" in roles:
+        raise ValueError("Cost recovery without EAC cannot carry an EAC source")
+    return _cost_recovery((), params) if recovery else _cost_to_cost((), params)
+
+
+def _cost_to_cost_evidence(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    return _cost_progress_evidence(inputs, params, recovery=False)
+
+
+def _cost_recovery_evidence(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    return _cost_progress_evidence(inputs, params, recovery=True)
+
+
 def _cost_to_cost(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     """``rec.progress.cost_to_cost.v1``: margin-bearing costs ÷ (EAC − expected uninstalled
     materials), capped at 1 (S09-R-14, S09-R-17; ENC-5).
@@ -4184,7 +4213,9 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "rec.realised_allocation.v1": _allocation_state,
         "rec.schedule.fixed.v1": _decompose_sequential,
         "rec.progress.cost_recovery.v1": _cost_recovery,
+        "rec.progress.cost_recovery.v2": _cost_recovery_evidence,
         "rec.progress.cost_to_cost.v1": _cost_to_cost,
+        "rec.progress.cost_to_cost.v2": _cost_to_cost_evidence,
         "rec.progress.labour_hours.v1": _labour_hours,
         "rec.progress.milestone.v1": _milestone,
         "rec.progress.output_percent.v1": _output_percent,

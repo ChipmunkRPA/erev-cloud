@@ -1006,7 +1006,7 @@ def _emit_components(
                 currency=None,
                 minor_unit=None,
                 formula_id=fixed.progress.formula_id,
-                inputs=[],
+                inputs=fixed.progress.sources,
                 params=fixed.progress.params,
                 narrative_key=fixed.progress.formula_id.rsplit(".v", 1)[0],
             )

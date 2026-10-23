@@ -491,3 +491,23 @@
   same contract/SSP/posting views as computation. Necessary codec/replay/idempotency checks pass.
 - Reader audit confirms POL-015 portfolio application, POL-231 lessor combination and POL-026
   product method behavior remain gaps. Details in CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
+## Combined original-component cost recognition — October 23, 2026
+
+- COST_RECOVERY and COST_TO_COST now consume original combined-component costs once per
+  event, including events naming several members. Waste treatment remains method-specific.
+- Eight full-engine cases and 27 existing input-progress cases pass; original event sources,
+  trace replay, scoped lint and types verified. Uses the existing single combined EAC.
+- Separate component EAC consolidation, cumulative hours/percentage measures and
+  quantity/removal/term reassessment remain open. No deployment.
+
+## Combined-component progress-cost entry — October 23, 2026
+
+The cost drawer now offers original combined members for Progress input, submitting the selected
+identity in both the event and payload. Switching to obtaining/fulfilling costs removes that choice
+and resets an original member to the pinned host (or clears an unpinned selection), so a hidden
+member cannot leak into another cost purpose. Evidence attachments remain required.
+Four targeted interaction cases pass, including the existing delivery/return choices and cost
+submission with attachment plus purpose switching. TypeScript and scoped ESLint pass.
+Independent component EAC aggregation still awaits an explicit scope rule; this UI change does
+not decide whether a host EAC represents its component or the entire combination. No deployment.

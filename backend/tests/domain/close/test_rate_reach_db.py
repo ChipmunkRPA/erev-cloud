@@ -1096,10 +1096,10 @@ def test_close_refreshes_legacy_head_without_fx_evidence(
     assert _revenue(world, contract_id) == before
 
 
-def test_recompute_refreshes_pob_evidence_revision_once_without_posting_again(
+def test_recompute_refreshes_evidence_revision_once_without_posting_again(
     app, keyring, clock, files, monkeypatch
 ):
-    assert bundles.EVIDENCE_REVISION == 2
+    assert bundles.EVIDENCE_REVISION == 3
     with monkeypatch.context() as legacy:
         legacy.setattr(bundles, "EVIDENCE_REVISION", 1)
         world, contract_id, group_id = _august_run_done(app, keyring, clock, files, monkeypatch)

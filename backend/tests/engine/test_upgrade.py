@@ -367,11 +367,12 @@ def test_decoder_refuses_missing_bundle_as_a_codec_error() -> None:
         decode_input(b'{"evidence_format":1}')
 
 
-def test_pob_evidence_revision_two_preserves_revision_one_history_and_accounting() -> None:
+@pytest.mark.parametrize("revision", [2, 3])
+def test_evidence_revision_preserves_revision_one_history_and_accounting(revision: int) -> None:
     old = dataclasses.replace(_computable(), evidence_revision=1)
     old_bytes = encode_input(old)
     old_hash = old.sha256()
-    current = dataclasses.replace(old, evidence_revision=2)
+    current = dataclasses.replace(old, evidence_revision=revision)
     assert current.sha256() != old_hash
     assert normalised_input_sha256(current) != normalised_input_sha256(old)
     assert attribution_input_sha256(current) != attribution_input_sha256(old)

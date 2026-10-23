@@ -26,6 +26,7 @@ from erev_engine.bundle import PeriodInput
 from erev_engine.errors import EngineError
 from erev_engine.formulas import FORMULAS, periods_param
 from erev_engine.progress import TIME_CONVENTIONS
+from erev_engine.trace import SourceRef
 from erev_engine.stages.state import AllocationSegment, BookContext, ObligationState, SegmentCause
 
 __all__ = [
@@ -54,6 +55,7 @@ class Progress:
     value: Fraction
     formula_id: str
     params: Mapping[str, str]
+    sources: tuple[SourceRef, ...] = ()
 
 
 def convention_of(ctx: BookContext, ob: ObligationState) -> str:

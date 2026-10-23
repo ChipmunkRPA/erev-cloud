@@ -33,6 +33,18 @@ submission with attachment plus purpose switching. TypeScript and scoped ESLint 
 Independent component EAC aggregation still awaits an explicit scope rule; this UI change does
 not decide whether a host EAC represents its component or the entire combination. No deployment.
 
+## Cost-progress original-source drill — October 23, 2026
+
+- Cost recovery/cost-to-cost progress nodes now link original admitted cost events and the
+  selected EAC version. Period, event-endpoint and scheduled progress retain those references.
+- Version-2 formulas verify source amounts against costs/EAC before the unchanged calculation;
+  source roles retain waste/uninstalled distinctions. Version 1 remains available for old traces.
+- Evidence revision 3 refreshes existing computation evidence once without duplicate postings.
+- 35 focused native cases, three evidence-codec checks and two populated database workflows pass:
+  original member costs approve into revenue of 300, saved reporting reruns match, and evidence
+  refresh creates no extra posting lines. Scoped lint/types pass. No deployment.
+- Separate-member EAC scope and the other documented feature gaps remain unfinished.
+
 ## Reporting implementation status
 
 ### Aligned range reports across separate calendars — implemented October 23
@@ -78,7 +90,7 @@ are unfinished.
 
 Implemented for complete retained principal/same-entity sources:
 - Public transaction, functional and reporting views, retained policies and original-source reruns.
-- Existing-contract recomputation refreshes revision-1 evidence to revision 2 once, even when
+- Existing-contract recomputation refreshes earlier evidence to revision 3 once, even when
   monetary inputs are unchanged. Original saved records remain immutable; new reports use fresh sources.
 - Original functional invoice/credit values and exact source-population checks, including a credit
   for only part of the original invoice. Full transaction cancellation preserves functional FX

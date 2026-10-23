@@ -206,7 +206,7 @@ def test_ex_09_b_cost_to_cost_modification_and_eac_change() -> None:
     assert measures.catch_up_cum == usd("62294.12")
     assert measures.progress_ratio == Fraction(502000, 850000)
     node = _node(trace, "progress_ratio", O1, "FY2026-P09")
-    assert node.formula_id == COST_TO_COST
+    assert node.formula_id == COST_TO_COST.replace(".v1", ".v2")
     assert (node.params["costs"], node.params["eac"], node.params["uninstalled_expected"]) == (
         "502000",
         "850000",
@@ -278,7 +278,7 @@ def test_ex_09_c_uninstalled_materials() -> None:
     assert (targets["FY2026-P11"], targets["FY2026-P12"]) == (usd("700000.00"), usd("2200000.00"))
     for period in ("FY2026-P11", "FY2026-P12"):
         ratio = _node(trace, "progress_ratio", O1, period)
-        assert (ratio.formula_id, ratio.value) == (COST_TO_COST, "0.2")
+        assert (ratio.formula_id, ratio.value) == (COST_TO_COST.replace(".v1", ".v2"), "0.2")
         assert (ratio.params["costs"], ratio.params["uninstalled_expected"]) == (
             "500000",
             "1500000",
@@ -379,13 +379,16 @@ def test_s09_r16_cost_recovery_until_eac() -> None:
     )
     june = _node(trace, "progress_ratio", O1, "FY2026-P06")
     assert (june.formula_id, june.value, june.params["costs"], june.params["x_exact"]) == (
-        COST_RECOVERY,
+        COST_RECOVERY.replace(".v1", ".v2"),
         "0.166666666666666667",
         "100000",
         "600000",
     )
     september = _node(trace, "progress_ratio", O1, "FY2026-P09")
-    assert (september.formula_id, september.params["measure"]) == (COST_TO_COST, "COST_RECOVERY")
+    assert (september.formula_id, september.params["measure"]) == (
+        COST_TO_COST.replace(".v1", ".v2"),
+        "COST_RECOVERY",
+    )
     assert _causes(state, O1, "FY2026-P09") == {"CATCH_UP": usd("50000.00")}
     assert state.obligation_measures[O1].catch_up_estimate_cum == usd("50000.00")
 
@@ -602,6 +605,6 @@ def test_s09_r16_cost_recovery_since_an_opening_balance() -> None:
         usd("300.00"),
     )
     september = _node(trace, "progress_ratio", O1, "FY2026-P09")
-    assert (september.formula_id, september.value) == (COST_RECOVERY, "0.125")
+    assert (september.formula_id, september.value) == (COST_RECOVERY.replace(".v1", ".v2"), "0.125")
     assert (september.params["costs"], september.params["base_costs"]) == ("300", "200")
     assert _causes(state, O1, "FY2026-P09") == {"NORMAL": usd("100.00")}

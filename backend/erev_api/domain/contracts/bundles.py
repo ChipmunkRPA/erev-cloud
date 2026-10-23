@@ -183,8 +183,9 @@ __all__ = [
 
 FORMAT_VERSION: Final = 1
 # Revision 1 retained FX inputs; revision 2 adds original document/line POB attribution.
+# Revision 3 adds original cost/EAC sources to input-progress calculation nodes.
 # Refresh persistence once even when monetary inputs match an earlier evidence revision.
-EVIDENCE_REVISION: Final = 2
+EVIDENCE_REVISION: Final = 3
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).

@@ -24,7 +24,7 @@ and recognition read one progress function (§9.1). Every value comes from its r
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from fractions import Fraction
@@ -34,7 +34,8 @@ from typing import Final
 from erev_engine.bundle import EstimateVersionInput
 from erev_engine.errors import EngineError
 from erev_engine.formulas import FORMULAS, rational_param
-from erev_engine.money import to_fraction
+from erev_engine.money import format_exact, to_fraction
+from erev_engine.trace import SourceRef
 from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
 from erev_engine.stages.s09_recognition.progress_events import Position, admitted, concerns
 from erev_engine.stages.s09_recognition.progress_time import Progress
@@ -378,6 +379,70 @@ def _parameter(eac: EstimateVersionInput, ob: ObligationState) -> Fraction | Non
     return value
 
 
+def _cost_sources(
+    st: AllocatedState,
+    ob: ObligationState,
+    d: date,
+    position: Position | None,
+    eac: EstimateVersionInput | None = None,
+) -> tuple[SourceRef, ...]:
+    """The original admitted inputs, not every event anywhere in the contract trace."""
+    sources = [
+        SourceRef(
+            "contract_event",
+            ev.event_key,
+            {
+                "member": "amount",
+                "value": format_exact(_amount(ev, ob, "amount")),
+                "effective_date": ev.effective_date.isoformat(),
+                "obligation_key": str(ev.payload.get("obligation_key") or ""),
+                "is_wasted": str(_flag(ev.payload, "is_wasted")).lower(),
+                "is_uninstalled_material": str(
+                    _flag(ev.payload, "is_uninstalled_material")
+                ).lower(),
+            },
+        )
+        for ev in st.measure_events
+        if ev.event_type == _COST_EVENT
+        and ev.payload.get("purpose") == _PROGRESS_INPUT
+        and admitted(ev, d, position)
+        and names(st, ev, ob)
+    ]
+    if eac is not None:
+        sources.append(
+            SourceRef(
+                "estimate_version",
+                eac.version_key,
+                {
+                    "member": "expected_total_amount",
+                    "value": str(eac.expected_total_amount),
+                    "currency": eac.currency or "",
+                    "content_sha256": eac.content_sha256,
+                },
+            )
+        )
+    return tuple(sources)
+
+
+def _with_sources(progress: Progress, sources: tuple[SourceRef, ...]) -> Progress:
+    roles = [
+        "eac"
+        if source.ref_type == "estimate_version"
+        else "uninstalled"
+        if source.detail["is_uninstalled_material"] == "true"
+        else "wasted"
+        if source.detail["is_wasted"] == "true"
+        else "margin"
+        for source in sources
+    ]
+    return replace(
+        progress,
+        formula_id=progress.formula_id.replace(".v1", ".v2"),
+        params=MappingProxyType({**progress.params, "source_roles": ",".join(roles)}),
+        sources=sources,
+    )
+
+
 def _cost_to_cost(
     st: AllocatedState,
     ob: ObligationState,
@@ -417,7 +482,11 @@ def _cost_to_cost(
     materials: Materials | None = None
     if expected != 0 or costs.uninstalled != 0:
         materials = Materials(expected, costs.uninstalled, base_materials)
-    return InputProgress(_evaluate(ob, COST_TO_COST_FORMULA, params), materials, findings, eac)
+    progress = _with_sources(
+        _evaluate(ob, COST_TO_COST_FORMULA, params),
+        _cost_sources(st, ob, d, position, eac),
+    )
+    return InputProgress(progress, materials, findings, eac)
 
 
 def _labour_hours(
@@ -462,7 +531,11 @@ def _cost_recovery(
         params["base_revenue_exact"] = rational_param(seg.base_revenue_exact)
     params["costs"] = rational_param(costs.total)
     params["x_exact"] = rational_param(seg.x_exact)
-    return InputProgress(_evaluate(ob, COST_RECOVERY_FORMULA, params), None, (), None)
+    progress = _with_sources(
+        _evaluate(ob, COST_RECOVERY_FORMULA, params),
+        _cost_sources(st, ob, d, position),
+    )
+    return InputProgress(progress, None, (), None)
 
 
 def _precedes_boundary(

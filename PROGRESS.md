@@ -20,25 +20,17 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Combined original-component cost recognition — October 23, 2026
+## Cost-progress original-source drill — October 23, 2026
 
-- COST_RECOVERY and COST_TO_COST now consume original combined-component costs once per
-  event, including events naming several members. Waste treatment remains method-specific.
-- Eight full-engine cases and 27 existing input-progress cases pass; original event sources,
-  trace replay, scoped lint and types verified. Uses the existing single combined EAC.
-- Separate component EAC consolidation, cumulative hours/percentage measures and
-  quantity/removal/term reassessment remain open. No deployment.
-
-## Combined-component progress-cost entry — October 23, 2026
-
-The cost drawer now offers original combined members for Progress input, submitting the selected
-identity in both the event and payload. Switching to obtaining/fulfilling costs removes that choice
-and resets an original member to the pinned host (or clears an unpinned selection), so a hidden
-member cannot leak into another cost purpose. Evidence attachments remain required.
-Four targeted interaction cases pass, including the existing delivery/return choices and cost
-submission with attachment plus purpose switching. TypeScript and scoped ESLint pass.
-Independent component EAC aggregation still awaits an explicit scope rule; this UI change does
-not decide whether a host EAC represents its component or the entire combination. No deployment.
+- Cost recovery/cost-to-cost progress nodes now link original admitted cost events and the
+  selected EAC version. Period, event-endpoint and scheduled progress retain those references.
+- Version-2 formulas verify source amounts against costs/EAC before the unchanged calculation;
+  source roles retain waste/uninstalled distinctions. Version 1 remains available for old traces.
+- Evidence revision 3 refreshes existing computation evidence once without duplicate postings.
+- 35 focused native cases, three evidence-codec checks and two populated database workflows pass:
+  original member costs approve into revenue of 300, saved reporting reruns match, and evidence
+  refresh creates no extra posting lines. Scoped lint/types pass. No deployment.
+- Separate-member EAC scope and the other documented feature gaps remain unfinished.
 
 ## Rollforward Other explanation — October 23, 2026
 

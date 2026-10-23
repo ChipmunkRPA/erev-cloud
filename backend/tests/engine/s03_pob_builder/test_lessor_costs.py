@@ -85,3 +85,34 @@ def test_combined_costs_include_original_lease_once(method, both_names, wasted):
     }
     assert {e.event_key for e in events if e.event_type == "COST_INCURRED"} <= sources
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+
+    progress_nodes = [
+        n
+        for n in result.trace.nodes
+        if n.measure == "progress_ratio" and n.formula_id.endswith(".v2")
+    ]
+    assert progress_nodes
+    for node in progress_nodes:
+        held = [x for x in node.inputs if isinstance(x, SourceRef)]
+        expected = {
+            e.event_key
+            for e in events
+            if e.event_type == "COST_INCURRED"
+            and e.effective_date.isoformat() <= node.params["as_of"]
+        }
+        assert {x.ref_id for x in held if x.ref_type == "contract_event"} == expected
+        assert {x.ref_id for x in held if x.ref_type == "estimate_version"} == {
+            e.version_key for e in estimates
+        }
+    node = next(n for n in progress_nodes if n.params["costs"] != "0")
+    original = node.inputs[0]
+    assert isinstance(original, SourceRef)
+    altered = replace(original, detail={**original.detail, "value": "999"})
+    corrupted = replace(node, inputs=(altered, *node.inputs[1:]))
+    with pytest.raises(ValueError, match="do not reconcile"):
+        reevaluate(
+            replace(
+                result.trace,
+                nodes=tuple(corrupted if n.id == node.id else n for n in result.trace.nodes),
+            )
+        )

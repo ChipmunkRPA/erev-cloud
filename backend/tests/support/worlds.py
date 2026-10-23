@@ -2037,6 +2037,7 @@ def br06_lease(
     nonlease_predominates: bool = False,
     mixed_ssp_bases: bool = False,
     delivered_units: bool = False,
+    cost_recovery: bool = False,
 ) -> Br06World:
     """The facts of answer key ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT through the product's
     commands (PRD §2.10 BR-06): Maya, Priya and Marcus as in ``k03_castellan``; AVM-US (USD) with
@@ -2100,14 +2101,14 @@ def br06_lease(
                 "recognition_method": "USAGE",
                 "ratable_convention": None,
             }
-        if delivered_units:
+        if delivered_units or cost_recovery:
             outputs = {
                 **outputs,
                 "distinctness": "distinct",
                 "series_increment_unit": None,
                 "satisfaction_pattern": "OVER_TIME",
                 "over_time_criterion": "OT_A",
-                "recognition_method": "UNITS_DELIVERED",
+                "recognition_method": "COST_RECOVERY" if cost_recovery else "UNITS_DELIVERED",
                 "ratable_convention": None,
             }
         template = published_template(

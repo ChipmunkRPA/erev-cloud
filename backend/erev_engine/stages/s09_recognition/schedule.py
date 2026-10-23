@@ -981,7 +981,7 @@ def _emit_endpoint(
             currency=None,
             minor_unit=None,
             formula_id=fixed.progress.formula_id,
-            inputs=[],
+            inputs=fixed.progress.sources,
             params=fixed.progress.params,
             narrative_key=fixed.progress.formula_id.rsplit(".v", 1)[0],
         )
@@ -1461,7 +1461,7 @@ def _emit_dated_schedule(
                 currency=None,
                 minor_unit=None,
                 formula_id=part.progress.formula_id,
-                inputs=[],
+                inputs=part.progress.sources,
                 params=part.progress.params,
                 narrative_key=_narrative(part.progress.formula_id),
             )
