@@ -20,6 +20,13 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Original forecast report re-export — October 23, 2026
+
+- Original forecast reports now accept the rerun API, binding the verified saved publication
+  through the catalogue adapter without recomputing the forecast. Existing UI flow is unchanged.
+- Populated forecast lifecycle passes: JSON/CSV/XLSX original and catalogue reruns preserve
+  dataset hashes and bound sources; source-access checks remain. Scoped lint/types pass.
+
 ## Modification causal reporting — October 22, 2026
 
 - Owner-selected sequential causal analysis is now exposed in the modification register.

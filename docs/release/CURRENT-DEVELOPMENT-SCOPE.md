@@ -13,7 +13,7 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
-## Confirmed Reporting work remaining
+## Reporting implementation status
 
 ### Sequential modification causal analysis — owner-selected scope
 
@@ -106,7 +106,7 @@ re-entry behavior is retained. See ROYALTY-EXIT-CORRECTION.md for bounded verifi
   and frozen endpoints. Functional positive/negative same-period modifications are covered,
   including net zero. Membership/reference/population phases retain explicit boundaries.
   This is causal replay attribution, not original per-event journal-line ownership; the latter
-  remains outstanding for the modification register described above.
+  is outside the owner-selected causal-analysis scope described above.
 
 - RPO: royalty remainder and targeted VC exclusions, fixed guarantee retention, separate
   partial-exemption rows, rollforward and close-variance projection, currency rounding and
@@ -128,6 +128,16 @@ separate implementation and must not be enabled by simply removing those checks.
 
 These statements do not prove every combination of contracts, currencies, calendars and
 lifecycle events.
+
+## Forecast publication re-export
+
+Original forecast publications now accept the report rerun API as well as the existing UI
+catalogue re-export flow. The API first verifies the original publication identity and digest,
+then binds its saved format and five-section dataset through the existing catalogue adapter.
+It does not rerun the forecast engine. Re-export retains requester/scenario/entity/export
+permissions and the original dataset hash. Original reports remain immutable.
+The populated forecast lifecycle passes with original and catalogue reruns in JSON, CSV and
+XLSX, identical data hashes and bindings, and retained source-access checks; scoped lint/types pass.
 
 ## Repository completion evidence still required
 

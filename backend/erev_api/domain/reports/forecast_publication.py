@@ -221,7 +221,9 @@ def _publish(uow: UnitOfWork, parent_id: UUID, captured: Captured, identity: Ide
         row_keys=frozenset(s.key for s in captured.sections),
         strategy=OPEN,
         report_version=1,
-        open=("Forecast computation reruns are not yet supported.",),
+        open=(
+            "Original saved forecast; rerun re-exports its verified dataset without recomputation.",
+        ),
         evidence={
             "forecast_run_id": str(parent_id),
             "forecast_dataset_file_id": str(dataset_file_id),

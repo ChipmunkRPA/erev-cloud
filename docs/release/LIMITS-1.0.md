@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current development status is maintained in [CURRENT-DEVELOPMENT-SCOPE.md](CURRENT-DEVELOPMENT-SCOPE.md).
+The dated checkpoints below include superseded limitations. In particular, October 22's
+owner-selected modification causal analysis, aggregate net revenue source sets and royalty
+post-exit downward corrections supersede earlier pending-decision statements. Deployment,
+live-business migration and independent accounting sign-off are outside the owner's repository
+development scope; historical production-use requirements below are not development blockers.
+
+
 ## Royalty RPO exemption for pending performance — October 22, 2026
 
 - Replaced POL-199's unconditional zero cap with realized royalty still awaiting recognition.

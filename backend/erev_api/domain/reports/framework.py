@@ -1888,11 +1888,12 @@ def rerun(uow: UnitOfWork, run_id: UUID) -> tuple[UUID, JobOut]:
     if original["report_code"] == "forecast_outputs" and not (
         original.get("source_binding") or {}
     ).get("evidence", {}).get("catalogue_forecast"):
-        raise Problem(
-            "invalid-transition",
-            "Forecast computation reruns are not supported. "
-            "Create a catalogue report to re-export the saved forecast.",
-        )
+        from erev_api.domain.reports.forecast_catalogue import document_for_run
+
+        # Verify this exact original publication before the normal catalogue adapter
+        # binds it for re-export. Never recompute a historical forecast or select a
+        # different publication merely because it shares the parent forecast id.
+        document_for_run(uow, original)
     # S15-R-24: a live run reruns from ITS bound sources — never from today's rows; without a
     # binding it is refused by name. An as-locked run reruns from its frozen dataset (S15-R-19).
     require_bound(original, RERUN_UNBOUND, "invalid-transition")
