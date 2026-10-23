@@ -1114,3 +1114,35 @@ a EUR 3 invoice (USD 3.01) across three equally weighted POBs and nets a later E
 running with versus without disclosure attribution yields identical layer movements and ordinary
 functional posting targets. Twenty-four existing billing/FX cases also pass. Three production
 modules pass mypy and scoped lint passes. No database, deployment or ledger migration was needed.
+
+## October 23 public functional POB consumption — original-currency integration
+
+New functional opening-liability reports apply FIFO_WITHIN_POB using original POB opening billing
+and revenue, actual functional control revenue posted over the selected range, and original group
+opening/actual-relief caps. Original invoice functional shares come from the preceding checkpoint's
+trace nodes, with their signed invoice/credit population checked document by document against
+original transaction attribution. Matching only a net transaction amount is insufficient: cancelling
+documents with different FX rates must both be present. Original functional revenue also reconciles
+to the transaction revenue quantity. Missing/mixed/partial coverage refuses; older traces lacking
+original invoice attribution require recomputation for a nonzero opening. A zero displayed group
+opening gives zero relief explicitly, without inventing missing invoice values.
+
+The builder reuses authenticated locked opening sources and groups combined members without
+inventing a member split. It checks posted functional revenue against the existing reconciled
+balance path. Evidence retains source nodes, posting identities, currency units, method and caps;
+reruns rebuild and compare it. Older saved bindings retain their prior method. Reporting-currency
+POB projection and native S15 foreign-functional classification are still unfinished. Agent and
+cross-entity attribution, partial/mixed-date billing subsets and onboarding source coverage still
+need their own complete evidence. Combined/locked functional special histories are not claimed as
+fully verified by the single-contract acceptance case below. Migration 0342 adds the actual POB,
+original report and disclosure snapshot sources and rules to the report's IPE explanation.
+
+Necessary verification: the EUR receivable fixture optionally books 200 service units, records an
+EUR 20,000 August advance and approves 100 units in each of August and September. The public
+functional report consumes USD 11,000 from September's opening liability using the original 1.10
+invoice rate, rather than USD 11,100 at September's 1.11 rate. Saved rerun rows match without current
+policy reads. Existing same-currency transaction and functional POB reports also reproduce their
+results (three DB cases). Twelve focused cases include cancelling EUR invoices/credits with a
+nonzero functional difference and refusal of missing coverage or wrong currency. Four production
+modules pass mypy; scoped lint passes. Migration and public foreign case checked on disposable DB.
+No deployment.

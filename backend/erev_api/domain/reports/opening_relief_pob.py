@@ -28,6 +28,7 @@ def calculate(
     *,
     opening_row: tie_outs.BalanceRow | None = None,
     opening_absent: bool = False,
+    functional_currency: str | None = None,
 ) -> tuple[Decimal, dict[str, Any]]:
     """Eligibility for one member, using the selected version and selected posting range.
 
@@ -100,6 +101,20 @@ def calculate(
             )
         recognized[entry.subject_key] += entry.flow.amount
         posted.append(str(entry.line_id))
+    if functional_currency is not None and opening <= 0:
+        return ZERO, {
+            "version": str(row.version_id),
+            "opening_period": None if previous is None else previous.key,
+            "posted_lines": sorted(posted),
+            "obligations": {
+                subject: {"posted_revenue": str(value)}
+                for subject, value in sorted(recognized.items())
+            },
+            "opening_cap": str(opening),
+            "consumption_cap": str(consumed),
+            "relief": "0",
+            "basis": "ZERO_GROUP_OPENING",
+        }
     facts: dict[str, Any] = {}
     formula = ZERO
     for subject in sorted(subjects | opening_subjects):
@@ -121,6 +136,24 @@ def calculate(
                     billed = Decimal(node.value)
                 else:
                     revenue = Decimal(node.value)
+        if (
+            functional_currency is not None
+            and functional_currency != row.currency
+            and previous is not None
+            and subject in opening_subjects
+        ):
+            from .opening_pob_functional_nodes import read as functional_opening
+
+            billed, revenue, functional_inputs = functional_opening(
+                nodes,
+                subject=subject,
+                period=previous,
+                txn_currency=row.currency,
+                currency=functional_currency,
+                billed=billed,
+                revenue=revenue,
+            )
+            inputs.extend(functional_inputs)
         liability = max(ZERO, billed - revenue)
         contribution = min(liability, max(ZERO, recognized[subject]))
         formula += contribution

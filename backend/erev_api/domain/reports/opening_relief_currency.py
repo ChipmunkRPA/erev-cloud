@@ -65,9 +65,48 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             items=items,
             locked=locked,
         )
-    contracts = []
+    from . import opening_consumption_policy, opening_relief_functional_pob
+
+    contracts: list[dict[str, Any]] = []
+    excluded: set[tuple[UUID, UUID]] = set()
+    per_obligation = False
+    if view == "functional" and (
+        params.binding is None or opening_relief_functional_pob.KEY in params.binding.evidence
+    ):
+        policies = opening_consumption_policy.by_entity(session, params, entities, book)
+        per_obligation = "FIFO_WITHIN_POB" in policies.values()
+        if per_obligation:
+            contracts, excluded = opening_relief_functional_pob.rows(
+                uow,
+                params,
+                book=book,
+                periods=periods,
+                before=before,
+                locked=locked,
+                items=items,
+                policies=policies,
+            )
+        else:
+            if (
+                params.binding is not None
+                and params.binding.evidence[opening_relief_functional_pob.KEY] != {}
+            ):
+                raise tie_outs.invalid(
+                    "currency_view", "Unexpected retained functional POB sources."
+                )
+            tie_outs.record_evidence(params, opening_relief_functional_pob.KEY, {})
     totals: dict[str, dict[str, Decimal]] = {}
+    for row in contracts:
+        group = totals.setdefault(row["currency"], {})
+        for name, column in (
+            ("opening", "opening_contract_liability"),
+            ("revenue", "revenue_recognized"),
+            ("relief", "revenue_from_opening"),
+        ):
+            tie_outs.add(group, name, Decimal(row[column]["amount"]))
     for item in items:
+        if (item.contract_id, item.entity_id) in excluded:
+            continue
         opening = item.lines["OPENING"][rollforward.LIABILITY]
         from_opening = -item.lines["REVENUE_FROM_OPENING"][rollforward.LIABILITY]
         recognized = sum(
@@ -115,6 +154,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         view=view,
         rates=rates,
         source_key=KEY,
+        per_obligation=per_obligation,
     )
 
 
@@ -167,7 +207,11 @@ def finish(
     if signed_reversals:
         evidence["method"] = "retained_signed_revenue_sources_v1"
     if per_obligation:
-        evidence["method"] = "retained_obligation_opening_and_posted_revenue_v1"
+        evidence["method"] = (
+            "retained_functional_obligation_opening_and_posted_revenue_v1"
+            if view == "functional"
+            else "retained_obligation_opening_and_posted_revenue_v1"
+        )
     if params.binding is not None and params.binding.evidence[source_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Opening-relief method differs from retained evidence."
@@ -203,6 +247,11 @@ def finish(
             "opening liability and actual liability relief. Other entities retain "
             "FIFO_WITHIN_CONTRACT. No per-layer ownership amounts are inferred."
         )
+        if view == "functional":
+            footnote += (
+                " Functional billing uses original invoice FX amounts with complete document "
+                "coverage; opening revenue is reconciled to its original transaction quantity."
+            )
         if any(str(row["row_key"]).startswith("combined:") for row in contracts):
             footnote += (
                 " Combined contracts show one group total with the full member set; "

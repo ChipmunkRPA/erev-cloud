@@ -264,10 +264,11 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Functional POB billing evidence — October 23, 2026
+## Public functional POB consumption — October 23, 2026
 
-- Added original document attribution nodes and functional POB billing evidence using admitted
-  invoice FX amounts and existing remainder allocation. Credit signs and source nodes survive;
-  liability movements and posting targets are unchanged. Public multi-currency integration remains open.
-- Connected S09–S12 invoice/credit case and 24 existing billing/FX cases pass; trace replay,
-  unchanged ledger targets, scoped lint/types pass. Combined checkpoint archived. No deployment.
+- Functional opening reports now use original invoice FX attribution and actual posted POB
+  revenue, with complete document coverage, group caps and retained rerun evidence. Migration
+  0342 updates IPE sources. Zero group openings are explicitly capped without invented inputs.
+- Foreign advance-billing and same-currency report/rerun cases, 12 focused cases and scoped
+  lint/types pass. Reporting currency and native foreign S15 classification remain open.
+- Functional billing checkpoint archived. No deployment.

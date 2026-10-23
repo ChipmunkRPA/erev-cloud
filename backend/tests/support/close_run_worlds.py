@@ -132,6 +132,7 @@ def eur_receivable(
     clock: FrozenClock,
     files: LocalFileStore,
     *,
+    quantity: str = "100",
     reporting_currency: str = "USD",
 ) -> worlds.ReportWorld:
     """A EUR receivable of AVM-US (USD). Maya (Revenue Accountant, SSP Analyst), Priya (Revenue
@@ -244,7 +245,7 @@ def eur_receivable(
                 {
                     "obligation_key": "O1",
                     "product_code": EUR_HOURS,
-                    "quantity": "100",
+                    "quantity": quantity,
                     "total_price": {"amount": "0.00", "currency": "EUR"},
                     "unit_price": "100.00",
                     **term,

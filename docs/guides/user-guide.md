@@ -1055,7 +1055,7 @@ do not infer original-component measurements from the combined obligation.
 
 ### Opening liability consumed by obligation
 
-With `FIFO_WITHIN_POB`, the transaction-currency opening-liability report uses each obligation's
+With `FIFO_WITHIN_POB`, transaction and functional opening-liability reports use each obligation's
 opening attributed billings less its opening revenue and the net revenue actually posted during
 the selected range. It caps the result at contract opening liability and actual liability relief.
 The report footnote identifies this method; saved reruns retain its original evidence and policy.
@@ -1067,5 +1067,7 @@ version does not change that opening. Combined contracts display one group total
 member contracts; individual relief is not allocated when the group cap does not establish ownership.
 Agent/cross-entity cases and locks without these original sources return an explanation instead
 of a substitute amount.
-Functional and reporting currency views still disclose their contract/layer consumption method;
-per-obligation consumption in those views remains under development.
+Functional openings use original invoice FX attribution and original functional revenue, with
+complete invoice/credit coverage checked against the transaction sources. Missing original sources
+require recomputation; the report does not substitute a current exchange rate. Reporting-currency
+per-obligation consumption remains under development.

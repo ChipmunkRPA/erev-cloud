@@ -1033,12 +1033,15 @@ def test_historical_gl_never_falls_back_after_latest_source_changes(
 
 
 @pytest.mark.slow
-def test_opening_liability_pob_public_report_and_retained_rerun(world, monkeypatch):
+@pytest.mark.parametrize("view", ["transaction", "functional"])
+def test_opening_liability_pob_public_report_and_retained_rerun(world, monkeypatch, view):
     from types import SimpleNamespace
     from erev_api.domain.reports import opening_consumption_policy as policy
 
     monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
-    run, rows = report_run(world, "revenue_from_opening_liability", SEPTEMBER)
+    run, rows = report_run(
+        world, "revenue_from_opening_liability", {**SEPTEMBER, "currency_view": view}
+    )
     row = keyed(rows)[K01_BALANCE_ROW]
     assert row["revenue_from_opening"] == usd("9764.38")
     assert "FIFO_WITHIN_POB uses each obligation" in run["control_totals"]["footnote"]
@@ -1108,6 +1111,90 @@ def test_opening_pob_uses_locked_source_versions(app, keyring, clock, app_settin
         lambda *a, **k: (_ for _ in ()).throw(
             AssertionError("Frozen rerun consulted current policy")
         ),
+    )
+    restarted = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert restarted.status_code == 202, restarted.text
+    complete = run_now(world, UUID(restarted.json()["id"]))
+    assert complete["state"] == "SUCCEEDED", complete
+    rebuilt = get(
+        world.app,
+        f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+        world.maya,
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["items"] == rows
+
+
+@pytest.mark.slow
+def test_functional_pob_report_uses_original_invoice_fx(
+    app, keyring, clock, app_settings, monkeypatch
+):
+    from datetime import date
+    from types import SimpleNamespace
+    from sqlalchemy import select
+    from erev_api.db.tables import contract, report_run as saved_run
+    from erev_api.domain.reports import opening_consumption_policy as policy
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn
+    from erev_api.money import MoneyIn
+    from support import close_run_worlds, worlds
+    from support.factories import appended, computed
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root), quantity="200"
+    )
+    held = world.contracts[close_run_worlds.EUR_CONTRACT]
+    identity = UUID(str(held.contract["id"]))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == identity)
+    )
+    appended(
+        world.place,
+        identity,
+        int(head),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=date(2026, 8, 1),
+                payload=BillingRecordedV1(
+                    invoice_number="ADVANCE",
+                    line_external_id="ADVANCE-1",
+                    obligation_key="O1",
+                    issue_date=date(2026, 8, 1),
+                    amount=MoneyIn(amount="20000.00", currency="EUR"),
+                ),
+            )
+        ],
+    )
+    computed(world.place, UUID(str(held.combination_group["id"])))
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        identity,
+        {
+            "event_type": "DELIVERY_RECORDED",
+            "effective_date": "2026-09-30",
+            "payload": {"obligation_key": "O1", "quantity": "100", "trigger": "DELIVERY"},
+        },
+        evidence_file_ids=[],
+    )
+    monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
+    run, rows = report_run(
+        world, "revenue_from_opening_liability", {**SEPTEMBER, "currency_view": "functional"}
+    )
+    row = keyed(rows)[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
+    assert row["opening_contract_liability"] == usd("11000.00")
+    assert row["revenue_from_opening"] == usd("11000.00")
+    assert row["revenue_recognized"] == usd("11000.00")
+    binding = world.place.scalar(
+        select(saved_run.c.source_binding).where(saved_run.c.id == UUID(run["id"]))
+    )
+    assert binding["evidence"]["opening_relief_functional_pob_v1"]
+    monkeypatch.setattr(
+        policy,
+        "resolve",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("Current policy read")),
     )
     restarted = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
     assert restarted.status_code == 202, restarted.text
