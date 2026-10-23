@@ -20,6 +20,16 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Material-right product defaults — October 23, 2026
+
+- POL-026 now initializes option entry from resolved product policy, using retained pins
+  when present. API omission resolves the common book default; explicit methods win.
+  Conflicting defaults require a choice. Saved immutable terms govern later calculations.
+- Public entry/rollback/activation and two explicit discount workflows pass; two resolution
+  and 18 UI cases pass, with scoped lint/types and regenerated API types. No deployment.
+- Remaining policy implementation: portfolio estimates (POL-015) and lessor combination
+  (POL-231). This supersedes POL-026 in the preceding reader audit.
+
 ## Legacy FX-evidence refresh — October 23, 2026
 
 - Fixed unchanged legacy FX runs being reused indefinitely: current bundles declare an
@@ -49,19 +59,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
 
-## Modification functional calculation evidence — October 22, 2026
-
-- New register runs expose original functional catch-up calculations and period/basis when a
-  single event explains the full native period flow. Historical FX pieces and both currency
-  totals are verified; trace hashes/node identities and resolved values remain in retained inputs.
-- Columns distinguish native calculation from spot equivalents and journal posting deltas.
-  Mixed/missing evidence stays empty; older bound runs keep their columns. Migration 0329
-  records the scope. No native monetary calculation or deployment changed.
-- Necessary checks: 36 focused reader/register/catalogue cases, native USD/GBP positive and
-  negative catch-ups, mixed-period and corrupt-source refusals; existing populated register,
-  approved-rate and mixed-period API workflows, plus retained reconstruction and scoped lint/types.
-- Multi-event functional allocation and actual per-event posted deltas remain open; this is
-  incremental calculation evidence, not completion of that larger feature.
 
 ## Revenue-source compatibility and zero-share reversals — October 22, 2026
 

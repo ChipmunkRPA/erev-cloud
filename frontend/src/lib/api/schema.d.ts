@@ -5098,6 +5098,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/obligations/{obligation_id}/material-right-defaults": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obligation Material Right Defaults
+     * @description Current entry defaults; immutable saved option terms take precedence.
+     */
+    get: operations["obligation_material_right_defaults"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/obligations/{obligation_id}/request-ssp-override": {
     parameters: {
       query?: never;
@@ -17689,11 +17709,13 @@ export interface components {
       /** Likelihood Estimate Id */
       likelihood_estimate_id?: string | null;
       option_type: components["schemas"]["OptionType"];
-      /**
-       * Ssp Method
-       * @enum {string}
-       */
-      ssp_method: "DISCOUNT_X_LIKELIHOOD" | "RENEWAL_ALTERNATIVE" | "ENTERED_AMOUNT";
+      ssp_method?: components["schemas"]["MaterialRightMethod"] | null;
+    };
+    /** MaterialRightDefaultsOut */
+    MaterialRightDefaultsOut: {
+      /** Books */
+      books: components["schemas"]["MaterialRightMethodDefault"][];
+      method: components["schemas"]["MaterialRightMethod"] | null;
     };
     /**
      * MaterialRightExpireIn
@@ -17709,6 +17731,18 @@ export interface components {
       effective_date: string;
       /** Evidence File Ids */
       evidence_file_ids?: string[];
+    };
+    /** @enum {string} */
+    MaterialRightMethod: "DISCOUNT_X_LIKELIHOOD" | "RENEWAL_ALTERNATIVE" | "ENTERED_AMOUNT";
+    /** MaterialRightMethodDefault */
+    MaterialRightMethodDefault: {
+      /** Book */
+      book: string;
+      /** Level */
+      level: string;
+      method: components["schemas"]["MaterialRightMethod"];
+      /** Source */
+      source: string;
     };
     /**
      * MaterialRightOut
@@ -46185,6 +46219,67 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ProblemOut"];
           "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  obligation_material_right_defaults: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        obligation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MaterialRightDefaultsOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

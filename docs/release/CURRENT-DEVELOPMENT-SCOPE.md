@@ -409,3 +409,26 @@ POL-026 is driven by explicitly entered option terms; product policy values are 
 for that method. These are implementation gaps, not release-check substitutes. POL-142's
 commission comparison is implemented above. Preserve explicit historical option terms when
 adding product-policy behavior; the existence of registry entries is not completion evidence.
+
+## October 23 material-right product default — implemented
+
+POL-026 now supplies new option-entry defaults through the same resolved per-book policy
+inputs as computation, retaining product/template pins where they already exist. The new
+material-right-defaults read requires contract.read and the visible obligation/contract; it
+returns each book's method and source. The form initializes from a common default, displays
+its required inputs and allows explicit selection. Conflicting book defaults or a failed read
+require explicit selection. New API terms may omit/null ssp_method to resolve the common default
+inside the authorized creation transaction. Missing method inputs still fail validation.
+
+Creation persists the concrete method in immutable option terms before computing; an explicit
+method always wins. Drafts without an inception pin read the currently resolved product policy.
+Changing that policy later does not rewrite saved option terms or their calculated SSP. This
+implements a product default at entry, not retroactive replacement of explicit contract facts.
+Existing contract creation permissions, activation review/SoD and rollback behavior remain.
+
+Necessary checks: populated public option entry selects the approved ENTERED_AMOUNT product
+default when method is omitted, retains SSP 123.45 after the draft product default changes,
+rolls back a failed calculation and preserves independent activation review; two existing
+explicit discount/likelihood workflows pass; two per-book resolution cases and 18 form cases
+pass, with scoped lint/types. API document and generated frontend types are refreshed. POL-015
+portfolio estimates and POL-231 lessor combination remain implementation gaps. No deployment.

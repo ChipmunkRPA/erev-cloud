@@ -11,11 +11,13 @@ import { Field } from "../../components/form/Field";
 import { Button } from "../../components/ui/Button";
 import { Drawer } from "../../components/ui/Drawer";
 import { useCommand, useCommandKeys } from "../../lib/api/commands";
+import { queryKey } from "../../lib/api/query-keys";
 import { ApiProblem } from "../../lib/api/problems";
 import {
   type Contract,
   CONTRACT_RECORD_KEYS,
   contractIfMatch,
+  readJson,
 } from "../../lib/api/queries/contracts";
 import { contractEstimatesKey, fetchEstimates } from "../../lib/api/queries/estimates";
 import type { Obligation } from "../../lib/api/queries/obligations";
@@ -25,6 +27,7 @@ import { t } from "../../lib/i18n/t";
 import { EvidenceField, SelectField, TextField, uploadEvidence } from "./drawers/common";
 
 type Terms = components["schemas"]["MaterialRightCreateIn"];
+type Method = NonNullable<Terms["ssp_method"]>;
 type Mode = "create" | "expire";
 const TYPES: readonly Terms["option_type"][] = [
   "DISCOUNT_VOUCHER",
@@ -33,7 +36,7 @@ const TYPES: readonly Terms["option_type"][] = [
   "TIERED_DISCOUNT",
   "OTHER",
 ];
-const METHODS: readonly Terms["ssp_method"][] = [
+const METHODS: readonly Method[] = [
   "ENTERED_AMOUNT",
   "DISCOUNT_X_LIKELIHOOD",
   "RENEWAL_ALTERNATIVE",
@@ -153,7 +156,17 @@ export function MaterialRightDrawer({
   const noAnswer = useNoAnswer();
   const keys = useCommandKeys();
   const [type, setType] = useState<Terms["option_type"]>("DISCOUNT_VOUCHER");
-  const [method, setMethod] = useState<Terms["ssp_method"]>("ENTERED_AMOUNT");
+  const [selectedMethod, setMethod] = useState<Method | null>(null);
+  const defaults = useQuery({
+    queryKey: queryKey("material-right-defaults", "tenant", { obligationId: obligation.id }),
+    queryFn: () =>
+      readJson<components["schemas"]["MaterialRightDefaultsOut"]>(
+        `/api/v1/obligations/${obligation.id}/material-right-defaults`,
+      ).then(({ data }) => data),
+    enabled: mode === "create",
+  });
+  const method = selectedMethod ?? defaults.data?.method ?? null;
+  const optionType = method === "RENEWAL_ALTERNATIVE" ? "RENEWAL_OPTION" : type;
   const [ratio, setRatio] = useState("");
   const [amount, setAmount] = useState("");
   const [enteredAmount, setEnteredAmount] = useState("");
@@ -191,6 +204,7 @@ export function MaterialRightDrawer({
     attempted && (value === null || value.trim() === "") ? message("required") : null;
   async function submit() {
     if (command.pending || uploading || command.jobId !== null) return;
+    if (mode === "create" && method === null) return;
     setAttempted(true);
     if (
       invalidDate ||
@@ -209,7 +223,7 @@ export function MaterialRightDrawer({
       const body: Terms | components["schemas"]["MaterialRightExpireIn"] =
         mode === "create"
           ? {
-              option_type: type,
+              option_type: optionType,
               ssp_method: method,
               expiry_date: effective,
               is_discount_available_without_contract: available === "true",
@@ -264,7 +278,12 @@ export function MaterialRightDrawer({
       }
       primaryAction={
         command.jobId === null
-          ? { label: message(mode === "create" ? "save" : "expire"), form }
+          ? {
+              label: message(mode === "create" ? "save" : "expire"),
+              form,
+              disabledReason:
+                mode === "create" && method === null ? message("chooseMethod") : undefined,
+            }
           : undefined
       }
       onClose={onClose}
@@ -301,10 +320,15 @@ export function MaterialRightDrawer({
           </p>
           {mode === "create" ? (
             <>
+              <p className="text-body-sm text-fg-3">{message("policyDefault")}</p>
+              {defaults.isError ? <p role="alert">{message("defaultUnavailable")}</p> : null}
+              {defaults.data?.method === null ? (
+                <p role="status">{message("chooseMethod")}</p>
+              ) : null}
               <SelectField
                 name="option-type"
                 label={message("type")}
-                value={type}
+                value={optionType}
                 options={(method === "RENEWAL_ALTERNATIVE"
                   ? ["RENEWAL_OPTION" as const]
                   : TYPES
@@ -314,9 +338,10 @@ export function MaterialRightDrawer({
               <SelectField
                 name="option-method"
                 label={message("method")}
-                value={method}
+                value={method ?? ""}
                 options={METHODS.map((value) => ({ value, label: message(`method.${value}`) }))}
                 onChange={(value) => {
+                  if (value === "") return;
                   setMethod(value);
                   if (value === "RENEWAL_ALTERNATIVE") setType("RENEWAL_OPTION");
                 }}

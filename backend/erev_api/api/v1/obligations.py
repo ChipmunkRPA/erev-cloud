@@ -40,7 +40,12 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.clock import Clock, get_clock
 from erev_api.db.tables import contract_event, obligation_version, schedule_line
-from erev_api.domain.contracts import material_right_commands, obligations, queries
+from erev_api.domain.contracts import (
+    material_right_commands,
+    material_right_defaults,
+    obligations,
+    queries,
+)
 from erev_api.domain.policies import overrides
 from erev_api.enums import BookCode
 from erev_api.schemas.common import JobOut, ListOut
@@ -48,6 +53,7 @@ from erev_api.schemas.contracts import ObligationOut, ScheduleLineOut
 from erev_api.schemas.events import EventOut, EventsAppendedOut
 from erev_api.schemas.obligations import (
     MaterialRightCreateIn,
+    MaterialRightDefaultsOut,
     MaterialRightExpireIn,
     MaterialRightOut,
     SspOverrideIn,
@@ -253,6 +259,22 @@ def obligation_events_list(
     result, items = queries.read(ctx, load)
     _total(response, result)
     return ListOut[EventOut](items=items, next_cursor=result.next_cursor)
+
+
+@router.get(
+    "/obligations/{obligation_id}/material-right-defaults",
+    operation_id="obligation_material_right_defaults",
+    response_model=MaterialRightDefaultsOut,
+    responses=problem_responses(*_READ_PROBLEMS, "not-found"),
+)
+def obligation_material_right_defaults(
+    obligation_id: uuid.UUID, ctx: ReadContext, clock: AppClock
+) -> MaterialRightDefaultsOut:
+    """Current entry defaults; immutable saved option terms take precedence."""
+    return queries.read(
+        ctx,
+        lambda session: material_right_defaults.read(session, obligation_id, known_at=clock.now()),
+    )
 
 
 @router.get(

@@ -46,6 +46,15 @@ def insert_terms(
         is None
     ):
         raise invalid("obligation_id", "Choose an obligation of this contract.")
+    if body.ssp_method is None:
+        from erev_api.domain.contracts import material_right_defaults
+
+        defaults = material_right_defaults.read(session, obligation_id, known_at=uow.now)
+        if defaults.method is None:
+            raise invalid(
+                "ssp_method", "Choose an explicit method: the books have different defaults."
+            )
+        body = body.model_copy(update={"ssp_method": defaults.method})
     discount = body.ssp_method == "DISCOUNT_X_LIKELIHOOD"
     for field in (
         "incremental_discount_ratio",

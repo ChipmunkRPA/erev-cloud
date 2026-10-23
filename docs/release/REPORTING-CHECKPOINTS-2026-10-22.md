@@ -145,3 +145,17 @@
   compatibility, authored offset witnesses, contributor reads, corrupt effects, catalogue parity
   and scoped types/lint. No engine calculation, event grouping or deployment changed.
 - Individual amounts within a consecutive same-driver event run remain an implementation gap.
+
+## Modification functional calculation evidence — October 22, 2026
+
+- New register runs expose original functional catch-up calculations and period/basis when a
+  single event explains the full native period flow. Historical FX pieces and both currency
+  totals are verified; trace hashes/node identities and resolved values remain in retained inputs.
+- Columns distinguish native calculation from spot equivalents and journal posting deltas.
+  Mixed/missing evidence stays empty; older bound runs keep their columns. Migration 0329
+  records the scope. No native monetary calculation or deployment changed.
+- Necessary checks: 36 focused reader/register/catalogue cases, native USD/GBP positive and
+  negative catch-ups, mixed-period and corrupt-source refusals; existing populated register,
+  approved-rate and mixed-period API workflows, plus retained reconstruction and scoped lint/types.
+- Multi-event functional allocation and actual per-event posted deltas remain open; this is
+  incremental calculation evidence, not completion of that larger feature.

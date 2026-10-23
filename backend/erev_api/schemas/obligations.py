@@ -53,13 +53,28 @@ class SspOverrideOut(BaseModel):
     approval_request_id: uuid.UUID
 
 
+type MaterialRightMethod = Literal["DISCOUNT_X_LIKELIHOOD", "RENEWAL_ALTERNATIVE", "ENTERED_AMOUNT"]
+
+
+class MaterialRightMethodDefault(BaseModel):
+    book: str
+    method: MaterialRightMethod
+    level: str
+    source: str
+
+
+class MaterialRightDefaultsOut(BaseModel):
+    method: MaterialRightMethod | None
+    books: list[MaterialRightMethodDefault]
+
+
 class MaterialRightCreateIn(BaseModel):
     """Immutable native option terms, entered against a draft contract's stream ETag."""
 
     model_config = ConfigDict(extra="forbid")
 
     option_type: OptionType
-    ssp_method: Literal["DISCOUNT_X_LIKELIHOOD", "RENEWAL_ALTERNATIVE", "ENTERED_AMOUNT"]
+    ssp_method: MaterialRightMethod | None = None
     incremental_discount_ratio: Ratio | None = None
     is_discount_available_without_contract: bool = False
     expected_purchase_amount: NonNegativeMoney | None = None

@@ -1606,7 +1606,7 @@ The capture shows the published version 2 of "Accounting policies · Tenant", wi
 
 *SF-13:accounting-version: the published version 2 of "Accounting policies · Tenant" with the first of its 112 parameters and the "Simulation" block; Marcus Webb, Controller.*
 
-Limit in 1.0: four parameters decide nothing at any level, namely `step1.portfolio_approach` (POL-015), `material_right.ssp_method` (POL-026), `costs.commensurate_ratio` (POL-142) and `scope.lessor_combination_expedient` (POL-231): a stated value is stored and published and changes no figure (row B3-22).
+Updated October 23: portfolio application (`step1.portfolio_approach`, POL-015) and lessor component combination (`scope.lessor_combination_expedient`, POL-231) remain unimplemented. The historical B3-22 four-parameter limitation is partly superseded: `costs.commensurate_ratio` now compares approved initial/renewal commission evidence, and `material_right.ssp_method` supplies the default for new option terms. The option form reads the product policy resolved for the contract, including retained pins where available. You may explicitly select another method; the saved terms govern subsequent computation. Product policy changes do not rewrite those terms. If book defaults disagree, select a method explicitly. API callers may omit `ssp_method` to use the common resolved default; all required inputs for that method still apply.
 
 ### Creating a policy version at workspace or entity level
 

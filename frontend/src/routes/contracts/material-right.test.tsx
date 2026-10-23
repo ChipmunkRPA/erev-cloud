@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import type { Contract } from "../../lib/api/queries/contracts";
 import type { Obligation } from "../../lib/api/queries/obligations";
@@ -34,6 +34,17 @@ const obligation = (status?: string) =>
           },
   }) as unknown as Obligation;
 const path = `/api/v1/obligations/${O1_ID}`;
+beforeEach(() =>
+  server.use(
+    http.get(apiUrl(`${path}/material-right-defaults`), () =>
+      HttpResponse.json({
+        method: "ENTERED_AMOUNT",
+        books: [{ book: "ASC606", method: "ENTERED_AMOUNT", level: "P", source: "MR" }],
+      }),
+    ),
+  ),
+);
+
 async function choose(label: string, option: string) {
   fireEvent.click(await screen.findByRole("combobox", { name: label }));
   fireEvent.mouseDown(await screen.findByRole("option", { name: option }));
@@ -87,9 +98,14 @@ it.each(["", "123.45"])(
       />,
     );
     if (amount !== "")
-      fireEvent.change(screen.getByRole("textbox", { name: "Entered total option SSP" }), {
+      fireEvent.change(await screen.findByRole("textbox", { name: "Entered total option SSP" }), {
         target: { value: amount },
       });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Save option terms" }).getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Save option terms" }));
     await waitFor(() => expect(close).toHaveBeenCalledOnce());
     expect(received).toHaveBeenCalledWith(
@@ -328,4 +344,63 @@ it("shows the saved total option SSP to a read-only viewer", () => {
   expect(screen.getByText("Entered total option SSP")).toBeTruthy();
   expect(screen.getByText(/123\.45/)).toBeTruthy();
   expect(screen.queryByRole("button")).toBeNull();
+});
+
+it("uses a pinned renewal default and saves explicit immutable terms", async () => {
+  const received = vi.fn();
+  server.use(
+    http.get(apiUrl(`${path}/material-right-defaults`), () =>
+      HttpResponse.json({
+        method: "RENEWAL_ALTERNATIVE",
+        books: [{ book: "ASC606", method: "RENEWAL_ALTERNATIVE", level: "P", source: "OPTION" }],
+      }),
+    ),
+    http.post(apiUrl(`${path}/material-right`), async ({ request }) => {
+      received(await request.json());
+      return HttpResponse.json(obligation("OPEN").material_right, { status: 201 });
+    }),
+  );
+  renderWithApp(
+    <MaterialRightDrawer
+      contract={contract()}
+      obligation={obligation()}
+      mode="create"
+      onClose={vi.fn()}
+    />,
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Save option terms" }).getAttribute("aria-disabled"),
+    ).not.toBe("true"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save option terms" }));
+  await waitFor(() => expect(received).toHaveBeenCalledOnce());
+  expect(received.mock.calls[0]?.[0]).toMatchObject({
+    ssp_method: "RENEWAL_ALTERNATIVE",
+    option_type: "RENEWAL_OPTION",
+  });
+});
+
+it("requires an explicit method when book defaults disagree", async () => {
+  server.use(
+    http.get(apiUrl(`${path}/material-right-defaults`), () =>
+      HttpResponse.json({ method: null, books: [] }),
+    ),
+  );
+  renderWithApp(
+    <MaterialRightDrawer
+      contract={contract()}
+      obligation={obligation()}
+      mode="create"
+      onClose={vi.fn()}
+    />,
+  );
+  await screen.findByText("Choose an SSP method. The books do not provide a single default.");
+  expect(
+    screen.getByRole("button", { name: "Save option terms" }).getAttribute("aria-disabled"),
+  ).toBe("true");
+  await choose("SSP method", "Entered amount");
+  expect(
+    screen.getByRole("button", { name: "Save option terms" }).getAttribute("aria-disabled"),
+  ).not.toBe("true");
 });

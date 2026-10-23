@@ -21,6 +21,32 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
+from sqlalchemy import func, insert, select
+from support.api_clients import access_approver, issued_client
+from support.db import TestDatabase
+from support.factories import (
+    IMPLEMENTATION_PLUS,
+    J03World,
+    SeatWorld,
+    booked_contract,
+    customer_id,
+    j03_world,
+    k09_body,
+    published_template,
+    seat_body,
+    seat_line,
+    seat_world,
+    set_default_template,
+    sf_ord_20417_body,
+    step1_criteria,
+)
+from support.http import call
+from support.principals import Actor, colleague, cookie_headers, enrolled
+from support.reference import approve, assign, fields, get, new_product, post, put, reject, slug
+from support.rows import publish_rule_set
+from support.worlds import estimate_version_ready
+
 from erev_api.approvals import engine as approvals_engine
 from erev_api.approvals.subjects import contract_activation_content
 from erev_api.auth.keyring import KeyRing
@@ -51,31 +77,6 @@ from erev_api.enums import ApprovalSubjectType, PrincipalKind, RuleSetKind, Sour
 from erev_api.events.payloads import ContractBookedV1
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
-from fastapi import FastAPI
-from sqlalchemy import func, insert, select
-from support.api_clients import access_approver, issued_client
-from support.db import TestDatabase
-from support.factories import (
-    IMPLEMENTATION_PLUS,
-    J03World,
-    SeatWorld,
-    booked_contract,
-    customer_id,
-    j03_world,
-    k09_body,
-    published_template,
-    seat_body,
-    seat_line,
-    seat_world,
-    set_default_template,
-    sf_ord_20417_body,
-    step1_criteria,
-)
-from support.http import call
-from support.principals import Actor, colleague, cookie_headers, enrolled
-from support.reference import approve, assign, fields, get, new_product, post, put, reject, slug
-from support.rows import publish_rule_set
-from support.worlds import estimate_version_ready
 
 CONTRACTS = "/api/v1/contracts"
 JUDGEMENTS = "/api/v1/judgements"
@@ -1616,10 +1617,11 @@ def test_activation_pair_1_approved_path_moves_stored_draft_to_active_and_refusa
 def test_mandatory_product_attributes_block_booking_and_recheck_activation(
     seats: SeatWorld, clock: FrozenClock
 ) -> None:
-    from erev_api.db.tables import product
-    from erev_api.enums import RegistryCategory
     from support.reference import patch
     from support.rows import publish_registry_version
+
+    from erev_api.db.tables import product
+    from erev_api.enums import RegistryCategory
 
     app, maya = seats.app, seats.place.author
     body = _seat_contract(seats, "REQUIRED-ATTR-EXISTING", seats="10", price="24000.00")
@@ -1793,14 +1795,33 @@ def test_native_material_right_entry_and_distinct_activation_reviewer(
         select(product.c.id).where(product.c.code == line["product_code"])
     )
     set_default_template(seats.app, maya, str(product_id), template["template_id"])
+
+    def policy_method(method: str) -> None:
+        proposal = post(
+            seats.app,
+            f"/api/v1/products/{product_id}/propose-policy-values-change",
+            maya,
+            {
+                "policy_values": {"material_right.ssp_method": method},
+                "rationale": "Default option estimation method for this product.",
+            },
+        )
+        assert proposal.status_code == 200, proposal.text
+        accepted = approve(seats.app, proposal.json()["approval_request_id"], seats.marcus)
+        assert accepted.status_code == 200, accepted.text
+
+    policy_method("ENTERED_AMOUNT")
     contract_id = _created(seats.app, maya, body)
     option_id = seats.place.scalar(
         select(obligation.c.id).where(obligation.c.contract_id == contract_id)
     )
     path = f"/api/v1/obligations/{option_id}/material-right"
+    defaults = get(seats.app, path + "-defaults", maya)
+    assert defaults.status_code == 200, defaults.text
+    assert defaults.json()["method"] == "ENTERED_AMOUNT"
+    assert all(item["level"] == "P" for item in defaults.json()["books"])
     terms = {
         "option_type": "RENEWAL_OPTION",
-        "ssp_method": "ENTERED_AMOUNT",
         "entered_ssp_amount": {"amount": "123.45", "currency": "USD"},
     }
     missing = post(seats.app, path, seats.priya, terms)
@@ -1848,6 +1869,12 @@ def test_native_material_right_entry_and_distinct_activation_reviewer(
     )
     assert created.headers["location"] == path
     assert created.json()["ssp_method"] == "ENTERED_AMOUNT"
+    policy_method("DISCOUNT_X_LIKELIHOOD")
+    pinned_default = get(seats.app, path + "-defaults", maya)
+    assert pinned_default.status_code == 200, pinned_default.text
+    assert pinned_default.json()["method"] == "DISCOUNT_X_LIKELIHOOD"
+    # Draft policy may change; the already-saved option terms remain explicit and immutable.
+
     assert Decimal(created.json()["entered_ssp_amount"]) == Decimal("123.45")
     from erev_api.db.tables import obligation_version
 
@@ -2348,11 +2375,12 @@ def _active_expiry_option(
 def test_option_expiry_scope_dates_and_failed_compute_leave_no_writes(
     seats: SeatWorld, clock: FrozenClock, keyring: KeyRing, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from support.principals import member
+    from support.reference import entity
+
     from erev_api.db.tables import legal_entity
     from erev_api.domain.contracts import computation
     from erev_engine.bundle import InputBundle, OutputBundle
-    from support.principals import member
-    from support.reference import entity
 
     maya = seats.place.author
     contract_id, option_id = _active_expiry_option(seats)
@@ -2419,8 +2447,9 @@ def test_option_expiry_scope_dates_and_failed_compute_leave_no_writes(
 def test_competing_option_expiries_wait_on_group_and_append_once(seats: SeatWorld) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
-    from erev_api.domain.contracts import repo
     from support.interleave import await_lock_waits, backend_pid, observing_checkouts
+
+    from erev_api.domain.contracts import repo
 
     contract_id, option_id = _active_expiry_option(seats)
     head = _header(seats, contract_id)[1]
@@ -2477,15 +2506,16 @@ def test_native_option_snapshot_restore_recomputes_same_state(
     """Populated immutable terms survive stored backup and real sandbox recomputation."""
     from datetime import date
 
+    from support.factories import stamp_test_release
+    from support.rows import tenant_snapshot_values
+    from support.snapshots import confirm_retention, cutoff_after, run_dispatched_snapshot
+
     from erev_api.db.tables import tenant_snapshot
     from erev_api.domain.contracts import material_rights
     from erev_api.domain.platform import sandboxes, snapshot_job
     from erev_api.enums import JobKind
     from erev_api.jobs import registry
     from erev_api.jobs.context import JobRuntime
-    from support.factories import stamp_test_release
-    from support.rows import tenant_snapshot_values
-    from support.snapshots import confirm_retention, cutoff_after, run_dispatched_snapshot
 
     contract_id, option_id = _active_expiry_option(
         seats, discount=discount, entered=None if discount else "123.45"

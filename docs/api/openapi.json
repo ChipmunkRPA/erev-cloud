@@ -25273,20 +25273,47 @@
             "$ref": "#/components/schemas/OptionType"
           },
           "ssp_method": {
-            "enum": [
-              "DISCOUNT_X_LIKELIHOOD",
-              "RENEWAL_ALTERNATIVE",
-              "ENTERED_AMOUNT"
-            ],
-            "title": "Ssp Method",
-            "type": "string"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialRightMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "option_type",
-          "ssp_method"
+          "option_type"
         ],
         "title": "MaterialRightCreateIn",
+        "type": "object"
+      },
+      "MaterialRightDefaultsOut": {
+        "properties": {
+          "books": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialRightMethodDefault"
+            },
+            "title": "Books",
+            "type": "array"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialRightMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "books"
+        ],
+        "title": "MaterialRightDefaultsOut",
         "type": "object"
       },
       "MaterialRightExpireIn": {
@@ -25319,6 +25346,41 @@
           "comment"
         ],
         "title": "MaterialRightExpireIn",
+        "type": "object"
+      },
+      "MaterialRightMethod": {
+        "enum": [
+          "DISCOUNT_X_LIKELIHOOD",
+          "RENEWAL_ALTERNATIVE",
+          "ENTERED_AMOUNT"
+        ],
+        "type": "string"
+      },
+      "MaterialRightMethodDefault": {
+        "properties": {
+          "book": {
+            "title": "Book",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "method": {
+            "$ref": "#/components/schemas/MaterialRightMethod"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "book",
+          "method",
+          "level",
+          "source"
+        ],
+        "title": "MaterialRightMethodDefault",
         "type": "object"
       },
       "MaterialRightOut": {
@@ -83309,6 +83371,96 @@
           "API-R-29 Obligations"
         ],
         "x-erev-permission": "contract.create"
+      }
+    },
+    "/api/v1/obligations/{obligation_id}/material-right-defaults": {
+      "get": {
+        "description": "Current entry defaults; immutable saved option terms take precedence.",
+        "operationId": "obligation_material_right_defaults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "obligation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Obligation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialRightDefaultsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Obligation Material Right Defaults",
+        "tags": [
+          "API-R-29 Obligations"
+        ],
+        "x-erev-permission": "contract.read"
       }
     },
     "/api/v1/obligations/{obligation_id}/request-ssp-override": {
