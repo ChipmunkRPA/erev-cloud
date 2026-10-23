@@ -269,5 +269,6 @@ Current outstanding implementation and verification gaps remain in
 
 - Combined delivery/time-of-transfer measures now count original component deliveries and returns
   once, applying the original member's acceptance/repurchase/bill-and-hold controls.
-- 15 native/control regression cases, trace reevaluation, scoped lint/types pass. Public authoring
-  verification and remaining combined reassessment/measures stay open. No deployment.
+- 15 native cases and public original-component delivery/return approval and Reporting pass. The
+  event drawer now exposes original members; two UI cases and scoped types/lint pass. Remaining
+  combined reassessment/measures stay open. No deployment.

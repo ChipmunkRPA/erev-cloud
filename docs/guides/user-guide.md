@@ -1043,3 +1043,12 @@ in a stable order so the cell details add to the displayed amount. The revenue-t
 comparison uses the same period-level conversion basis. Open a monetary cell to see its
 original functional amount and retained reporting rate reference. These are reporting
 equivalents, not additional posted entries. Saved runs reuse their original rates.
+
+
+### Delivery and return events for combined components
+
+Record delivery and Record return offer original component keys retained by a combined
+obligation's calculation, labelled with the combined host. A drawer opened from the combined
+obligation also allows this selection. The submitted event keeps the chosen original key;
+normal preview, permissions and event approval apply. Other progress/cost/milestone drawers
+do not infer original-component measurements from the combined obligation.

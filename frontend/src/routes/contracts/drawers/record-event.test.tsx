@@ -189,12 +189,13 @@ function type(scope: HTMLElement, name: RegExp, value: string): void {
 async function open(
   kind: EventKind = "delivery",
   forecast = false,
+  combined = false,
 ): Promise<{ readonly drawer: HTMLElement; readonly panel: HTMLElement }> {
   const me = signedInMe({ permissions: ["contract.read", "event.record", "scenario.use"] });
   renderWithApp(
     <RecordEventDrawer
       contract={CONTRACT}
-      obligations={[O1]}
+      obligations={[combined ? { ...O1, combined_component_keys: ["O1", "ORIGINAL"] } : O1]}
       kind={kind}
       obligationKey="O1"
       onClose={() => undefined}
@@ -495,3 +496,30 @@ it("records a scenario event into the explicitly selected draft and refreshes it
   await waitFor(() => expect(reads).toBeGreaterThan(1));
   expect(await screen.findByText("Event recorded in the forecast draft.")).toBeTruthy();
 });
+
+it.each(["delivery", "return"] as const)(
+  "records %s against an original combined component",
+  async (kind) => {
+    serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+    const captured: unknown[] = [];
+    server.use(
+      http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+        captured.push(await request.json());
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+    const { drawer } = await open(kind, false, true);
+    select(drawer, /^Obligation/, "ORIGINAL · Combined into O1");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+    await waitFor(() => expect(captured).toHaveLength(1));
+    expect(captured[0]).toMatchObject({
+      events: [
+        {
+          event_type: kind === "delivery" ? "DELIVERY_RECORDED" : "RETURN_RECORDED",
+          obligation_key: "ORIGINAL",
+          payload: { obligation_key: "ORIGINAL" },
+        },
+      ],
+    });
+  },
+);

@@ -1150,3 +1150,82 @@ def test_combined_original_component_price_change_approval_and_reporting(
     replay = run_now(world, UUID(rerun.json()["id"]))
     assert replay["state"] == "SUCCEEDED", replay
     assert replay["result"]["output_sha256_equal"] is True
+
+
+def test_combined_original_deliveries_and_return_approval_and_reporting(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    from erev_api.db.tables import contract, contract_event
+    from support.worlds import run_now
+
+    lease = br06_lease(
+        app,
+        keyring,
+        clock,
+        files,
+        lessor_combination=True,
+        nonlease_predominates=True,
+        delivered_units=True,
+    )
+    world = lease.report
+    for event_type, keys, expected in (
+        ("DELIVERY_RECORDED", ["L1-LEASE", "L2-SERVICE"], "108000.00"),
+        ("RETURN_RECORDED", ["L1-LEASE"], "54000.00"),
+    ):
+        head = world.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+        )
+        events = [
+            {
+                "event_type": event_type,
+                "effective_date": "2026-09-10",
+                "obligation_key": key,
+                "payload": {
+                    "obligation_key": key,
+                    "quantity": "1",
+                    **(
+                        {"trigger": "DELIVERY"}
+                        if event_type == "DELIVERY_RECORDED"
+                        else {"reason": "Original equipment returned"}
+                    ),
+                },
+            }
+            for key in keys
+        ]
+        submitted = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/events",
+            world.maya,
+            {"events": events},
+            if_match=f'"s{head}"',
+        )
+        assert submitted.status_code == 201, submitted.text
+        approved = approve(app, submitted.json()["approval_request_id"], world.priya)
+        assert approved.status_code == 200, approved.text
+        stored = world.place.rows(
+            select(contract_event).where(
+                contract_event.c.contract_id == lease.contract_id,
+                contract_event.c.event_type == event_type,
+            )
+        )
+        assert {row["payload"]["obligation_key"] for row in stored} == set(keys)
+        clock.advance(STEP)
+        run, rows = report_run(
+            world,
+            "latest_contract_status",
+            {
+                "entity_codes": [AVM_US],
+                "book": "ASC606",
+                "as_of": "2026-09-30",
+                "contract_external_id": BR06_EXTERNAL_ID,
+            },
+        )
+        assert run["status"] == "SUCCEEDED", run
+        assert len(rows) == 1
+        assert rows[0]["revenue_cum"] == usd(expected)
+        assert rows[0]["allocated_amount"] == usd("108000.00")
+        rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+        assert rerun.status_code == 202, rerun.text
+        replay = run_now(world, UUID(rerun.json()["id"]))
+        assert replay["state"] == "SUCCEEDED", replay
+        assert replay["result"]["output_sha256_equal"] is True

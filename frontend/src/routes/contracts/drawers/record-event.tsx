@@ -668,11 +668,33 @@ export function RecordEventDrawer({
     }
   };
 
-  const obligationChoices: readonly Choice<string>[] = obligations.map((item) => ({
-    value: item.obligation_key,
-    label: `${item.obligation_key} · ${item.product.name}`,
-  }));
-  const readOnlyObligation = obligations.find((item) => item.obligation_key === obligationKey);
+  const acceptsOriginalComponents = kind === "delivery" || kind === "return";
+  const currentKeys = new Set(obligations.map((item) => item.obligation_key));
+  const originals = new Map<string, string>();
+  if (acceptsOriginalComponents) {
+    for (const item of obligations) {
+      for (const key of item.combined_component_keys ?? []) {
+        if (!currentKeys.has(key)) originals.set(key, item.obligation_key);
+      }
+    }
+  }
+  const obligationChoices: readonly Choice<string>[] = [
+    ...obligations.map((item) => ({
+      value: item.obligation_key,
+      label: `${item.obligation_key} · ${item.product.name}`,
+    })),
+    ...[...originals]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([value, host]) => ({
+        value,
+        label: t("contracts.drawer.event.originalComponent", { key: value, host }),
+      })),
+  ];
+  const selectedObligation = obligations.find((item) => item.obligation_key === obligationKey);
+  const readOnlyObligation =
+    acceptsOriginalComponents && (selectedObligation?.combined_component_keys?.length ?? 0) > 0
+      ? undefined
+      : selectedObligation;
   const triggers: readonly Choice<Trigger>[] = (
     ["DELIVERY", "ACCEPTANCE", "SELL_THROUGH", "BILL_AND_HOLD", "CONTROL_TRANSFER"] as const
   ).map((value) => ({ value, label: t(`contracts.drawer.event.trigger.${value}`) }));

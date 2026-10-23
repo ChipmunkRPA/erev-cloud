@@ -941,3 +941,23 @@ proves original-member acceptance policy and bill-and-hold judgement isolation. 
 recognition regression cases pass (15 total); scoped lint and production mypy pass. Public
 combined delivery authoring/report verification, remaining combined recognition measures and
 quantity/removal/term reassessment remain open. No deployment.
+
+## October 23 combined delivery/return public workflow — completed
+
+The delivery and return drawers now include merged-away original component choices from the
+existing obligation read's retained combined_component_keys. Labels name the combined host;
+choices are deduplicated against current obligations. A drawer opened with a combined host
+preselected permits switching to its original members. The submitted payload and top-level
+obligation_key retain the selected original identity. Ordinary pinned obligations remain fixed.
+Other progress, milestone and cost forms are unchanged; their distinct measurement semantics
+are not inferred from this delivery implementation.
+
+Necessary verification: two UI submissions prove original keys for delivery and return;
+TypeScript and scoped ESLint pass. A populated public API workflow records and independently
+approves original lease/service deliveries, then a lease return. Latest Contract Status moves
+revenue from 108,000 to 54,000 while retaining the 108,000 allocation. Original event keys persist,
+and both saved report reruns produce identical output hashes. Fixture activation remains the
+existing system helper, not a newly claimed public activation workflow. Scoped Python lint passes.
+This closes the prior public original-delivery/return verification and authoring gap for this
+combined units path. Other combined measures and quantity/removal/term modifications remain open.
+No deployment.

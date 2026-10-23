@@ -2126,6 +2126,7 @@
   "contracts.drawer.event.quantity": "Quantity",
   "contracts.drawer.event.quantityError": "Enter a quantity greater than 0.",
   "contracts.drawer.event.quantityReturned": "Quantity returned",
+  "contracts.drawer.event.originalComponent": "{key} · Combined into {host}",
   "contracts.drawer.event.recorded": "Event recorded.",
   "contracts.drawer.event.reference": "Reference",
   "contracts.drawer.event.referenceError": "Enter the return reference.",
