@@ -1018,6 +1018,7 @@ class AllocatedState:
     findings: tuple[Finding, ...]
     # The dated additions behind the CONCESSION refund quotas, in ENG-06 order (S10-R-26; D-91).
     concession_history: tuple[ConcessionAddition, ...] = ()
+    eac_scope_required: bool = False  # revision 6; older retained bundles keep legacy EAC selection
 
 
 @dataclass(frozen=True, slots=True)

@@ -41,6 +41,7 @@ import {
   money,
   PRIYA_USER,
   serveWorkbench,
+  workbenchObligation,
 } from "../../test/workbench";
 
 installMswServer();
@@ -639,7 +640,9 @@ describe("SF-03:estimate", () => {
   });
 
   it("adding an element opens the drawer of its first version, which is saved with its evidence and submitted", async () => {
-    serveWorkbench();
+    serveWorkbench({
+      obligations: [workbenchObligation({ combined_component_keys: ["O1", "ORIGINAL"] })],
+    });
     const world = serveEstimates();
     open(LIST);
 
@@ -661,6 +664,8 @@ describe("SF-03:estimate", () => {
 
     select(element, "Kind", "Estimated total costs");
     type(within(element).getByLabelText("Element code"), "EAC");
+    fireEvent.click(within(element).getByRole("combobox", { name: "Obligation (optional)" }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: /ORIGINAL/ }));
     // The kind proposes its method; every method stays selectable.
     expect(within(element).getByRole("combobox", { name: "Method" }).textContent).toContain(
       "Cost build-up",
@@ -674,7 +679,7 @@ describe("SF-03:estimate", () => {
       allocation_target: "CONTRACT",
       target_obligation_keys: [],
       vc_element_type: null,
-      obligation_key: null,
+      obligation_key: "ORIGINAL",
       allocation_criteria_evidence: null,
     });
 
@@ -683,6 +688,9 @@ describe("SF-03:estimate", () => {
     type(within(drawer).getByLabelText("Effective date"), "01 Feb 2026");
     type(within(drawer).getByLabelText("Estimated total costs (USD)"), "700,000.00");
     type(within(drawer).getByLabelText("Rationale"), "Bid estimate at contract inception.");
+    fireEvent.click(
+      within(drawer).getByRole("radio", { name: "Only this element's named members" }),
+    );
 
     // An estimate of total costs is submitted with evidence (SM-04).
     fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
@@ -700,7 +708,7 @@ describe("SF-03:estimate", () => {
       effective_date: "2026-02-01",
       rationale: "Bid estimate at contract inception.",
       scenarios: [],
-      parameters: {},
+      parameters: { eac_scope: "MEMBERS" },
       constraint_checklist: null,
       unconstrained_amount: null,
       most_conservative_amount: null,

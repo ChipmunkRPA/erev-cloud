@@ -51,7 +51,7 @@ from erev_engine.stages.s08_estimates_late_events.assign import (
     CLOSED_STATES,
     assign_posting_period,
 )
-from erev_engine.stages.s09_recognition import eac_version_at, measures_eac, target_at_position
+from erev_engine.stages.s09_recognition import measures_eac, target_at_position
 from erev_engine.stages.state import (
     AllocatedState,
     AllocationSegment,
@@ -249,12 +249,17 @@ def _measure(
     version in force after k (``eac_version_at`` at k, inclusive; S06-R-15), which stands alone
     for its element in the measured state, dated no later than ``day_before`` so that the measure
     quantities at s meet the totals after k."""
-    version = eac_version_at(st, ob, view, ev.effective_date, event=ev, inclusive=True)
-    state = st if version is None else _with_version(st, version, day_before)
+    from erev_engine.stages.s09_recognition.progress_inputs import eac_versions
+    from erev_engine.stages.s09_recognition.progress_events import Position
+
+    versions = eac_versions(st, ob, view, ev.effective_date, Position(ev.order_key, inclusive=True))
+    state = st
+    for version in versions:
+        state = _with_version(state, version, day_before)
     measured = target_at_position(
         ctx, state, replace(ob, segments=(view,)), day_before, event=ev, inclusive=True
     )
-    return measured.fixed_exact, None if version is None else version.version_key
+    return measured.fixed_exact, "|".join(v.version_key for v in versions) or None
 
 
 def _with_version(

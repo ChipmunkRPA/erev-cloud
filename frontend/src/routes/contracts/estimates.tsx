@@ -119,12 +119,27 @@ function ElementDrawer({
     setForm(next);
     setUnreached(false);
   };
+  const currentKeys = new Set(obligations.map((item) => item.obligation_key));
+  const originals = new Map<string, string>();
+  if (form.kind === "EAC") {
+    for (const item of obligations) {
+      for (const key of item.combined_component_keys ?? []) {
+        if (!currentKeys.has(key)) originals.set(key, item.obligation_key);
+      }
+    }
+  }
   const obligationChoices: readonly Choice<string>[] = [
     { value: WHOLE_CONTRACT, label: t("contracts.estimates.element.noObligation") },
     ...obligations.map((item) => ({
       value: item.obligation_key,
       label: `${item.obligation_key} · ${item.product.name}`,
     })),
+    ...[...originals]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([value, host]) => ({
+        value,
+        label: t("contracts.drawer.event.originalComponent", { key: value, host }),
+      })),
   ];
   const variable = form.kind === "VARIABLE_CONSIDERATION";
 
@@ -173,6 +188,15 @@ function ElementDrawer({
             change({
               ...form,
               kind,
+              obligationKey:
+                kind === "EAC" ||
+                (form.obligationKey !== null && currentKeys.has(form.obligationKey))
+                  ? form.obligationKey
+                  : null,
+              targetKeys:
+                kind === "EAC"
+                  ? form.targetKeys
+                  : form.targetKeys.filter((key) => currentKeys.has(key)),
               method: defaultMethod(kind),
               vcElementType: kind === "VARIABLE_CONSIDERATION" ? form.vcElementType : null,
             })
@@ -247,10 +271,7 @@ function ElementDrawer({
             {(control) => (
               <MultiSelect<string>
                 control={control}
-                options={obligations.map((item) => ({
-                  value: item.obligation_key,
-                  label: `${item.obligation_key} · ${item.product.name}`,
-                }))}
+                options={obligationChoices.filter((item) => item.value !== WHOLE_CONTRACT)}
                 values={form.targetKeys}
                 onChange={(targetKeys) => change({ ...form, targetKeys })}
                 invalid={shown("target_obligation_keys") !== null}

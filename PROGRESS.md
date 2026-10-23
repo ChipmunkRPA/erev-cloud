@@ -20,20 +20,26 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Visible original-versus-target ownership differences — October 23, 2026
+## Explicit combined EAC coverage — October 23, 2026
 
-- Opening-liability money-cell explanations now show retained original posted relief, latest
-  target relief and the ownership adjustment for each authenticated owner/layer. The explanation
-  labels these as member reclassifications, not extra revenue or an allocation of group relief,
-  and shows the zero adjustment total alongside the equal posted/target totals.
-- Reporting-currency drill keeps these source differences in the original functional currency.
-  Only matching computation/entity/recipient sources enter a contribution; an owner outside the
-  retained contract set is refused. Existing source-set entity access filtering remains in use.
-- A dedicated retained-detail marker preserves old saved explanations. New reports save the
-  full matching source set and compare it on replay; no live source inference occurs on drill.
-- Eight focused cases and the populated foreign locked-group public workflow pass, including
-  both functional/reporting cell endpoints and identical saved reruns. Scoped lint/types pass.
-  No journal or engine amount changes, no deployment. The overall development scope remains open.
+- Owner selected explicit coverage: a COMBINATION EAC replaces member totals; MEMBERS
+  estimates aggregate only with complete, non-overlapping coverage. Ambiguous host scope,
+  overlap, duplicate whole-combination EACs and mixed member currencies stop calculation.
+- The estimate-version drawer, validated API parameters and import parameter schema carry
+  the scope. Existing element obligation/target keys identify member coverage.
+- Cost progress, modification boundary totals and causal estimate replay use the selected
+  total. Trace version 3 retains every original component estimate and verifies their sum.
+  Loss and impairment selection use the same coverage rule. Later member revisions recompute
+  the aggregate without fabricating a persisted combined estimate.
+- Evidence revision 6 applies the rule to new computations. Older retained bundles preserve
+  their single-host convention; reopening a current combination requires explicit host scope.
+  Intermediate event positions wait for complete members; incomplete period totals are refused.
+- Necessary checks: full-engine member/whole totals, later revisions, ambiguity/incompleteness,
+  overlapping/currency/duplicate scope, loss totals, source replay and adjacent cost cases;
+  rendered estimate submission, TypeScript, scoped lint/types. No deployment.
+- Limits: mixed explicit/implicit uninstalled-material forecasts require complete explicit
+  material inputs. Combined cumulative hours/percentage/milestones and quantity/removal/term
+  reassessment remain separate unfinished features. Overall development remains open.
 
 ## Rollforward Other explanation — October 23, 2026
 

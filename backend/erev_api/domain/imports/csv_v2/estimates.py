@@ -145,6 +145,7 @@ class EstimateParametersRowIn(BaseModel):
     window_end_date: date | None = None
     usage_period_start_date: date | None = None
     usage_period_end_date: date | None = None
+    eac_scope: str | None = None
     uninstalled_materials_cost: str | None = None
     grant_date: date | None = None
     grant_date_fair_value: str | None = None

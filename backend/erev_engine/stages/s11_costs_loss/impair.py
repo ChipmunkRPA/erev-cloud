@@ -46,6 +46,7 @@ from types import MappingProxyType
 from typing import Final
 
 from erev_engine import money
+from erev_engine.stages import eac_scope
 from erev_engine.bundle import EstimateVersionInput, PeriodInput
 from erev_engine.enums import ScheduleKind, ScheduleLineType
 from erev_engine.errors import EngineError
@@ -268,7 +269,14 @@ def _eac(
     """Σ ``expected_total_amount`` of the latest ``EAC`` version at ``t`` of each element of the
     contract that names a related obligation or none, and those versions; None without any
     (S11-R-09; L2-4-Q-35)."""
-    obligation_keys = {ob.obligation_key for ob in related}
+    obligation_keys = {
+        key
+        for ob in related
+        for key in (
+            ob.obligation_key,
+            *(ob.combined_component_keys if st.eac_scope_required else ()),
+        )
+    }
     total = 0
     versions: list[EstimateVersionInput] = []
     for key in st.estimates.of_contract(contract_key):  # CV-21 encoded lookup (ENG-COST-ENC-1)
@@ -279,9 +287,10 @@ def _eac(
             continue
         if version.obligation_key is not None and version.obligation_key not in obligation_keys:
             continue
-        total += _amount(version, mu)
         versions.append(version)
-    return (total if versions else None), tuple(versions)
+    selected = eac_scope.for_obligations(versions, related, strict=st.eac_scope_required)
+    total = sum(_amount(version, mu) for version in selected)
+    return (total if selected else None), selected
 
 
 def _run_off(

@@ -774,6 +774,7 @@ def _state(
             zip(pool.element.keys, pool.quotas, strict=True)
         )
     return AllocatedState(
+        eac_scope_required=(cb.bundle.evidence_revision or 0) >= 6,
         group_code=identified.group_code,
         inception_date=st.inception_date,
         contracts=identified.contracts,

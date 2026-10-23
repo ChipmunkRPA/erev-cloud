@@ -32,6 +32,7 @@ from types import MappingProxyType
 from typing import Final
 
 from erev_engine.bundle import EstimateVersionInput
+from erev_engine.stages import eac_scope
 from erev_engine.errors import EngineError
 from erev_engine.formulas import FORMULAS, rational_param
 from erev_engine.money import format_exact, to_fraction
@@ -232,9 +233,18 @@ def eac_keys(
     ``EAC`` elements that name the obligation (``obligation_key``, or an ``OBLIGATIONS`` target),
     or an unnamed element when the obligation is the contract's only one (S11-R-15 reads the
     ``EAC_IAS37`` element for loss tests; it never measures progress). More than one element
-    fails closed.
+    fails closed for an ordinary obligation. Combined obligations retain all candidate keys;
+    date/position selection then validates their explicit coverage before aggregation.
     """
-    if seg is not None and seg.totals.eac_element_code is not None:
+    combined = bool(ob.combined_component_keys) and (
+        st.eac_scope_required
+        or any(
+            pin.version.parameters.get("eac_scope")
+            for key in st.estimates.of_contract(ob.contract_key)
+            for pin in st.estimates.pins.get(key, ())
+        )
+    )
+    if not combined and seg is not None and seg.totals.eac_element_code is not None:
         return (obligation_subject_key(ob.contract_key, seg.totals.eac_element_code),)
     contract = contract_subject_key(ob.contract_key)
     sole = _sole(st, ob)
@@ -252,9 +262,13 @@ def eac_keys(
             ob.obligation_key in version.target_obligation_keys
         )
         unnamed = version.obligation_key is None and not version.target_obligation_keys
-        if named or (unnamed and sole):
+        if (
+            named
+            or (combined and eac_scope.names(version) & set(ob.combined_component_keys))
+            or (unnamed and sole)
+        ):
             found.append(key)
-    if len(found) > 1:
+    if len(found) > 1 and not combined:
         raise _invariant(
             "more than one EAC element measures the obligation",
             ob,
@@ -294,13 +308,13 @@ def _updated_through(
     return latest
 
 
-def eac_version(
+def eac_versions(
     st: AllocatedState,
     ob: ObligationState,
     seg: AllocationSegment | None,
     d: date,
     position: Position | None = None,
-) -> EstimateVersionInput | None:
+) -> tuple[EstimateVersionInput, ...]:
     """The ``EAC`` version in force for ``ob`` at ``d`` and ``position`` (S01-R-18; S06-R-15).
 
     The version with the greatest ``effective_date`` on or before ``d`` (ties: greater
@@ -309,10 +323,11 @@ def eac_version(
     """
     keys = eac_keys(st, ob, seg)
     if not keys:
-        return None
+        return ()
     through = _updated_through(st, ob, d, position)
-    candidates: list[EstimateVersionInput] = []
+    selected: list[EstimateVersionInput] = []
     for key in keys:
+        candidates: list[EstimateVersionInput] = []
         for pin in st.estimates.pins.get(key, ()):
             version = pin.version
             if version.effective_date > d:
@@ -321,10 +336,80 @@ def eac_version(
                 candidates.append(version)
             elif through is not None and version.effective_date <= through:
                 candidates.append(version)
-    return max(
-        candidates,
-        key=lambda version: (version.effective_date, version.version_no),
-        default=None,
+        latest = max(candidates, key=lambda v: (v.effective_date, v.version_no), default=None)
+        if latest is not None:
+            selected.append(latest)
+    if not st.eac_scope_required and not any(v.parameters.get("eac_scope") for v in selected):
+        return tuple(selected)
+    return (
+        eac_scope.select(
+            selected,
+            ob,
+            allow_incomplete=position is not None,
+            strict=st.eac_scope_required or any(v.parameters.get("eac_scope") for v in selected),
+        )
+        if ob.combined_component_keys
+        else tuple(selected)
+    )
+
+
+def eac_version(
+    st: AllocatedState,
+    ob: ObligationState,
+    seg: AllocationSegment | None,
+    d: date,
+    position: Position | None = None,
+) -> EstimateVersionInput | None:
+    versions = eac_versions(st, ob, seg, d, position)
+    if not versions:
+        return None
+    if len(versions) == 1:
+        return versions[0]
+    # This aggregate is a calculation view only. Trace and causal replay retain original pins.
+    if any(v.expected_total_amount is None for v in versions):
+        raise _invariant("Member EAC has no expected total amount", ob, rule="COMBINED_EAC_SCOPE")
+    parameters: dict[str, object] = {}
+    materials = [_parameter(v, ob) for v in versions]
+    if any(value is not None for value in materials):
+        if any(value is None for value in materials):
+            raise _invariant(
+                "Member EAC materials must be explicit for every member",
+                ob,
+                rule="COMBINED_EAC_SCOPE",
+            )
+        parameters[UNINSTALLED_PARAMETER] = format_exact(
+            sum((v for v in materials if v is not None), Fraction(0))
+        )
+    return replace(
+        versions[0],
+        version_key="|".join(v.version_key for v in versions),
+        expected_total_amount=Decimal(
+            format_exact(
+                sum(
+                    (
+                        to_fraction(v.expected_total_amount)
+                        for v in versions
+                        if v.expected_total_amount is not None
+                    ),
+                    Fraction(0),
+                )
+            )
+        ),
+        expected_quantity=None
+        if any(v.expected_quantity is None for v in versions)
+        else Decimal(
+            format_exact(
+                sum(
+                    (
+                        to_fraction(v.expected_quantity)
+                        for v in versions
+                        if v.expected_quantity is not None
+                    ),
+                    Fraction(0),
+                )
+            )
+        ),
+        parameters=MappingProxyType(parameters),
     )
 
 
@@ -385,6 +470,7 @@ def _cost_sources(
     d: date,
     position: Position | None,
     eac: EstimateVersionInput | None = None,
+    seg: AllocationSegment | None = None,
 ) -> tuple[SourceRef, ...]:
     """The original admitted inputs, not every event anywhere in the contract trace."""
     sources = [
@@ -408,16 +494,16 @@ def _cost_sources(
         and admitted(ev, d, position)
         and names(st, ev, ob)
     ]
-    if eac is not None:
+    for original in () if eac is None else eac_versions(st, ob, seg, d, position):
         sources.append(
             SourceRef(
                 "estimate_version",
-                eac.version_key,
+                original.version_key,
                 {
                     "member": "expected_total_amount",
-                    "value": str(eac.expected_total_amount),
-                    "currency": eac.currency or "",
-                    "content_sha256": eac.content_sha256,
+                    "value": str(original.expected_total_amount),
+                    "currency": original.currency or "",
+                    "content_sha256": original.content_sha256,
                 },
             )
         )
@@ -437,7 +523,7 @@ def _with_sources(progress: Progress, sources: tuple[SourceRef, ...]) -> Progres
     ]
     return replace(
         progress,
-        formula_id=progress.formula_id.replace(".v1", ".v2"),
+        formula_id=progress.formula_id.replace(".v1", ".v3" if roles.count("eac") > 1 else ".v2"),
         params=MappingProxyType({**progress.params, "source_roles": ",".join(roles)}),
         sources=sources,
     )
@@ -484,7 +570,7 @@ def _cost_to_cost(
         materials = Materials(expected, costs.uninstalled, base_materials)
     progress = _with_sources(
         _evaluate(ob, COST_TO_COST_FORMULA, params),
-        _cost_sources(st, ob, d, position, eac),
+        _cost_sources(st, ob, d, position, eac, seg),
     )
     return InputProgress(progress, materials, findings, eac)
 

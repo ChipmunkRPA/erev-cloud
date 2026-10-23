@@ -800,6 +800,19 @@ export function VersionDrawer({
         ) : null}
         {kind === "EAC" ? (
           <div className="flex flex-col gap-2">
+            <RadioGroup<string>
+              legend={t("contracts.estimates.eacScope.legend")}
+              options={[
+                { value: "", label: t("contracts.estimates.eacScope.unspecified") },
+                { value: "COMBINATION", label: t("contracts.estimates.eacScope.combination") },
+                { value: "MEMBERS", label: t("contracts.estimates.eacScope.members") },
+              ]}
+              value={form.values["parameters.eac_scope"] ?? ""}
+              onChange={(value) =>
+                change({ ...form, values: { ...form.values, "parameters.eac_scope": value } })
+              }
+            />
+            <p className="text-body-sm text-fg-2">{t("contracts.estimates.eacScope.help")}</p>
             <RadioGroup<EacClassification>
               legend={t("contracts.estimates.classification.legend")}
               options={[

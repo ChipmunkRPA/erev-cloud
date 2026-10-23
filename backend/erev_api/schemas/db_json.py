@@ -337,6 +337,7 @@ class RoyaltyAccrualParameters(_Parameters):
 
 
 class EacParameters(_Parameters):
+    eac_scope: Literal["COMBINATION", "MEMBERS"] | None = None
     uninstalled_materials_cost: NonNegativeDecimal | None = None
 
 

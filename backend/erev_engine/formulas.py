@@ -225,7 +225,7 @@ def _right_to_invoice(inputs: Sequence[Fraction], params: Mapping[str, str]) -> 
 
 
 def _cost_progress_evidence(
-    inputs: Sequence[Fraction], params: Mapping[str, str], *, recovery: bool
+    inputs: Sequence[Fraction], params: Mapping[str, str], *, recovery: bool, combined: bool = False
 ) -> Fraction:
     """Version 2 verifies original source totals before replaying the unchanged arithmetic."""
     roles = params.get("source_roles", "").split(",") if params.get("source_roles") else []
@@ -238,7 +238,10 @@ def _cost_progress_evidence(
     expected = totals["margin"] + (totals["wasted"] + totals["uninstalled"] if recovery else 0)
     if expected != _rational(params, "costs"):
         raise ValueError("Original cost sources do not reconcile to progress costs")
-    if not recovery and (roles.count("eac") != 1 or totals["eac"] != _rational(params, "eac")):
+    if not recovery and (
+        (roles.count("eac") < 1 if combined else roles.count("eac") != 1)
+        or totals["eac"] != _rational(params, "eac")
+    ):
         raise ValueError("Original EAC source does not reconcile to progress EAC")
     if recovery and "eac" in roles:
         raise ValueError("Cost recovery without EAC cannot carry an EAC source")
@@ -247,6 +250,12 @@ def _cost_progress_evidence(
 
 def _cost_to_cost_evidence(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     return _cost_progress_evidence(inputs, params, recovery=False)
+
+
+def _combined_cost_to_cost_evidence(
+    inputs: Sequence[Fraction], params: Mapping[str, str]
+) -> Fraction:
+    return _cost_progress_evidence(inputs, params, recovery=False, combined=True)
 
 
 def _cost_recovery_evidence(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
@@ -4216,6 +4225,7 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "rec.progress.cost_recovery.v2": _cost_recovery_evidence,
         "rec.progress.cost_to_cost.v1": _cost_to_cost,
         "rec.progress.cost_to_cost.v2": _cost_to_cost_evidence,
+        "rec.progress.cost_to_cost.v3": _combined_cost_to_cost_evidence,
         "rec.progress.labour_hours.v1": _labour_hours,
         "rec.progress.milestone.v1": _milestone,
         "rec.progress.output_percent.v1": _output_percent,

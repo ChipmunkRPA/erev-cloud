@@ -522,6 +522,10 @@ export function versionForm(
       values[member.id] = typedText(member.type, value, currency);
     }
   }
+  if (kind === "EAC") {
+    const scope = source?.parameters.eac_scope;
+    values["parameters.eac_scope"] = scope === "COMBINATION" || scope === "MEMBERS" ? scope : "";
+  }
   if (kind === "VARIABLE_CONSIDERATION") {
     const marked = source === null ? [] : factorsOf(source);
     for (const factor of CONSTRAINT_FACTORS) {
@@ -652,6 +656,11 @@ export function buildVersion(
   const columns: Record<string, string | number | null> = {};
   const parameters = new Map<string, unknown>(Object.entries(carried));
   parameters.delete(NO_CHANGE);
+  if (kind === "EAC") {
+    const scope = form.values["parameters.eac_scope"];
+    if (scope === "COMBINATION" || scope === "MEMBERS") parameters.set("eac_scope", scope);
+    else parameters.delete("eac_scope");
+  }
   for (const member of members) {
     if (member.type === "flag") {
       parameters.set(member.name, form.flags[member.id] === true);

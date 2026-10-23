@@ -27,6 +27,7 @@ from types import MappingProxyType
 from typing import Final
 
 from erev_engine import money
+from erev_engine.stages import eac_scope
 from erev_engine.bundle import EstimateVersionInput, PeriodInput
 from erev_engine.enums import ScheduleKind, ScheduleLineType
 from erev_engine.errors import EngineError
@@ -185,7 +186,14 @@ def _eac(
         version = st.estimates.pin(key, t)
         if version is None or version.estimate_kind != _EAC:
             continue
-        if version.expected_total_amount is None or not _names_unit(unit, version.obligation_key):
+        if version.expected_total_amount is None or not (
+            _names_unit(unit, version.obligation_key)
+            or (
+                (st.eac_scope_required or version.parameters.get("eac_scope"))
+                and unit.obligation is not None
+                and bool(eac_scope.names(version) & set(unit.obligation.combined_component_keys))
+            )
+        ):
             continue
         found.append(version)
     reserved = [version for version in found if version.element_code == _EAC_IAS37]
@@ -193,6 +201,18 @@ def _eac(
         reserved
         if ias37 and reserved
         else [version for version in found if version.element_code != _EAC_IAS37]
+    )
+    chosen = list(
+        eac_scope.for_obligations(
+            chosen,
+            tuple(
+                ob
+                for ob in st.obligations
+                if ob.contract_key == unit.contract_key
+                and (unit.obligation is None or ob.subject_key == unit.obligation.subject_key)
+            ),
+            strict=st.eac_scope_required,
+        )
     )
     if not chosen:
         return None, ()
@@ -212,7 +232,11 @@ def _costs(st: AllocatedState, unit: _Unit, t: date, mu: int) -> int:
             continue
         if ev.effective_date > t or ev.payload.get("purpose") != capitalise.PROGRESS_INPUT:
             continue
-        if _names_unit(unit, ev.payload.get("obligation_key")):
+        if _names_unit(unit, ev.payload.get("obligation_key")) or (
+            st.eac_scope_required
+            and unit.obligation is not None
+            and ev.payload.get("obligation_key") in unit.obligation.combined_component_keys
+        ):
             total += capitalise.amount_of(ev, mu)
     return total
 
