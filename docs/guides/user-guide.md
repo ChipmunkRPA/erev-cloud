@@ -1011,3 +1011,16 @@ population entry/exit remain explicitly grouped phases. Detailed mode requires m
 fails if an intermediate input cannot be validly recomputed or the endpoints do not reconcile;
 it does not distribute a grouped amount proportionally. The selected detail is retained for
 same-source reruns, and a bound run cannot switch it. Existing runs retain their original detail.
+
+
+### Revenue waterfall across fiscal calendars
+
+New waterfall runs compare the actual dates of each entity's selected periods. If the calendar
+layouts differ, columns show explicit date ranges. Periods covering identical dates share one
+column even if their local period numbers differ; overlapping ranges with different boundaries
+remain separate columns. Month, quarter and year views use the complete selected intervals,
+without allocating amounts between partial periods. Open a money cell to see only the sources
+from the entities and periods contributing to that column.
+
+Matching calendar layouts keep their existing fiscal labels. Saved reports retain their original
+column interpretation on same-source reruns; create a new run to use date-aligned columns.

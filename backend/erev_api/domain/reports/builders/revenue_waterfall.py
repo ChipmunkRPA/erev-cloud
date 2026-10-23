@@ -132,6 +132,14 @@ class _Bucket:
     key: str
     label: str
     period_keys: tuple[str, ...]
+    entity_period_keys: Mapping[UUID, tuple[str, ...]] | None = None
+
+    def keys_for(self, entity_id: UUID) -> tuple[str, ...]:
+        return (
+            self.period_keys
+            if self.entity_period_keys is None
+            else self.entity_period_keys.get(entity_id, ())
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +170,39 @@ def _buckets(periods: Sequence[PeriodRef], granularity: str) -> tuple[_Bucket, .
             key, label = item.key, item.name
         grouped.setdefault(key, (label, []))[1].append(item.key)
     return tuple(_Bucket(key, label, tuple(keys)) for key, (label, keys) in grouped.items())
+
+
+CALENDAR_BUCKETS = "waterfall_calendar_buckets_v1"
+
+
+def _calendar_buckets(
+    ranges: Mapping[UUID, Sequence[PeriodRef]], granularity: str
+) -> tuple[_Bucket, ...]:
+    """Align whole reporting intervals by dates, never by a shared fiscal label alone."""
+    grouped: dict[tuple[date, date], dict[UUID, tuple[str, ...]]] = {}
+    labels: dict[tuple[date, date], set[tuple[str, str]]] = {}
+    signatures = set()
+    for entity_id, periods in ranges.items():
+        by_key = {period.key: period for period in periods}
+        signature = []
+        for bucket in _buckets(periods, granularity):
+            start = min(by_key[key].start for key in bucket.period_keys)
+            end = max(by_key[key].end for key in bucket.period_keys)
+            interval = (start, end)
+            grouped.setdefault(interval, {})[entity_id] = bucket.period_keys
+            labels.setdefault(interval, set()).add((bucket.key, bucket.label))
+            signature.append((bucket.key, start, end))
+        signatures.add(tuple(signature))
+    aligned = len(signatures) <= 1
+    return tuple(
+        _Bucket(
+            next(iter(labels[interval]))[0] if aligned else f"date_{interval[0]}_{interval[1]}",
+            sorted(labels[interval])[0][1] if aligned else f"{interval[0]} – {interval[1]}",
+            tuple(sorted({key for keys in entities.values() for key in keys})),
+            entities,
+        )
+        for interval, entities in sorted(grouped.items())
+    )
 
 
 def population(session: Session, params: ReportParams) -> Population:
@@ -206,10 +247,15 @@ def population(session: Session, params: ReportParams) -> Population:
         rates = _translate(
             session, params, obligations, found_entities, found_calendars, as_of_ends
         )
+    dated_buckets = params.binding is None or params.binding.evidence.get(CALENDAR_BUCKETS) is True
+    if params.binding is None:
+        tie_outs.record_evidence(params, CALENDAR_BUCKETS, True)
     return Population(
         book_code=book_code,
         obligations=tuple(obligations),
-        buckets=_buckets(ordered, granularity),
+        buckets=_calendar_buckets(ranges, granularity)
+        if dated_buckets
+        else _buckets(ordered, granularity),
         period_ids=posted_ids,
         entity_ids=tuple(item.id for item in found_entities),
         restricted=contract_id is not None or bool(params.filters),
@@ -686,7 +732,7 @@ def _grouped(found: Population, dimension: str) -> dict[str, list[_Obligation]]:
 def _cell(members: Sequence[_Obligation], bucket: _Bucket, state: str | None) -> Decimal:
     total = ZERO
     for ob in members:
-        for key in bucket.period_keys:
+        for key in bucket.keys_for(ob.entity_id):
             if state in (None, RECOGNIZED):
                 total += ob.recognized.get(key, ZERO)
             if state in (None, SCHEDULED):
@@ -912,7 +958,7 @@ def cell(
     contributors: list[dict[str, Any]] = []
     for ob in members:
         for bucket in buckets:
-            for key in bucket.period_keys:
+            for key in bucket.keys_for(ob.entity_id):
                 if state in (None, SCHEDULED, RECOGNIZED):
                     for line_id, amount in ob.schedule_lines.get(key, ()):
                         if params.parameters.get(

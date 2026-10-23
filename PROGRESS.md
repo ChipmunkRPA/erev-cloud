@@ -20,6 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Waterfall calendar columns — October 22, 2026
+
+- New runs align whole reporting intervals by actual dates and retain entity-local period
+  mappings. Same dates combine; differing boundaries remain separate labelled columns, with
+  matching cell sources. Matching layouts and older saved runs preserve their prior shape.
+- Migration 0333 pins IPE metadata. Necessary validation: 14 waterfall unit cases, populated
+  report/retained-rerun workflow, date-label frontend case, scoped lint/types and metadata parity.
+  No partial-period allocation or change to native amounts; no deployment.
+
 ## Modification amount source drill — October 22, 2026
 
 - Money cells rebuild saved inputs and link original native trace nodes. Analytical equivalents
@@ -73,14 +82,6 @@ review and publish changes without PR accumulation, and do not deploy.
   approved-rate and mixed-period API workflows, plus retained reconstruction and scoped lint/types.
 - Multi-event functional allocation and actual per-event posted deltas remain open; this is
   incremental calculation evidence, not completion of that larger feature.
-
-## Current gap index — October 22, 2026
-
-[CURRENT-DEVELOPMENT-SCOPE.md](docs/release/CURRENT-DEVELOPMENT-SCOPE.md) separates confirmed
-remaining features from completed priorities and owner exclusions. Code inspection confirms
-that per-event modification causes are lost when S13 aggregates functional revenue flows by
-period; actual event FX attribution needs native source evidence, not report-side conversion.
-The goal remains active. No new accounting functionality is claimed by this scope audit.
 
 ## Revenue-source compatibility and zero-share reversals — October 22, 2026
 
@@ -234,12 +235,8 @@ The goal remains active. No new accounting functionality is claimed by this scop
 
 ## Multi-currency tie-out display completeness — October 22, 2026
 
-- The report viewer now displays the union of currencies in expected, actual and difference
-  evidence. A currency appearing only in actual or difference is no longer silently hidden.
-  Missing balances display the standard unavailable marker; the browser does not invent zeros
-  or recompute monetary differences. Existing FAIL-only difference presentation is preserved.
-- Necessary verification: all four targeted viewer tie-out cases passed, including actual-only
-  and difference-only currency coverage. No deployment; remaining report attribution work stays open.
+The viewer includes currencies found only in actual/difference evidence, preserving missing
+values and FAIL-only differences. All four targeted viewer cases passed; no deployment.
 
 ## Outstanding release verification
 

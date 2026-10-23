@@ -686,6 +686,8 @@ const QUARTER_KEY = /^FY(\d{4})-Q([1-4])$/;
  * "FY2027 Q2" otherwise (WLD-P-05; SCREENS_B §5.6 RPT-01).
  */
 export function bucketLabel(key: string, periods: readonly Period[]): string {
+  const dated = /^date_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/.exec(key);
+  if (dated) return `${dated[1]} – ${dated[2]}`;
   const found = periods.find((item) => item.period.period_key === key);
   if (found !== undefined) {
     return periodLabel(found.period);

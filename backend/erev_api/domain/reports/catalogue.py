@@ -531,6 +531,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract_version.contract_computation_id = contract_computation.id",
         ),
         filters=(
+            "New runs align waterfall columns by actual interval dates across entity "
+            "calendars; different dates remain separate, identical dates may use different "
+            "local period keys, and cells and contributors use the owning entity period "
+            "map; matching calendar layouts keep fiscal labels and older bound runs keep "
+            "their original column interpretation",
             _SCOPE,
             _BOOK,
             "schedule_line.subject_type = 'obligation'",

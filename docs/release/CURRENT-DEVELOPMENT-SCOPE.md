@@ -100,10 +100,15 @@ Other engineering is not blocked by this decision.
 - Sandbox: production refresh and editable isolated periods; production lock-history replay
   is outside the requested scope.
 
+The revenue waterfall now aligns whole selected intervals by actual dates across calendars.
+Identical dates can combine different local period keys; different dates get separate columns
+and entity-specific contributor populations. Aligned layouts keep fiscal labels; older saved
+runs preserve their earlier interpretation. This does not reallocate partial fiscal periods
+into common calendar months. Other reports with calendar-compatibility guards still require
+separate implementation and must not be enabled by simply removing those checks.
+
 These statements do not prove every combination of contracts, currencies, calendars and
-lifecycle events. Cross-calendar period-key reports are intentionally refused when the same
-key denotes different dates; support for a common dated multi-calendar presentation remains
-an additional Reporting capability, not something to enable by removing that check.
+lifecycle events.
 
 ## Repository completion evidence still required
 
@@ -113,5 +118,5 @@ and disposable restore drill). They authorize local verification, not deployment
 business launch. Audit remaining historical limitations against current code before treating
 any as either open or complete. Registration of all report definitions alone is insufficient.
 
-This index is verified against main c9e00e6. No independent accounting sign-off is requested
+This index incorporates subsequent October 22 feature checkpoints recorded in PROGRESS.md. No independent accounting sign-off is requested
 as part of this development scope.
