@@ -9,6 +9,8 @@ are their owners' witnesses and are not written here.
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -27,7 +29,7 @@ from erev_api.db.tables import (
     obligation_version,
 )
 from erev_api.domain.contracts import queries
-from erev_api.domain.reports.builders import ReportParams, SourceCollector
+from erev_api.domain.reports.builders import ReportParams, SourceBinding, SourceCollector
 from erev_api.domain.reports.builders import modification_register as register
 from erev_api.files.store import LocalFileStore
 from erev_api.jobs.context import JobRuntime
@@ -150,7 +152,10 @@ def test_modification_register_k02(k02: K02World, runtime: JobRuntime, clock: Fr
     assert row["contract_external_id"] == head["external_id"]
     assert data.control_totals["modification_count"] == 1
     assert data.control_totals["tp_change_total"] == {"USD": "60000.00"}
-    reporting = _run(k02, known_at=clock.now(), currency_view="reporting")
+    reporting_sources = SourceCollector()
+    reporting = _run(
+        k02, known_at=clock.now(), currency_view="reporting", collector=reporting_sources
+    )
     assert reporting.rows[0]["tp_change_reporting"] == row["tp_change"]
     assert reporting.rows[0]["catch_up_reporting"] == row["catch_up_amount"]
     assert reporting.control_totals["tp_change_reporting_total"] == {"USD": "60000.00"}
@@ -169,6 +174,72 @@ def test_modification_register_k02(k02: K02World, runtime: JobRuntime, clock: Fr
         equivalents.evidence["modification_spot_equivalents_v1"][row["modification_no"]]["rate"]
         == "1"
     )
+
+    # Cell amounts are rebuilt from the original inputs, with source UUIDs and native nodes.
+    def cell_params(saved: SourceCollector, **parameters: Any) -> ReportParams:
+        return ReportParams(
+            report_code=register.CODE,
+            report_version=1,
+            parameters={"from_date": "2026-01-01", "to_date": "2027-12-31", **parameters},
+            entity_ids=(k02.entity_id,),
+            known_at=clock.now(),
+            binding=SourceBinding(
+                cutoff=clock.now(),
+                versions={},
+                labels={},
+                row_keys=frozenset([row["row_key"]]),
+                evidence=saved.evidence,
+            ),
+        )
+
+    original = cell_params(collector)
+    with k02.place.uow() as uow:
+        for column in ("tp_change", "tp_fixed", "catch_up_amount"):
+            value, contributors = register.cell(uow.session, original, row["row_key"], column)
+            assert value == row[column]
+            assert contributors[0]["id"] == UUID(modification_id)
+            assert contributors[0]["href"].startswith(f"/trace/{event_evidence['trace_id']}?node=")
+            assert any(
+                event_evidence["trace_sha256"] in text for text in contributors[0]["details"]
+            )
+        reporting_params = cell_params(reporting_sources, currency_view="reporting")
+        value, contributors = register.cell(
+            uow.session, reporting_params, row["row_key"], "tp_change_reporting"
+        )
+        assert value == reporting.rows[0]["tp_change_reporting"]
+        assert contributors[0]["href"].startswith("/contracts/")
+        assert any("Reporting average: USD/USD 1" in text for text in contributors[0]["details"])
+        equivalent_params = cell_params(
+            equivalents, currency_view="functional", currency_basis="spot_equivalent"
+        )
+        value, contributors = register.cell(
+            uow.session, equivalent_params, row["row_key"], "tp_change_functional_equivalent"
+        )
+        assert value == equivalent.rows[0]["tp_change_functional_equivalent"]
+        assert (
+            contributors[0]["href"] == f"/contracts/{contract_id}/modifications/{modification_id}"
+        )
+        assert any("Functional spot: 1" in text for text in contributors[0]["details"])
+        for column in ("status", "catch_up_functional_calculation", "unknown"):
+            with pytest.raises(Problem):
+                register.cell(uow.session, original, row["row_key"], column)
+        with pytest.raises(Problem):
+            register.cell(uow.session, original, "unknown", "tp_change")
+        with pytest.raises(Problem):
+            register.cell(
+                uow.session, replace(original, entity_ids=()), row["row_key"], "tp_change"
+            )
+        old = deepcopy(collector.evidence)
+        del old[register.EVIDENCE]["sources"][0]["modification_id"]
+        assert original.binding is not None
+        with pytest.raises(Problem, match="older report"):
+            register.cell(
+                uow.session,
+                replace(original, binding=replace(original.binding, evidence=old)),
+                row["row_key"],
+                "tp_change",
+            )
+
     shown = get(k02.app, f"{MODIFICATIONS}/{modification_id}", k02.place.author).json()
     assert shown["status"] == "APPLIED"
 

@@ -1604,6 +1604,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "Monetary cell explanations rebuild retained modification inputs, identify the "
+            "original modification UUID and link saved native trace nodes; analytical "
+            "equivalents expose pinned spot/average rate evidence separately; old runs "
+            "without source identity refuse the drill and require a new report",
             "Original functional catch-up calculation is shown separately when one modification "
             "event exclusively explains its native recognition period and both currency totals "
             "reconcile to retained historical layers; not a journal delta or spot equivalent; "

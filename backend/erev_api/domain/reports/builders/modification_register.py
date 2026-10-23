@@ -254,6 +254,8 @@ class Source:
     approvers: str | None
     tp_components: Mapping[str, Decimal] | None = None
     functional_calculation: Mapping[str, Mapping[str, Any]] | None = None
+    modification_id: str | None = None
+    contract_id: str | None = None
 
 
 def applied_event_reference(owner: tuple[str, int] | None) -> str | None:
@@ -1005,6 +1007,8 @@ def sources(
         out.append(
             Source(
                 modification_no=str(row["modification_no"]),
+                modification_id=str(modification_id),
+                contract_id=str(row["contract_id"]),
                 reference=None if row["reference"] is None else str(row["reference"]),
                 contract_external_id=str(row["contract_external_id"]),
                 entity_code=str(row["entity_code"]),
@@ -1458,3 +1462,150 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
     totals["from_date"] = retained["from_date"]
     totals["to_date"] = retained["to_date"]
     return ReportData(columns=columns, rows=tuple(rows), control_totals=totals)
+
+
+def cell(
+    session: Session, params: ReportParams, row_key: str, column_key: str
+) -> tuple[Mapping[str, str], list[dict[str, Any]]]:
+    """Explain saved monetary cells using retained inputs and original modification identity."""
+    from urllib.parse import quote
+
+    refuse_locked_source(params)
+    if params.report_code != CODE or params.report_version != 1 or params.binding is None:
+        raise Problem("not-found", "Original modification cell evidence is unavailable.")
+    retained = tie_outs.bound_evidence(params, EVIDENCE)
+    if (
+        set(retained["entity_ids"]) != {str(value) for value in params.entity_ids}
+        or retained["currency_view"]
+        != params.parameters.get("currency_view", DEFAULT_CURRENCY_VIEW)
+        or retained.get("currency_basis", "source")
+        != params.parameters.get("currency_basis", "source")
+        or retained["selection"]
+        != {
+            key: params.parameters.get(key)
+            for key in ("book", "from_date", "to_date", "status", "contract_external_id")
+        }
+    ):
+        raise Problem(
+            "not-found", "Original modification cell scope differs from the saved report."
+        )
+    data = data_from_inputs(retained)
+    if not any(column.key == column_key and column.kind == "money" for column in data.columns):
+        raise Problem("not-found", "This modification column has no monetary source drill.")
+    matches = [row for row in data.rows if row["row_key"] == row_key]
+    if len(matches) != 1 or matches[0].get(column_key) is None:
+        raise Problem("not-found", "The saved modification cell has no stated amount.")
+    row = matches[0]
+    sources_ = [
+        source
+        for source in retained["sources"]
+        if source["modification_no"] == row["modification_no"]
+    ]
+    if len(sources_) != 1:
+        raise Problem("not-found", "The saved modification source is ambiguous.")
+    source = sources_[0]
+    try:
+        identity, contract_id = UUID(source["modification_id"]), UUID(source["contract_id"])
+    except (KeyError, ValueError, TypeError) as error:
+        raise Problem(
+            "not-found", "This older report has no retained source identity; run a new report."
+        ) from error
+    found = session.execute(
+        select(modification.c.id).where(
+            modification.c.id == identity,
+            modification.c.contract_id == contract_id,
+            modification.c.modification_no == source["modification_no"],
+        )
+    ).scalar_one_or_none()
+    if found is None:
+        raise Problem("not-found", "The original modification is unavailable.")
+    details = [
+        f"Modification: {source['modification_no']}",
+        f"Obligation: {row['obligation_key']}",
+        "Amount reconstructed from this report's saved inputs.",
+    ]
+    href = f"/contracts/{contract_id}/modifications/{identity}"
+    trace = params.binding.evidence.get(f"modification_event_amounts_v1:{identity}")
+    node_ids: list[str] = []
+    key = str(row["obligation_key"])
+    if column_key == "catch_up_functional_calculation":
+        fact = (source.get("functional_calculation") or {}).get(key)
+        if fact is None:
+            raise Problem("not-found", "Original functional calculation evidence is unavailable.")
+        details.extend(
+            [str(row["catch_up_functional_basis"]), f"Calculation period: {fact['period_key']}"]
+        )
+        if trace is None:
+            raise Problem("not-found", "Original functional calculation trace is unavailable.")
+        node_ids = list(fact["node_ids"])
+    elif column_key.endswith("_reporting") or column_key.endswith("_functional_equivalent"):
+        details.append(
+            str(
+                row.get("reporting_basis")
+                or row.get("conversion_basis")
+                or "Analytical currency equivalent"
+            )
+        )
+        fact = retained.get("spot_equivalents", {}).get(source["modification_no"])
+        if fact is not None:
+            details.append(
+                f"Functional spot: {fact['rate']}; "
+                f"reference: {fact.get('rate_key') or 'same currency'}; "
+                f"version: {fact.get('version_key') or 'same currency'}; on: {fact['on']}"
+            )
+        if column_key.endswith("_reporting"):
+            for item in retained.get("translations", []):
+                if item["modification_no"] == source["modification_no"]:
+                    rate = item["rates"][item["entity_id"]]
+                    details.extend(
+                        [
+                            f"Reporting average: {rate['base_currency']}/{item['currency']} "
+                            f"{rate['rate']}; period: {rate['period_key']}",
+                            f"Rate reference: {rate['rate_id'] or 'same currency'}; "
+                            f"version: {rate['version_id'] or 'same currency'}",
+                        ]
+                    )
+    elif trace is not None:
+        from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
+        if column_key == "tp_change":
+            node_ids = [
+                node for node in trace["node_ids"] if node.startswith("modification_tp_change@")
+            ]
+        elif column_key == "catch_up_amount":
+            subject = obligation_subject_key(source["contract_external_id"], key)
+            expected = f"catch_up@{trace['event_key']}:{subject}:-"
+            node_ids = [node for node in trace["node_ids"] if node == expected]
+        elif column_key.startswith("tp_"):
+            component = column_key.removeprefix("tp_")
+            node_ids = [
+                node
+                for node in trace["node_ids"]
+                if node.startswith(f"modification_tp_component_{component}@")
+            ]
+    if trace is not None and node_ids:
+        trace_id = UUID(trace["trace_id"])
+        details.extend(
+            [f"Original calculation: {trace_id}", f"Trace SHA-256: {trace['trace_sha256']}"]
+        )
+        details.extend(f"Calculation node: {node}" for node in node_ids)
+        activity = [node for node in node_ids if node.startswith("revenue_activity_functional:")]
+        target = activity[0] if len(activity) == 1 else node_ids[0] if len(node_ids) == 1 else None
+        href = f"/trace/{trace_id}" + (
+            "?node=" + quote(target, safe="") if target is not None else ""
+        )
+    elif column_key in {"tp_change", "catch_up_amount"}:
+        details.append(
+            "Saved approval-preview or historical application amount; "
+            "no event calculation node retained."
+        )
+    return row[column_key], [
+        {
+            "object_type": "modification",
+            "id": identity,
+            "measure": column_key,
+            "value": row[column_key],
+            "href": href,
+            "details": details,
+        }
+    ]

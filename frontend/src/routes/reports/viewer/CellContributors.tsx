@@ -46,7 +46,10 @@ function measureLabel(measure: string): string {
 }
 
 export function sourceHref(contributor: ReportCellContributor): string | null {
-  // Only the internal business-record routes supplied by BBR; no arbitrary API/external links.
+  // Internal business records and retained calculation traces; no arbitrary API/external links.
+  if (/^\/trace\/[0-9a-f-]{36}(?:\?node=[A-Za-z0-9%_.!~*'()-]*)?$/i.test(contributor.href)) {
+    return contributor.href;
+  }
   return /^\/contracts\/[0-9a-f-]{36}\/(?:history|billing|journals|modifications\/[0-9a-f-]{36})$/i.test(contributor.href)
     ? contributor.href : null;
 }

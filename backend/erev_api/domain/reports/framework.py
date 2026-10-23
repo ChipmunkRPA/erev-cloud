@@ -1038,6 +1038,7 @@ CELL_EXPLAINERS: Final[Mapping[str, CellExplainer]] = MappingProxyType(
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.cell,
         rpo_builder.CODE: rpo_builder.cell,
         loss_provision_register_builder.CODE: loss_provision_register_builder.cell,
+        modification_register_builder.CODE: modification_register_builder.cell,
         bbr_builder.CODE: bbr_builder.cell,
         variance_builder.CODE: variance_builder.cell,
     }

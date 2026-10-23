@@ -20,6 +20,16 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Modification amount source drill — October 22, 2026
+
+- Money cells rebuild saved inputs and link original native trace nodes. Analytical equivalents
+  show pinned spot/average rates separately. Retained UUIDs resolve source visibility only;
+  old runs without identity, missing cells and scope changes refuse. Internal-link filtering
+  rejects external/API destinations. Migration 0332 freezes IPE metadata.
+- Necessary checks: 22 register and eight catalogue cases, populated K02 source/component/
+  catch-up/spot/reporting drills and refusals, four frontend cases, scoped lint/types and
+  metadata parity. No deployment; per-event functional posting ownership remains open.
+
 ## Optional per-event close variance — October 22, 2026
 
 - Added Attribution detail: By driver (default) / By event. Detailed mode executes each business

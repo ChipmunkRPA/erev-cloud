@@ -76,6 +76,12 @@ Other engineering is not blocked by this decision.
 
 ## Implemented priorities, with bounded claims
 
+- Modification amount drill: new report cells rebuild saved inputs and open original native
+  calculation nodes where retained. Analytical spot/reporting equivalents list their pinned
+  rates separately. Missing source identity in older runs requires a new report; amounts are
+  never taken from today's modification. This adds navigation/evidence, not per-event posted
+  functional ownership.
+
 - Close-variance event detail: an opt-in mode now evaluates each business event in original
   order, retains signed differences, preserves offsetting effects and reconciles driver totals
   and frozen endpoints. Functional positive/negative same-period modifications are covered,

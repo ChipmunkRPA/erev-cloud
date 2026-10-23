@@ -929,6 +929,7 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
       drillable:
         (drillable ||
           (definition.code === "loss_provision_register" && key === "provision_balance") ||
+          definition.code === "modification_register" ||
           (definition.code === "bookings_billings_revenue" && ["booked_new", "booked_modifications", "billings", "revenue"].includes(key)) ||
           (definition.code === "variance_between_closes" && key === "change")) &&
         kind === "money",
