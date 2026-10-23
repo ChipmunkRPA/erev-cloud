@@ -121,3 +121,13 @@
 - Ten architecture and twelve privacy checks pass, including mismatch-detection witnesses.
   Supersedes the previous parser gap. Release-candidate verification remains outstanding.
 - Publication audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
+
+## Modification causal reporting — October 22, 2026
+
+- Owner-selected sequential causal analysis is now exposed in the modification register.
+  Baseline, selected/other event effects and final period revenue reconcile in transaction,
+  functional and reporting views. Cells retain execution evidence; saved reruns preserve results.
+- Migration 0335; nine native causal cases, 40 existing replay cases, two populated public
+  workflows and ten frontend cases pass, with scoped lint/types. No posting-rule change or deployment.
+- BBR reporting currency (0334) and waterfall calendar columns (0333) checkpoints moved to
+  REPORTING-CHECKPOINTS-2026-10-22.md; current scope remains in CURRENT-DEVELOPMENT-SCOPE.

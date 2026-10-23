@@ -24,13 +24,6 @@ from datetime import date
 from typing import Any, Final
 
 import pytest
-from erev_api.auth.keyring import KeyRing
-from erev_api.clock import FrozenClock
-from erev_api.config import Settings
-from erev_api.db.tables import period_lock
-from erev_api.domain.reports import tie_outs
-from erev_api.files.store import LocalFileStore
-from erev_api.main import create_app
 from fastapi import FastAPI
 from sqlalchemy import select
 from support import worlds
@@ -47,6 +40,14 @@ from support.worlds import (
     SEPTEMBER_2026,
     report_run,
 )
+
+from erev_api.auth.keyring import KeyRing
+from erev_api.clock import FrozenClock
+from erev_api.config import Settings
+from erev_api.db.tables import period_lock
+from erev_api.domain.reports import tie_outs
+from erev_api.files.store import LocalFileStore
+from erev_api.main import create_app
 
 ROLLFORWARD: Final = "contract_balance_rollforward"
 OPENING_LIABILITY: Final = "revenue_from_opening_liability"
@@ -145,6 +146,10 @@ def test_rollforward_ties_in_the_periods_that_hold_an_invoice_k01(
     }
     assert section_1(rows, ASSET) == section_1(rows, UNBILLED) == {}
     balanced(january, "103430.14")
+    assert january["control_totals"]["other_explanation"] == {
+        "threshold_ratio": "0.01",
+        "items": [],
+    }
     february, rows = report_run(world, ROLLFORWARD, ranged("FY2026-P02"))
     # first in first out (POL-126): February's revenue relieves the opening liability, and the
     # invoice of 27 Feb stays whole in the closing balance

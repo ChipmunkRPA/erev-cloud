@@ -20,15 +20,14 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Modification causal reporting — October 22, 2026
+## Rollforward Other explanation — October 23, 2026
 
-- Owner-selected sequential causal analysis is now exposed in the modification register.
-  Baseline, selected/other event effects and final period revenue reconcile in transaction,
-  functional and reporting views. Cells retain execution evidence; saved reruns preserve results.
-- Migration 0335; nine native causal cases, 40 existing replay cases, two populated public
-  workflows and ten frontend cases pass, with scoped lint/types. No posting-rule change or deployment.
-- BBR reporting currency (0334) and waterfall calendar columns (0333) checkpoints moved to
-  REPORTING-CHECKPOINTS-2026-10-22.md; current scope remains in CURRENT-DEVELOPMENT-SCOPE.
+- Read and retain the configured Other/closing threshold. Report and contract checks stay
+  currency-specific; signed offsets and zero-closing exceptions remain visible. The viewer
+  shows amounts and reconciliation links. Existing failed tie-outs are not waived.
+- Saved reruns reuse the original threshold; older reports retain their original shape.
+- Two backend unit cases, one populated rollforward database case and two viewer cases pass;
+  scoped lint and types pass. No posting changes or deployment.
 
 ## Late billing reconciliation — October 23, 2026
 

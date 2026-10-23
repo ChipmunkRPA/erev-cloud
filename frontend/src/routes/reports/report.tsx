@@ -82,6 +82,7 @@ import {
 import { RpoExemptionDetails, RpoUnexplainedDetails } from "./viewer/RpoExemptionDetails";
 import { RpoCurrencyDetails } from "./viewer/RpoCurrencyDetails";
 import { TieOutStrip } from "./viewer/TieOutStrip";
+import { RollforwardOtherDetails } from "./viewer/RollforwardOtherDetails";
 import { JobReference } from "./viewer/JobReference";
 import { useReportRun } from "./viewer/useReportRun";
 import { useViewContext } from "./viewer/useViewContext";
@@ -721,6 +722,9 @@ function ReportBody({ definition, access }: ReportBodyProps) {
           }
         />
         <div className="px-[var(--gutter)] pb-[var(--panel-pad)]">
+          {succeeded && data !== undefined && definition.code === "contract_balance_rollforward" ? (
+            <RollforwardOtherDetails run={data} />
+          ) : null}
           {succeeded && data !== undefined ? <RpoExemptionDetails run={data} /> : null}
           {succeeded && data !== undefined ? <RpoUnexplainedDetails run={data} /> : null}
           {succeeded && data !== undefined ? <RpoCurrencyDetails run={data} /> : null}

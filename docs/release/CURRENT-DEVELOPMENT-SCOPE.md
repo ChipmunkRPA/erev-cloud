@@ -15,6 +15,20 @@ refresh from production must preserve isolation and allow experimentation.
 
 ## Reporting implementation status
 
+### Rollforward Other explanation threshold — implemented October 23
+
+The rollforward now reads `close.rollforward_other_threshold_ratio` and retains its value
+with report evidence. An expandable viewer warning lists signed Other and closing amounts
+when absolute Other exceeds the configured share of absolute closing balance. A nonzero
+Other against a zero closing balance is flagged; equality is not. Checks run separately for
+each currency and contract as well as currency totals, preserving offsetting contract
+exceptions. Contract details link to the corresponding ending-period reconciliations.
+Existing tie-out failures remain unchanged, including those below the display threshold.
+Saved reruns use the retained threshold; legacy bindings without it keep their old shape.
+This adds report-level explanation details, not new monetary columns or posting rules.
+Necessary verification: two backend unit cases covering thresholds, offsets and retained
+bindings; one populated database rollforward case; two viewer cases; scoped lint/types.
+
 ### Sequential modification causal analysis — owner-selected scope
 
 On October 22 the owner chose original-event-order recomputation, explicitly labelled causal

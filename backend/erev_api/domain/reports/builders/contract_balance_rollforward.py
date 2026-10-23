@@ -85,10 +85,10 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from decimal import Decimal
+from fractions import Fraction
 from typing import Any, Final
 from uuid import UUID
 
-from erev_engine import billing_identity
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -114,7 +114,9 @@ from erev_api.domain.reports.tie_outs import (
 )
 from erev_api.enums import ContractEventType
 from erev_api.explain import store as trace_store
+from erev_api.registry.resolve import setting
 from erev_api.uow import UnitOfWork
+from erev_engine import billing_identity
 
 CODE: Final = "contract_balance_rollforward"
 LIABILITY: Final = "contract_liability"
@@ -1860,6 +1862,83 @@ COLUMNS: Final = (
 )
 
 
+OTHER_THRESHOLD: Final = "rollforward_other_threshold_v1"
+
+
+def other_explanations(
+    items: Sequence[ContractRollforward],
+    totals: Mapping[str, Lines],
+    ratio: Decimal,
+    *,
+    book: str,
+    ending_periods: Mapping[UUID, str],
+) -> list[dict[str, str]]:
+    """Preserve signed, currency-specific exceptions, including contracts that offset in total."""
+    flagged: list[dict[str, str]] = []
+    populations = [("", "", "", currency, lines) for currency, lines in sorted(totals.items())] + [
+        (
+            item.external_id,
+            item.entity_code,
+            ending_periods.get(item.entity_id, ""),
+            item.currency,
+            item.lines,
+        )
+        for item in items
+    ]
+    for contract_key, entity, period_key, currency, lines in populations:
+        for role in ROLLFORWARD_BALANCES:
+            other, closing = lines["OTHER"][role], lines["CLOSING"][role]
+            if abs(Fraction(other)) > Fraction(ratio) * abs(Fraction(closing)):
+                flagged.append(
+                    {
+                        "contract": contract_key,
+                        "entity": entity,
+                        "period": period_key,
+                        "book": book,
+                        "currency": currency,
+                        "role": role,
+                        "other": str(other),
+                        "closing": str(closing),
+                    }
+                )
+    return flagged
+
+
+def _other_control(
+    session: Session,
+    params: ReportParams,
+    items: Sequence[ContractRollforward],
+    totals: Mapping[str, Lines],
+    *,
+    book: str,
+    periods: Mapping[UUID, tuple[PeriodRef, ...]],
+) -> dict[str, Any]:
+    if params.binding is not None:
+        if OTHER_THRESHOLD not in params.binding.evidence:
+            return {}  # Historical reports did not retain this setting; never read today's value.
+        raw = str(params.binding.evidence[OTHER_THRESHOLD])
+    else:
+        raw = str(
+            setting(session, "close.rollforward_other_threshold_ratio", known_at=params.known_at)
+        )
+        tie_outs.record_evidence(params, OTHER_THRESHOLD, raw)
+    ratio = Decimal(raw)
+    if not ratio.is_finite() or ratio < 0:
+        raise ValueError("Rollforward Other threshold must be a finite nonnegative ratio")
+    return {
+        "other_explanation": {
+            "threshold_ratio": raw,
+            "items": other_explanations(
+                items,
+                totals,
+                ratio,
+                book=book,
+                ending_periods={key: values[-1].key for key, values in periods.items() if values},
+            ),
+        }
+    }
+
+
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
@@ -1951,7 +2030,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 },
             }
         )
-    control: dict[str, Any] = {}
+    control: dict[str, Any] = _other_control(
+        session, params, items, totals, book=book_code, periods=periods
+    )
     for balance in ROLLFORWARD_BALANCES:
         control[f"opening_{balance}"] = tie_outs.by_currency(
             {code: lines["OPENING"][balance] for code, lines in totals.items()}
