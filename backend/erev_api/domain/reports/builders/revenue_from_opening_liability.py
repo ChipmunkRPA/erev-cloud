@@ -57,8 +57,6 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, PeriodRef, add
-from erev_api.enums import BookCode
-from erev_api.registry.resolve import resolve
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "revenue_from_opening_liability"
@@ -282,20 +280,9 @@ def legacy_build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         for currency, values in sorted(summary.items())
     ]
     rows.extend(contracts)
-    options = sorted(
-        {
-            str(
-                resolve(
-                    session,
-                    POLICY,
-                    book_code=BookCode(book_code),
-                    entity_id=item.id,
-                    known_at=params.known_at,
-                ).value
-            )
-            for item in found
-        }
-    )
+    from ..opening_consumption_policy import read as consumption_policies
+
+    options = consumption_policies(session, params, found, book_code)
     control: dict[str, Any] = {
         "revenue_from_opening_total": tie_outs.by_currency(
             {code: values["from_opening"] for code, values in summary.items()}

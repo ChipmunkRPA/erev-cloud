@@ -324,3 +324,11 @@
   report backend. Contract lookup must succeed before exporting; the scope cannot widen silently.
 - Two targeted UI cases, TypeScript and scoped ESLint pass. Updated the user guide. Forecast
   audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+
+## Combined component delivery recognition — October 23, 2026
+
+- Combined delivery/time-of-transfer measures now count original component deliveries and returns
+  once, applying the original member's acceptance/repurchase/bill-and-hold controls.
+- 15 native cases and public original-component delivery/return approval and Reporting pass. The
+  event drawer now exposes original members; two UI cases and scoped types/lint pass. Remaining
+  combined reassessment/measures stay open. No deployment.

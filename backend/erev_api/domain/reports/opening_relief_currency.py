@@ -11,8 +11,6 @@ from erev_api.domain.reports import locked_ends, reporting_rollforward, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.outputs import ReportData
-from erev_api.enums import BookCode
-from erev_api.registry.resolve import resolve
 from erev_api.uow import UnitOfWork
 
 KEY = "opening_relief_currency_v1"
@@ -154,20 +152,9 @@ def finish(
         for currency, values in sorted(totals.items())
     ]
     rows.extend(contracts)
-    policies = sorted(
-        {
-            str(
-                resolve(
-                    session,
-                    disclosure.POLICY,
-                    book_code=BookCode(book),
-                    entity_id=entity.id,
-                    known_at=params.known_at,
-                ).value
-            )
-            for entity in entities
-        }
-    )
+    from .opening_consumption_policy import read as consumption_policies
+
+    policies = consumption_policies(session, params, entities, book)
     evidence = {
         "currency_view": view,
         "method": (

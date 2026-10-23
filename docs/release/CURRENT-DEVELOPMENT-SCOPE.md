@@ -961,3 +961,25 @@ existing system helper, not a newly claimed public activation workflow. Scoped P
 This closes the prior public original-delivery/return verification and authoring gap for this
 combined units path. Other combined measures and quantity/removal/term modifications remain open.
 No deployment.
+
+## October 23 opening-liability policy evidence — retained; amount gap confirmed
+
+New opening-liability disclosures freeze the resolved consumption policy for every consumed
+entity and book in opening_consumption_policies_v1. Transaction, functional and reporting
+explanations use that original evidence on bound reruns. Mismatched books, missing/extra entity
+populations, malformed values and unsupported options refuse; no current policy is substituted.
+Older saved bindings without the new evidence retain their existing behavior. The legacy builder
+uses the same helper for newly collected inputs. Monetary calculations are unchanged.
+
+Necessary verification: three currency-view finish/rebuild cases forbid current policy reads
+and compare identical control totals, including incomplete/altered retained evidence refusals.
+The populated public K01 opening-liability report passes. Three production modules pass mypy
+and scoped lint passes. No deployment.
+
+A real unfinished reporting feature was confirmed: native S15 implements FIFO_WITHIN_POB using
+obligation-attributed billing and revenue, but the public revenue_from_opening_liability builders
+still consume the contract/group control path and disclose that limitation in their footnote.
+Complete this integration across selected ranges, currency views, locked openings and retained
+reruns before claiming that policy is supported by the public report. The native period-level
+calculation alone is not sufficient evidence for the report's selected-range semantics. The
+policy-retention change above does not close this monetary implementation gap.
