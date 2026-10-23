@@ -30,7 +30,12 @@ or database server configuration. This reference check does not verify the setti
 Necessary verification of the correction: 39 baseline unit cases and four real PostgreSQL
 17 doctor cases passed, including freshly migrated schema, unknown-setting refusal,
 disabled-trigger detection and failed-audit detection. Scoped lint and types pass.
-The complete restore drill must be rerun on the corrected source before recording success.
+The full rerun on `990edb171535d49ba9b7820f0681724840d0aff3` passed all 12 stages:
+720 tables, 97,158 source rows, 97,160 restored rows, no missing tables or reduced row
+counts. The only increase was two `erev.security_event` rows from verification itself.
+All 1,818 files and eight tenants verified with zero failures. Total duration 585 seconds;
+destroy-to-verified-clone 28 seconds. Teardown succeeded. This supersedes the failed
+attempt for the corrected source; it is not hosted recovery or deployment evidence.
 
 Machine reports remain in ignored .run/reports; raw backup logs and key material are not
 published. These results are bounded local evidence and do not complete outstanding

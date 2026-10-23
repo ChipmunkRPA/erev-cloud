@@ -15,42 +15,30 @@ refresh from production must preserve isolation and allow experimentation.
 
 ## Confirmed Reporting work remaining
 
-### Actual functional-currency amounts for individual modifications
+### Sequential modification causal analysis — owner-selected scope
 
-The modification register has original-currency event TP changes, catch-ups and TP component
-breakdowns, plus explicitly selected analytical spot equivalents. Those equivalents are not
-actual posted functional catch-ups.
+On October 22 the owner chose original-event-order recomputation, explicitly labelled causal
+analysis and reconciled to the period total. This replaces the previous requirement to assign
+unique original posted functional amounts to individual events. Do not change posting or FX
+semantics to manufacture such ownership.
 
-An additional supported path now exposes the original functional **calculation** amount when
-one modification exclusively explains its recognition-period flow. It verifies native layers
-and both currency totals, retains node identities and shows the calculation period. Mixed
-periods remain empty; this is not proof of a posted journal delta and does not close the
-multi-event work below. Native USD/GBP positive/negative witnesses and retained-row checks
-cover this path; public mixed-period tests verify refusal to misattribute the period total.
+The register already has native event TP/catch-up/components, analytical spot equivalents,
+source drill, and a limited original functional calculation path for an exclusively explained
+period. These remain distinct from the new causal analysis. Close variance already supports
+individual event replay; the modification register integration is still outstanding.
 
-Current source boundary:
+Implement the selected mode using authorized retained computation inputs and fixed reference,
+currency and reporting-period bases. Replay events in effective-date/record-sequence/key order;
+retain each signed change and executed input/output hashes. Preserve positive and negative
+changes even when their net is zero. Reconcile baseline plus modification and other event effects
+to the reproduced final period amount, showing other effects explicitly rather than assigning
+them to a modification. Labels and cell evidence must say causal analysis, not posted ownership.
 
-- `s09_recognition/decompose.py` identifies sequential event causes and cites individual
-  `catch_up@event` amounts.
-- `s13_books._control_flows` takes the difference between cumulative relief targets and emits
-  one revenue flow per subject/period at period end. Its source is the cumulative target.
-- S12 retains the historical functional pieces consumed by that flow. The report reader
-  `functional_revenue_activity.py` verifies the complete piece population and both currency
-  totals, but cannot identify several modification events inside that period flow.
-- `builders/modification_register.py` therefore retains its original-source foreign-currency
-  restriction; the explicit spot-equivalent mode is a separate supported feature.
-
-Next implementation must carry original event decomposition into the functional source
-calculation, retain the event-to-piece evidence, and consume it in the register. It must
-handle positive and negative modifications together with ordinary recognition, opening
-advances at different rates, period-boundary changes and multiple events on one day.
-A scalar period amount or a proportional allocation is insufficient evidence. Preserve
-historical bound-run behavior; any change to native monetary results requires explicit
-calculation-version treatment and regression evidence, not a silent report-side adjustment.
-
-Completion evidence: a populated public workflow with multiple same-period modifications,
-transaction/functional/reporting amounts tied to native postings, and a retained rerun with
-identical values after later source changes. A pure conversion helper does not close this item.
+Execute engine calls outside database transactions, with worker heartbeats. Saved report reruns
+must use their bound results, and source access must cover the full computation group. Keep old
+saved reports unchanged. Necessary completion evidence includes multiple same-period positive
+and negative modifications, transaction/functional/reporting reconciliation and a populated
+public report/cell/rerun workflow after subsequent source changes. This work is not yet complete.
 
 ### Mixed original sources in revenue attribution
 

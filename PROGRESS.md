@@ -251,7 +251,7 @@ not authorize deployment, provisioning or changes to a live database.
 - October 22: three-image build and Linux PDF/resource probes passed on bbd64be8; see [build checkpoint](docs/release/LOCAL-BUILD-2026-10-22.md). Refresh for the final candidate.
 - October 22: compose and unauthenticated ZAP checks passed on 1d8e81e, including cleanup; ZAP retained one low/three informational alerts, no medium/high alerts. See [local checks](docs/release/LOCAL-CHECKS-2026-10-22.md).
 - October 22: backend-disabled Terraform validation passed on clean bbd64be8 after a whitespace fix. No cloud state or resources changed.
-- October 22 restore drill: integrity passed; doctor falsely rejected commit-time tracking. Fixed with 39 unit/four database cases passing; full drill rerun pending. See local checks above.
+- October 22: restore drill passed on 990edb17 after doctor fix: 720 tables, no lost rows, two verifier security events added; cleanup passed. See local checks above.
 
 
 ## Historical release record
