@@ -295,3 +295,10 @@
 - Classification now displays the selected SSP default for proposed combined hosts too.
   Authored overrides are preserved. The wizard still lacks original-component selection;
   this is the next UI gap. No deployment. See CURRENT-DEVELOPMENT-SCOPE.
+
+## Original component selection — October 23, 2026
+
+- The modification wizard now offers original combined components for price changes, from
+  retained calculation membership. It preserves the original key and labels the combined host.
+- Other changes and duplicate additions using those keys are refused in the form. API workflow,
+  UI submission, parser/model cases, TypeScript and scoped Python types/lint pass. No deployment.

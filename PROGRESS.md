@@ -265,9 +265,9 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Original component selection — October 23, 2026
+## Mixed component SSP bases — October 23, 2026
 
-- The modification wizard now offers original combined components for price changes, from
-  retained calculation membership. It preserves the original key and labels the combined host.
-- Other changes and duplicate additions using those keys are refused in the form. API workflow,
-  UI submission, parser/model cases, TypeScript and scoped Python types/lint pass. No deployment.
+- Combined price changes now calculate each original series component using its own SSP basis
+  and quantity unit before summing remaining weights. Trace parameters preserve each calculation.
+- 42 focused native cases and scoped lint/types pass. Public mixed-basis workflow verification,
+  quantity/removal/term reassessment and final publication checks remain open. No deployment.

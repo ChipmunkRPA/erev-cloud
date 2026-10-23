@@ -163,3 +163,64 @@ def test_conflicting_member_treatments_cannot_be_silently_merged():
     )
     with pytest.raises(ValueError, match="instructions conflict"):
         compute(value)
+
+
+@pytest.mark.parametrize(
+    "lease_basis, service_unit, scaled_weight, unscaled_weight",
+    [
+        ("PER_BOOKED_TERM", "SERVICE_UNITS", 2400, 0),
+        ("AMOUNT", "SERVICE_UNITS", 1200, 1200),
+        ("PER_BOOKED_TERM", "INCREMENTS", 1300, 0),
+    ],
+)
+def test_mixed_series_ssp_bases_recompute_each_original_component(
+    lease_basis, service_unit, scaled_weight, unscaled_weight
+):
+    from fractions import Fraction
+
+    value = price_change()
+    boundary = date(2026, 7, 1)
+    version = points(EQUIP="1200", MAINT="100")
+    version = replace(
+        version,
+        entries=tuple(
+            replace(
+                entry,
+                value_basis=lease_basis if entry.product_code == "EQUIP" else "PER_INCREMENT",
+                quantity_unit=None if entry.product_code == "EQUIP" else service_unit,
+            )
+            for entry in version.entries
+        ),
+    )
+    value = replace(
+        value,
+        contracts=tuple(
+            replace(
+                header,
+                modifications=tuple(
+                    replace(mod, effective_date=boundary) for mod in header.modifications
+                ),
+            )
+            for header in value.contracts
+        ),
+        events=(*value.events[:-1], replace(value.events[-1], effective_date=boundary)),
+        ssp_versions=(version,),
+        pob_template_versions=tuple(
+            replace(
+                template,
+                distinctness="series",
+                series_increment_unit="month",
+                ratable_convention="DAILY",
+            )
+            for template in value.pob_template_versions
+        ),
+    )
+    result = compute(value).books[0]
+    node = next(node for node in result.trace.nodes if node.measure.startswith("mod_weight@"))
+    # July 1 leaves 184 of 365 days; AMOUNT is already a remaining-period value.
+    expected = Fraction(scaled_weight * 184, 365) + unscaled_weight
+    assert abs(Fraction(node.value) - expected) < Fraction(1, 10**18)
+    assert "remaining_component_scales" in node.params
+    assert len(node.inputs) == 2
+    assert result.contract_version.columns["transaction_price"] == 1_100_000
+    assert reevaluate(result.trace) == {node.id: node.value for node in result.trace.nodes}

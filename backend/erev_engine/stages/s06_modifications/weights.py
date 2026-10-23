@@ -29,6 +29,7 @@ records every part. Private to stage 06. Standard library only (DG-ARC-02).
 from __future__ import annotations
 
 import dataclasses
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -249,6 +250,8 @@ def existing(
     parts: list[Fraction] = []
     sources: list[SourceRef] = []
     resolution: SspResolution | None = None
+    resolutions: list[SspResolution] = []
+    component_quantities: list[Fraction] = []
     if not ob.is_vc_line and remaining > 0:
         raw_lines = [
             _raw(
@@ -299,6 +302,7 @@ def existing(
             if found_resolution is None:
                 return None
             resolutions.append(found_resolution)
+            component_quantities.append(line.quantity)
             parts.append(found_resolution.selected)
             sources.append(
                 _reference(
@@ -308,8 +312,6 @@ def existing(
                     else "remaining",
                 )
             )
-        if len({(item.value_basis, item.quantity_unit) for item in resolutions}) > 1:
-            raise ValueError("Combined modification SSP entries require compatible quantity bases")
         resolution = points.combine(resolutions)
     remaining_part_count = len(parts)
     found = added_parts(ctx, identified, ob, lines, ev, basis, findings)
@@ -324,7 +326,40 @@ def existing(
     if ob.combined_component_keys:
         params["remaining_part_count"] = str(remaining_part_count)
     value = sum(parts, Fraction(0))
-    if resolution is not None and segments.eligible(ob, before.segment):
+    mixed_series_bases = (
+        ob.combined_component_keys
+        and ob.distinctness == Distinctness.SERIES
+        and len({(item.value_basis, item.quantity_unit) for item in resolutions}) > 1
+    )
+    if mixed_series_bases:
+        scales: list[dict[str, str]] = []
+        value = sum(parts[remaining_part_count:], Fraction(0))
+        for part, component, quantity in zip(
+            parts[:remaining_part_count], resolutions, component_quantities, strict=True
+        ):
+            scaled = segments.series_basis_scale(
+                ctx,
+                ob,
+                dataclasses.replace(before, remaining_quantity=quantity),
+                ev,
+                basis=component.value_basis,
+                quantity_unit=component.quantity_unit,
+                removed=gone,
+            )
+            factor, component_params = (Fraction(1), {}) if scaled is None else scaled
+            scales.append(
+                {
+                    **component_params,
+                    "class": "D",
+                    "as_of": d.isoformat(),
+                    "remaining_quantity": rational_param(quantity - gone),
+                }
+            )
+            value += part * factor
+        params["remaining_component_scales"] = json.dumps(
+            scales, sort_keys=True, separators=(",", ":")
+        )
+    elif resolution is not None and segments.eligible(ob, before.segment):
         rho, scale = segments.remaining_scale(ctx, ob, before, ev, removed=gone)
         value = sum(parts[:remaining_part_count], Fraction(0)) * rho + sum(
             parts[remaining_part_count:], Fraction(0)

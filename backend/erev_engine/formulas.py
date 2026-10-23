@@ -8,6 +8,7 @@ Standard library only (DG-ARC-02).
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import date, timedelta
@@ -2206,6 +2207,25 @@ def _mod_weights_d18(inputs: Sequence[Fraction], params: Mapping[str, str]) -> F
     parts = _weight_parts(inputs, params, formula_id)
     label = _param(params, "class")
     if label == "D":
+        encoded_scales = params.get("remaining_component_scales")
+        if encoded_scales is not None:
+            scales = json.loads(encoded_scales)
+            count = int(params.get("remaining_part_count", "1"))
+            if not isinstance(scales, list) or not 1 <= count <= len(parts) or len(scales) != count:
+                raise ValueError(f"{formula_id}: invalid remaining component scales")
+            total = sum(parts[count:], Fraction(0))
+            for part, scale in zip(parts[:count], scales, strict=True):
+                if not isinstance(scale, dict) or not all(
+                    isinstance(key, str) and isinstance(value, str) for key, value in scale.items()
+                ):
+                    raise ValueError(f"{formula_id}: invalid component scale parameters")
+                rho = _remaining_scale(scale, formula_id)
+                total += (
+                    part
+                    * (Fraction(1) if rho is None else rho)
+                    * _series_multiplier(scale, formula_id)
+                )
+            return total
         rho = _remaining_scale(params, formula_id)
         if rho is None:
             return sum(parts, Fraction(0))

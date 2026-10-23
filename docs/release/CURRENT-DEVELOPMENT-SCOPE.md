@@ -849,3 +849,20 @@ scoped Python lint excludes existing import-order drift. No deployment.
 The previously identified original-component UI selection gap is closed. Quantity/removal/term
 reassessment, mixed SSP bases, other recognition measures and remaining publication checks
 remain unfinished. This does not declare the overall goal complete.
+
+## October 23 mixed-basis combined price changes — native implementation
+
+Combined series price-change weights now resolve each original component's SSP basis and
+quantity unit separately. PER_BOOKED_TERM scales by remaining service; PER_INCREMENT uses
+its declared SERVICE_UNITS or INCREMENTS meaning; AMOUNT remains a directly supplied amount.
+The resulting component weights are summed, while added parts keep their existing treatment.
+Each component retains its own quantity, term, convention, progress and basis parameters in
+the calculation trace so the saved weight can be independently recomputed. Existing common-basis
+and inception-all formula paths retain their previous behavior.
+
+Verification: 42 focused native cases pass, including three mixed-basis combinations, complete
+trace reevaluation and existing prospective/series regressions. Two production modules pass
+mypy and scoped lint passes. This closes the native mixed-basis rejection for the supported
+price-change path; it does not claim public mixed-basis approval/Reporting workflow verification.
+Quantity/removal/term reassessment, other recognition measures, portfolio application and final
+publication checks remain unfinished. No deployment; the overall development goal remains open.
