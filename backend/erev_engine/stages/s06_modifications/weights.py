@@ -41,9 +41,10 @@ from erev_engine.enums import Distinctness
 from erev_engine.formulas import rational_param
 from erev_engine.money import format_exact
 from erev_engine.stages import s05_allocation
-from erev_engine.stages.s01_canonicalize import payload_bool, payload_text
+from erev_engine.stages.s01_canonicalize import payload_bool, payload_fraction, payload_text
 from erev_engine.stages.s02_contract_identification import IdentifiedState
 from erev_engine.stages.s03_pob_builder import PobDraft, RawLine
+from erev_engine.stages.s05_allocation import points
 from erev_engine.stages.s06_modifications import segments
 from erev_engine.stages.s06_modifications.classify import ModificationLine
 from erev_engine.stages.s06_modifications.segments import Measured
@@ -249,29 +250,68 @@ def existing(
     sources: list[SourceRef] = []
     resolution: SspResolution | None = None
     if not ob.is_vc_line and remaining > 0:
-        line = _raw(
-            ob,
-            d,
-            remaining,
-            remaining * unit_price,
-            product_code=ob.product_code,
-            stratification=ob.stratification,
-            ssp_version_label=None if ob.ssp is None else ob.ssp.version_label,
-        )
-        resolution = s05_allocation.resolve_ssp(
-            _override(ctx, ob.subject_key, basis),
-            line,
-            d,
-            line.stated_price,
-            findings=findings,
-            identified=identified,
-            # S06-R-11: the version this weight was priced from when the event was computed
-            record=s05_allocation.Record(ob.subject_key, ev.event_key),
-        )
-        if resolution is None:
-            return None
-        parts.append(resolution.selected)
-        sources.append(_reference(resolution, "remaining"))
+        raw_lines = [
+            _raw(
+                ob,
+                d,
+                remaining,
+                remaining * unit_price,
+                product_code=ob.product_code,
+                stratification=ob.stratification,
+                ssp_version_label=None if ob.ssp is None else ob.ssp.version_label,
+            )
+        ]
+        if ob.combined_component_keys:
+            booking = identified.canonical.contracts[ob.contract_key].booking
+            booked_lines = booking.get("lines")
+            if not isinstance(booked_lines, list | tuple):
+                raise ValueError("Combined modification requires original booking lines")
+            originals = {
+                payload_text(line, "obligation_key"): line
+                for line in booked_lines
+                if isinstance(line, Mapping)
+            }
+            raw_lines = []
+            for key in ob.combined_component_keys:
+                original = originals[key]
+                fraction = remaining / ob.original_quantity
+                line = _raw(
+                    ob,
+                    d,
+                    (payload_fraction(original, "quantity") or Fraction(0)) * fraction,
+                    (payload_fraction(original, "total_price") or Fraction(0)) * fraction,
+                    product_code=payload_text(original, "product_code"),
+                    stratification=payload_text(original, "stratification"),
+                    ssp_version_label=payload_text(original, "ssp_version_label"),
+                )
+                raw_lines.append(dataclasses.replace(line, obligation_key=key))
+        resolutions = []
+        for line in raw_lines:
+            found_resolution = s05_allocation.resolve_ssp(
+                _override(ctx, ob.subject_key, basis),
+                line,
+                d,
+                line.stated_price,
+                findings=findings,
+                identified=identified,
+                record=s05_allocation.Record(ob.subject_key, ev.event_key),
+            )
+            if found_resolution is None:
+                return None
+            resolutions.append(found_resolution)
+            parts.append(found_resolution.selected)
+            sources.append(
+                _reference(
+                    found_resolution,
+                    f"remaining:{line.obligation_key}"
+                    if ob.combined_component_keys
+                    else "remaining",
+                )
+            )
+        if len({(item.value_basis, item.quantity_unit) for item in resolutions}) > 1:
+            raise ValueError("Combined modification SSP entries require compatible quantity bases")
+        resolution = points.combine(resolutions)
+    remaining_part_count = len(parts)
     found = added_parts(ctx, identified, ob, lines, ev, basis, findings)
     if found is None:
         return None
@@ -281,10 +321,14 @@ def existing(
         "remaining_quantity": rational_param(remaining),
         "unit_price": rational_param(unit_price),
     }
+    if ob.combined_component_keys:
+        params["remaining_part_count"] = str(remaining_part_count)
     value = sum(parts, Fraction(0))
     if resolution is not None and segments.eligible(ob, before.segment):
         rho, scale = segments.remaining_scale(ctx, ob, before, ev, removed=gone)
-        value = parts[0] * rho + sum(parts[1:], Fraction(0))
+        value = sum(parts[:remaining_part_count], Fraction(0)) * rho + sum(
+            parts[remaining_part_count:], Fraction(0)
+        )
         params.update(scale)
     elif resolution is not None and ob.distinctness == Distinctness.SERIES:
         # D-93 (4): the series entry's declared basis prices the remaining increments at d.
@@ -299,7 +343,9 @@ def existing(
         )
         if scaled is not None:
             factor, scale = scaled
-            value = parts[0] * factor + sum(parts[1:], Fraction(0))
+            value = sum(parts[:remaining_part_count], Fraction(0)) * factor + sum(
+                parts[remaining_part_count:], Fraction(0)
+            )
             params.update(scale)
     return Weight(
         ob.subject_key,

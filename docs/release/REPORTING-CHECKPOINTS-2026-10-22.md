@@ -272,3 +272,11 @@
   apply. Corrected duplicate tax deduction from already-net invoice amounts.
 - 38 focused cases and scoped lint/types pass. Other measures, modifications and in-scope
   combination visibility remain open. No deployment.
+
+## Combined components in latest status — October 23, 2026
+
+- Latest contract status now shows original members, reviewed rationale and scope alongside
+  the combined amount, including in-scope service-predominant combinations. Saved evidence
+  reruns identically; ordinary and older saved reports retain their column shape.
+- Two populated workflows and 28 unit cases pass; scoped production lint/types pass.
+  Other measures and modifications remain open. No deployment. See CURRENT-DEVELOPMENT-SCOPE.

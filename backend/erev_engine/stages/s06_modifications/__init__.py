@@ -43,6 +43,7 @@ from erev_engine.stages.s06_modifications import (
     boundary_state,
     change_orders,
     classify,
+    combined,
     exercise,
     inception_basis,
     legacy_templates,
@@ -283,7 +284,7 @@ def propose(
     the event, else the modification key under the contract (CV-50).
     """
     ctx.policies.require(("mod.route_selection", price_test.POLICY_CODE))
-    mod = modification
+    mod = combined.view(st, modification)
     header = next(
         (view.header for view in st.contracts if view.header.external_id == mod.contract_key), None
     )
@@ -849,12 +850,22 @@ def _amended(
 ) -> AllocatedState:
     """``CONTRACT_AMENDED``: the approved modification under the payload treatments (§6.3), or a
     legacy template when the treatments are one (§6.5)."""
-    mod = ModificationView.of(ev.contract_key, _modification_input(st, ev), event=ev)
+    mod = combined.view(
+        st, ModificationView.of(ev.contract_key, _modification_input(st, ev), event=ev)
+    )
     subscriptions.check(mod, classify.contract_obligations(st, mod))
-    treatments = _treatments(ev.payload.get("treatments"), ev)
+    treatments = combined.keyed(
+        _treatments(ev.payload.get("treatments"), ev), combined.aliases(st, ev.contract_key)
+    )
     if any(treatment in _LEGACY for treatment in treatments.values()):
         return _template(ctx, st, ev, tb, identified, price_at, mod, treatments)
-    route = _Route(mod, treatments, _ssp_basis(ev.payload.get("ssp_basis"), ev))
+    route = _Route(
+        mod,
+        treatments,
+        combined.keyed(
+            _ssp_basis(ev.payload.get("ssp_basis"), ev), combined.aliases(st, ev.contract_key)
+        ),
+    )
     return _native(ctx, st, ev, tb, identified, price_at, route)
 
 

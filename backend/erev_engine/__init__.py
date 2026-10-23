@@ -1183,7 +1183,10 @@ def _contract_version(
     stage 15 — gross of the S15-R-09 exemptions (S15-R-08 rev 1.26; D-98 91a) — and 0 when the
     stage list holds no stage 15 (EDS-1)."""
     from erev_engine.stages.s04_transaction_price import TP_COMPONENTS
-    from erev_engine.stages.s13_books.output_measures import boundary_build_up_node
+    from erev_engine.stages.s13_books.output_measures import (
+        boundary_build_up_node,
+        combined_lease_fixed_change,
+    )
 
     group = allocated.group_code
     tp = allocated.tp_history[-1] if allocated.tp_history else None
@@ -1237,8 +1240,9 @@ def _contract_version(
         for ob in allocated.obligations
         if ob.scope_flag == ScopeFlag.LEASE_842 and ob.combined_component_keys
     )
-    if tp is not None and lease_usage:
-        columns["out_of_scope_amount"] = tp.out_of_scope.posted + lease_usage
+    lease_scope_change = lease_usage + combined_lease_fixed_change(allocated)
+    if tp is not None and lease_scope_change:
+        columns["out_of_scope_amount"] = tp.out_of_scope.posted + lease_scope_change
     leased = _routed_out_lease_allocation(allocated) + lease_usage
     if tp is not None and leased:
         # D-88 L7-5-Q-6: the price excludes the allocation of routed-out LEASE_842 obligations at

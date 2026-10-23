@@ -763,3 +763,34 @@ updated, including its stale statement that POL-231 was entirely unimplemented. 
 This closes the previously listed basic in-scope combination visibility gap through Latest
 contract status. Other recognition measures, contract modifications and public RTI persistence
 verification remain unfinished; the repository is not yet declared complete.
+
+## October 23 combined-component price modifications — engine implementation
+
+Pure CHANGE price deltas on original POL-231 members now resolve to the reviewed combined
+obligation in proposal/application, including treatments, questionnaire and native SSP basis.
+The integrity reader recognizes original members while preserving original duplicate/sign checks.
+Original line payloads remain intact; only the calculation target changes. Conflicting member
+instructions are refused. Quantity, removal and term changes require combination reassessment;
+they are not silently applied to a synthetic combined quantity or service term.
+
+The modification's remaining SSP now resolves every original component product, quantity and
+price, retaining each source. Previously it priced the summed quantity using only the host
+product. Compatible SSP quantity bases are required in this implementation. The existing D18
+trace formula accepts an explicit remaining-component count and scales all those parts; older
+traces default to one part. A combined 10,000 SSP and a separate 10,000 SSP receive equal shares
+of a 1,000 price increase: 10,500 each, with fully re-evaluable trace evidence.
+
+Combined lease output now publishes its current fixed allocation even without usage measures,
+and contract scope totals include the change from inception allocation. A 10,000 lease-
+predominant combination increased by 1,000 reports 11,000 excluded and zero 606 transaction
+price/revenue. Existing usage/RTI scope handling remains consistent. In-scope price increases
+and decreases produce 11,000 and 9,000 respectively.
+
+Verification: 46 targeted cases cover new price modifications, shared allocation, scope routing,
+conflicting treatments and existing combination/usage/proposal/integrity/prospective behavior.
+Seven production modules pass scoped mypy; changed Python files pass lint. No deployment.
+
+Remaining: public modification entry/approval/persistence and saved Reporting verification;
+quantity/removal/term changes with reassessed combinations; mixed SSP quantity-basis support;
+other host recognition measures. These restrictions are explicit outstanding implementation,
+not evidence that the complete modification feature is finished.

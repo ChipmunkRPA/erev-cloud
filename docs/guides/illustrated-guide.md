@@ -2342,3 +2342,9 @@ only combinations routed outside 606. Both reports use the selected calculation 
 retained evidence and preserve it when the report is saved and rerun. They do not divide the
 combined amount among original components. Older traces without structured membership say so
 explicitly. Reports without combinations retain their existing columns.
+
+
+Combined-component price changes now have engine support for mapping original members to the
+combined obligation and repricing compatible SSP bases. Quantity, removal and term changes
+still require combination reassessment support, which is unfinished. The public modification
+approval-to-Reporting workflow for these combinations has not yet been verified.

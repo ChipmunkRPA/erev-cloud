@@ -120,6 +120,15 @@ def routed_out_lease_allocation(st: AllocatedState) -> int:
     )
 
 
+def combined_lease_fixed_change(st: AllocatedState) -> int:
+    """Change from inception allocation for reviewed combined leases at the version date."""
+    return sum(
+        sum(segment.a_posted for segment in _current(ob).values()) - ob.original_allocation.a_posted
+        for ob in st.obligations
+        if ob.scope_flag == ScopeFlag.LEASE_842 and ob.combined_component_keys
+    )
+
+
 def _combined_lease_usage(
     ctx: BookContext, st: AllocatedState, as_of: date, tb: TraceBuilder
 ) -> int:
@@ -127,14 +136,14 @@ def _combined_lease_usage(
     total = 0
     mu = ctx.currencies[ctx.txn_currency].minor_unit
     for ob in st.obligations:
-        if (
-            ob.scope_flag != ScopeFlag.LEASE_842
-            or not ob.combined_component_keys
-            or str(ob.recognition_method) not in {"USAGE", "RIGHT_TO_INVOICE"}
-            or not any(seg.component == "PERIOD_VC" for seg in ob.segments)
-        ):
+        if ob.scope_flag != ScopeFlag.LEASE_842 or not ob.combined_component_keys:
             continue
-        realised, findings = components.period_vc_realised(ctx, st, ob, as_of)
+        realised, findings = (
+            components.period_vc_realised(ctx, st, ob, as_of)
+            if str(ob.recognition_method) in {"USAGE", "RIGHT_TO_INVOICE"}
+            and any(seg.component == "PERIOD_VC" for seg in ob.segments)
+            else ((), ())
+        )
         if findings:
             raise EngineError(
                 "NON_FINITE_AMOUNT",
@@ -439,8 +448,9 @@ def publish(
         adjustments["expected_returns_amount"] = memo - expected_returns
         adjustments["transaction_price"] = memo - expected_returns
         price += memo - expected_returns
-    if lease_usage:
-        adjustments["out_of_scope_amount"] = lease_usage
+    lease_scope_change = lease_usage + combined_lease_fixed_change(st)
+    if lease_scope_change:
+        adjustments["out_of_scope_amount"] = lease_scope_change
     leased = routed_out_lease_allocation(st) + lease_usage
     if leased:
         adjustments["transaction_price"] = adjustments.get("transaction_price", 0) - leased

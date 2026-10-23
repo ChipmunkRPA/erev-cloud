@@ -98,7 +98,12 @@ def validate_modification(
     member = any(view.header.external_id == mod.contract_key for view in st.contracts)
     if not member:
         found(CONTRACT_NOT_FOUND, contract, contract_key=mod.contract_key)
-    stored = {ob.obligation_key: ob for ob in st.obligations if ob.contract_key == mod.contract_key}
+    stored = {
+        key: ob
+        for ob in st.obligations
+        if ob.contract_key == mod.contract_key
+        for key in (ob.obligation_key, *ob.combined_component_keys)
+    }
     first_lines: dict[tuple[str, str], int] = {}
     for index, line in enumerate(mod.lines):
         subject = obligation_subject_key(mod.contract_key, line.obligation_key)

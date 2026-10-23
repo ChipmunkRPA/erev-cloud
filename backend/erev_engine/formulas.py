@@ -2211,7 +2211,12 @@ def _mod_weights_d18(inputs: Sequence[Fraction], params: Mapping[str, str]) -> F
             return sum(parts, Fraction(0))
         if not parts:
             raise ValueError(f"{formula_id}: a scaled weight has a remaining-units part")
-        return parts[0] * rho * _series_multiplier(params, formula_id) + sum(parts[1:], Fraction(0))
+        count = int(params.get("remaining_part_count", "1"))
+        if not 1 <= count <= len(parts):
+            raise ValueError(f"{formula_id}: invalid remaining component count")
+        return sum(parts[:count], Fraction(0)) * rho * _series_multiplier(params, formula_id) + sum(
+            parts[count:], Fraction(0)
+        )
     if label == "N":
         return _nondistinct_weight(sum(parts, Fraction(0)), params)
     raise ValueError(f"{formula_id} does not know the class {label}")
