@@ -228,43 +228,87 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             if entry.flow.is_revenue:
                 recognized[member] += entry.flow.amount
                 relief[member] += attribution.get(index, ZERO)
+        group_identity = f"{version}:{entity}:{currency}"
+        membership[group_identity] = sorted(str(member[0]) for member in members)
         if policies.get(str(entity)) == "FIFO_WITHIN_POB":
             previous = before.get(entity)
-            if len(members) != 1:
-                raise tie_outs.invalid(
-                    "currency_view",
-                    "Per-obligation opening relief for combined contracts "
-                    "requires original obligation-level opening evidence and is not yet supported.",
-                )
-            member = members[0]
             frozen = None if previous is None else locked.at(entity, previous)
-            frozen_row = None
-            frozen_facts = None
-            if frozen is not None and previous is not None:
-                frozen_row, frozen_facts = frozen_sources.read(
-                    row=selected[member],
-                    previous=previous,
-                    locked=frozen,
-                    book=book,
-                )
-            pob_amount, facts = opening_relief_pob.calculate(
-                session,
-                selected[member],
-                previous,
-                [entry for _, entry in entries],
-                first["contract_liability"],
-                -(
-                    path["REVENUE_FROM_OPENING"]["contract_liability"]
-                    + path["REVENUE_FROM_PERIOD_BILLINGS"]["contract_liability"]
-                ),
-                opening_row=frozen_row,
-                opening_absent=frozen is not None and frozen_row is None,
+            consumed = -(
+                path["REVENUE_FROM_OPENING"]["contract_liability"]
+                + path["REVENUE_FROM_PERIOD_BILLINGS"]["contract_liability"]
             )
-            if frozen_facts is not None:
-                facts["frozen_opening"] = frozen_facts
-            relief[member] = pob_amount
-            pob_evidence[f"{version}:{entity}:{currency}"] = facts
-        membership[f"{version}:{entity}:{currency}"] = sorted(str(member[0]) for member in members)
+            member_facts: dict[str, Any] = {}
+            for member in members:
+                frozen_row = None
+                frozen_facts = None
+                if frozen is not None and previous is not None:
+                    frozen_row, frozen_facts = frozen_sources.read(
+                        row=selected[member],
+                        previous=previous,
+                        locked=frozen,
+                        book=book,
+                    )
+                pob_amount, facts = opening_relief_pob.calculate(
+                    session,
+                    selected[member],
+                    previous,
+                    [entry for owner, entry in entries if owner == member],
+                    first["contract_liability"],
+                    consumed,
+                    opening_row=frozen_row,
+                    opening_absent=frozen is not None and frozen_row is None,
+                )
+                if frozen_facts is not None:
+                    facts["frozen_opening"] = frozen_facts
+                relief[member] = pob_amount
+                member_facts[str(member[0])] = facts
+            if len(members) == 1:
+                pob_evidence[group_identity] = member_facts[str(members[0][0])]
+            else:
+                # The group cap does not establish a unique member split. Present it once,
+                # with the complete member set, rather than inventing individual relief.
+                amount = opening_relief_pob.group_total(
+                    list(relief[member] for member in members),
+                    opening=first["contract_liability"],
+                    consumed=consumed,
+                )
+                for facts in member_facts.values():
+                    facts["eligible_relief_capped_by_group"] = facts.pop("relief")
+                pob_evidence[group_identity] = {
+                    "presentation": "GROUP_TOTAL",
+                    "members": member_facts,
+                    "opening_cap": str(first["contract_liability"]),
+                    "consumption_cap": str(consumed),
+                    "relief": str(amount),
+                }
+                names = sorted(selected[member].external_id for member in members)
+                recognized_total = sum((recognized[member] for member in members), ZERO)
+                contracts.append(
+                    {
+                        "row_key": f"combined:{group_identity}",
+                        "section": 2,
+                        "summary": "Combined contracts (group total): "
+                        + "; ".join(names)
+                        + ". Member relief is not allocated.",
+                        "contract_external_id": None,
+                        "customer_name": None,
+                        "entity_code": selected[members[0]].entity_code,
+                        "currency": currency,
+                        "opening_contract_liability": tie_outs.money(
+                            first["contract_liability"], currency
+                        ),
+                        "revenue_recognized": tie_outs.money(recognized_total, currency),
+                        "revenue_from_opening": tie_outs.money(amount, currency),
+                    }
+                )
+                group = totals.setdefault(currency, {})
+                for name, value in (
+                    ("opening", first["contract_liability"]),
+                    ("revenue", recognized_total),
+                    ("relief", amount),
+                ):
+                    tie_outs.add(group, name, value)
+                continue
         for member in members:
             row = selected[member]
             amount = open_rows[member].value("contract_liability") if member in open_rows else ZERO

@@ -1060,3 +1060,28 @@ positive 800 consumption against a 5,000 original opening, range-net corrections
 absence, missing evidence, lock balance mismatch refusal and one-time source loading. The existing
 unlocked public POB report/rerun also passes. Three production modules pass mypy and scoped lint
 passes. Disposable DB stopped; no deployment.
+
+## October 23 combined transaction POB disclosure — group total presentation
+
+The transaction FIFO_WITHIN_POB builder no longer rejects a retained combination group solely
+because it contains multiple member contracts. It reads each member's obligation opening sources
+and selected-range posted revenue, then applies opening liability and actual-relief caps once to
+the combined eligibility. A combined row presents the group's opening, revenue and opening relief,
+with every member's external ID in the summary. It does not invent a contract ID for the group or
+present member eligibility as attributable relief. Currency summaries include the group exactly
+once. Retained evidence names all member identities and their obligation inputs, labels individual
+figures as eligibility capped by the group, and separately records the actual group total.
+
+Single-contract rows and their saved output wording remain unchanged. Locked members use the
+previously implemented authenticated frozen-source reader. The public acceptance case here covers
+an unlocked combination; combined/locked special histories remain to be exercised as needed.
+Foreign-functional/reporting POB consumption and agent/cross-entity attribution remain unfinished.
+
+Necessary verification: the existing approved two-order combination is computed after opening
+October. The public report displays one combined row with opening 77,591.97 and positive opening
+relief equal to recognized revenue; both member identities appear, individual member rows do not,
+and currency totals sum once. Rerun reproduces rows and stored output hash without current policy
+resolution. Retained evidence has both original contract IDs and no invented member relief value.
+The ordinary public POB case also passes. Eleven focused cases cover eligibility, a binding group
+cap, original lock sources, range corrections and policy retention. Scoped lint and three production
+module type checks pass. No deployment.

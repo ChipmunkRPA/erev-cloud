@@ -1060,10 +1060,12 @@ opening attributed billings less its opening revenue and the net revenue actuall
 the selected range. It caps the result at contract opening liability and actual liability relief.
 The report footnote identifies this method; saved reruns retain its original evidence and policy.
 
-This path supports uncombined principal contracts performed by their contracting entity with
+This path supports principal contracts performed by their contracting entity with
 complete prior-period obligation evidence. Locked openings use the original balance report versions
 retained by the lock's disclosure pack, verified against its frozen balances. A later contract
-version does not change that opening. Combined contracts, agent/cross-entity cases and locks without
-these original sources return an explanation instead of a substitute amount.
+version does not change that opening. Combined contracts display one group total and list all
+member contracts; individual relief is not allocated when the group cap does not establish ownership.
+Agent/cross-entity cases and locks without these original sources return an explanation instead
+of a substitute amount.
 Functional and reporting currency views still disclose their contract/layer consumption method;
 per-obligation consumption in those views remains under development.

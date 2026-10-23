@@ -121,3 +121,17 @@ def test_frozen_sources_are_cached_and_must_tie_to_lock(monkeypatch):
     held.values["contract_liability"] = D("501")
     with pytest.raises(Problem):
         reader.read(row=row, previous=None, locked=locked, book="ASC606")
+
+
+def test_combination_cap_is_applied_once_after_member_eligibility(monkeypatch):
+    session, row, _ = fixture(monkeypatch)
+    # Two members independently qualify for 800; a group-level 1,000 cap cannot
+    # establish whether either member owns 200, 500, or 800 of the final amount.
+    candidate, _ = pob.calculate(
+        session, row, NS(key="P03"), [entry(1, "S", "800")], D("1000"), D("1600")
+    )
+    assert candidate == D("800")
+    assert pob.group_total([candidate, candidate], opening=D("1000"), consumed=D("1600")) == D(
+        "1000"
+    )
+    assert pob.group_total([candidate, candidate], opening=D("2000"), consumed=D("900")) == D("900")

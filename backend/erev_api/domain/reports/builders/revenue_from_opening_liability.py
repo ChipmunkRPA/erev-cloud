@@ -18,10 +18,11 @@ Section 1 "Summary" gives one row ``summary:<ISO>`` per currency; section 2 "By 
 ``contract:<external id>:<entity code>``. The footnote names the resolved POL-126 option. No
 tie-out.
 
-D-87 L6-3-Q-23: the footnote names the option applied, ``FIFO_WITHIN_CONTRACT``. When an entity
-resolves ``FIFO_WITHIN_POB``, the contract formula still applies and the footnote adds that
-per-obligation consumption is not yet available. POB-attributed invoices (POL-126) are on the
-backlog.
+Legacy bindings retain D-87 L6-3-Q-23's contract formula and its explicit limitation footnote.
+New transaction FIFO_WITHIN_POB reads original obligation opening billing/revenue and actual
+range-net posted revenue. Combined contracts show one capped group total with the complete member
+set, without inventing individual relief. Locked openings use authenticated original disclosure
+versions. Foreign-functional/reporting POB integration remains unfinished.
 
 The opening where the period before the range is locked at the run's cutoff (ENGINE_SPEC_B
 S15-R-20 rev 1.168; item RPT-ROLLFWD-LOCKED-CLOSING-1; the supervisor's ruling of 2026-10-02):

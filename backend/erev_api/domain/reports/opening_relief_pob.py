@@ -29,7 +29,7 @@ def calculate(
     opening_row: tie_outs.BalanceRow | None = None,
     opening_absent: bool = False,
 ) -> tuple[Decimal, dict[str, Any]]:
-    """One uncombined member, using the selected version and the selected posting range.
+    """Eligibility for one member, using the selected version and selected posting range.
 
     Locked openings must supply the authenticated lock-time source row, or proven absence.
     A range is evaluated once, never as a sum of monthly opening-consumption disclosures.
@@ -141,3 +141,8 @@ def calculate(
         "consumption_cap": str(consumed),
         "relief": str(result),
     }
+
+
+def group_total(eligible: Sequence[Decimal], *, opening: Decimal, consumed: Decimal) -> Decimal:
+    """Apply the group cap once; it provides no authority to allocate member relief."""
+    return min(max(ZERO, opening), max(ZERO, consumed), sum(eligible, ZERO))

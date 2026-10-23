@@ -263,3 +263,10 @@ Current outstanding implementation and verification gaps remain in
 - Public lock/new-version/report/rerun verification and seven focused cases pass, plus scoped
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+
+## Combined transaction POB disclosure — October 23, 2026
+
+- Combined members now contribute obligation eligibility to one capped group total, displayed
+  with the full member set. No individual relief allocation is invented or double-counted.
+- Public combined report/rerun hashes, ordinary POB regression, 11 focused cases and scoped
+  lint/types pass. Foreign-functional/reporting and special attribution remain open. No deployment.

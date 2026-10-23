@@ -203,6 +203,11 @@ def finish(
             "opening liability and actual liability relief. Other entities retain "
             "FIFO_WITHIN_CONTRACT. No per-layer ownership amounts are inferred."
         )
+        if any(str(row["row_key"]).startswith("combined:") for row in contracts):
+            footnote += (
+                " Combined contracts show one group total with the full member set; "
+                "member relief is not allocated."
+            )
     return ReportData(
         columns=disclosure.COLUMNS,
         rows=tuple(rows),

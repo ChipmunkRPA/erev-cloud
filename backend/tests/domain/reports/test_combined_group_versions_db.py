@@ -1005,3 +1005,74 @@ def test_the_allocations_report_names_a_version_by_its_number_along_the_chain(
     # the contract history states the same versions under the same numbers
     assert history[f"version:{K09}:2:O1"] == "117000.00"
     assert history[f"version:{SECOND}:2:O1"] == "39000.00"
+
+
+@pytest.mark.slow
+def test_combined_pob_opening_shows_group_total_and_all_sources(combined, monkeypatch):
+    from decimal import Decimal
+    from types import SimpleNamespace
+    from erev_api.domain.reports import opening_consumption_policy as policy
+    from support.factories import open_periods
+
+    open_periods(combined.app, combined.maya, entity_code=AVM_US, keys=["FY2026-P10"])
+    group_id = combined.place.scalar(
+        select(contract.c.combination_group_id).where(
+            contract.c.id == UUID(str(combined.contracts[K09].contract["id"]))
+        )
+    )
+    computed(combined.place, group_id)
+    monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
+    run, rows = report_run(
+        combined,
+        "revenue_from_opening_liability",
+        {
+            **SEPTEMBER,
+            "from_period_key": "FY2026-P10",
+            "to_period_key": "FY2026-P10",
+        },
+    )
+    group_rows = [row for row in rows if row["row_key"].startswith("combined:")]
+    assert len(group_rows) == 1
+    row = group_rows[0]
+    assert K09 in row["summary"] and SECOND in row["summary"]
+    assert row["contract_external_id"] is None
+    assert amount(row["opening_contract_liability"]) == "77591.97"
+    assert Decimal(amount(row["revenue_from_opening"])) > 0
+    assert row["revenue_from_opening"] == row["revenue_recognized"]
+    assert not any(
+        row["row_key"] in {f"contract:{K09}:{AVM_US}", f"contract:{SECOND}:{AVM_US}"}
+        for row in rows
+    )
+    summary = keyed(rows)["summary:USD"]
+    assert Decimal(amount(summary["revenue_from_opening"])) == sum(
+        Decimal(amount(item["revenue_from_opening"])) for item in rows if item["section"] == 2
+    )
+
+    def no_current_policy(*args, **kwargs):
+        raise AssertionError("Saved combined report consulted current policy")
+
+    monkeypatch.setattr(policy, "resolve", no_current_policy)
+    again, repeated = rerun(combined, run["id"])
+    assert repeated == rows
+    from erev_api.db.tables import report_run as saved_run
+
+    hashes = [
+        combined.place.scalar(
+            select(saved_run.c.output_sha256).where(saved_run.c.id == UUID(item["id"]))
+        )
+        for item in (run, again)
+    ]
+    assert hashes[0] == hashes[1]
+    binding = combined.place.scalar(
+        select(saved_run.c.source_binding).where(saved_run.c.id == UUID(run["id"]))
+    )
+    groups = [
+        item
+        for item in binding["evidence"]["opening_relief_pob_v1"].values()
+        if item.get("presentation") == "GROUP_TOTAL"
+    ]
+    assert len(groups) == 1
+    assert set(groups[0]["members"]) == {
+        str(combined.contracts[name].contract["id"]) for name in (K09, SECOND)
+    }
+    assert all("relief" not in member for member in groups[0]["members"].values())
