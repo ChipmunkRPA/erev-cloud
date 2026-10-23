@@ -186,6 +186,21 @@ cases, a populated mixed-calendar report compared to separate entity runs and a 
 existing journal tie-out and retained functional/reporting rate workflows, plus scoped lint/types
 and migration metadata equality. These do not claim common-month allocation of 4-4-5 periods.
 
+## Explicit cross-calendar waterfall selections
+
+The waterfall API now accepts explicit local fiscal-key ranges across entity calendars. Its
+existing retained date buckets and entity-specific amount/contributor selection supply the
+required semantics: a key selects each entity's own interval, and actual dates label separate
+columns. This applies to month, quarter and year; it does not force different intervals into
+one common period. Legacy saved bindings retain their prior layout. Other unsupported report
+kinds still reject incompatible calendars.
+
+Necessary verification: three populated API workflows (month/quarter/year), each compared to
+separate entity runs, every dated cell value checked through the explain API, and identical
+retained rerun rows. The remaining calendar-guard workflow passes. Six existing date-bucket
+unit cases check source separation and retained layout; scoped lint/types pass. No new financial
+calculation, API schema or database migration was needed for this entry-point change.
+
 ## Repository completion evidence still required
 
 After feature completion, refresh the bounded release-candidate checks recorded in PROGRESS.md

@@ -1372,8 +1372,8 @@ def _calendar_errors(
     column per period key, so with no key in its parameters, too, it sets one month into a column
     per calendar. Such a run is refused before it exists; any other run that names no period by
     key reads each entity at its own period holding the run's date and is not."""
-    # This builder retains date-aligned columns and each entity's selected local periods.
-    if code == disaggregation_builder.CODE:
+    # These builders retain date-aligned columns and entity-specific local periods.
+    if code in {disaggregation_builder.CODE, revenue_waterfall_builder.CODE}:
         return []
     if len(set(entity_ids)) < 2:
         return []

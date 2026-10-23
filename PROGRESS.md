@@ -46,14 +46,14 @@ review and publish changes without PR accumulation, and do not deploy.
   targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Secondary-book late-event reporting — October 23, 2026
+## Cross-calendar waterfall selections — October 23, 2026
 
-- New computations record late-event evidence separately for each enabled entity book, with
-  that book's posting period. The register reads secondary identities without duplicating the
-  primary row; historical evidence and saved reports stay unchanged (migration 0338).
-- Two producer cases, the extended K07 report workflow and eight catalogue cases pass;
-  metadata equality and scoped lint/types pass. Scope and test boundaries are recorded in
-  CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+- Explicit fiscal-key ranges now reach the existing date-aligned waterfall implementation.
+  Each entity's local intervals and contributor sources stay distinct; month/quarter/year
+  totals and retained reruns match separate entity reports. Other report guards remain.
+- Three populated API/cell/rerun workflows and the remaining guard check pass; existing
+  date-bucket unit cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
+- Earlier late-event checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
 ## Cross-calendar revenue disaggregation — October 23, 2026
 

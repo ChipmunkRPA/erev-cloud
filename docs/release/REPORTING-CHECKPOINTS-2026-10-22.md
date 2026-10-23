@@ -51,3 +51,12 @@
   Write-once rule IDs, CTL-025/026 and audit evidence retain the decision (migration 0337).
 - Two populated GL/billing workflows and transition parity checks pass; scoped lint/types pass.
   See CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+
+## Secondary-book late-event reporting — October 23, 2026
+
+- New computations record late-event evidence separately for each enabled entity book, with
+  that book's posting period. The register reads secondary identities without duplicating the
+  primary row; historical evidence and saved reports stay unchanged (migration 0338).
+- Two producer cases, the extended K07 report workflow and eight catalogue cases pass;
+  metadata equality and scoped lint/types pass. Scope and test boundaries are recorded in
+  CURRENT-DEVELOPMENT-SCOPE.md. No deployment.

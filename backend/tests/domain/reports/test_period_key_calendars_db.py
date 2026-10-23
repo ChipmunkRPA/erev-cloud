@@ -253,7 +253,7 @@ def test_a_period_named_by_key_is_refused_for_entities_of_two_calendars(
     answered = [
         (what, started(world, code, parameters))
         for what, code, parameters in cases
-        if code != "disaggregation"
+        if code not in {"disaggregation", "revenue_waterfall"}
     ]
     assert [what for what, response in answered if response.status_code != 422] == []
     for what, response in answered:
@@ -363,3 +363,44 @@ def test_disaggregation_aligns_dates_and_retains_rerun(world: ReportWorld) -> No
     data = get(world.app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"}).json()
     assert data["items"] == rows
     assert reread["control_totals"] == combined["control_totals"]
+
+
+@pytest.mark.parametrize("granularity", ["MONTH", "QUARTER", "YEAR"])
+def test_waterfall_explicit_local_periods_across_calendars(
+    world: ReportWorld, granularity: str
+) -> None:
+    """Explicit fiscal keys select local intervals, with dated columns and scoped cell evidence."""
+    params = {
+        "entity_codes": BOTH,
+        **BOOK,
+        "from_period_key": "FY2026-P07",
+        "to_period_key": "FY2026-P12",
+        "granularity": granularity,
+        "row_dimension": "CONTRACT",
+    }
+    combined, rows = run_of(world, "revenue_waterfall", params)
+    expected = Decimal(0)
+    for code in BOTH:
+        _, single_rows = run_of(world, "revenue_waterfall", {**params, "entity_codes": [code]})
+        expected += total(single_rows) if single_rows else Decimal(0)
+    assert total(rows) == expected > 0
+    total_row = next(row for row in rows if row["row_key"] == "TOTAL:USD")
+    dates = [key for key in total_row if key.startswith("period:date_")]
+    assert len(dates) == {"MONTH": 12, "QUARTER": 4, "YEAR": 2}[granularity]
+    for column in dates:
+        explained = get(
+            world.app,
+            f"/api/v1/explain/report-runs/{combined['id']}/cell",
+            world.maya,
+            {"row_key": "TOTAL:USD", "column_key": column},
+        )
+        assert explained.status_code == 200, explained.text
+        assert explained.json()["value"] == total_row[column]
+    again = post(world.app, f"{REPORT_RUNS}/{combined['id']}/rerun", world.maya, {})
+    assert again.status_code == 202, again.text
+    assert worlds.run_now(world, UUID(again.json()["id"]))["state"] == "SUCCEEDED"
+    from support.worlds import REPORT_RUN_ID_HEADER
+
+    rerun_id = again.headers[REPORT_RUN_ID_HEADER]
+    data = get(world.app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"}).json()
+    assert data["items"] == rows
