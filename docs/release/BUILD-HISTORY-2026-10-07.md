@@ -12266,3 +12266,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   metadata parity passed. Foreign-contract modification functional TP/catch-up evidence remains
   a separate unresolved business gap; no ordinary FX conversion has replaced those amounts.
   No deployment; final repository verification remains open.
+
+## Functional revenue activity evidence — October 22, 2026
+
+- Stage 12 now emits a revenue_activity_functional disclosure node for each positive/negative
+  revenue control flow. Its signed functional amount is the sum of the actual historical-layer
+  consumption or asset/credit pieces used by the existing cumulative target, with replayable
+  signed inputs, transaction amount/currency, entity, obligation, source key and effective date.
+- This adds no posting target and leaves existing cumulative amounts unchanged. It supplies
+  flow-level evidence, which can be period-aggregated by the current S13 producer; it does not
+  yet allocate functional revenue to individual modification events. Foreign-contract
+  modification TP/catch-up reporting therefore remains incomplete and still refuses unsupported
+  currency views. Reporting integration and event attribution are the next required steps.
+- Necessary verification passed: 13 FX-layer cases with node-by-node formula replay and 10 native
+  functional-member/cross-entity cases. The new case proves EUR 150 uses historical USD 170,
+  rather than current-spot USD 210, and EUR -20 uses actual USD -26 credit pieces; cumulative
+  targets remain USD 170/144. Scoped lint/types passed. No deployment or release-complete claim.

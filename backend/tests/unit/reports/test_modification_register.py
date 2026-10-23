@@ -712,3 +712,47 @@ def test_foreign_equivalents_preserve_originals_round_signed_amounts_and_retain_
         register.functional_equivalents([source], {})
     with pytest.raises(Problem):
         register.check_view("functional", [source])
+
+
+def test_original_functional_calculation_columns_keep_bound_values_and_old_shape():
+    import json
+    from dataclasses import asdict
+
+    from erev_engine.canonical import canonical_bytes
+
+    source = _source(
+        obligation_keys=("O1", "O2"),
+        functional_calculation={
+            "O1": {
+                "amount": Decimal("8000"),
+                "currency": "GBP",
+                "period_key": "FY2026-P04",
+                "node_ids": ("original-event", "original-functional-flow"),
+            },
+        },
+    )
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(source)],
+                "currency_view": "transaction",
+                "from_date": "2026-04-01",
+                "to_date": "2026-04-30",
+                "functional_calculation_columns": True,
+            }
+        )
+    )
+    data = register.data_from_inputs(retained)
+    assert data.rows[0]["catch_up_functional_calculation"] == {
+        "amount": "8000.00",
+        "currency": "GBP",
+    }
+    assert "not journal delta" in data.rows[0]["catch_up_functional_basis"]
+    assert data.rows[1]["catch_up_functional_calculation"] is None
+    assert "Unavailable" in data.rows[1]["catch_up_functional_basis"]
+    assert data.rows[0]["tp_change"] == dataset_rows([source])[0]["tp_change"]
+    assert register.data_from_inputs(retained).rows == data.rows
+    del retained["functional_calculation_columns"]
+    old = register.data_from_inputs(retained)
+    assert old.columns == COLUMNS
+    assert "catch_up_functional_calculation" not in old.rows[0]

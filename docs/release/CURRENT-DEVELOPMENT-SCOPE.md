@@ -21,6 +21,13 @@ The modification register has original-currency event TP changes, catch-ups and 
 breakdowns, plus explicitly selected analytical spot equivalents. Those equivalents are not
 actual posted functional catch-ups.
 
+An additional supported path now exposes the original functional **calculation** amount when
+one modification exclusively explains its recognition-period flow. It verifies native layers
+and both currency totals, retains node identities and shows the calculation period. Mixed
+periods remain empty; this is not proof of a posted journal delta and does not close the
+multi-event work below. Native USD/GBP positive/negative witnesses and retained-row checks
+cover this path; public mixed-period tests verify refusal to misattribute the period total.
+
 Current source boundary:
 
 - `s09_recognition/decompose.py` identifies sequential event causes and cites individual

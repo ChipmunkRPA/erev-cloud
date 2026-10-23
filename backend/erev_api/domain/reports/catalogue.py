@@ -1603,6 +1603,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "Original functional catch-up calculation is shown separately when one modification "
+            "event exclusively explains its native recognition period and both currency totals "
+            "reconcile to retained historical layers; not a journal delta or spot equivalent; "
+            "mixed or missing evidence stays empty; bound runs preserve values and column shape",
             "currency_basis=spot_equivalent permits foreign functional/reporting views with "
             "approved effective-date spot equivalents, followed by effective-period average "
             "for reporting; original amounts and pinned rates are retained; equivalents are "

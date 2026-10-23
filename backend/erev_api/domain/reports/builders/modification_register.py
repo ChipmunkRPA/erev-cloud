@@ -75,7 +75,12 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.contracts import bundles, modifications
 from erev_api.domain.platform import approval_queries
-from erev_api.domain.reports import modification_event_amounts, reporting_currency, tie_outs
+from erev_api.domain.reports import (
+    modification_event_amounts,
+    modification_functional,
+    reporting_currency,
+    tie_outs,
+)
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_history import date_range
 from erev_api.domain.reports.builders.out_of_period_register import event_key, refuse_locked_source
@@ -248,6 +253,7 @@ class Source:
     preparer: str
     approvers: str | None
     tp_components: Mapping[str, Decimal] | None = None
+    functional_calculation: Mapping[str, Mapping[str, Any]] | None = None
 
 
 def applied_event_reference(owner: tuple[str, int] | None) -> str | None:
@@ -573,6 +579,7 @@ def _applied_measures(
     cutoff: datetime,
     params: ReportParams | None = None,
     components: dict[UUID, Mapping[str, Decimal]] | None = None,
+    functional: dict[UUID, dict[str, dict[str, Any]]] | None = None,
 ) -> dict[UUID, tuple[Decimal | None, dict[str, Decimal]]]:
     """Per APPLIED modification: (``tp_change``, catch-up per obligation key) from the run's
     book as of ``cutoff`` — the application version bound deterministically
@@ -744,6 +751,28 @@ def _applied_measures(
             if components is not None and measured.components is not None:
                 components[modification_id] = measured.components
             found[modification_id] = (measured.tp_change, measured.catch_up)
+            if functional is not None:
+                assert trace is not None and event_key_ is not None
+                from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
+                calculated = {}
+                for key in keys:
+                    try:
+                        original = modification_functional.read(
+                            trace,
+                            event_key=event_key_,
+                            subject=obligation_subject_key(
+                                str(source["contract_external_id"]), key
+                            ),
+                            entity=str(source["entity_code"]),
+                            transaction_currency=str(source["currency"]).strip(),
+                            functional_currency=str(source["functional_currency"]).strip(),
+                        )
+                    except (ValueError, EngineError) as error:
+                        raise ModificationRegisterRefusal("catch_up_amount", str(error)) from error
+                    if original is not None:
+                        calculated[key] = asdict(original)
+                functional[modification_id] = calculated
             if params is not None:
                 tie_outs.record_members(
                     params, "modification_event_traces", [version["calc_trace_id"]]
@@ -925,6 +954,7 @@ def sources(
         ):
             event_owners[UUID(str(event_id))] = (str(external_id), int(stream_version))
     component_values: dict[UUID, Mapping[str, Decimal]] = {}
+    functional_values: dict[UUID, dict[str, dict[str, Any]]] = {}
     applied = _applied_measures(
         session,
         book_code=book_code,
@@ -932,6 +962,7 @@ def sources(
         cutoff=cutoff,
         params=params,
         components=component_values,
+        functional=functional_values,
     )
     names = approval_queries.display_names(
         session,
@@ -1002,6 +1033,7 @@ def sources(
                 currency=str(row["currency"]).strip(),
                 tp_change=tp_change,
                 tp_components=component_values.get(modification_id),
+                functional_calculation=functional_values.get(modification_id),
                 catch_up=catch_up,
                 approval_request_no=None if request_id is None else request_nos.get(request_id),
                 approved_at=None if request_id is None else approved_at.get(request_id),
@@ -1273,6 +1305,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "to_date": to_date,
                 "sources": [asdict(item) for item in found],
                 "tp_component_breakdown": True,
+                "functional_calculation_columns": True,
                 "currency_basis": basis,
                 "spot_equivalents": spot_facts,
                 "reporting_currency": target,
@@ -1393,6 +1426,34 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
         totals["tp_component_basis"] = (
             "Original event-position TP components; empty when unavailable"
         )
+    if retained.get("functional_calculation_columns"):
+        columns += (
+            Column(
+                "catch_up_functional_calculation",
+                "Catch-up, original functional calculation",
+                "money",
+            ),
+            Column("catch_up_functional_period", "Functional calculation period", "code"),
+            Column("catch_up_functional_basis", "Functional calculation basis", "text"),
+        )
+        by_modification = {item.modification_no: item for item in found}
+        for row in rows:
+            item = by_modification[str(row["modification_no"])]
+            fact = (item.functional_calculation or {}).get(str(row["obligation_key"]))
+            row["catch_up_functional_calculation"] = (
+                None
+                if fact is None
+                else _money(Decimal(str(fact["amount"])), str(fact["currency"]))
+            )
+            row["catch_up_functional_period"] = None if fact is None else fact["period_key"]
+            row["catch_up_functional_basis"] = (
+                "Unavailable: requires exclusive original event-to-period evidence"
+                if fact is None
+                else (
+                    "Original functional layers; exclusive event-period calculation, "
+                    "not journal delta"
+                )
+            )
     check_key_columns(rows)
     totals["from_date"] = retained["from_date"]
     totals["to_date"] = retained["to_date"]

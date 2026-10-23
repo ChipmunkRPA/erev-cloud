@@ -915,6 +915,18 @@ zero. Previously retained reports keep their original columns. These contributio
 transaction price, not the functional-currency posting of revenue catch-ups.
 
 
+### Original functional catch-up calculation
+
+New modification reports also show **Catch-up, original functional calculation** when one
+modification fully explains the original recognition-period flow. This amount uses the
+calculation's actual functional layers, with its period shown alongside. It is not a journal
+posting delta and is separate from the optional spot equivalents below.
+
+A period containing several modifications or ordinary revenue does not provide a unique
+assignment to one event. Such rows display an unavailable basis and an empty amount; empty
+is not zero. Older calculations without the necessary evidence behave the same way. Saved
+reports retain these values and their column shape for same-source reruns.
+
 ### Optional currency equivalents for contract modifications
 
 To compare foreign-currency modifications, choose **Functional** or **Reporting** currency

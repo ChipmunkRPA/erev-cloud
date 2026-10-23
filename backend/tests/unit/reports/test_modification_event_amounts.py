@@ -22,7 +22,7 @@ from tests.engine.s06_modifications.test_s06_prospective import (
 )
 
 
-def _trace():
+def _trace(*, foreign=False, same_period=False):
     start = date(2026, 1, 1)
     first = modification_input(
         "MOD-ONE",
@@ -32,7 +32,7 @@ def _trace():
     )
     second = modification_input(
         "MOD-TWO",
-        date(2026, 6, 1),
+        date(2026, 4, 2) if same_period else date(2026, 6, 1),
         [mod_line("O1", "CHANGE", "SKU", "0", "-10000.00")],
         kind="PRICE_CHANGE",
     )
@@ -53,6 +53,47 @@ def _trace():
         months=12,
         modifications=[first, second],
     )
+    if foreign:
+        from erev_engine.bundle import FxRateInput
+
+        calendar = replace(value.entities[0], functional_currency="GBP")
+        rates = tuple(
+            FxRateInput(
+                f"USD-GBP/{kind}/{period.period_key}",
+                "FX@v1",
+                kind,
+                "USD",
+                "GBP",
+                period.start_date if kind == "spot" else period.end_date,
+                None if kind == "spot" else period.period_key,
+                Decimal("0.8") if period.start_date.month < 6 else Decimal("0.9"),
+            )
+            for period in calendar.periods
+            for kind in ("spot", "average", "closing")
+        )
+        value = replace(
+            value,
+            entities=(calendar,),
+            books=(
+                replace(
+                    value.books[0],
+                    account_mapping=bundles.account_mapping(extra=(("FX_GAIN_LOSS", None, "FX"),)),
+                ),
+            ),
+            currencies=bundles.currencies("USD", "GBP"),
+            fx_rates=tuple(
+                sorted(
+                    rates,
+                    key=lambda r: (
+                        r.rate_type,
+                        r.base_currency,
+                        r.quote_currency,
+                        r.effective_date,
+                        r.version_key,
+                    ),
+                )
+            ),
+        )
     output = compute(value)
     assert len(output.books) == 1
     return output.books[0].trace, [event.event_key for event in events]
@@ -130,3 +171,66 @@ def test_two_modifications_are_read_independently_from_one_native_trace():
             obligation_keys=["O1"],
             currency="EUR",
         )
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+def test_exclusive_modification_period_keeps_original_functional_calculation(foreign):
+    from erev_api.domain.reports.modification_functional import read as functional
+    from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
+    trace, events = _trace(foreign=foreign)
+    currency = "GBP" if foreign else "USD"
+
+    def measure(event, held=trace):
+        return functional(
+            held,
+            event_key=event,
+            subject=obligation_subject_key(CONTRACT, "O1"),
+            entity="US01",
+            transaction_currency="USD",
+            functional_currency=currency,
+        )
+
+    first, second = [measure(event) for event in events]
+    assert first.amount == Decimal("8000" if foreign else "10000")
+    assert second.amount == Decimal("-4500" if foreign else "-5000")
+    assert first.currency == second.currency == currency
+    assert first.period_key == "FY2026-P04" and second.period_key == "FY2026-P06"
+    assert any(node.startswith("revenue_activity_functional:") for node in first.node_ids)
+    missing = replace(
+        trace, nodes=tuple(n for n in trace.nodes if n.measure != "revenue_activity_functional")
+    )
+    assert measure(events[0], missing) is None
+    mixed, events = _trace(foreign=foreign, same_period=True)
+    assert all(measure(event, mixed) is None for event in events)
+    # An unrelated upstream revenue producer must not borrow the period's FX amount.
+    original_trace, original_events = _trace(foreign=foreign)
+    altered = replace(
+        original_trace,
+        nodes=tuple(
+            replace(
+                node,
+                params={
+                    **node.params,
+                    "recognition_source_node": "revenue_cum:"
+                    + obligation_subject_key(CONTRACT, "O1")
+                    + ":FY2026-P03",
+                },
+            )
+            if node.measure == "revenue_activity_functional" and node.id.endswith("FY2026-P04")
+            else node
+            for node in original_trace.nodes
+        ),
+    )
+    assert measure(original_events[0], altered) is None
+    corrupted = replace(
+        original_trace,
+        nodes=tuple(
+            replace(node, value=str(Decimal(node.value) + 1))
+            if node.measure == "revenue_activity_functional" and node.id.endswith("FY2026-P04")
+            else node
+            for node in original_trace.nodes
+        ),
+    )
+    with pytest.raises(ValueError, match="reproduce"):
+        measure(original_events[0], corrupted)

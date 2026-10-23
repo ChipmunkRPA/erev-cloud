@@ -228,7 +228,9 @@ def test_register_catchup_1_nonzero_catch_up_reads_the_caused_version(
     assert (second.status_code, second.json()["status"]) == (200, "APPROVED"), second.text
     draft = flows._create(k02, contract_id, flows._upgrade_body(reference="CR-MARROWBY-2026-14"))
     clock.advance(timedelta(minutes=1))
-    data = _run(k02, known_at=clock.now(), status=["APPLIED", "DRAFT"])
+    collector = SourceCollector()
+    data = _run(k02, known_at=clock.now(), status=["APPLIED", "DRAFT"], collector=collector)
+    assert register.data_from_inputs(collector.evidence[register.EVIDENCE]) == data
     by_key = {row["row_key"]: row for row in data.rows}  # the full row key proves multiplicity
     assert len(by_key) == len(data.rows) == 2
     applied = by_key[f"modification:{created['modification_no']}:O1"]
@@ -236,6 +238,10 @@ def test_register_catchup_1_nonzero_catch_up_reads_the_caused_version(
     assert applied["treatment_override"] is True
     assert applied["catch_up_amount"] is not None
     assert Decimal(applied["catch_up_amount"]["amount"]) != 0
+    # This period also contains ordinary time-based revenue: do not label its
+    # net functional flow as the individual modification's catch-up.
+    assert applied["catch_up_functional_calculation"] is None
+    assert "Unavailable" in applied["catch_up_functional_basis"]
     # the exact persisted amount the docstring claims: the application version (the primary-book
     # contract version of the contract's group whose cause_event_ids hold the applied event), this
     # contract, obligation O1
