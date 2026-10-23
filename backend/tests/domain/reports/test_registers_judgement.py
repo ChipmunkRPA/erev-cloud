@@ -1047,6 +1047,10 @@ def test_combined_original_component_price_change_approval_and_reporting(
         app, keyring, clock, files, lessor_combination=True, nonlease_predominates=True
     )
     world = lease.report
+    listed = get(app, f"/api/v1/contracts/{lease.contract_id}/obligations", world.maya)
+    assert listed.status_code == 200, listed.text
+    assert len(listed.json()["items"]) == 1
+    assert listed.json()["items"][0]["combined_component_keys"] == ["L1-LEASE", "L2-SERVICE"]
     created = post(
         app,
         f"/api/v1/contracts/{lease.contract_id}/modifications",

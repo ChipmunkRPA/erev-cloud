@@ -111,6 +111,8 @@ from erev_api.enums import (
     SspRangePosition,
 )
 from erev_api.money import MoneyOut, money_out
+from erev_api.domain.contracts import combined_components
+from erev_api.explain import store as trace_store
 from erev_api.problems import Problem
 from erev_api.schemas.common import ActorOut, ContextOut, MeasuredPeriodOut, RefOut
 from erev_api.schemas.contracts import (
@@ -1608,6 +1610,19 @@ def obligation_outs(
     With ``at`` (``obligations_at``) the to-date members are served at the cut of the context's
     ``as_of`` and each item's context names the period they were read at (04 API-C-10 rev 1.132);
     without it the rows answer the version as stored (the version reads)."""
+    trace = trace_store.load_trace(session, _uuid(version["id"])) if rows else None
+    external_ids: dict[UUID, str] = (
+        {
+            _uuid(contract_id): str(external_id)
+            for contract_id, external_id in session.execute(
+                select(contract.c.id, contract.c.external_id).where(
+                    contract.c.id.in_({_uuid(row["contract_id"]) for row in rows})
+                )
+            ).all()
+        }
+        if rows
+        else {}
+    )
     products = _refs(session, product, (row["product_id"] for row in rows))
     entities = _entity_refs(
         session,
@@ -1707,6 +1722,9 @@ def obligation_outs(
                 obligation_version_id=version_id,
                 contract_id=row["contract_id"],
                 obligation_key=row["obligation_key"],
+                combined_component_keys=combined_components.keys(
+                    trace, str(external_ids[_uuid(row["contract_id"])]), str(row["obligation_key"])
+                ),
                 legacy_record_key=row["legacy_record_key"],
                 product=products[_uuid(row["product_id"])],
                 stratification=row["stratification"],
@@ -1795,7 +1813,9 @@ def obligation_outs(
                 position=PositionOut(label=label, amount=_money(abs(net), currency)),
                 netting_reclass=NettingReclassOut(
                     amount=money("netting_reclass_amount"),
-                    role=_text(row["netting_reclass_role"]),
+                    role=None
+                    if row["netting_reclass_role"] is None
+                    else AccountRole(row["netting_reclass_role"]),
                 ),
                 satisfaction_status=status,
                 satisfied_date=row["satisfied_date"],

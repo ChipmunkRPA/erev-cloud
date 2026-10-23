@@ -50,6 +50,7 @@ import {
   O1_ID,
   serveWorkbench,
   workbenchContract,
+  workbenchObligation,
 } from "../../test/workbench";
 
 installMswServer();
@@ -1417,6 +1418,41 @@ describe("SF-07 a new modification", () => {
     expect(
       await screen.findByRole("radiogroup", { name: "Is the added price at SSP?" }),
     ).toBeTruthy();
+  });
+
+  it("offers retained original combined components for a price change", async () => {
+    serveWorkbench({
+      obligations: [
+        workbenchObligation({
+          combined_component_keys: ["O1", "LEASE-ORIGINAL"],
+        }),
+      ],
+    });
+    const world = serveModification(modificationRow());
+    open(`/contracts/${CONTRACT_ID}/modifications/new?${CONTEXT}&kind=PRICE_CHANGE`);
+    const trigger = await screen.findByRole("combobox", { name: /^Obligation/ });
+    fireEvent.click(trigger);
+    fireEvent.mouseDown(
+      await screen.findByRole("option", {
+        name: "LEASE-ORIGINAL · Combined into O1 · Price changes only",
+      }),
+    );
+    type(/^Price change amount/, "1000.00");
+    type(/^Reference/, "ORIGINAL-PRICE");
+    type(/^Effective date/, "01 Oct 2026");
+    fireEvent.click(next());
+    await waitFor(() => expect(world.sent("POST", "/modifications")).toHaveLength(1));
+    expect(world.sent("POST", "/modifications")[0]?.body).toMatchObject({
+      kind: "PRICE_CHANGE",
+      lines: [
+        {
+          action: "CHANGE",
+          obligation_key: "LEASE-ORIGINAL",
+          quantity_delta: "0",
+          consideration_delta: { amount: "1000.00", currency: "USD" },
+        },
+      ],
+    });
   });
 
   it("the general form names what is missing and posts a price change with a zero quantity", async () => {

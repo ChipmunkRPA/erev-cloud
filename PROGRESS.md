@@ -265,10 +265,9 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Combined price-change public flow — October 23, 2026
+## Original component selection — October 23, 2026
 
-- Original-member changes now verified through public classification, preview, independent
-  approval, persisted calculation and saved Reporting: 108,000 becomes 109,000.
-- Classification now displays the selected SSP default for proposed combined hosts too.
-  Authored overrides are preserved. The wizard still lacks original-component selection;
-  this is the next UI gap. No deployment. See CURRENT-DEVELOPMENT-SCOPE.
+- The modification wizard now offers original combined components for price changes, from
+  retained calculation membership. It preserves the original key and labels the combined host.
+- Other changes and duplicate additions using those keys are refused in the form. API workflow,
+  UI submission, parser/model cases, TypeScript and scoped Python types/lint pass. No deployment.

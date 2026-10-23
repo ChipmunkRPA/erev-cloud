@@ -407,6 +407,7 @@ class ObligationOut(BaseModel):
     obligation_version_id: uuid.UUID
     contract_id: uuid.UUID
     obligation_key: str
+    combined_component_keys: list[str] = Field(default_factory=list)
     legacy_record_key: str
     product: RefOut
     stratification: str

@@ -2348,6 +2348,8 @@ Combined-component price changes now have engine support for mapping original me
 combined obligation and repricing compatible SSP bases. Quantity, removal and term changes
 still require combination reassessment support, which is unfinished. The public modification API
 now supports and verifies classification, preview, independent approval and saved Reporting
-for original-component price changes. The modification wizard still needs original-component
-choices in its line selector; its treatment table now shows the combined host's selected SSP
-default.
+for original-component price changes. In the modification wizard, choose **Price change** and select the original component
+labelled **Combined into [host] · Price changes only**. The saved change retains that original
+component key. Other change kinds are not yet supported for these original components. The
+treatment table shows the combined host's selected SSP default. Older calculation versions
+without retained structured component identities cannot supply these extra choices.

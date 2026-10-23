@@ -628,3 +628,35 @@ it("keeps termination scope and refund when editing and submitting", () => {
   expect(restored.terminationRefund).toBe("40.00");
   expect(buildChange({ ...form, terminationRefund: "-1" }, CONTEXT).body).toBeNull();
 });
+
+it("retained combined keys allow price changes but not quantity changes or duplicate adds", () => {
+  const context = { ...CONTEXT, priceOnlyObligationKeys: ["LEASE"] };
+  const form = {
+    ...emptyChange("l1"),
+    reference: "PRICE-1",
+    effectiveDate: "01 Oct 2026",
+    kind: "PRICE_CHANGE" as const,
+    priceObligationKey: "LEASE",
+    priceChangeAmount: "1000",
+  };
+  expect(buildChange(form, context).body?.lines?.[0]?.obligation_key).toBe("LEASE");
+  for (const action of ["CHANGE", "ADD", "REMOVE"] as const) {
+    const result = buildChange(
+      {
+        ...form,
+        kind: "QUANTITY_CHANGE",
+        lines: [
+          {
+            ...emptyChangeLine("l1"),
+            action,
+            obligationKey: "LEASE",
+            quantityChange: "1",
+          },
+        ],
+      },
+      context,
+    );
+    expect(result.body).toBeNull();
+    expect(result.errors["line-l1-obligationKey"]).toBeTruthy();
+  }
+});

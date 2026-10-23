@@ -18918,6 +18918,8 @@ export interface components {
         [key: string]: components["schemas"]["RefOut"];
       };
       awaiting_trigger: components["schemas"]["MoneyOut"];
+      /** Combined Component Keys */
+      combined_component_keys?: string[];
       context: components["schemas"]["ContextOut"];
       /**
        * Contract Id

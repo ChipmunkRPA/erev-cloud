@@ -269,6 +269,13 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
     if (contract.data === undefined || obligations.data === undefined) {
       return null;
     }
+    const currentKeys = new Set(obligations.data.map((item) => item.obligation_key));
+    const originals = new Map<string, string>();
+    for (const item of obligations.data) {
+      for (const key of item.combined_component_keys ?? []) {
+        if (!currentKeys.has(key)) originals.set(key, item.obligation_key);
+      }
+    }
     const facts: ObligationFacts[] = obligations.data.map((item) => ({
       key: item.obligation_key,
       productCode: item.product.code,
@@ -281,11 +288,20 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
         externalId: contract.data.external_id,
         currency: contract.data.transaction_currency,
         obligations: facts,
+        priceOnlyObligationKeys: [...originals.keys()],
       },
-      obligationChoices: obligations.data.map((item) => ({
-        value: item.obligation_key,
-        label: obligationText(item),
-      })),
+      obligationChoices: [
+        ...obligations.data.map((item) => ({
+          value: item.obligation_key,
+          label: obligationText(item),
+        })),
+        ...[...originals]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([value, host]) => ({
+            value,
+            label: t("modifications.wizard.originalComponent", { key: value, host }),
+          })),
+      ],
       periodLabel,
       latestPostablePeriod,
     };

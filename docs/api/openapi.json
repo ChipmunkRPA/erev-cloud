@@ -28334,6 +28334,13 @@
           "awaiting_trigger": {
             "$ref": "#/components/schemas/MoneyOut"
           },
+          "combined_component_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Combined Component Keys",
+            "type": "array"
+          },
           "context": {
             "$ref": "#/components/schemas/ContextOut"
           },

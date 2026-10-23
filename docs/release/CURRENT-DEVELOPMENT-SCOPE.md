@@ -820,3 +820,32 @@ those original keys, but the UI selector still needs retained original-component
 checkpoint does not claim that original-component authoring is fully accessible in the UI.
 Quantity/removal/term reassessment, mixed SSP quantity bases and other recognition measures
 remain open as previously recorded.
+
+## October 23 original-component modification selector — implemented
+
+API-S-Obligation now exposes optional combined_component_keys from the selected contract
+version's hash-checked calculation trace. Keys are matched by encoded contract/obligation
+identity, parsed as structured JSON, deduplicated and sorted. No keys are inferred from legacy
+comma-separated membership or from current judgement records. Existing permission and version
+selection apply; only rows already visible to the caller receive their own component identities.
+Historical traces lacking structured identity return an empty list.
+
+The modification wizard adds original members absent from the current obligation list to its
+choices, labelled with their combined host and Price changes only. A price change submits the
+original key with zero quantity; no host product, quantity or end date is invented for the
+original component. Other change kinds and duplicate ADD attempts on these keys are refused by
+the form. OpenAPI and TypeScript contracts are regenerated. The existing NettingReclassOut role
+read now explicitly constructs its AccountRole enum, fixing a pre-existing type error without
+changing the serialized value.
+
+Verification: populated obligation read returns both original keys and continues through public
+classification, preview, independent approval and identical saved Reporting. A UI interaction
+selects the original component and asserts the submitted price-change payload. Four focused
+frontend cases cover selection, ordinary price entry and restricted/duplicate-key validation;
+TypeScript and scoped ESLint pass. A pure parser case covers delimiter preservation, subject
+isolation, legacy/missing evidence and malformed data. Three production modules pass mypy;
+scoped Python lint excludes existing import-order drift. No deployment.
+
+The previously identified original-component UI selection gap is closed. Quantity/removal/term
+reassessment, mixed SSP bases, other recognition measures and remaining publication checks
+remain unfinished. This does not declare the overall goal complete.
