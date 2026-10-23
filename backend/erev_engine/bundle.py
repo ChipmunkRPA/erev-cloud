@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final
@@ -42,6 +42,7 @@ __all__ = [
     "ContractVersionOut",
     "CostAssetVersionOut",
     "Diagnostic",
+    "DisclosureRollforwardOut",
     "EntityInput",
     "EstimateVersionInput",
     "EventInput",
@@ -849,6 +850,24 @@ class Diagnostic:
 
 
 @dataclass(frozen=True, slots=True)
+class DisclosureRollforwardOut:
+    """Retained native group rollforward, in integer minor units of its declared currency."""
+
+    unit: str
+    entity: str
+    period_key: str
+    view: str
+    currency: str
+    minor_unit: int
+    opening_date: date
+    closing_date: date
+    opening_basis: str
+    lines: Mapping[str, Mapping[str, int]]
+    memo: Mapping[str, int]
+    revenue_relief: int
+
+
+@dataclass(frozen=True, slots=True)
 class BookOutput:
     book_code: str
     # None for the LEGACY book, which carries only posting intents and trace
@@ -867,6 +886,10 @@ class BookOutput:
     # (line key, ((rate key, version key), ...)) of every foreign-currency posting line, sorted by
     # line key: PostingState.line_rates (REQ-FX-006; D-88 L7-6-Q-1), including foreign LEGACY lines
     line_rates: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = ()
+    # None means historical output without this evidence; () means captured, empty population.
+    disclosure_rollforwards: tuple[DisclosureRollforwardOut, ...] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
 
 
 @dataclass(frozen=True, slots=True)

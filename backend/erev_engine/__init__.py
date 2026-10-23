@@ -33,6 +33,7 @@ from erev_engine.bundle import (
     ContractVersionOut,
     CostAssetVersionOut,
     Diagnostic,
+    DisclosureRollforwardOut,
     FxLayerMovementOut,
     InputBundle,
     LossProvisionOut,
@@ -507,6 +508,25 @@ def _framework_output(bundle: InputBundle, result: BookResult, ctx: BookContext)
         proposals=tuple(sorted(allocated.proposals, key=lambda p: (p.kind, p.subject_key))),
         time_triggers=tuple(
             sorted(allocated.time_triggers, key=lambda t: (t.date, t.kind, t.subject_key))
+        ),
+        disclosure_rollforwards=None
+        if (bundle.evidence_revision or 0) < 4
+        else tuple(
+            DisclosureRollforwardOut(
+                unit=row.unit,
+                entity=row.entity,
+                period_key=row.period_key,
+                view=row.view,
+                currency=row.currency,
+                minor_unit=bundle.currencies[row.currency].minor_unit,
+                opening_date=row.opening_date,
+                closing_date=row.closing_date,
+                opening_basis="RESTATED",
+                lines=row.lines,
+                memo=row.memo,
+                revenue_relief=row.revenue_relief,
+            )
+            for row in (() if disclosure is None else disclosure.balance_rollforwards)
         ),
         trace=result.trace,
         # D-88 L7-6-Q-1: the pinned rates of each foreign-currency posting line (REQ-FX-006).

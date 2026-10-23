@@ -91,6 +91,7 @@ _MONETARY_SECTIONS: Final = frozenset(
         "cost_asset_versions",
         "loss_provision_versions",
         "fx_layer_movements",
+        "disclosure_rollforwards",
     }
 )
 _LINEAGE_KEY: Final = "trace_nodes"

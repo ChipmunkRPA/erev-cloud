@@ -73,7 +73,14 @@ def _encode(obj: Any, parts: list[str]) -> None:
     elif isinstance(obj, set | frozenset):
         _array(sorted(obj, key=canonical_bytes), parts)
     elif dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        _mapping(((f.name, getattr(obj, f.name)) for f in dataclasses.fields(obj)), parts)
+        _mapping(
+            (
+                (f.name, getattr(obj, f.name))
+                for f in dataclasses.fields(obj)
+                if not (f.metadata.get("canonical_omit_none") and getattr(obj, f.name) is None)
+            ),
+            parts,
+        )
     else:
         raise TypeError(f"canonical encoding does not support {type(obj).__qualname__}")
 

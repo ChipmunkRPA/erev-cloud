@@ -620,3 +620,19 @@ not decide whether a host EAC represents its component or the entire combination
 - This completes the calculation input path only: platform/native snapshot capture and automatic
   handoff of authenticated per-obligation history remain unfinished. Existing public report
   frozen-source recovery is separate; positive special-contract attribution remains guarded.
+
+## Opening-relief calculation breakdown — October 23, 2026
+
+- Opening-liability amount drill now exposes retained obligation opening billing, opening
+  recognized revenue, selected-range net posted revenue and eligibility before group caps.
+  Eligibility is explicitly not an allocation of combined group relief; absent inputs remain
+  absent rather than becoming manufactured zero balances.
+- Source amounts and caps name the retained pre-projection currency. Reporting cells show
+  signed period relief before translation alongside the report-currency result and retained
+  rates, so reversals and different closing/average-rate bases remain visible.
+- Five focused contributor cases and scoped lint/types pass. This reads existing saved evidence;
+  report amounts, bindings and posting calculations are unchanged. No deployment.
+- Native snapshot integration audit: S15 constructs balance_rollforwards, but the platform output
+  adapter currently persists no such collection. Completing native frozen-history integration
+  requires a persisted output/snapshot path as well as authenticated bundle inputs; adding a
+  keyword to the stage call alone would not create a usable platform feature. This remains open.

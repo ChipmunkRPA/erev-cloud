@@ -1099,7 +1099,7 @@ def test_close_refreshes_legacy_head_without_fx_evidence(
 def test_recompute_refreshes_evidence_revision_once_without_posting_again(
     app, keyring, clock, files, monkeypatch
 ):
-    assert bundles.EVIDENCE_REVISION == 3
+    assert bundles.EVIDENCE_REVISION == 4
     with monkeypatch.context() as legacy:
         legacy.setattr(bundles, "EVIDENCE_REVISION", 1)
         world, contract_id, group_id = _august_run_done(app, keyring, clock, files, monkeypatch)
@@ -1138,6 +1138,32 @@ def test_recompute_refreshes_evidence_revision_once_without_posting_again(
         repeated = compute_job.compute_group(uow, group_id)
         assert repeated.status is ComputationStatus.SUCCEEDED
         assert repeated.computation["id"] == fresh_id
+        import hashlib
+        import json
+        from erev_api.files.store import open_file
+
+        retained = (
+            uow.session.execute(
+                select(computation_evidence).where(
+                    computation_evidence.c.contract_computation_id == fresh_id
+                )
+            )
+            .mappings()
+            .one()
+        )
+        _, stream = open_file(
+            uow.session, retained["output_file_id"], files=uow.files, keyring=uow.keyring
+        )
+        with stream:
+            content = stream.read()
+        assert hashlib.sha256(content).hexdigest() == retained["output_sha256"]
+        native = [
+            row
+            for book in json.loads(content)["books"]
+            for row in book.get("disclosure_rollforwards", [])
+        ]
+        assert native and all(row["opening_basis"] == "RESTATED" for row in native)
+        assert all(row["currency"] and isinstance(row["minor_unit"], int) for row in native)
         assert (
             dict(
                 uow.session.execute(

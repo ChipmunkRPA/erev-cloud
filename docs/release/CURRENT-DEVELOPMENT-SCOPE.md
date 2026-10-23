@@ -13,6 +13,23 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Native disclosure output persistence — October 23, 2026
+
+- Evidence revision 4 adds typed native group balance rollforwards to each framework book's
+  immutable computation output: entity, period, view, currency/minor unit, opening/closing
+  dates, balance movements, memo causes and revenue relief. Current rows explicitly declare
+  RESTATED opening basis; they are not presented as authenticated frozen openings.
+- The existing computation_evidence output file and SHA-256 checks persist this collection;
+  no new table or duplicate report store is introduced. Output encoding omits the optional
+  field for older evidence revisions, preserving their prior shape. Monetary differences in
+  the new collection are classified as monetary during output comparison.
+- 24 codec/upgrade checks and scoped lint/types pass. A populated refresh workflow reads the
+  saved output file, verifies its digest and native rows, preserves the old evidence, refreshes
+  once and confirms no extra journal postings. No deployment.
+- This closes the missing output-persistence link identified in the preceding audit. Original
+  per-obligation snapshot capture and authenticated frozen-input handoff remain unfinished;
+  the new stored collection alone does not establish historical obligation ownership.
+
 ## Opening-relief calculation breakdown — October 23, 2026
 
 - Opening-liability amount drill now exposes retained obligation opening billing, opening

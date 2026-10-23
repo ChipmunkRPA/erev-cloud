@@ -381,3 +381,32 @@ def test_evidence_revision_preserves_revision_one_history_and_accounting(revisio
     assert decode_input(old_bytes) == old
     assert decode_input(old_bytes).sha256() == old_hash
     assert l1_sha256(output_mapping(compute(current))) == l1_sha256(output_mapping(compute(old)))
+
+
+def test_native_disclosures_are_saved_only_in_revision_four_output():
+    old = dataclasses.replace(_computable(), evidence_revision=3)
+    fresh = dataclasses.replace(old, evidence_revision=4)
+    before = output_mapping(compute(old))
+    output = compute(fresh)
+    after = output_mapping(output)
+    changed = json.loads(json.dumps(after))
+    changed["books"][0]["disclosure_rollforwards"][0]["revenue_relief"] += 1
+    assert representation_diff(after, changed).count("M") == 1
+    assert raw_digest(encode_output(output)) == output.sha256()
+    assert output_mapping(compute(decode_input(encode_input(fresh)))) == after
+    count = 0
+    for book in after["books"]:
+        rows = book.pop("disclosure_rollforwards", [])
+        for row in rows:
+            count += 1
+            assert row["opening_basis"] == "RESTATED"
+            assert row["minor_unit"] == fresh.currencies[row["currency"]].minor_unit
+            for values in row["lines"].values():
+                assert (
+                    sum(amount for code, amount in values.items() if code != "CLOSING")
+                    == values["CLOSING"]
+                )
+    assert count > 0
+    assert all("disclosure_rollforwards" not in book for book in before["books"])
+    # Only the retained disclosure collection changes, not contract, schedule or posting outputs.
+    assert l1_sha256(after) == l1_sha256(before)

@@ -20,21 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Opening-relief calculation breakdown — October 23, 2026
+## Native disclosure output persistence — October 23, 2026
 
-- Opening-liability amount drill now exposes retained obligation opening billing, opening
-  recognized revenue, selected-range net posted revenue and eligibility before group caps.
-  Eligibility is explicitly not an allocation of combined group relief; absent inputs remain
-  absent rather than becoming manufactured zero balances.
-- Source amounts and caps name the retained pre-projection currency. Reporting cells show
-  signed period relief before translation alongside the report-currency result and retained
-  rates, so reversals and different closing/average-rate bases remain visible.
-- Five focused contributor cases and scoped lint/types pass. This reads existing saved evidence;
-  report amounts, bindings and posting calculations are unchanged. No deployment.
-- Native snapshot integration audit: S15 constructs balance_rollforwards, but the platform output
-  adapter currently persists no such collection. Completing native frozen-history integration
-  requires a persisted output/snapshot path as well as authenticated bundle inputs; adding a
-  keyword to the stage call alone would not create a usable platform feature. This remains open.
+- Evidence revision 4 adds typed native group balance rollforwards to each framework book's
+  immutable computation output: entity, period, view, currency/minor unit, opening/closing
+  dates, balance movements, memo causes and revenue relief. Current rows explicitly declare
+  RESTATED opening basis; they are not presented as authenticated frozen openings.
+- The existing computation_evidence output file and SHA-256 checks persist this collection;
+  no new table or duplicate report store is introduced. Output encoding omits the optional
+  field for older evidence revisions, preserving their prior shape. Monetary differences in
+  the new collection are classified as monetary during output comparison.
+- 24 codec/upgrade checks and scoped lint/types pass. A populated refresh workflow reads the
+  saved output file, verifies its digest and native rows, preserves the old evidence, refreshes
+  once and confirms no extra journal postings. No deployment.
+- This closes the missing output-persistence link identified in the preceding audit. Original
+  per-obligation snapshot capture and authenticated frozen-input handoff remain unfinished;
+  the new stored collection alone does not establish historical obligation ownership.
 
 ## Rollforward Other explanation — October 23, 2026
 
