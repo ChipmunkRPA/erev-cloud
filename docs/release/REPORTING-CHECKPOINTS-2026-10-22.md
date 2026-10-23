@@ -204,3 +204,14 @@
 - Populated API workflow and five UI cases plus scoped lint/types pass. Definition authoring
   is available; values, approval, calculation application and reporting are still pending.
   The UI states this boundary. No estimation-choice assumptions and no deployment.
+
+## Shared-estimate draft versions — October 23, 2026
+
+- Added explicit-currency numerical drafts, version history, full edits and retained discard
+  in the portfolio API/page. Required return parameters, existing method/amount validation,
+  decimal strings and full historical-member permissions are preserved.
+- Parent/version ETags and explicit version increments prevent stale overwrites; one open
+  version per element, retained VOIDED rows and monotonic version numbers are verified.
+- Populated API and existing contract constraint workflows, six UI cases and scoped lint/types
+  pass; the computation head is unchanged. Approval/application/reporting remain pending,
+  with the two owner estimation choices still open. No deployment.

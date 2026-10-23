@@ -7,7 +7,6 @@ from uuid import UUID
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
-from erev_api.audit.writer import record_facts
 from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id, transitions
 from erev_api.db.tables import estimate, estimate_version
@@ -68,6 +67,7 @@ def save(
     portfolios.require_estimate_scope(uow.session, uow.ctx, portfolio_id, "estimate.create")
     element = _element(uow.session, uow.ctx, portfolio_id, estimate_id)
     creating = version_id is None
+    before = None
     version_row_version = 0
     if creating:
         check_version(parent.row_version)
@@ -100,6 +100,7 @@ def save(
         )
         if row is None:
             raise Problem("not-found")
+        before = estimates.version_outs(uow.session, [dict(row)])[0].model_dump(mode="json")
         version_row_version = int(row["row_version"])
         check_version(version_row_version)
         if row["status"] != "DRAFT":
@@ -159,15 +160,18 @@ def save(
         )
     assert version_id is not None
     portfolios.touch(uow, portfolio_id)
-    record_facts(
-        uow,
+    result = get(uow.session, uow.ctx, portfolio_id, estimate_id, version_id)
+    uow.audit(
         action="estimate_version." + ("create" if creating else "discard" if discard else "update"),
         object_type="estimate_version",
-        ids=[version_id],
+        object_id=version_id,
+        object_version=str(result.row_version),
+        before=before,
+        after=result.model_dump(mode="json"),
+        contract_ids=portfolios.audit_contract_ids(uow.session, portfolio_id),
         detail={
             "portfolio_id": str(portfolio_id),
             "estimate_id": str(estimate_id),
-            "values": None if body is None else body.model_dump(mode="json"),
         },
     )
-    return get(uow.session, uow.ctx, portfolio_id, estimate_id, version_id)
+    return result

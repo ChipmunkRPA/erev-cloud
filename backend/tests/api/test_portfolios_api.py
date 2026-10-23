@@ -290,3 +290,25 @@ def test_portfolio_membership_workflow(
         {"reason": "Replaced supporting evidence"},
     )
     assert voided.status_code == 200, voided.text
+
+    # Audit evidence remains linked to former members and carries actual version changes.
+    changes = world.place.rows(
+        select(audit_event)
+        .where(
+            audit_event.c.object_type == "estimate_version",
+            audit_event.c.object_id == UUID(version.json()["id"]),
+        )
+        .order_by(audit_event.c.occurred_at, audit_event.c.action)
+    )
+    by_action = {event["action"]: event for event in changes}
+    assert set(by_action) == {
+        "estimate_version.create",
+        "estimate_version.update",
+        "estimate_version.discard",
+    }
+    update_event = by_action["estimate_version.update"]
+    assert update_event["before"]["rate"] == version.json()["rate"]
+    assert update_event["after"]["rate"] == "0.15"
+    assert update_event["object_version"] == str(edited.json()["row_version"])
+    assert update_event["detail"]["contract_id"] == contract_id
+    assert by_action["estimate_version.discard"]["after"]["status"] == "VOIDED"

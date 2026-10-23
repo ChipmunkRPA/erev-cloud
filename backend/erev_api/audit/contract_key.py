@@ -64,6 +64,7 @@ ALWAYS: Final = frozenset(
         "contract_source_link",
         "contract_recent_view",  # private navigation state always identifies one contract
         "combination_group_member",
+        "portfolio_member",
         # the outputs of a computation, which is keyed by group: the members at the time of it
         "contract_version",
         "obligation_version",
@@ -80,7 +81,7 @@ WHERE_NAMED: Final = frozenset(
     {
         "ai_proposal",  # extraction may precede a contract; trace explanations name contracts.
         "evidence_pack",  # sample packs name contracts; period/access/change packs may not
-        "estimate",  # an estimate of a portfolio names no contract (T-CON-12)
+        "estimate",  # shared estimates retain their historical member population
         "estimate_version",
         "judgement_record",  # T-CON-19 ``contract_id`` is null for a record about no contract
         "exception_item",  # T-IMP-05 ``contract_id`` is null for an item about no contract
@@ -99,6 +100,7 @@ WHERE_NAMED: Final = frozenset(
 )
 OTHER: Final = frozenset(
     {
+        "portfolio",  # Tenant-level descriptive metadata.
         "ai_call_intent",  # AUD-FACT: hashes-only provider start evidence.
         "ai_model_log",  # tenant-level call evidence; proposals carry their subjects.
         # identity, access and the workspace

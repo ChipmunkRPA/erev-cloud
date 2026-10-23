@@ -63,6 +63,7 @@ from erev_api.db.tables import (
     pob_template,
     pob_template_version,
     policy_override,
+    portfolio,
     product,
     reconciliation,
     related_party_group,
@@ -212,6 +213,7 @@ LABELS: Final[Mapping[str, Labeller]] = MappingProxyType(
         "policy_override": _own(policy_override, "policy_key"),
         "manual_adjustment": _own(manual_adjustment, "adjustment_no"),
         "combination_group": _own(combination_group, "code"),
+        "portfolio": _own(portfolio, "code"),
         "exception_item": _own(exception_item, "exception_no"),
         # approvals, imports and migration
         "approval_request": _own(approval_request, "request_no"),
@@ -276,6 +278,7 @@ NO_LABEL: Final = frozenset(
         "calc_trace",
         "close_checklist_item",
         "combination_group_member",
+        "portfolio_member",
         "contract_computation",
         "contract_event",
         "contract_hold",

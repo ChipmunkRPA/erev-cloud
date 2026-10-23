@@ -20,6 +20,16 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Shared-estimate audit history — October 23, 2026
+
+- Definitions and draft version changes now identify their audited object; versions retain
+  before/after values and row version. Current/former member contracts are frozen into each
+  event for contract audit trails. Portfolio audit types and metadata labels are registered.
+- Scoped writer scan, lint and types pass; populated workflow checks version evidence.
+  Full audit architecture scan still reports 29 pre-existing findings in forecast,
+  release-validation and sandbox dispatch. Track these separately; no full-suite claim.
+- Shared approval/application still await the two calculation choices. No deployment.
+
 ## Shared-estimate supporting evidence — October 23, 2026
 
 - Added upload/attach, download and uploader-only reasoned void on saved portfolio drafts.
@@ -29,17 +39,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Populated API, seven registry and seven UI cases plus scoped lint/types pass. Approval,
   calculation and Reporting integration remain; two calculation choices await the owner.
   No deployment.
-
-## Shared-estimate draft versions — October 23, 2026
-
-- Added explicit-currency numerical drafts, version history, full edits and retained discard
-  in the portfolio API/page. Required return parameters, existing method/amount validation,
-  decimal strings and full historical-member permissions are preserved.
-- Parent/version ETags and explicit version increments prevent stale overwrites; one open
-  version per element, retained VOIDED rows and monotonic version numbers are verified.
-- Populated API and existing contract constraint workflows, six UI cases and scoped lint/types
-  pass; the computation head is unchanged. Approval/application/reporting remain pending,
-  with the two owner estimation choices still open. No deployment.
 
 ## Legacy FX-evidence refresh — October 23, 2026
 

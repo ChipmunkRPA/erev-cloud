@@ -240,6 +240,18 @@ def require_estimate_scope(
         require_for_entity(ctx, permission, entity_id)
 
 
+def audit_contract_ids(session: Session, portfolio_id: UUID) -> list[UUID]:
+    """Freeze all current/former members at the command, after full-scope authorization."""
+    return list(
+        session.scalars(
+            select(portfolio_member.c.contract_id)
+            .where(portfolio_member.c.portfolio_id == portfolio_id)
+            .distinct()
+            .order_by(portfolio_member.c.contract_id)
+        )
+    )
+
+
 def get_estimate_definition(
     session: Session, ctx: RequestContext, portfolio_id: UUID, estimate_id: UUID
 ) -> EstimateOut:
@@ -300,11 +312,13 @@ def create_estimate_definition(
         )
     )
     touch(uow, portfolio_id)
-    record_facts(
-        uow,
+    result = get_estimate_definition(uow.session, uow.ctx, portfolio_id, estimate_id)
+    uow.audit(
         action="estimate.create",
         object_type="estimate",
-        ids=[estimate_id],
-        detail={"portfolio_id": str(portfolio_id), **body.model_dump(mode="json")},
+        object_id=estimate_id,
+        after=result.model_dump(mode="json"),
+        contract_ids=audit_contract_ids(uow.session, portfolio_id),
+        detail={"portfolio_id": str(portfolio_id)},
     )
-    return get_estimate_definition(uow.session, uow.ctx, portfolio_id, estimate_id)
+    return result

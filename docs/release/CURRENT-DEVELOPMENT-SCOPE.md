@@ -571,3 +571,18 @@ same command key, download navigation and reasoned void. Frontend and scoped bac
 pass. Shared estimate approval, application/recomputation and reporting remain outstanding.
 The two calculation choices were re-presented to the owner before starting their dependent
 work. No deployment and no inferred accounting approval.
+
+## October 23 shared-estimate audit history
+
+Shared definition and version commands now retain the actual object id instead of only a
+bulk fact id list. Version edits/discards retain before/after values and row version.
+The event freezes all distinct current/former member contract ids after full-population
+authorization, allowing the existing contract audit trail to find shared changes even
+after memberships end. Existing events are not rewritten. Portfolio metadata is classified
+as tenant-level and membership as contract-scoped; metadata gains a business label.
+
+Necessary verification covers the populated create/edit/discard workflow and historical
+member key, scoped writer classification, lint and types. The full writer architecture
+scan reports 29 unrelated existing findings: release_validation and forecast audit object
+types are unclassified, and sandbox_reset_job has an unregistered computed writer.
+These remain outstanding; this checkpoint does not establish a full architecture pass.
