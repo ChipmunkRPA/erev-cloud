@@ -17,6 +17,7 @@ import { rowIfMatch } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import type { components } from "../../lib/api/schema";
 import { t } from "../../lib/i18n/t";
+import { PortfolioVersions } from "./portfolio-versions";
 import { SettingsPageHeader } from "./index";
 
 type Portfolio = components["schemas"]["PortfolioOut"];
@@ -459,6 +460,9 @@ function MembershipForm({
 }
 
 function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
+  const [selectedEstimate, setSelectedEstimate] = useState<
+    components["schemas"]["EstimateOut"] | null
+  >(null);
   const access = useAccess();
   const [code, setCode] = useState("");
   const [kind, setKind] = useState<"RETURN_RATE" | "BREAKAGE">("RETURN_RATE");
@@ -472,6 +476,13 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
   });
   type Estimate = components["schemas"]["EstimateOut"];
   const columns: readonly GridColumn<Estimate>[] = [
+    {
+      id: "versions",
+      header: label("actions"),
+      kind: "actions",
+      value: () => null,
+      render: (e) => <Button onClick={() => setSelectedEstimate(e)}>{label("versions")}</Button>,
+    },
     {
       id: "code",
       header: label("code"),
@@ -496,6 +507,13 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
     <section className="flex flex-col gap-3" aria-label={label("estimates")}>
       <h2 className="text-heading-sm">{label("estimates")}</h2>
       <p className="text-body-sm text-fg-2">{label("estimateDefinitionHelp")}</p>
+      {selectedEstimate ? (
+        <PortfolioVersions
+          portfolio={portfolio}
+          estimate={selectedEstimate}
+          onClose={() => setSelectedEstimate(null)}
+        />
+      ) : null}
       <DataGrid<Estimate>
         name="portfolio-estimates"
         title={label("estimates")}

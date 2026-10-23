@@ -55,13 +55,6 @@ from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
-from erev_engine.bundle import FxRateInput, InputBundle, OutputBundle
-from erev_engine.canonical import sha256_hex
-from erev_engine.currencies import ISO_4217
-from erev_engine.errors import EngineError
-from erev_engine.money import format_exact, minor_to_decimal
-from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
-from erev_engine.stages.s12_fx_entities.rates import RateMissing, Rates
 from pydantic import ValidationError
 from sqlalchemy import ColumnElement, Select, and_, func, insert, select
 from sqlalchemy.orm import Session
@@ -133,6 +126,13 @@ from erev_api.schemas.estimates import (
 )
 from erev_api.schemas.events import ImpactBalanceOut, ImpactSummaryOut
 from erev_api.uow import UnitOfWork
+from erev_engine.bundle import FxRateInput, InputBundle, OutputBundle
+from erev_engine.canonical import sha256_hex
+from erev_engine.currencies import ISO_4217
+from erev_engine.errors import EngineError
+from erev_engine.money import format_exact, minor_to_decimal
+from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
+from erev_engine.stages.s12_fx_entities.rates import RateMissing, Rates
 
 if TYPE_CHECKING:
     from erev_api.jobs.context import JobContext
@@ -633,7 +633,7 @@ def _parameter_errors(
 def _version_errors(
     session: Session,
     element: Mapping[str, Any],
-    current: Mapping[str, Any],
+    default_currency: str,
     values: Mapping[str, Any],
     *,
     method: Any,
@@ -648,7 +648,7 @@ def _version_errors(
     normalized = dict(values)
     normalized["parameters"], found = _parameter_errors(kind, values["parameters"])
     errors.extend(found)
-    currency = str(values["currency"] or current["transaction_currency"]).strip()
+    currency = str(values["currency"] or default_currency).strip()
     normalized["currency"] = currency
     known = currency in ISO_4217
     if not known:
@@ -983,7 +983,11 @@ def create_version(
     current = _visible_contract(session, element, for_update=True)
     _require_prepare(uow, current)
     values, errors = _version_errors(
-        session, element, current, _values_of(body, VERSION_MEMBERS), method=body.method
+        session,
+        element,
+        str(current["transaction_currency"]),
+        _values_of(body, VERSION_MEMBERS),
+        method=body.method,
     )
     if body.modification_id is not None:
         # The contract's group and row are locked (``for_update``), as they are by the
@@ -1068,7 +1072,9 @@ def update_version(
     names = sorted(set(body.model_fields_set) - {"method"})
     changes = _values_of(body, names)
     merged = {**_stored_values(row), **changes}
-    values, errors = _version_errors(session, element, current, merged, method=body.method)
+    values, errors = _version_errors(
+        session, element, str(current["transaction_currency"]), merged, method=body.method
+    )
     if errors:
         raise _failed(errors)
     _eac_check(session, element, values)
@@ -1409,7 +1415,9 @@ def submit_version(
                 "invalid-transition",
                 errors=[ProblemError(rule_id=RULE_LIFECYCLE, message=message)],
             )
-    values, errors = _version_errors(session, element, current, _stored_values(row), method=None)
+    values, errors = _version_errors(
+        session, element, str(current["transaction_currency"]), _stored_values(row), method=None
+    )
     errors = errors or _submission_errors(session, element, current, row)
     if errors:
         raise _failed(errors)
@@ -2081,3 +2089,19 @@ def get_version(session: Session, version_id: UUID) -> EstimateVersionOut:
     visible_estimate(session, _uuid(row["estimate_id"]))
     (item,) = version_outs(session, [row])
     return item
+
+
+def validated_version_values(
+    session: Session,
+    element: Mapping[str, Any],
+    body: EstimateVersionCreateIn,
+    *,
+    default_currency: str,
+) -> dict[str, Any]:
+    """Validate a complete version without manufacturing a member contract's currency."""
+    values, errors = _version_errors(
+        session, element, default_currency, _values_of(body, VERSION_MEMBERS), method=body.method
+    )
+    if errors:
+        raise _failed(errors)
+    return values

@@ -186,3 +186,72 @@ def test_portfolio_membership_workflow(
     assert removed.status_code == 200, removed.text
     # Removing the last current member cannot reveal shared evidence to an excluded entity.
     assert get(app, path + "/estimates", hidden).status_code == 404
+
+    versions_path = defined.headers["location"] + "/versions"
+    values = {
+        "effective_date": "2026-09-01",
+        "currency": "USD",
+        "rate": "0.10",
+        "parameters": {
+            "carrying_cost_per_unit": "12.50",
+            "recovery_cost_per_unit": "1.00",
+            "window_end_date": "2026-12-31",
+        },
+        "rationale": "Observed returns for the shared population",
+    }
+    current_tag = get(app, path, maya).headers["etag"]
+    assert post(app, versions_path, maya, values).status_code == 428
+    assert post(app, versions_path, hidden, values, if_match=current_tag).status_code == 404
+    assert (
+        post(
+            app, versions_path, maya, {**values, "currency": None}, if_match=current_tag
+        ).status_code
+        == 422
+    )
+    assert (
+        post(app, versions_path, maya, {**values, "rate": "1.01"}, if_match=current_tag).status_code
+        == 422
+    )
+    assert (
+        post(
+            app, versions_path, maya, {**values, "method": "ENTERED_AMOUNT"}, if_match=current_tag
+        ).status_code
+        == 422
+    )
+    version = post(app, versions_path, maya, values, if_match=current_tag)
+    assert version.status_code == 201, version.text
+    assert version.json()["status"] == "DRAFT"
+    assert version.json()["version_no"] == 1
+    version_path = version.headers["location"]
+    assert get(app, version_path, viewer).json() == version.json()
+    assert get(app, version_path, hidden).status_code == 404
+    current_tag = get(app, path, maya).headers["etag"]
+    assert post(app, versions_path, maya, values, if_match=current_tag).status_code == 409
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = version.headers["etag"]
+    edited = call(app, "PUT", version_path, json={**values, "rate": "0.15"}, headers=headers)
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["rate"] == "0.15"
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = version.headers["etag"]
+    assert call(app, "PUT", version_path, json=values, headers=headers).status_code == 412
+    discarded = post(app, version_path + "/discard", maya, {}, if_match=edited.headers["etag"])
+    assert discarded.status_code == 200, discarded.text
+    assert discarded.json()["status"] == "VOIDED"
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = discarded.headers["etag"]
+    assert call(app, "PUT", version_path, json=values, headers=headers).status_code == 409
+    current_tag = get(app, path, maya).headers["etag"]
+    second = post(app, versions_path, maya, values, if_match=current_tag)
+    assert second.status_code == 201, second.text
+    assert second.json()["version_no"] == 2
+    history = get(app, versions_path, viewer, {"count": "true"})
+    assert history.headers["X-Erev-Total-Count"] == "2"
+    assert [v["status"] for v in history.json()["items"]] == ["DRAFT", "VOIDED"]
+    assert get(app, versions_path, hidden).status_code == 404
+    assert (
+        world.place.scalar(
+            select(contract.c.latest_computation_id).where(contract.c.id == UUID(contract_id))
+        )
+        == before_computation
+    )

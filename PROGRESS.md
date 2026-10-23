@@ -20,6 +20,17 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Shared-estimate draft versions — October 23, 2026
+
+- Added explicit-currency numerical drafts, version history, full edits and retained discard
+  in the portfolio API/page. Required return parameters, existing method/amount validation,
+  decimal strings and full historical-member permissions are preserved.
+- Parent/version ETags and explicit version increments prevent stale overwrites; one open
+  version per element, retained VOIDED rows and monotonic version numbers are verified.
+- Populated API and existing contract constraint workflows, six UI cases and scoped lint/types
+  pass; the computation head is unchanged. Approval/application/reporting remain pending,
+  with the two owner estimation choices still open. No deployment.
+
 ## Shared-estimate definitions — October 23, 2026
 
 - Portfolio page/API can create and list RETURN_RATE/BREAKAGE definitions with an explicit
@@ -28,18 +39,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Populated API workflow and five UI cases plus scoped lint/types pass. Definition authoring
   is available; values, approval, calculation application and reporting are still pending.
   The UI states this boundary. No estimation-choice assumptions and no deployment.
-
-## Portfolio management — October 23, 2026
-
-- Added public portfolio/member commands and Settings → Reference data → Portfolios.
-  Create/edit, search/add, reasoned exit and retained history are available with pagination.
-- Parent ETags, audit facts and contract/entity permissions protect writes; reads/counts omit
-  hidden members. Stale metadata edits stay visible until the user explicitly reloads.
-- Populated API workflow, four UI cases, 24 route checks and scoped lint/types pass; existing
-  computation head is unchanged. Shared estimate application remains.
-- Actual copy and LATEST refresh jobs now preserve populated member history; a successor
-  sandbox membership edit leaves production unchanged. The focused database workflow passes.
-  Two previously asked estimation choices still await the owner. No deployment.
 
 ## Legacy FX-evidence refresh — October 23, 2026
 

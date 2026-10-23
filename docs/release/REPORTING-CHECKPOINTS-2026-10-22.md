@@ -181,3 +181,16 @@
   and 18 UI cases pass, with scoped lint/types and regenerated API types. No deployment.
 - Remaining policy implementation: portfolio estimates (POL-015) and lessor combination
   (POL-231). This supersedes POL-026 in the preceding reader audit.
+
+
+## Portfolio management — October 23, 2026
+
+- Added public portfolio/member commands and Settings → Reference data → Portfolios.
+  Create/edit, search/add, reasoned exit and retained history are available with pagination.
+- Parent ETags, audit facts and contract/entity permissions protect writes; reads/counts omit
+  hidden members. Stale metadata edits stay visible until the user explicitly reloads.
+- Populated API workflow, four UI cases, 24 route checks and scoped lint/types pass; existing
+  computation head is unchanged. Shared estimate application remains.
+- Actual copy and LATEST refresh jobs now preserve populated member history; a successor
+  sandbox membership edit leaves production unchanged. The focused database workflow passes.
+  Two previously asked estimation choices still await the owner. No deployment.

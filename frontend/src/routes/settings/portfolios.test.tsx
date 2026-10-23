@@ -186,6 +186,105 @@ it("creates a shared definition with the portfolio version and leaves applicatio
     expect((screen.getByLabelText(/^Estimate code/) as HTMLInputElement).value).toBe(""),
   );
   expect(
-    screen.getByText(/Version values, approval and calculation application are not yet available/),
+    screen.getByText(/Approval and calculation application are not yet available/),
   ).toBeTruthy();
+});
+
+it("creates and edits draft values, retains a refused edit, and discards without losing history", async () => {
+  serve();
+  const definition = {
+    id: "e1",
+    element_code: "RETURNS",
+    estimate_kind: "RETURN_RATE",
+    method: "RATE",
+  };
+  let version: Record<string, unknown> | null = null;
+  const sent: { method: string; tag: string | null; body: Record<string, unknown> }[] = [];
+  let stale = false;
+  server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({ items: [definition], next_cursor: null }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
+      HttpResponse.json({ items: version ? [version] : [], next_cursor: null }),
+    ),
+    http.post(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      sent.push({ method: "POST", body, tag: request.headers.get("If-Match") });
+      version = {
+        ...body,
+        id: "v1",
+        estimate_id: "e1",
+        version_no: 1,
+        row_version: 1,
+        status: "DRAFT",
+      };
+      return HttpResponse.json(version, { status: 201 });
+    }),
+    http.put(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1"), async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      sent.push({ method: "PUT", body, tag: request.headers.get("If-Match") });
+      if (stale) return problemResponse("precondition-failed", 412, "The version changed");
+      version = { ...version, ...body, row_version: 2 };
+      return HttpResponse.json(version);
+    }),
+    http.post(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/discard"), ({ request }) => {
+      sent.push({ method: "DISCARD", body: {}, tag: request.headers.get("If-Match") });
+      version = { ...version, status: "VOIDED", row_version: 3 };
+      return HttpResponse.json(version);
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
+  fireEvent.click(await screen.findByRole("button", { name: "New draft version" }));
+  for (const [name, value] of [
+    ["Effective date (YYYY-MM-DD)", "2026-09-01"],
+    ["Currency", "USD"],
+    ["Rate (0 to 1)", "0.10000001"],
+    ["Rationale", "Shared experience"],
+    ["Carrying cost per unit", "12.50"],
+    ["Recovery cost per unit", "1.00"],
+    ["Return window end (YYYY-MM-DD)", "2026-12-31"],
+  ] as const) {
+    fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  }
+  fireEvent.click(screen.getByRole("button", { name: "Save draft version" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Save draft version" })).toBeNull(),
+  );
+  expect(sent[0]?.tag).toBe('"r3"');
+  expect(sent[0]?.body.rate).toBe("0.10000001");
+  expect(sent[0]?.body.parameters).toEqual({
+    carrying_cost_per_unit: "12.50",
+    recovery_cost_per_unit: "1.00",
+    window_end_date: "2026-12-31",
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "View version" }));
+  fireEvent.change(screen.getByLabelText("Rate (0 to 1)"), { target: { value: "0.15" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft version" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Save draft version" })).toBeNull(),
+  );
+  expect(sent[1]?.tag).toBe('"r1"');
+  stale = true;
+  fireEvent.click(screen.getByRole("button", { name: "View version" }));
+  fireEvent.change(screen.getByLabelText("Rate (0 to 1)"), { target: { value: "0.20" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft version" }));
+  await waitFor(() => expect(sent).toHaveLength(3));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Save draft version" }).getAttribute("aria-busy"),
+    ).not.toBe("true"),
+  );
+  expect((screen.getByLabelText("Rate (0 to 1)") as HTMLInputElement).value).toBe("0.20");
+  fireEvent.click(screen.getByRole("button", { name: "Close version editor" }));
+  fireEvent.click(screen.getByRole("button", { name: "View version" }));
+  expect((screen.getByLabelText("Rate (0 to 1)") as HTMLInputElement).value).toBe("0.15");
+  fireEvent.click(screen.getByRole("button", { name: "Discard draft" }));
+  await waitFor(() => expect(sent).toHaveLength(4));
+  expect(sent[3]?.tag).toBe('"r2"');
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Discard draft" })).toBeNull());
+  fireEvent.click(screen.getByRole("button", { name: "View version" }));
+  expect(screen.queryByRole("button", { name: "Save draft version" })).toBeNull();
+  expect((screen.getByLabelText("Rate (0 to 1)") as HTMLInputElement).value).toBe("0.15");
 });

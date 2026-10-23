@@ -29,12 +29,13 @@ from erev_api.api.lists import (
 )
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
-from erev_api.db.tables import contract, estimate, portfolio, portfolio_member
-from erev_api.domain.contracts import estimates, portfolios, queries
+from erev_api.db.tables import contract, estimate, estimate_version, portfolio, portfolio_member
+from erev_api.domain.contracts import estimates, portfolio_estimate_versions, portfolios, queries
 from erev_api.schemas.common import ListOut
-from erev_api.schemas.estimates import EstimateOut
+from erev_api.schemas.estimates import EstimateOut, EstimateVersionOut
 from erev_api.schemas.portfolios import (
     PortfolioEstimateIn,
+    PortfolioEstimateVersionIn,
     PortfolioIn,
     PortfolioMemberCloseIn,
     PortfolioMemberIn,
@@ -309,4 +310,146 @@ def create_estimate(
         ),
         status_code=201,
         location=lambda out: f"{API_PREFIX}/portfolios/{portfolio_id}/estimates/{out.id}",
+    )
+
+
+VERSIONS = ListSpec(
+    resource="portfolio-estimate-versions",
+    default_sort="-version_no",
+    sort_keys={"id": estimate_version.c.id, "version_no": estimate_version.c.version_no},
+    filters={},
+)
+VERSION_PATH = "/portfolios/{portfolio_id}/estimates/{estimate_id}/versions"
+
+
+@router.get(
+    VERSION_PATH,
+    operation_id="portfolio_estimate_versions_list",
+    response_model=ListOut[EstimateVersionOut],
+    responses=problem_responses(*READ_PROBLEMS),
+)
+def list_versions(
+    portfolio_id: UUID, estimate_id: UUID, ctx: ReadContext, params: Params, response: Response
+) -> ListOut[EstimateVersionOut]:
+    def read(session: Session) -> tuple[ListResult, list[EstimateVersionOut]]:
+        portfolios.get_estimate_definition(session, ctx, portfolio_id, estimate_id)
+        result = paginate(
+            session,
+            select(estimate_version).where(estimate_version.c.estimate_id == estimate_id),
+            VERSIONS,
+            params,
+        )
+        return result, estimates.version_outs(session, [dict(row) for row in result.items])
+
+    result, items = queries.read(ctx, read)
+    if result.total_count is not None:
+        response.headers[TOTAL_COUNT_HEADER] = result.total_count
+    return ListOut[EstimateVersionOut](items=items, next_cursor=result.next_cursor)
+
+
+@router.get(
+    VERSION_PATH + "/{version_id}",
+    operation_id="portfolio_estimate_versions_get",
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*READ_PROBLEMS),
+)
+def get_version(
+    portfolio_id: UUID, estimate_id: UUID, version_id: UUID, ctx: ReadContext, response: Response
+) -> EstimateVersionOut:
+    out = queries.read(
+        ctx,
+        lambda session: portfolio_estimate_versions.get(
+            session, ctx, portfolio_id, estimate_id, version_id
+        ),
+    )
+    response.headers["ETag"] = row_etag(out.row_version)
+    return out
+
+
+@router.post(
+    VERSION_PATH,
+    operation_id="portfolio_estimate_versions_create",
+    status_code=201,
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def create_version(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    body: PortfolioEstimateVersionIn,
+    cmd: EditContext,
+    deps: Deps,
+) -> Response:
+    """Create a draft; If-Match is the portfolio's current row version."""
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: portfolio_estimate_versions.save(
+            uow,
+            portfolio_id,
+            estimate_id,
+            body,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        ),
+        status_code=201,
+        etag=lambda out: row_etag(out.row_version),
+        location=lambda out: (
+            f"{API_PREFIX}/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{out.id}"
+        ),
+    )
+
+
+@router.put(
+    VERSION_PATH + "/{version_id}",
+    operation_id="portfolio_estimate_versions_update",
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def update_version(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    version_id: UUID,
+    body: PortfolioEstimateVersionIn,
+    cmd: EditContext,
+    deps: Deps,
+) -> Response:
+    """Replace draft values; If-Match is this estimate version's row version."""
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: portfolio_estimate_versions.save(
+            uow,
+            portfolio_id,
+            estimate_id,
+            body,
+            version_id=version_id,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        ),
+        etag=lambda out: row_etag(out.row_version),
+    )
+
+
+@router.post(
+    VERSION_PATH + "/{version_id}/discard",
+    operation_id="portfolio_estimate_versions_discard",
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def discard_version(
+    portfolio_id: UUID, estimate_id: UUID, version_id: UUID, cmd: EditContext, deps: Deps
+) -> Response:
+    """Retain the version as VOIDED; If-Match is the version's row version."""
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: portfolio_estimate_versions.save(
+            uow,
+            portfolio_id,
+            estimate_id,
+            None,
+            version_id=version_id,
+            discard=True,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        ),
+        etag=lambda out: row_etag(out.row_version),
     )

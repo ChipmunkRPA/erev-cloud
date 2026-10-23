@@ -517,3 +517,31 @@ estimate precedence or breakage distribution choice has been assumed. Necessary 
 the populated portfolio API workflow covers definitions, duplicate/stale requests, full-member
 scope and historical-member protection; five UI cases plus frontend types/lint and scoped
 backend types/lint pass. No deployment.
+
+## October 23 shared-estimate draft versions — implemented
+
+Portfolio estimates now support explicit-currency draft versions through nested create/list/get,
+full-value update and discard APIs and the portfolio detail page. The editor includes effective
+date, decimal amounts/rate/quantity, return carrying/recovery costs and window, rationale and
+scenario values. It preserves decimal strings and existing additional version fields. Currency
+is required rather than inferred from a member contract; contract-specific modification and
+judgement links are refused. Existing method, parameter and amount validation is reused; shared
+rates are bounded to zero through one. These saved values remain unapplied drafts.
+
+Population locking serializes membership and draft commands. Creation checks the parent ETag
+and permits one open version; editing/discard checks the version ETag and explicitly increments
+its row version (the existing IM-S transition mechanism does not do that automatically). Discard
+retains the numbered version as VOIDED, and later versions do not reuse that number. Reads and
+writes retain full current/former member permissions. UI conflicts keep the typed values; closing
+and reopening loads the latest version. Voided values remain viewable without editing controls.
+
+Necessary verification: the populated portfolio API workflow covers required/invalid currency,
+rate bounds, method immutability, one-open-version, stale edit, discard/history/numbering and
+hidden-member access, with an unchanged computation head. One existing contract constraint-range
+workflow checks the shared-validator refactor. Six UI workflows include decimal preservation,
+create/edit/discard payloads, stale-value retention and read-only void history. Frontend types/lint
+and scoped backend types/lint pass. OpenAPI and frontend types are regenerated. No deployment.
+
+Remaining shared-estimate work: evidence/submission, independent approval and application events,
+member recomputation and retained reporting sources. Portfolio/local precedence and breakage
+allocation choices remain unapproved; this draft workflow chooses neither and changes no posting.

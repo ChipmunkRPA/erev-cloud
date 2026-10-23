@@ -7,7 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from erev_api.enums import EstimateMethod
-from erev_api.schemas.estimates import Code
+from erev_api.money import CurrencyCode
+from erev_api.schemas.estimates import Code, EstimateVersionCreateIn
 from erev_api.schemas.roles import CODE_LENGTH
 from erev_api.schemas.users import LABEL_LENGTH, MEMO_LENGTH
 
@@ -56,3 +57,11 @@ class PortfolioEstimateIn(BaseModel):
     element_code: Code
     estimate_kind: Literal["RETURN_RATE", "BREAKAGE"]
     method: EstimateMethod
+
+
+class PortfolioEstimateVersionIn(EstimateVersionCreateIn):
+    """Full draft values with an explicit currency; no member-specific links."""
+
+    currency: CurrencyCode
+    modification_id: None = None
+    judgement_record_id: None = None

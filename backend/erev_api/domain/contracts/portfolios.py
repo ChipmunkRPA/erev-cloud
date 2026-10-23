@@ -60,7 +60,7 @@ def members(portfolio_id: UUID, *, history: bool = False) -> Select[Any]:
     return statement if history else statement.where(portfolio_member.c.valid_to_known_at.is_(None))
 
 
-def _touch(uow: UnitOfWork, portfolio_id: UUID) -> None:
+def touch(uow: UnitOfWork, portfolio_id: UUID) -> None:
     uow.session.execute(
         update(portfolio)
         .where(portfolio.c.id == portfolio_id)
@@ -198,7 +198,7 @@ def change_member(
             .values(valid_to_known_at=uow.now)
         )
     assert member_id is not None
-    _touch(uow, portfolio_id)
+    touch(uow, portfolio_id)
     record_facts(
         uow,
         action="portfolio.member_join" if joining else "portfolio.member_leave",
@@ -299,7 +299,7 @@ def create_estimate_definition(
             created_by_kind=uow.principal.kind.value,
         )
     )
-    _touch(uow, portfolio_id)
+    touch(uow, portfolio_id)
     record_facts(
         uow,
         action="estimate.create",
