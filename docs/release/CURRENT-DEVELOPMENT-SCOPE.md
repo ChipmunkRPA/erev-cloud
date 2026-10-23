@@ -22,6 +22,17 @@ refresh from production must preserve isolation and allow experimentation.
 - Separate component EAC consolidation, cumulative hours/percentage measures and
   quantity/removal/term reassessment remain open. No deployment.
 
+## Combined-component progress-cost entry — October 23, 2026
+
+The cost drawer now offers original combined members for Progress input, submitting the selected
+identity in both the event and payload. Switching to obtaining/fulfilling costs removes that choice
+and resets an original member to the pinned host (or clears an unpinned selection), so a hidden
+member cannot leak into another cost purpose. Evidence attachments remain required.
+Four targeted interaction cases pass, including the existing delivery/return choices and cost
+submission with attachment plus purpose switching. TypeScript and scoped ESLint pass.
+Independent component EAC aggregation still awaits an explicit scope rule; this UI change does
+not decide whether a host EAC represents its component or the entire combination. No deployment.
+
 ## Reporting implementation status
 
 ### Aligned range reports across separate calendars — implemented October 23

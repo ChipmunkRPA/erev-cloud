@@ -29,15 +29,16 @@ review and publish changes without PR accumulation, and do not deploy.
 - Separate component EAC consolidation, cumulative hours/percentage measures and
   quantity/removal/term reassessment remain open. No deployment.
 
-## Legacy FX-evidence refresh — October 23, 2026
+## Combined-component progress-cost entry — October 23, 2026
 
-- Fixed unchanged legacy FX runs being reused indefinitely: current bundles declare an
-  evidence revision, forcing fresh retained evidence once without rewriting original history.
-  Populated close now clears dirty/stale state, preserves revenue and succeeds again.
-- Historical hashes/typed inputs remain compatible; populated CV-25 comparison now uses the
-  same contract/SSP/posting views as computation. Necessary codec/replay/idempotency checks pass.
-- Reader audit confirms POL-015 portfolio application, POL-231 lessor combination and POL-026
-  product method behavior remain gaps. Details in CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
+The cost drawer now offers original combined members for Progress input, submitting the selected
+identity in both the event and payload. Switching to obtaining/fulfilling costs removes that choice
+and resets an original member to the pinned host (or clears an unpinned selection), so a hidden
+member cannot leak into another cost purpose. Evidence attachments remain required.
+Four targeted interaction cases pass, including the existing delivery/return choices and cost
+submission with attachment plus purpose switching. TypeScript and scoped ESLint pass.
+Independent component EAC aggregation still awaits an explicit scope rule; this UI change does
+not decide whether a host EAC represents its component or the entire combination. No deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

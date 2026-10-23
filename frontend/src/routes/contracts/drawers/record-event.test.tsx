@@ -497,7 +497,18 @@ it("records a scenario event into the explicitly selected draft and refreshes it
   expect(await screen.findByText("Event recorded in the forecast draft.")).toBeTruthy();
 });
 
-it.each(["delivery", "return"] as const)(
+function attachCostEvidence(drawer: HTMLElement): void {
+  server.use(
+    http.post(apiUrl("/api/v1/files"), () =>
+      HttpResponse.json({ id: "cost-evidence" }, { status: 201 }),
+    ),
+  );
+  fireEvent.change(within(drawer).getByLabelText("Evidence"), {
+    target: { files: [new File(["cost receipt"], "cost.txt", { type: "text/plain" })] },
+  });
+}
+
+it.each(["delivery", "return", "cost"] as const)(
   "records %s against an original combined component",
   async (kind) => {
     serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
@@ -509,13 +520,18 @@ it.each(["delivery", "return"] as const)(
       }),
     );
     const { drawer } = await open(kind, false, true);
+    if (kind === "cost") attachCostEvidence(drawer);
     select(drawer, /^Obligation/, "ORIGINAL · Combined into O1");
     fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
     await waitFor(() => expect(captured).toHaveLength(1));
     expect(captured[0]).toMatchObject({
       events: [
         {
-          event_type: kind === "delivery" ? "DELIVERY_RECORDED" : "RETURN_RECORDED",
+          event_type: {
+            delivery: "DELIVERY_RECORDED",
+            return: "RETURN_RECORDED",
+            cost: "COST_INCURRED",
+          }[kind],
           obligation_key: "ORIGINAL",
           payload: { obligation_key: "ORIGINAL" },
         },
@@ -523,3 +539,30 @@ it.each(["delivery", "return"] as const)(
     });
   },
 );
+
+it("clears the original cost member when switching to a capitalized cost purpose", async () => {
+  serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+  const captured: unknown[] = [];
+  server.use(
+    http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+      captured.push(await request.json());
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  const { drawer } = await open("cost", false, true);
+  attachCostEvidence(drawer);
+  select(drawer, /^Obligation/, "ORIGINAL · Combined into O1");
+  select(drawer, /^Purpose/, "Cost to obtain");
+  expect(within(drawer).queryByRole("combobox", { name: /^Obligation/ })).toBeNull();
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  await waitFor(() => expect(captured).toHaveLength(1));
+  expect(captured[0]).toMatchObject({
+    events: [
+      {
+        event_type: "COST_INCURRED",
+        obligation_key: "O1",
+        payload: { obligation_key: "O1", purpose: "COST_TO_OBTAIN" },
+      },
+    ],
+  });
+});

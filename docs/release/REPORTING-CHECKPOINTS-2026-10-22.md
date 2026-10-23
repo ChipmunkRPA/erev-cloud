@@ -481,3 +481,13 @@
   Original component keys remain selectable from retained assessments after combination.
 - Two interaction cases, TypeScript and scoped ESLint pass. Modification/variable-payment
   integration and in-scope combined visibility remain open. No deployment.
+
+## Legacy FX-evidence refresh — October 23, 2026
+
+- Fixed unchanged legacy FX runs being reused indefinitely: current bundles declare an
+  evidence revision, forcing fresh retained evidence once without rewriting original history.
+  Populated close now clears dirty/stale state, preserves revenue and succeeds again.
+- Historical hashes/typed inputs remain compatible; populated CV-25 comparison now uses the
+  same contract/SSP/posting views as computation. Necessary codec/replay/idempotency checks pass.
+- Reader audit confirms POL-015 portfolio application, POL-231 lessor combination and POL-026
+  product method behavior remain gaps. Details in CURRENT-DEVELOPMENT-SCOPE.md. No deployment.

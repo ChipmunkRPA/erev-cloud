@@ -668,7 +668,10 @@ export function RecordEventDrawer({
     }
   };
 
-  const acceptsOriginalComponents = kind === "delivery" || kind === "return";
+  const acceptsOriginalComponents =
+    kind === "delivery" ||
+    kind === "return" ||
+    (kind === "cost" && form.purpose === "PROGRESS_INPUT");
   const currentKeys = new Set(obligations.map((item) => item.obligation_key));
   const originals = new Map<string, string>();
   if (acceptsOriginalComponents) {
@@ -812,7 +815,18 @@ export function RecordEventDrawer({
             label={t("contracts.drawer.event.purpose.label")}
             options={purposes}
             value={form.purpose}
-            onChange={(value) => set("purpose", value)}
+            onChange={(value) =>
+              setForm((current) => ({
+                ...current,
+                purpose: value,
+                obligation:
+                  value !== "PROGRESS_INPUT" &&
+                  current.obligation !== null &&
+                  !currentKeys.has(current.obligation)
+                    ? (obligationKey ?? null)
+                    : current.obligation,
+              }))
+            }
             error={shown("purpose") ?? server("purpose")}
           />
         ) : null}
