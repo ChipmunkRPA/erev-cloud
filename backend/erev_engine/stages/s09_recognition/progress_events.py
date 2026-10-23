@@ -16,7 +16,7 @@ registered formula, so the trace node reproduces it (DG-KRN-EXP-04). Standard li
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from fractions import Fraction
@@ -26,6 +26,7 @@ from typing import Final
 from erev_engine.errors import EngineError
 from erev_engine.formulas import FORMULAS, rational_param
 from erev_engine.money import to_fraction
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from erev_engine.stages.s09_recognition.progress_time import Progress
 from erev_engine.stages.state import (
     AllocatedState,
@@ -248,6 +249,20 @@ def quantity(ev: EventView, ob: ObligationState) -> Fraction:
     return value
 
 
+def _delivery_component(ev: EventView, ob: ObligationState) -> ObligationState:
+    """Keep original component policy/judgement identity while tallying combined units."""
+    key = ev.payload.get("obligation_key")
+    if (
+        ev.contract_key == ob.contract_key
+        and isinstance(key, str)
+        and key in ob.combined_component_keys
+    ):
+        return replace(
+            ob, obligation_key=key, subject_key=obligation_subject_key(ob.contract_key, key)
+        )
+    return ob
+
+
 def tally(
     ctx: BookContext,
     st: AllocatedState,
@@ -262,12 +277,22 @@ def tally(
     counted = returned = Fraction(0)
     held: list[tuple[EventView, str]] = []
     for ev in st.measure_events:
-        if not admitted(ev, d, position) or not concerns(ev, ob):
+        component = _delivery_component(ev, ob)
+        if not admitted(ev, d, position) or not concerns(ev, component):
             continue
         if ev.event_type == "RETURN_RECORDED":
             returned += quantity(ev, ob)
         elif ev.event_type == "DELIVERY_RECORDED":
-            reason = hold_reason(ctx, contract, ob, ev, option=option, outcome=outcome)
+            reason = hold_reason(
+                ctx,
+                contract,
+                component,
+                ev,
+                option=option if component is ob else control_trigger_option(ctx, component),
+                outcome=outcome
+                if component is ob
+                else repurchase_outcome(ctx, contract, component),
+            )
             if reason is None:
                 counted += quantity(ev, ob)
             else:
@@ -424,7 +449,11 @@ def trigger_findings(
     for ev, reason in tally(ctx, st, contract, ob, d).held:
         if reason != CRITERIA_UNMET:
             continue
-        detail = {"rule": "S09-R-12", "unmet": _bill_and_hold_gap(ctx, contract, ob.obligation_key)}
+        component = _delivery_component(ev, ob)
+        detail = {
+            "rule": "S09-R-12",
+            "unmet": _bill_and_hold_gap(ctx, contract, component.obligation_key),
+        }
         findings.append(
             Finding(CRITERIA_UNMET, "WARNING", ob.subject_key, detail, _STAGE, ev.event_key)
         )

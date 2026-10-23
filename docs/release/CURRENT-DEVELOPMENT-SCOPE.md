@@ -920,3 +920,24 @@ Necessary verification: a UI submission asserts the exact combined contract, mul
 and action payload; an unresolved-contract case has no export entry point. Both pass, as do
 TypeScript and scoped ESLint. Backend filtering and retained-source behavior were inspected;
 no backend logic or schema was changed and no new database workflow is claimed. No deployment.
+
+## October 23 original-component deliveries and returns — native implementation
+
+The shared delivery tally now resolves an event's explicit original combined-component key
+within its own contract before matching it. Combined UNITS_DELIVERED and POINT_IN_TIME measures
+therefore include deliveries/returns naming merged-away original components. Each event is
+visited once even when its subject list names both host and member. Existing combined quantity
+and allocation semantics are unchanged; this does not implement quantity-changing modifications.
+
+Control-trigger policy and repurchase classification are evaluated using the event's original
+component identity. Bill-and-hold eligibility and unmet-criteria diagnostics also use that
+original component; a host judgement cannot authorize a sibling's transfer. This change does
+not reinterpret cumulative percentage, milestone or labour-hour events as additive quantities.
+
+Necessary verification: eight complete native calculations cover both recognition measures,
+original/both-subject event references and a return, with 10,000 recognized after two one-unit
+deliveries and 5,000 after one unit is returned. All calculation traces reevaluate. A control case
+proves original-member acceptance policy and bill-and-hold judgement isolation. Six existing
+recognition regression cases pass (15 total); scoped lint and production mypy pass. Public
+combined delivery authoring/report verification, remaining combined recognition measures and
+quantity/removal/term reassessment remain open. No deployment.

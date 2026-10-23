@@ -265,9 +265,9 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Filtered audit export — October 23, 2026
+## Combined component delivery recognition — October 23, 2026
 
-- The Audit log page now exports selected contract trails and outcome filters using the existing
-  report backend. Contract lookup must succeed before exporting; the scope cannot widen silently.
-- Two targeted UI cases, TypeScript and scoped ESLint pass. Updated the user guide. Forecast
-  audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+- Combined delivery/time-of-transfer measures now count original component deliveries and returns
+  once, applying the original member's acceptance/repurchase/bill-and-hold controls.
+- 15 native/control regression cases, trace reevaluation, scoped lint/types pass. Public authoring
+  verification and remaining combined reassessment/measures stay open. No deployment.

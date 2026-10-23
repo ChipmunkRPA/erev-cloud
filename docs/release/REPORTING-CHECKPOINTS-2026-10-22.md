@@ -317,3 +317,10 @@
   from captured commands and applied imports, making them available in contract audit history.
 - Populated import/replay workflow, all three audit-writer architecture checks and scoped
   lint/types pass. Prior mixed-SSP checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
+
+## Filtered audit export — October 23, 2026
+
+- The Audit log page now exports selected contract trails and outcome filters using the existing
+  report backend. Contract lookup must succeed before exporting; the scope cannot widen silently.
+- Two targeted UI cases, TypeScript and scoped ESLint pass. Updated the user guide. Forecast
+  audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
