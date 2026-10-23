@@ -264,11 +264,11 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Public functional POB consumption — October 23, 2026
+## Public reporting-currency POB consumption — October 23, 2026
 
-- Functional opening reports now use original invoice FX attribution and actual posted POB
-  revenue, with complete document coverage, group caps and retained rerun evidence. Migration
-  0342 updates IPE sources. Zero group openings are explicitly capped without invented inputs.
-- Foreign advance-billing and same-currency report/rerun cases, 12 focused cases and scoped
-  lint/types pass. Reporting currency and native foreign S15 classification remain open.
-- Functional billing checkpoint archived. No deployment.
+- Reporting opening-liability reports now translate signed period changes in POB eligibility
+  against one original range opening, with retained average rates and one combined group total.
+  Functional deltas reconcile before translation; prior reports retain their original method.
+- Public foreign-currency report/rerun and functional regression pass; focused reversal/rate
+  checks and scoped types/lint pass. Native foreign S15 and special attribution remain open.
+- Functional checkpoint archived. No deployment.

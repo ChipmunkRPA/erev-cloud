@@ -53,26 +53,22 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid(
             "currency_view", "Opening relief requires reconciled member balance movements."
         )
-    rates: list[dict[str, Any]] = []
-    if view == "reporting":
-        items, rates = reporting_rollforward.project(
-            session,
-            params,
-            tenant_id=uow.principal.tenant_id,
-            entities=entities,
-            periods=periods,
-            before=before,
-            items=items,
-            locked=locked,
-        )
-    from . import opening_consumption_policy, opening_relief_functional_pob
+    from . import (
+        opening_consumption_policy,
+        opening_relief_functional_pob,
+        opening_relief_reporting_pob,
+    )
 
     contracts: list[dict[str, Any]] = []
     excluded: set[tuple[UUID, UUID]] = set()
     per_obligation = False
-    if view == "functional" and (
-        params.binding is None or opening_relief_functional_pob.KEY in params.binding.evidence
-    ):
+    pob_key = (
+        opening_relief_functional_pob.KEY
+        if view == "functional"
+        else opening_relief_reporting_pob.KEY
+    )
+    slices: dict[str, Any] | None = {} if view == "reporting" else None
+    if params.binding is None or pob_key in params.binding.evidence:
         policies = opening_consumption_policy.by_entity(session, params, entities, book)
         per_obligation = "FIFO_WITHIN_POB" in policies.values()
         if per_obligation:
@@ -85,16 +81,28 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 locked=locked,
                 items=items,
                 policies=policies,
+                reporting_slices=slices,
             )
         else:
-            if (
-                params.binding is not None
-                and params.binding.evidence[opening_relief_functional_pob.KEY] != {}
-            ):
+            if params.binding is not None and params.binding.evidence[pob_key] != {}:
                 raise tie_outs.invalid(
                     "currency_view", "Unexpected retained functional POB sources."
                 )
-            tie_outs.record_evidence(params, opening_relief_functional_pob.KEY, {})
+            tie_outs.record_evidence(params, pob_key, {})
+    rates: list[dict[str, Any]] = []
+    if view == "reporting":
+        items, rates = reporting_rollforward.project(
+            session,
+            params,
+            tenant_id=uow.principal.tenant_id,
+            entities=entities,
+            periods=periods,
+            before=before,
+            items=items,
+            locked=locked,
+        )
+    if view == "reporting" and per_obligation:
+        opening_relief_reporting_pob.translate(contracts, slices or {}, items, periods, rates)
     totals: dict[str, dict[str, Decimal]] = {}
     for row in contracts:
         group = totals.setdefault(row["currency"], {})
@@ -210,6 +218,8 @@ def finish(
         evidence["method"] = (
             "retained_functional_obligation_opening_and_posted_revenue_v1"
             if view == "functional"
+            else "retained_reporting_obligation_period_deltas_v1"
+            if view == "reporting"
             else "retained_obligation_opening_and_posted_revenue_v1"
         )
     if params.binding is not None and params.binding.evidence[source_key] != evidence:
@@ -251,6 +261,13 @@ def finish(
             footnote += (
                 " Functional billing uses original invoice FX amounts with complete document "
                 "coverage; opening revenue is reconciled to its original transaction quantity."
+            )
+        if view == "reporting":
+            footnote += (
+                " Reporting relief translates signed changes in cumulative eligibility against "
+                "the original range opening at each period's retained average rate. It does not "
+                "restart the opening each month. Opening balances use the prior closing rate; "
+                "different rates can make translated relief exceed the translated opening."
             )
         if any(str(row["row_key"]).startswith("combined:") for row in contracts):
             footnote += (

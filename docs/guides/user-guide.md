@@ -1055,7 +1055,7 @@ do not infer original-component measurements from the combined obligation.
 
 ### Opening liability consumed by obligation
 
-With `FIFO_WITHIN_POB`, transaction and functional opening-liability reports use each obligation's
+With `FIFO_WITHIN_POB`, transaction, functional and reporting opening-liability reports use each obligation's
 opening attributed billings less its opening revenue and the net revenue actually posted during
 the selected range. It caps the result at contract opening liability and actual liability relief.
 The report footnote identifies this method; saved reruns retain its original evidence and policy.
@@ -1069,5 +1069,11 @@ Agent/cross-entity cases and locks without these original sources return an expl
 of a substitute amount.
 Functional openings use original invoice FX attribution and original functional revenue, with
 complete invoice/credit coverage checked against the transaction sources. Missing original sources
-require recomputation; the report does not substitute a current exchange rate. Reporting-currency
-per-obligation consumption remains under development.
+require recomputation; the report does not substitute a current exchange rate.
+Reporting-currency relief translates each period's signed change in cumulative POB eligibility
+against the original range opening using that period's retained average rate. Later reversals
+reduce that eligibility; the opening is never reset each month. The functional period deltas
+reconcile to the functional range total before translation. Opening balances retain the prior
+closing rate; because rates differ, translated relief can exceed the translated opening.
+Combined group deltas are rounded once per period, without allocating relief to members.
+Earlier saved reports retain their original disclosed method.

@@ -1146,3 +1146,30 @@ results (three DB cases). Twelve focused cases include cancelling EUR invoices/c
 nonzero functional difference and refusal of missing coverage or wrong currency. Four production
 modules pass mypy; scoped lint passes. Migration and public foreign case checked on disposable DB.
 No deployment.
+
+## October 23 public reporting POB consumption — period translation
+
+Public reporting-currency opening-liability reports now consume the original functional POB
+sources. Each posting-period prefix uses the same range-opening obligation balances, net posted
+POB revenue and cumulative actual liability consumption. Differences between capped prefix totals
+are signed period attribution changes, not independent monthly opening disclosures. They telescope
+to the functional range result before translation. Each group delta is translated and rounded at
+that period's retained average rate; opening and recognized amounts retain the existing projected
+rollforward sources. The prior closing rate for opening may differ from average rates, so no
+second cap against the translated opening is invented. Combined groups retain complete member
+sets without per-member relief allocation. Existing saved methods remain compatible; new runs
+retain a separate reporting POB evidence marker and original signed period amounts.
+
+Necessary verification: public functional and reporting report/rerun workflows pass. A further
+nonidentity reporting case shows USD 11,000 opening as EUR 9,954.75 at the original closing rate
+and EUR 9,909.91 revenue/relief at the September average, with identical retained rerun rows.
+The focused multi-period case recognizes 120 then reverses 40 against an original opening of
+100: cumulative eligibility changes by +100 then -20, translating at 1.2 and 1.5 to 90 rather
+than resetting the opening or applying one rate to the net 80. It also rejects an inconsistent
+range total. Scoped lint and four production module type checks pass.
+
+This supersedes the public reporting-currency gap above for the supported source population.
+Native S15 foreign-functional policy classification remains unfinished. Partial/mixed-date billing,
+agent/cross-entity, acquired opening sources and combined/locked foreign special histories still
+need their remaining implementation/evidence; this checkpoint does not assert their completion.
+No deployment or independent-accounting approval gate was introduced.

@@ -25,7 +25,9 @@ def rows(
     locked: tie_outs.LockedEnds,
     items: Sequence[rollforward.ContractRollforward],
     policies: Mapping[str, str],
+    reporting_slices: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], set[tuple[UUID, UUID]]]:
+    evidence_key = KEY if reporting_slices is None else "opening_relief_reporting_pob_v1"
     cutoff = tie_outs.cutoff_for(uow.session, params)
     selected = tie_outs.balances_at(
         uow.session,
@@ -133,7 +135,51 @@ def rows(
             "consumed": str(consumed),
             "relief": str(amount),
         }
-        if opening == recognized == amount == 0:
+        if reporting_slices is not None:
+            from .opening_relief_periods import deltas
+
+            period_amounts = deltas(
+                periods=[p.id for p in periods[entity]],
+                opening=opening,
+                obligations={
+                    subject: Decimal(detail.get("opening_billing", "0"))
+                    - Decimal(detail.get("opening_revenue", "0"))
+                    for member in facts.values()
+                    for subject, detail in member["obligations"].items()
+                },
+                entries=[
+                    entry
+                    for item in members
+                    for entry in posted.get((item.contract_id, entity), ())
+                ],
+                consumption={
+                    p.id: -sum(
+                        (
+                            item.period_lines[p.id][line][rollforward.LIABILITY]
+                            for item in members
+                            for line in ("REVENUE_FROM_OPENING", "REVENUE_FROM_PERIOD_BILLINGS")
+                        ),
+                        ZERO,
+                    )
+                    for p in periods[entity]
+                },
+                expected=amount,
+            )
+            evidence[group_key]["period_relief"] = {
+                p.key: str(period_amounts[p.id]) for p in periods[entity]
+            }
+            reporting_slices[group_key] = {
+                "members": [(item.contract_id, entity) for item in members],
+                "entity": entity,
+                "periods": period_amounts,
+                "currency": currency,
+                "row_key": f"combined:{group_key}"
+                if len(members) > 1
+                else f"contract:{members[0].external_id}:{members[0].entity_code}",
+            }
+        if opening == recognized == amount == 0 and (
+            reporting_slices is None or not any(period_amounts.values())
+        ):
             continue
         combined = len(members) > 1
         first = members[0]
@@ -159,9 +205,9 @@ def rows(
                 "revenue_from_opening": tie_outs.money(amount, currency),
             }
         )
-    if params.binding is not None and params.binding.evidence[KEY] != evidence:
+    if params.binding is not None and params.binding.evidence[evidence_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Functional POB sources differ from retained evidence."
         )
-    tie_outs.record_evidence(params, KEY, evidence)
+    tie_outs.record_evidence(params, evidence_key, evidence)
     return result, excluded
