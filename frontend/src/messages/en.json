@@ -8102,5 +8102,12 @@
   "contracts.lessor.network": "No response was received. Retry to continue the same assessment.",
   "contracts.lessor.nonleaseConclusion": "The nonlease components predominate in the combined component.",
   "contracts.lessor.leaseConclusion": "The nonlease components do not predominate in the combined component.",
-  "contracts.lessor.empty": "No lease combination assessments have been recorded."
+  "contracts.lessor.empty": "No lease combination assessments have been recorded.",
+  "reports.openingAttribution.title": "Opening attribution explanation",
+  "reports.openingAttribution.ZERO_GROUP_OPENING": "No positive group opening liability; opening relief is zero.",
+  "reports.openingAttribution.ZERO_CONSUMPTION": "No positive liability consumption; opening relief is zero.",
+  "reports.openingAttribution.CREATED_AFTER_OPENING": "Created after the opening date; no opening liability belongs to this obligation.",
+  "reports.openingAttribution.created": "Creation effective date: {date}",
+  "reports.openingAttribution.event": "Original creation event: {id}",
+  "reports.openingAttribution.history": "Open contract history"
 }

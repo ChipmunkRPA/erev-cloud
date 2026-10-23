@@ -1237,6 +1237,8 @@ def test_functional_pob_report_uses_original_invoice_fx(
         select(saved_run.c.source_binding).where(saved_run.c.id == UUID(run["id"]))
     )
     assert binding["evidence"][f"opening_relief_{view}_pob_v1"]
+    assert binding["evidence"]["opening_relief_explanation_v1"] is True
+    assert run["control_totals"]["opening_attribution_explanation"] == {"items": []}
     if locked:
         for group in binding["evidence"][f"opening_relief_{view}_pob_v1"].values():
             for member in group["members"].values():

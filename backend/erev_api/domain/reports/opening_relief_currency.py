@@ -274,6 +274,8 @@ def finish(
                 " Combined contracts show one group total with the full member set; "
                 "member relief is not allocated."
             )
+    from .opening_relief_explanation import controls as explanation_controls
+
     return ReportData(
         columns=disclosure.COLUMNS,
         rows=tuple(rows),
@@ -285,5 +287,6 @@ def finish(
             "footnote": footnote,
             "resolved_consumption_policies": policies,
             "translation_rates": rates,
+            **explanation_controls(params),
         },
     )

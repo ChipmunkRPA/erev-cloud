@@ -20,18 +20,18 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Special-contract zero consumption — October 23, 2026
+## Visible opening-attribution explanations — October 23, 2026
 
-- Functional POB rows for agent/cross-entity obligations can now retain a positive opening
-  when actual group liability consumption is nonpositive: relief is necessarily zero.
-  Evidence labels ZERO_CONSUMPTION and retains opening/consumption caps and signed posted
-  revenue/line IDs. Unknown posting subjects and positive-consumption special cases still refuse.
-- Reporting-currency ranges use this shortcut only when no selected period has positive
-  consumption. A release followed by reversal can carry a reporting FX effect despite a zero
-  range total, so it still requires original POB attribution. Principal histories retain their
-  existing evidence shape. Frozen-source authentication and posted/path reconciliation remain.
-- 18 focused reader/period cases, scoped lint and types pass. Positive special attribution and
-  other documented gaps remain unfinished. No deployment.
+- Opening-liability reports now expose retained zero-opening, zero-consumption and newly
+  created-obligation reasons in an expandable viewer panel. New-obligation proofs show the
+  effective date and original event ID, with navigation to the member contract's history.
+- Explanation content comes only from the run's retained POB facts. Combined members stay
+  individually identified without invented monetary allocation. Legacy reports without the
+  new evidence marker keep their previous control totals and display.
+- Two source/replay cases, two viewer cases, TypeScript and scoped lint/types pass. A populated
+  functional report verifies the marker/control output and identical saved-row replay.
+  This adds visible explanations, not complete general-purpose money-cell attribution.
+  No deployment; remaining functional gaps stay open.
 
 ## Rollforward Other explanation — October 23, 2026
 

@@ -549,3 +549,16 @@ not decide whether a host EAC represents its component or the entire combination
 - 13 focused reader cases pass. A populated approved-modification case proves only the new O2
   qualifies at August end, and no obligation qualifies once its September creation is in the
   opening. Scoped lint/types pass. No deployment; broader special-source work remains open.
+
+## Special-contract zero consumption — October 23, 2026
+
+- Functional POB rows for agent/cross-entity obligations can now retain a positive opening
+  when actual group liability consumption is nonpositive: relief is necessarily zero.
+  Evidence labels ZERO_CONSUMPTION and retains opening/consumption caps and signed posted
+  revenue/line IDs. Unknown posting subjects and positive-consumption special cases still refuse.
+- Reporting-currency ranges use this shortcut only when no selected period has positive
+  consumption. A release followed by reversal can carry a reporting FX effect despite a zero
+  range total, so it still requires original POB attribution. Principal histories retain their
+  existing evidence shape. Frozen-source authentication and posted/path reconciliation remain.
+- 18 focused reader/period cases, scoped lint and types pass. Positive special attribution and
+  other documented gaps remain unfinished. No deployment.
