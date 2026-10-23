@@ -20,6 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Lessor assessment workbench — October 23, 2026
+
+- Contract Step 2 now provides explicit component/asset/eligibility/predominance entry and
+  independent review submission, plus retained answers and rationale for readers.
+- Failed submission reuses the created record; answers freeze through uncertain retries.
+  Original component keys remain selectable from retained assessments after combination.
+- Two interaction cases, TypeScript and scoped ESLint pass. Modification/variable-payment
+  integration and in-scope combined visibility remain open. No deployment.
+
 ## Combined lessor scope Reporting — October 23, 2026
 
 - Scope exclusions now show retained original components and exact reviewed assessments/
@@ -30,15 +39,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Combined report/rerun, existing scope workflow and 39 engine/register checks pass; production
   lint/types pass. UI, modification/variable-payment and in-scope visibility remain open.
   No deployment; see CURRENT-DEVELOPMENT-SCOPE.md for scope.
-
-## Lessor combination initial computation — October 23, 2026
-
-- POL-231 now combines reviewed eligible components at inception, retains their prices and
-  membership, and routes by assessed predominance. Reads the associated lease product policy;
-  IFRS, unelected and ineligible cases stay separate. Strict assessment fields use OTHER.
-- Twelve targeted cases (including two full-engine paths), eight existing election cases and
-  scoped lint/types pass. UI, populated approval, modification/variable-payment integration
-  and Reporting remain open; see CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
 
 ## Legacy FX-evidence refresh — October 23, 2026
 

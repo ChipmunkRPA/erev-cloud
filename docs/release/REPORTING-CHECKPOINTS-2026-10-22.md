@@ -235,3 +235,12 @@
   Full audit architecture scan still reports 29 pre-existing findings in forecast,
   release-validation and sandbox dispatch. Track these separately; no full-suite claim.
 - Shared approval/application still await the two calculation choices. No deployment.
+
+## Lessor combination initial computation — October 23, 2026
+
+- POL-231 now combines reviewed eligible components at inception, retains their prices and
+  membership, and routes by assessed predominance. Reads the associated lease product policy;
+  IFRS, unelected and ineligible cases stay separate. Strict assessment fields use OTHER.
+- Twelve targeted cases (including two full-engine paths), eight existing election cases and
+  scoped lint/types pass. UI, populated approval, modification/variable-payment integration
+  and Reporting remain open; see CURRENT-DEVELOPMENT-SCOPE.md. No deployment.

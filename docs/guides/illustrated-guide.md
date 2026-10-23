@@ -2318,3 +2318,18 @@ Before production use, and outside this release: no independent revenue accounta
 | [QA record of the release candidate](../qa/RC-multi-role-qa-2026-10-03-f8e46e54.md) | The multi-role browser pass: 118 checks, their results and their captures |
 | [Developer guide](../dev-guide.md) | The repository's layout, every Make target, the test and gate contracts |
 | [`PROGRESS.md`](../../PROGRESS.md) | The state of the release candidate and what was measured on it |
+
+
+### Lease combination assessments
+
+In a contract's Step 2, open **Lease combination assessment**. Select the nonlease component
+and associated lease, enter the underlying asset class, answer each eligibility/predominance
+question and explain the assessment. Submit it for independent review. The separate policy
+election must also be enabled for eligible components to combine.
+
+The panel shows retained assessment history, including original component keys after a merge.
+If submission fails after creation, retry from the same panel: the saved assessment is reused
+and its answers remain fixed. Readers can inspect history without submission controls.
+Combined leases appear in the scope exclusion report with their full component set, exact
+reviewed assessment and one combined amount. Modification and variable-payment handling of
+combined components remains under development.

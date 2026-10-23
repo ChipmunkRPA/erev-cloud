@@ -148,6 +148,7 @@ import { requestNumber, useRefreshRecord } from "./drawers/common";
 import { EstimatesTab } from "./estimates";
 import { CombineDrawer, DismissSuggestionModal } from "./drawers/combine";
 import { DistinctReviewDrawer } from "./drawers/distinct-review";
+import { LessorAssessmentDrawer } from "./drawers/lessor-assessment";
 import { DocumentsDrawer } from "./drawers/documents";
 import { ApplyHoldDrawer, ReleaseHoldDrawer } from "./drawers/holds";
 import { PolicyOverridesDrawer } from "./drawers/policy-overrides";
@@ -930,57 +931,66 @@ function Step2Evidence({
   obligations,
   canReview,
   onReview,
+  onLessor,
 }: {
   readonly contract: Contract;
   readonly obligations: readonly Obligation[];
   readonly canReview: boolean;
   readonly onReview: (obligation: Obligation) => void;
+  readonly onLessor: () => void;
 }) {
   const reviews = useQuery({
     queryKey: distinctReviewsKey(contract.id),
     queryFn: () => fetchDistinctReviews(contract.id),
   });
   return (
-    <StaticTable
-      caption={t("contracts.workbench.step2.caption")}
-      headers={[
-        { label: t("contracts.workbench.step2.column.obligation") },
-        { label: t("contracts.workbench.step2.column.product") },
-        { label: t("contracts.workbench.step2.column.kind") },
-        { label: t("contracts.workbench.step2.column.distinctness") },
-        { label: t("contracts.workbench.step2.column.template") },
-        { label: t("contracts.workbench.step2.column.review") },
-        { label: t("contracts.workbench.step1.column.actions") },
-      ]}
-    >
-      {obligations.map((obligation) => (
-        <tr key={obligation.id} className="border-b border-hairline">
-          <th scope="row" className="px-2 py-1 text-start font-mono text-mono-sm font-normal">
-            {obligation.obligation_key}
-          </th>
-          <td className="px-2 py-1 font-mono text-mono-sm">{obligation.product.code}</td>
-          <td className="px-2 py-1">
-            {t(`contracts.obligation.kind.${obligation.obligation_kind}`)}
-          </td>
-          <td className="px-2 py-1">{t(`policies.ssp.distinctness.${obligation.distinctness}`)}</td>
-          <td className="px-2 py-1 font-mono text-mono-sm">
-            {`${obligation.pob_template_version.template_code} v${String(obligation.pob_template_version.version_no)}`}
-          </td>
-          <td className="px-2 py-1">
-            {reviews.isPending ? NO_VALUE : distinctReviewWord(reviews.data ?? [], obligation.id)}
-          </td>
-          <td className="px-2 py-1">
-            {canReview ? (
-              <Button variant="link" onClick={() => onReview(obligation)}>
-                {t("contracts.drawer.distinct.title")}
-              </Button>
-            ) : (
-              NO_VALUE
-            )}
-          </td>
-        </tr>
-      ))}
-    </StaticTable>
+    <>
+      <Button variant="link" onClick={onLessor}>
+        {t("contracts.lessor.title")}
+      </Button>
+      <StaticTable
+        caption={t("contracts.workbench.step2.caption")}
+        headers={[
+          { label: t("contracts.workbench.step2.column.obligation") },
+          { label: t("contracts.workbench.step2.column.product") },
+          { label: t("contracts.workbench.step2.column.kind") },
+          { label: t("contracts.workbench.step2.column.distinctness") },
+          { label: t("contracts.workbench.step2.column.template") },
+          { label: t("contracts.workbench.step2.column.review") },
+          { label: t("contracts.workbench.step1.column.actions") },
+        ]}
+      >
+        {obligations.map((obligation) => (
+          <tr key={obligation.id} className="border-b border-hairline">
+            <th scope="row" className="px-2 py-1 text-start font-mono text-mono-sm font-normal">
+              {obligation.obligation_key}
+            </th>
+            <td className="px-2 py-1 font-mono text-mono-sm">{obligation.product.code}</td>
+            <td className="px-2 py-1">
+              {t(`contracts.obligation.kind.${obligation.obligation_kind}`)}
+            </td>
+            <td className="px-2 py-1">
+              {t(`policies.ssp.distinctness.${obligation.distinctness}`)}
+            </td>
+            <td className="px-2 py-1 font-mono text-mono-sm">
+              {`${obligation.pob_template_version.template_code} v${String(obligation.pob_template_version.version_no)}`}
+            </td>
+            <td className="px-2 py-1">
+              {reviews.isPending ? NO_VALUE : distinctReviewWord(reviews.data ?? [], obligation.id)}
+            </td>
+            <td className="px-2 py-1">
+              {canReview ? (
+                <Button variant="link" onClick={() => onReview(obligation)}>
+                  {t("contracts.drawer.distinct.title")}
+                </Button>
+              ) : (
+                NO_VALUE
+              )}
+            </td>
+          </tr>
+        ))}
+      </StaticTable>
+    </>
   );
 }
 
@@ -1384,6 +1394,7 @@ type OpenDrawer =
       readonly today: string;
     }
   | { readonly kind: "distinct"; readonly obligationKey: string }
+  | { readonly kind: "lessor"; readonly canAuthor: boolean }
   | {
       readonly kind: "event";
       readonly event: EventKind;
@@ -2571,6 +2582,7 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
               contract={data}
               obligations={items}
               canReview={!hidden && canJudge}
+              onLessor={() => setDrawer({ kind: "lessor", canAuthor: !hidden && canJudge })}
               onReview={(obligation) =>
                 setDrawer({ kind: "distinct", obligationKey: obligation.obligation_key })
               }
@@ -3176,6 +3188,15 @@ function WorkbenchDrawer({
           today={drawer.today}
           onClose={onClose}
           onNewReview={onNewReview}
+        />
+      );
+    case "lessor":
+      return (
+        <LessorAssessmentDrawer
+          contract={contract}
+          obligations={obligations}
+          canAuthor={drawer.canAuthor}
+          onClose={onClose}
         />
       );
     case "distinct": {

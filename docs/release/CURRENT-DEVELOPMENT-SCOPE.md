@@ -642,3 +642,27 @@ import-order drift passes. No deployment.
 Still open for POL-231: dedicated user entry UI; modification and variable-payment treatment
 across combined members; broader in-scope combined-component visibility (nonlease-predominant
 components correctly do not appear as scope exclusions). This checkpoint does not close those.
+
+## October 23 lessor assessment workbench — implemented
+
+Contract workbench Step 2 now opens Lease combination assessment. Readers can inspect the
+retained record status, original component keys, underlying asset class, three assessment
+answers, conclusion and rationale. Holders of judgement.create in the editable workbench can
+record an ASC606 assessment with explicit same-transfer-pattern, operating-lease and nonlease-
+predominance answers and submit it through the existing independent judgement review flow.
+The associated lease policy election remains managed through the existing policy controls.
+
+The form selects component keys from current obligations plus retained assessments, so a merged
+original component can still be named. All answers and the rationale are required. Creation and
+submission preserve command identities on uncertain responses; a completed create is retained
+when submission fails. Fields freeze during that retry to prevent accidentally submitting changed
+answers against an existing record. A known create validation refusal permits correction.
+Read-only and historical workbench views show evidence without authoring controls.
+
+Necessary verification: two interaction cases cover complete payload/required answers,
+create-once/submit-retry, disabled editing after create and reader-only history. TypeScript and
+scoped ESLint pass. The previous populated backend judgement/approval/report workflow validates
+the API path reused here. No deployment.
+
+POL-231 still requires modification/variable-payment integration and in-scope combined-component
+visibility. This UI does not mark the overall policy or repository complete.
