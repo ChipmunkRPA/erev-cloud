@@ -25,10 +25,13 @@ def calculate(
     entries: Sequence[Entry],
     opening: Decimal,
     consumed: Decimal,
+    *,
+    opening_row: tie_outs.BalanceRow | None = None,
+    opening_absent: bool = False,
 ) -> tuple[Decimal, dict[str, Any]]:
     """One uncombined member, using the selected version and the selected posting range.
 
-    The caller excludes locked openings: a contract snapshot does not establish POB openings.
+    Locked openings must supply the authenticated lock-time source row, or proven absence.
     A range is evaluated once, never as a sum of monthly opening-consumption disclosures.
     """
     obligations = (
@@ -54,7 +57,35 @@ def calculate(
     subjects = {
         obligation_subject_key(row.external_id, item["obligation_key"]) for item in obligations
     }
-    trace = store.load_trace(session, row.version_id)
+    source = opening_row or row
+    opening_subjects = subjects
+    if opening_absent:
+        opening_subjects = set()
+    elif source.version_id != row.version_id:
+        prior_obligations = (
+            session.execute(
+                select(obligation_version).where(
+                    obligation_version.c.contract_version_id == source.version_id,
+                    obligation_version.c.contract_id == row.contract_id,
+                    obligation_version.c.contracting_entity_id == row.entity_id,
+                )
+            )
+            .mappings()
+            .all()
+        )
+        if not prior_obligations or any(
+            item["performing_entity_id"] != row.entity_id
+            or str(item["principal_agent"]) != "PRINCIPAL"
+            for item in prior_obligations
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "The original opening obligations need special attribution."
+            )
+        opening_subjects = {
+            obligation_subject_key(row.external_id, item["obligation_key"])
+            for item in prior_obligations
+        }
+    trace = store.load_trace(session, source.version_id)
     if trace is None:
         raise tie_outs.invalid("currency_view", "Per-obligation opening relief requires a trace.")
     nodes = {node.id: node for node in trace.nodes}
@@ -63,7 +94,7 @@ def calculate(
     for entry in entries:
         if not entry.flow.is_revenue:
             continue
-        if entry.subject_key not in subjects or entry.line_id is None:
+        if entry.subject_key not in subjects | opening_subjects or entry.line_id is None:
             raise tie_outs.invalid(
                 "currency_view", "Posted relief does not identify a retained obligation."
             )
@@ -71,10 +102,10 @@ def calculate(
         posted.append(str(entry.line_id))
     facts: dict[str, Any] = {}
     formula = ZERO
-    for subject in sorted(subjects):
+    for subject in sorted(subjects | opening_subjects):
         billed = revenue = ZERO
         inputs: list[str] = []
-        if previous is not None:
+        if previous is not None and subject in opening_subjects:
             for measure in ("billed_cum", "revenue_cum"):
                 identity = f"{measure}:{subject}:{previous.key}"
                 node = nodes.get(identity)

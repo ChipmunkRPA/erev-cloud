@@ -12,6 +12,7 @@ from erev_api.domain.reports import (
     locked_ends,
     opening_consumption_policy,
     opening_relief_pob,
+    opening_relief_frozen,
     tie_outs,
 )
 from erev_api.domain.reports.builders import ReportParams
@@ -111,6 +112,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             files=uow.files,
         )
     )
+    frozen_sources = opening_relief_frozen.Reader(source_uow)
     for (version, entity, currency), members in groups.items():
         first = {
             name: sum((open_rows[key].value(name) for key in members if key in open_rows), ZERO)
@@ -228,15 +230,23 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 relief[member] += attribution.get(index, ZERO)
         if policies.get(str(entity)) == "FIFO_WITHIN_POB":
             previous = before.get(entity)
-            if len(members) != 1 or (
-                previous is not None and locked.at(entity, previous) is not None
-            ):
+            if len(members) != 1:
                 raise tie_outs.invalid(
                     "currency_view",
-                    "Per-obligation opening relief for combined contracts or locked openings "
+                    "Per-obligation opening relief for combined contracts "
                     "requires original obligation-level opening evidence and is not yet supported.",
                 )
             member = members[0]
+            frozen = None if previous is None else locked.at(entity, previous)
+            frozen_row = None
+            frozen_facts = None
+            if frozen is not None and previous is not None:
+                frozen_row, frozen_facts = frozen_sources.read(
+                    row=selected[member],
+                    previous=previous,
+                    locked=frozen,
+                    book=book,
+                )
             pob_amount, facts = opening_relief_pob.calculate(
                 session,
                 selected[member],
@@ -247,7 +257,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     path["REVENUE_FROM_OPENING"]["contract_liability"]
                     + path["REVENUE_FROM_PERIOD_BILLINGS"]["contract_liability"]
                 ),
+                opening_row=frozen_row,
+                opening_absent=frozen is not None and frozen_row is None,
             )
+            if frozen_facts is not None:
+                facts["frozen_opening"] = frozen_facts
             relief[member] = pob_amount
             pob_evidence[f"{version}:{entity}:{currency}"] = facts
         membership[f"{version}:{entity}:{currency}"] = sorted(str(member[0]) for member in members)

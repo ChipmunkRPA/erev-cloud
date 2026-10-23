@@ -716,6 +716,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 "opening balances (children of the bound versions)",
                 "resolved opening-consumption policies by entity and book (new bindings)",
                 "transaction obligation opening nodes and actual posted revenue (new bindings)",
+                "authenticated lock-time balance report bindings for frozen obligation openings",
                 _CONFIGURATION,
                 _CUSTOMERS,
                 _LINES,

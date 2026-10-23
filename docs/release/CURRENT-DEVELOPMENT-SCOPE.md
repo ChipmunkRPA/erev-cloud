@@ -1032,3 +1032,31 @@ still passes (two DB cases). Seven focused cases cover the 5,000 service opening
 policy retention across views. Five production modules pass mypy; scoped lint passes. Disposable
 DB stopped after verification. No deployment. This closes the ordinary transaction path only;
 combined/locked/foreign-functional and other special-case integration remain work in progress.
+
+## October 23 locked transaction POB openings — original source integration
+
+The transaction POB method now accepts locked openings when the lock retains its authenticated
+seven-snapshot disclosure pack and original contract-balance report binding. It verifies the
+frozen pack, original source run identity/scope/output digest and binding, reads precisely those
+original versions, and ties all three contract position captions to the frozen balance dataset.
+It never selects today's version at a historical date. The original POB billing/revenue nodes
+supply the opening; current selected-range posted lines supply revenue. Contract absence from the
+original frozen population gives no opening, and obligations introduced after that original
+version cannot inherit an invented opening. Source run/binding digests and version are retained
+with the calculation facts. Original disclosure inputs are cached once per lock/entity/book.
+
+The prior blanket locked-opening refusal is superseded for this path. Missing original lock
+sources (including older locks without the disclosure attachments), missing original nodes or a
+failed balance tie still refuse. Combined contracts, agent/cross-entity attribution and functional/
+reporting currency POB consumption remain unfinished. Saved earlier reports retain their existing
+methods; this change does not rewrite snapshots, posting amounts or locks.
+
+Necessary verification: a populated foreign-receivable world closes through its existing public
+workflow, then appends a memo to produce a different contract version. The transaction POB report
+proves that its opening source version differs from its current version and belongs to the frozen
+balance report binding; saved rerun rows match without current policy reads. This case verifies
+source integration, not positive liability consumption. Seven focused cases separately verify
+positive 800 consumption against a 5,000 original opening, range-net corrections, caps, proven
+absence, missing evidence, lock balance mismatch refusal and one-time source loading. The existing
+unlocked public POB report/rerun also passes. Three production modules pass mypy and scoped lint
+passes. Disposable DB stopped; no deployment.

@@ -62,3 +62,62 @@ def test_range_nets_corrections_before_applying_opening_cap(monkeypatch):
     nodes.pop()
     with pytest.raises(Problem):
         pob.calculate(session, row, NS(key="P03"), entries, D("5000"), D("500"))
+
+
+def test_frozen_opening_never_uses_current_trace(monkeypatch):
+    session, row, nodes = fixture(monkeypatch)
+    original = NS(**{**vars(row), "version_id": UUID(int=99)})
+
+    def frozen_only(session, version):
+        assert version == original.version_id
+        return NS(nodes=nodes)
+
+    monkeypatch.setattr(pob.store, "load_trace", frozen_only)
+    amount, facts = pob.calculate(
+        session,
+        row,
+        NS(key="P03"),
+        [entry(1, "S", "800")],
+        D("5000"),
+        D("800"),
+        opening_row=original,
+    )
+    assert amount == D("800")
+    assert facts["obligations"]["C/S"]["opening_billing"] == "20000"
+
+
+def test_contract_absent_from_frozen_population_has_no_opening(monkeypatch):
+    session, row, _ = fixture(monkeypatch)
+    amount, facts = pob.calculate(
+        session, row, NS(key="P03"), [entry(1, "S", "800")], D("0"), D("800"), opening_absent=True
+    )
+    assert amount == 0
+    assert facts["obligations"]["C/S"]["opening_nodes"] == []
+
+
+def test_frozen_sources_are_cached_and_must_tie_to_lock(monkeypatch):
+    from erev_api.domain.reports import opening_relief_frozen as frozen
+
+    entity, contract, lock = UUID(int=1), UUID(int=2), UUID(int=3)
+    row = NS(contract_id=contract, entity_id=entity, external_id="C")
+    original = NS(
+        version_id=UUID(int=4),
+        currency="USD",
+        value=lambda name: D("500") if name == "contract_liability" else D(0),
+    )
+    held = NS(currency="USD", values={"contract_liability": D("500")})
+    locked = NS(lock_id=lock, rows={"C": held})
+    calls = []
+
+    def sources(*args, **kwargs):
+        calls.append(1)
+        return frozen.FrozenSources({contract: original}, {"lock_id": str(lock)})
+
+    monkeypatch.setattr(frozen, "_sources", sources)
+    reader = frozen.Reader(None)
+    assert reader.read(row=row, previous=None, locked=locked, book="ASC606")[0] is original
+    assert reader.read(row=row, previous=None, locked=locked, book="ASC606")[0] is original
+    assert calls == [1]
+    held.values["contract_liability"] = D("501")
+    with pytest.raises(Problem):
+        reader.read(row=row, previous=None, locked=locked, book="ASC606")

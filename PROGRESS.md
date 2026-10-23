@@ -255,19 +255,11 @@ Current outstanding implementation and verification gaps remain in
   months. Input, computation and trace integration remain; release checks alone are insufficient.
 - Privacy checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Frozen opening consumption cap — October 23, 2026
+## Locked POB opening sources — October 23, 2026
 
-- Native S15 now caps positive opening consumption after applying a frozen opening balance;
-  excess is classified as relief from period increases without changing total relief or closing.
-- Eleven focused cases and scoped lint/types pass. Restatement differences remain in Other.
-  Public FIFO_WITHIN_POB range/currency integration remains unfinished. No deployment.
-
-## Transaction POB opening disclosure — October 23, 2026
-
-- Public opening-liability reports now apply FIFO_WITHIN_POB for uncombined principal contracts
-  with the same contracting/performing entity and an unlocked opening. Selected-range posted
-  revenue is netted per obligation and capped by its opening billing less revenue, then by the
-  contract's displayed opening and actual liability relief. Original evidence is retained.
-- Public report/rerun and default-policy cases plus seven focused cases pass; scoped types/lint
-  pass. Combined/locked, agent/cross-entity and functional/reporting POB integration remain open.
-- Renewal-commission checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+- Transaction POB reports now recover opening obligation nodes from the authenticated lock-time
+  balance report's original version binding and reconcile it to the frozen contract balances.
+  Later contract versions do not replace that opening. Missing original evidence still refuses.
+- Public lock/new-version/report/rerun verification and seven focused cases pass, plus scoped
+  types/lint. Combined contracts, foreign-functional and special attribution remain open.
+- Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.

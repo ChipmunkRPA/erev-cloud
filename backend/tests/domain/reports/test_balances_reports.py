@@ -1056,3 +1056,67 @@ def test_opening_liability_pob_public_report_and_retained_rerun(world, monkeypat
     )
     assert rebuilt.status_code == 200, rebuilt.text
     assert rebuilt.json()["control_totals"] == run["control_totals"]
+
+
+@pytest.mark.slow
+def test_opening_pob_uses_locked_source_versions(app, keyring, clock, app_settings, monkeypatch):
+    from types import SimpleNamespace
+    from sqlalchemy import select
+    from support import close_run_worlds, worlds
+    from erev_api.db.tables import report_run as report_run_table
+    from erev_api.domain.reports import opening_consumption_policy as policy
+    from erev_api.domain.reports.builders import SourceBinding
+
+    world, _ = close_run_worlds.august_locked(
+        app, keyring, clock, LocalFileStore(app_settings.file_root), monkeypatch
+    )
+    worlds._appended_through_api(
+        world.place,
+        UUID(str(world.contracts[close_run_worlds.EUR_CONTRACT].contract["id"])),
+        {
+            "event_type": "MEMO_UPDATED",
+            "effective_date": "2026-09-15",
+            "payload": {"memo_1": "Post-lock version for original opening evidence verification"},
+        },
+    )
+    world = worlds.on_record_clock(world, clock)
+    monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
+    run, rows = report_run(world, "revenue_from_opening_liability", SEPTEMBER)
+    binding = SourceBinding.from_stored(
+        world.place.scalar(
+            select(report_run_table.c.source_binding).where(
+                report_run_table.c.id == UUID(run["id"])
+            )
+        )
+    )
+    assert binding is not None
+    facts = binding.evidence["opening_relief_pob_v1"]
+    assert facts
+    for item in facts.values():
+        saved = item["frozen_opening"]
+        original = world.place.scalar(
+            select(report_run_table.c.source_binding).where(
+                report_run_table.c.id == UUID(saved["source_run_id"])
+            )
+        )
+        assert saved["version"] in original["versions"]["ASC606"]
+        assert saved["version"] != item["version"]
+        assert D(item["relief"]) <= D(item["opening_cap"])
+    monkeypatch.setattr(
+        policy,
+        "resolve",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("Frozen rerun consulted current policy")
+        ),
+    )
+    restarted = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert restarted.status_code == 202, restarted.text
+    complete = run_now(world, UUID(restarted.json()["id"]))
+    assert complete["state"] == "SUCCEEDED", complete
+    rebuilt = get(
+        world.app,
+        f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+        world.maya,
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["items"] == rows
