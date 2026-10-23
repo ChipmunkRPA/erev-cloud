@@ -20,23 +20,23 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Whole-group union of frozen native openings — October 23, 2026
+## Post-lock new contract joining a frozen group — October 23, 2026
 
-- After complete original contract groups are combined, the next native rollforward can use
-  the sum of their authenticated locked closings. Original obligation eligibility remains
-  separate from group balances; no member/layer allocation is invented.
-- Read every original member source, deduplicate original versions, and require complete,
-  disjoint coverage in each currency view. Check each transaction group against its own locked
-  member totals, so offsetting errors cannot pass an aggregate reconciliation.
-- Multiple original versions retain a deterministic full source set and its digest; the set
-  digest is never presented as an original output-file hash. Single-group proof stays unchanged.
-  Engine handoff validates the source set and retains it in saved native output.
-- Validation: focused union and native/codec checks pass, plus a populated product workflow
-  that computes two contracts separately, closes/locks September, combines them in October,
-  and saves FROZEN openings with both original versions. Scoped lint/types pass.
-- Still open: partial historical-group splits, broader foreign-currency lock histories and
-  special/acquired opening sources. This change does not claim those populations complete.
-  Posting calculation remains unchanged; no deployment.
+- A genuinely new contract can join a complete historical group while retaining the old group's
+  frozen native opening. The original locked group proof remains intact and explicitly lists
+  the new contracts with proven zero opening; no historical amount is apportioned to them.
+- Proof requires inception and every retained event after the opening date, exactly one booking,
+  absence from locked balances, and no imported/acquired OPENING_BALANCE_ESTABLISHED event.
+  The engine independently checks retained headers/events and refuses existing obligation
+  openings before supplying zero eligibility for new-contract obligations.
+- Historical membership matching now uses canonical encoded contract keys, including slash and
+  percent characters. Missing, overlapping and partial original groups still do not receive
+  inferred historical openings.
+- Validation: nine focused source/proof cases and 17 native rollforward cases pass. Populated
+  public workflows for both two old groups and an old group plus a newly booked contract pass,
+  retaining FROZEN openings and explicit original/zero sources. Scoped types/lint pass.
+- Partial old-group splits, special/acquired original sources, broader foreign lock histories
+  and the other development scope remain open. No deployment or posting algorithm change.
 
 ## Rollforward Other explanation — October 23, 2026
 

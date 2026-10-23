@@ -93,3 +93,62 @@ def test_unchanged_group_retains_single_original_proof():
         "output_sha256": "a" * 64,
         "source_binding_sha256": "b" * 64,
     }
+
+
+def test_new_member_zero_requires_explicit_proof_and_preserves_old_balance():
+    original = snapshot("a", ["A"], 4000)
+    rows = complete_openings(
+        [original],
+        {"A", "B"},
+        {"A": NS(values={"contract_liability": Decimal("40")})},
+        book_code="ASC606",
+        entity="UK",
+        period_key="2026-10",
+        opening_date=date(2026, 9, 30),
+        zero_names={"B"},
+    )
+    assert len(rows) == 2
+    assert rows[0].balances == {"CONTRACT_LIABILITY": 4000}
+    assert rows[0].obligations == {"A/P": 4000}
+    assert json.loads(rows[0].source["zero_opening_contracts_json"]) == ["B"]
+    assert assemble([original]) == []
+
+
+def test_original_contract_keys_are_compared_using_canonical_encoding():
+    from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
+    original = snapshot("a", ["unused"], 4000)
+    name = "A/B%customer"
+    for view in original[0]["views"]:
+        view["obligation_closing"]["obligations"] = {
+            obligation_subject_key(name, "P"): {"liability": 4000}
+        }
+    rows = complete_openings(
+        [original],
+        {name},
+        {name: NS(values={"contract_liability": Decimal("40")})},
+        book_code="ASC606",
+        entity="UK",
+        period_key="2026-10",
+        opening_date=date(2026, 9, 30),
+    )
+    assert len(rows) == 2
+
+
+def test_zero_inception_proof_refuses_old_or_backdated_or_missing_bookings():
+    from erev_engine.stages.s15_disclosures.new_contract_opening import zero_contracts
+
+    contract = NS(external_id="B", inception_date=date(2026, 10, 1))
+    booking = NS(contract_key="B", event_type="CONTRACT_BOOKED", effective_date=date(2026, 10, 1))
+    before = date(2026, 9, 30)
+    assert zero_contracts([contract], [booking], before) == {"B"}
+    assert zero_contracts([contract], [], before) == set()
+    assert zero_contracts([contract], [booking, booking], before) == set()
+    backdated = NS(contract_key="B", event_type="BILLING_RECORDED", effective_date=before)
+    assert zero_contracts([contract], [booking, backdated], before) == set()
+    acquired = NS(
+        contract_key="B", event_type="OPENING_BALANCE_ESTABLISHED", effective_date=date(2026, 10, 1)
+    )
+    assert zero_contracts([contract], [booking, acquired], before) == set()
+    contract.inception_date = before
+    assert zero_contracts([contract], [booking], before) == set()

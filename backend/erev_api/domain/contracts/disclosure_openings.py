@@ -16,6 +16,8 @@ from erev_api.domain.reports import locked_ends, opening_relief_frozen, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.uow import UnitOfWork
 from erev_engine.bundle import DisclosureOpeningInput, InputBundle
+from erev_engine.stages.s01_canonicalize import encode_key
+from erev_engine.stages.s15_disclosures.new_contract_opening import zero_contracts
 
 
 def prepare(uow: UnitOfWork, bundle: InputBundle) -> InputBundle:
@@ -76,6 +78,9 @@ def _prepare(uow: UnitOfWork, bundle: InputBundle) -> InputBundle:
                 continue
             reader = opening_relief_frozen.Reader(uow, params)
             names = {row[1] for row in members if row[2] == entity.id}
+            proven_zero = (
+                zero_contracts(bundle.contracts, bundle.events, previous.end) & names
+            ) - ending.rows.keys()
             snapshots = {}
             for identity, external, owner in members:
                 if owner != entity.id:
@@ -104,6 +109,7 @@ def _prepare(uow: UnitOfWork, bundle: InputBundle) -> InputBundle:
                     entity=entity.code,
                     period_key=current.key,
                     opening_date=previous.end,
+                    zero_names=proven_zero,
                 )
             )
     return replace(bundle, disclosure_openings=tuple(captured)) if captured else bundle
@@ -118,11 +124,16 @@ def complete_openings(
     entity: str,
     period_key: str,
     opening_date: date,
+    zero_names: set[str] | None = None,
 ) -> list[DisclosureOpeningInput]:
     """Union only complete, disjoint original groups; never apportion a historic group."""
+    zero_names = zero_names or set()
+    if not zero_names <= names:
+        raise ValueError("Zero opening contracts differ from current group")
+    encoded_names = {encode_key(name): name for name in names}
     result = []
     for view_name in ("TRANSACTION", "FUNCTIONAL"):
-        covered: set[str] = set()
+        covered: set[str] = set(zero_names)
         balances: dict[str, int] = {}
         obligations: dict[str, int] = {}
         sources = []
@@ -135,7 +146,10 @@ def complete_openings(
             closing = view.get("obligation_closing", {})
             if closing.get("status") != "AVAILABLE":
                 break
-            original_names = {subject.rsplit("/", 1)[0] for subject in closing["obligations"]}
+            prefixes = {subject.rsplit("/", 1)[0] for subject in closing["obligations"]}
+            if not prefixes <= encoded_names.keys():
+                break
+            original_names = {encoded_names[prefix] for prefix in prefixes}
             current_denomination = (view["currency"], view["minor_unit"])
             if (
                 not original_names
@@ -187,6 +201,8 @@ def complete_openings(
                     "sources_json": encoded,
                     "source_set_sha256": hashlib.sha256(encoded.encode()).hexdigest(),
                 }
+            if zero_names:
+                source = {**source, "zero_opening_contracts_json": json.dumps(sorted(zero_names))}
             result.append(
                 DisclosureOpeningInput(
                     book_code=book_code,

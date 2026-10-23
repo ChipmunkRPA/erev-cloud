@@ -1,5 +1,23 @@
 # Archived Reporting checkpoints — October 22, 2026
 
+## Whole-group union of frozen native openings — October 23, 2026
+
+- After complete original contract groups are combined, the next native rollforward can use
+  the sum of their authenticated locked closings. Original obligation eligibility remains
+  separate from group balances; no member/layer allocation is invented.
+- Read every original member source, deduplicate original versions, and require complete,
+  disjoint coverage in each currency view. Check each transaction group against its own locked
+  member totals, so offsetting errors cannot pass an aggregate reconciliation.
+- Multiple original versions retain a deterministic full source set and its digest; the set
+  digest is never presented as an original output-file hash. Single-group proof stays unchanged.
+  Engine handoff validates the source set and retains it in saved native output.
+- Validation: focused union and native/codec checks pass, plus a populated product workflow
+  that computes two contracts separately, closes/locks September, combines them in October,
+  and saves FROZEN openings with both original versions. Scoped lint/types pass.
+- Still open: partial historical-group splits, broader foreign-currency lock histories and
+  special/acquired opening sources. This change does not claim those populations complete.
+  Posting calculation remains unchanged; no deployment.
+
 ## Automatic frozen native opening handoff — October 23, 2026
 
 - Computation and preview paths attach available authenticated prior-lock native snapshots to

@@ -8,6 +8,7 @@ from dataclasses import replace
 from erev_engine.bundle import DisclosureOpeningInput
 from erev_engine.stages.state import AllocatedState, BookContext
 
+from .new_contract_opening import zero_contracts
 from .rollforward import BALANCES, BalanceInputs, BalanceRollforward, rollforward_balances
 
 
@@ -42,6 +43,32 @@ def apply(
         "rollforward.opening_liability_consumption", entity=row.entity, period=row.period_key
     )
     obligations = dict(item.obligations)
+    encoded_zero = item.source.get("zero_opening_contracts_json")
+    if encoded_zero is not None:
+        try:
+            claimed = json.loads(encoded_zero)
+        except ValueError as error:
+            raise ValueError("Invalid zero opening contract evidence") from error
+        proven = zero_contracts(
+            [contract.header for contract in st.contracts], st.events, item.opening_date
+        )
+        if (
+            not isinstance(claimed, list)
+            or not claimed
+            or any(not isinstance(key, str) for key in claimed)
+            or not set(claimed) <= proven
+        ):
+            raise ValueError("Zero opening contracts lack post-opening inception evidence")
+        from erev_engine.stages.s01_canonicalize import encode_key
+
+        prefixes = {encode_key(key) + "/" for key in claimed}
+        for ob in st.obligations:
+            if ob.contracting_entity == row.entity and any(
+                ob.subject_key.startswith(prefix) for prefix in prefixes
+            ):
+                if ob.opening is not None or obligations.get(ob.subject_key, 0) != 0:
+                    raise ValueError("New contract carries an existing opening balance")
+                obligations[ob.subject_key] = 0
     if policy == "FIFO_WITHIN_POB":
         from erev_engine.stages.s01_canonicalize import obligation_subject_key
 

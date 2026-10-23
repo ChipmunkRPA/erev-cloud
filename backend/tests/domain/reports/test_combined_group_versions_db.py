@@ -1095,8 +1095,9 @@ def test_combined_pob_opening_shows_group_total_and_all_sources(combined, monkey
     assert all("relief" not in member for member in groups[0]["members"].values())
 
 
+@pytest.mark.parametrize("new_member", [False, True])
 def test_union_after_lock_retains_both_original_native_openings(
-    app, keyring, clock, files, monkeypatch
+    app, keyring, clock, files, monkeypatch, new_member
 ):
     import json
     from datetime import timedelta
@@ -1106,7 +1107,11 @@ def test_union_after_lock_retains_both_original_native_openings(
     from support import close_run_worlds, close_runs
     from support.close_world import periods_closed_before
 
-    world = two_orders(app, keyring, clock, files)
+    world = (
+        worlds.k09_orrin_vale(worlds.k02_marrowby_commission(app, keyring, clock, files))
+        if new_member
+        else two_orders(app, keyring, clock, files)
+    )
     assign(world.priya.member, "revenue_reviewer")
     world = worlds.on_record_clock(world, clock)
     state = worlds.period_state(world, AVM_US, SEPTEMBER_2026)
@@ -1137,6 +1142,17 @@ def test_union_after_lock_retains_both_original_native_openings(
     world = worlds.verified(world, clock, "marcus")
     approved = approve(app, requested.json()["approval_request_id"], world.marcus)
     assert approved.status_code == 200, approved.text
+    if new_member:
+        buyer = world.place.scalar(select(customer.c.id).where(customer.c.code == "C-09"))
+        line = seat_line("O1", seats="10", price="48000.00", start="2026-10-01", end="2027-09-30")
+        booked = booked_contract(
+            world.place,
+            seat_body(UUID(str(buyer)), external_id=SECOND, inception="2026-10-01", lines=[line]),
+            activate=True,
+        )
+        world = dataclasses.replace(
+            world, contracts=MappingProxyType({**world.contracts, SECOND: booked})
+        )
     for name in (K09, SECOND):
         worlds._appended_through_api(
             world.place,
@@ -1178,7 +1194,11 @@ def test_union_after_lock_retains_both_original_native_openings(
     assert native
     for row in native:
         assert row["opening_basis"] == "FROZEN"
-        sources = json.loads(row["opening_source"]["sources_json"])
-        assert len(sources) == 2
-        assert len({item["version"] for item in sources}) == 2
+        if new_member:
+            assert json.loads(row["opening_source"]["zero_opening_contracts_json"]) == [SECOND]
+            assert row["opening_source"]["version"]
+        else:
+            sources = json.loads(row["opening_source"]["sources_json"])
+            assert len(sources) == 2
+            assert len({item["version"] for item in sources}) == 2
         assert row["lines"]["CONTRACT_LIABILITY"]["OPENING"] > 0
