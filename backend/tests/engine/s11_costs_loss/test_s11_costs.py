@@ -16,6 +16,20 @@ from datetime import date
 from decimal import Decimal
 from fractions import Fraction
 
+from support.bundles import INCEPTION, entity
+from support.recognition import (
+    CONTRACT_KEY,
+    allocated_state,
+    book_context,
+    contract_view,
+    emit_catch_up_nodes,
+    estimate_version,
+    event_view,
+    obligation,
+    segment,
+    usd,
+)
+
 from erev_engine import ENGINE_VERSION
 from erev_engine.bundle import EntityInput, EstimateVersionInput, JudgementInput, PeriodInput
 from erev_engine.stages import s09_recognition, s10_billing_balances, s11_costs_loss
@@ -31,19 +45,6 @@ from erev_engine.stages.state import (
     TpBuildUp,
 )
 from erev_engine.trace import Trace, TraceBuilder, TraceNode, reevaluate
-from support.bundles import INCEPTION, entity
-from support.recognition import (
-    CONTRACT_KEY,
-    allocated_state,
-    book_context,
-    contract_view,
-    emit_catch_up_nodes,
-    estimate_version,
-    event_view,
-    obligation,
-    segment,
-    usd,
-)
 
 CTX = book_context(entity(months=24))
 MONTHLY_EVEN = ("recognition.time_convention", "ENTITY", "US01", "MONTHLY_EVEN")
@@ -568,3 +569,61 @@ def test_s11_inv_01_carrying_identity() -> None:
             assert measures.carrying_amount == _identity(measures) >= 0
             checked += 1
     assert checked == 2 * 4
+
+
+def test_commensurate_renewal_rates_and_policy_threshold_control_cost_term() -> None:
+    for renewal_amount, ratio, months in (
+        ("1000", "1", 24),
+        ("999.99", "1", 48),
+        ("500", "0.5", 24),
+    ):
+        ctx = book_context(
+            entity(months=48),
+            horizon="FY2026-P12",
+            overrides=[MONTHLY_EVEN, ("costs.commensurate_ratio", "ENTITY", "US01", ratio)],
+        )
+        renewal = dataclasses.replace(
+            _renewal(1, INCEPTION, 48),
+            parameters={
+                "initial_commission": "2000",
+                "initial_contract_value": "100000",
+                "renewal_commission": renewal_amount,
+                "renewal_contract_value": "50000",
+            },
+        )
+        event = _cost(3, INCEPTION, "COST_TO_OBTAIN", "2400", is_incremental=True)
+        ob = _services("100000", INCEPTION, date(2027, 12, 31), convention="MONTHLY_EVEN")
+        state, trace = _run(
+            ctx, allocated_state([ob], events=[event], estimates=_pins((renewal, 2)))
+        )
+        assert state.cost_asset_specs[0].amortization_months == months
+        assert _line(state, event.event_key, "FY2026-P01") == usd("100" if months == 24 else "50")
+        node = next(node for node in trace.nodes if node.measure == "cost_capitalised")
+        assert node.params["commission_commensurate"] == str(months == 24).lower()
+        assert node.params["commission_ratio"] == ratio
+
+
+def test_later_commission_comparison_changes_remaining_amortization_prospectively() -> None:
+    ctx = book_context(entity(months=48), horizon="FY2026-P12", overrides=[MONTHLY_EVEN])
+    first = _renewal(1, INCEPTION, 48)
+    second = dataclasses.replace(
+        _renewal(2, date(2026, 6, 30), 48),
+        parameters={
+            "initial_commission": "2000",
+            "initial_contract_value": "100000",
+            "renewal_commission": "1000",
+            "renewal_contract_value": "50000",
+        },
+    )
+    event = _cost(3, INCEPTION, "COST_TO_OBTAIN", "2400", is_incremental=True)
+    ob = _services("100000", INCEPTION, date(2027, 12, 31), convention="MONTHLY_EVEN")
+    state, trace = _run(
+        ctx, allocated_state([ob], events=[event], estimates=_pins((first, 2), (second, 4)))
+    )
+    assert _line(state, event.event_key, "FY2026-P06") == usd("50")
+    assert _line(state, event.event_key, "FY2026-P07") == usd("116.67")
+    july = _measures(state, event.event_key, "FY2026-P07")
+    assert july.segments[-1].end == date(2027, 12, 31)
+    node = _node(trace, f"cost_amortised_cum:{event.event_key}:FY2026-P07")
+    assert node.params["commission_estimate_version"] == second.version_key
+    assert node.params["commission_commensurate"] == "true"

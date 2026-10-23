@@ -134,6 +134,10 @@ class EstimateParametersRowIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    initial_commission: str | None = None
+    initial_contract_value: str | None = None
+    renewal_commission: str | None = None
+    renewal_contract_value: str | None = None
     no_change_attestation: bool | None = None
     refund_liability_target: str | None = None
     carrying_cost_per_unit: str | None = None

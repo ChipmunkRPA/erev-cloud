@@ -314,6 +314,54 @@ def _policy(ctx: BookContext, code: str, ob: ObligationState) -> str:
     )
 
 
+def renewal_period(
+    ctx: BookContext,
+    ob: ObligationState,
+    version: EstimateVersionInput | None,
+    *,
+    term: int,
+    option: str,
+    kind: str,
+) -> tuple[int, dict[str, str]]:
+    """POL-141/142: use explicit commission-rate evidence; absent evidence keeps stated months."""
+    months = term
+    if option != CONTRACT_TERM and version is not None and version.amortization_months is not None:
+        months = version.amortization_months
+    if (
+        version is None
+        or kind != OBTAIN
+        or option != "TERM_PLUS_EXPECTED_RENEWALS_UNLESS_COMMENSURATE"
+    ):
+        return months, {}
+    keys = (
+        "initial_commission",
+        "initial_contract_value",
+        "renewal_commission",
+        "renewal_contract_value",
+    )
+    values = [version.parameters.get(key) for key in keys]
+    if all(value is None for value in values):
+        return months, {}
+    if any(value is None for value in values):
+        raise ValueError("POL-142 requires both commissions and both contract values")
+    amounts = [Fraction(str(value)) for value in values]
+    initial, initial_value, renewal, renewal_value = amounts
+    if min(initial, renewal) < 0 or min(initial_value, renewal_value) <= 0:
+        raise ValueError("POL-142 requires nonnegative commissions and positive contract values")
+    ratio_text = _policy(ctx, "costs.commensurate_ratio", ob)
+    ratio = Fraction(ratio_text)
+    if ratio < 0:
+        raise ValueError("POL-142 requires a nonnegative ratio")
+    commensurate = renewal * initial_value >= ratio * initial * renewal_value
+    details = {"commission_" + key: str(value) for key, value in zip(keys, values, strict=True)}
+    details.update(
+        commission_ratio=ratio_text,
+        commission_commensurate=str(commensurate).lower(),
+        commission_estimate_version=version.version_key,
+    )
+    return (term if commensurate else months), details
+
+
 def _attested(
     ctx: BookContext,
     contract: ContractView,
@@ -404,14 +452,10 @@ def gate(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> Gated:
         cap_date = ev.effective_date if active_on is None else max(ev.effective_date, active_on)
         option = _policy(ctx, _PERIOD_POLICY, related[0])
         renewal = renewal_at(renewal_versions(st, ev.contract_key), cap_date)
-        months = term
-        if (
-            option != CONTRACT_TERM
-            and renewal is not None
-            and renewal.amortization_months is not None
-        ):
-            months = renewal.amortization_months
         kind = OBTAIN if purpose == COST_TO_OBTAIN else FULFILL
+        months, commission_details = renewal_period(
+            ctx, related[0], renewal, term=term, option=option, kind=kind
+        )
         reason: str | None = None
         if active_on is None:
             reason = CONTRACT_NOT_ACTIVE
@@ -433,6 +477,7 @@ def gate(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> Gated:
             "period_option": option,
             "purpose": purpose,
             "term_months": str(term),
+            **commission_details,
         }
         if reason is not None:
             node_id = tb.node(

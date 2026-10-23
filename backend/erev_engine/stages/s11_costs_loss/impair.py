@@ -162,6 +162,7 @@ class _Asset:
     clawback: int = 0
     accelerated: int = 0
     amortised_before: int = 0
+    commission_details: dict[str, str] = field(default_factory=dict)
     no_eac_reported: bool = False
     clawbacks: list[_Clawback] = field(default_factory=list)
     accelerations: list[_Acceleration] = field(default_factory=list)
@@ -363,7 +364,16 @@ def _renewal_change(cx: _Context, asset: _Asset, version: EstimateVersionInput) 
         return
     d = max(version.effective_date + _ONE_DAY, asset.spec.amortization_start_date)
     base = _carrying(cx, asset, d - _ONE_DAY)
-    end = capitalise.end_of(asset.spec.amortization_start_date, version.amortization_months)
+    months, details = capitalise.renewal_period(
+        cx.ctx,
+        cx.by_key[asset.spec.related_obligation_keys[0]],
+        version,
+        term=asset.spec.term_months,
+        option=asset.spec.period_option,
+        kind=asset.spec.cost_kind,
+    )
+    asset.commission_details = details
+    end = capitalise.end_of(asset.spec.amortization_start_date, months)
     asset.segments.append(CostSegment(d, end, base, amortise.PERIOD_CHANGE))
     asset.end = end
     asset.renewal_key = version.version_key
@@ -697,7 +707,7 @@ def _publish(
         minor_unit=mu,
         formula_id=amortised.formula_id,
         inputs=[capitalised_node],
-        params=amortised.params,
+        params={**amortised.params, **asset.commission_details},
         narrative_key=_narrative(amortised.formula_id),
     )
     impaired_node = tb.node(

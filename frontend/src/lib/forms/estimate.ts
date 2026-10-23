@@ -93,7 +93,13 @@ export const KIND_MEMBERS: Readonly<Record<EstimateKind, readonly Member[]>> = {
     column("rate", "rate", "rate"),
     column("constrained_amount", "money", "amount"),
   ],
-  RENEWAL_EXPECTATION: [column("amortization_months", "integer", "amortisationMonths", true)],
+  RENEWAL_EXPECTATION: [
+    column("amortization_months", "integer", "amortisationMonths", true),
+    parameter("initial_commission", "money", "initialCommission"),
+    parameter("initial_contract_value", "money", "initialContractValue"),
+    parameter("renewal_commission", "money", "renewalCommission"),
+    parameter("renewal_contract_value", "money", "renewalContractValue"),
+  ],
   ROYALTY_ACCRUAL: [
     parameter("usage_period_start_date", "date", "usageStart", true),
     parameter("usage_period_end_date", "date", "usageEnd", true),
@@ -401,7 +407,9 @@ export function figuresOf(kind: EstimateKind, version: EstimateVersion): readonl
       return cells.length === 0 ? [ofMember(version, kind, "rate")] : cells;
     }
     case "RENEWAL_EXPECTATION":
-      return [ofMember(version, kind, "amortization_months")];
+      return KIND_MEMBERS[kind]
+        .map((member) => ofMember(version, kind, member.id))
+        .filter((cell) => !figureBlank(cell));
     case "ROYALTY_ACCRUAL":
       return [
         ofMember(version, kind, "expected_total_amount"),
@@ -671,6 +679,26 @@ export function buildVersion(
       }
     } else {
       columns[member.name] = value;
+    }
+  }
+  if (kind === "RENEWAL_EXPECTATION") {
+    const comparison = [
+      "initial_commission",
+      "initial_contract_value",
+      "renewal_commission",
+      "renewal_contract_value",
+    ];
+    if (comparison.some((key) => parameters.has(key))) {
+      for (const key of comparison) {
+        if (!parameters.has(key))
+          errors[`parameters.${key}`] = t("contracts.estimates.error.commissionComparison");
+      }
+      for (const key of ["initial_contract_value", "renewal_contract_value"]) {
+        const value = parameters.get(key);
+        if (typeof value === "string" && /^0*(\.0*)?$/.test(value)) {
+          errors[`parameters.${key}`] = t("contracts.estimates.error.positiveContractValue");
+        }
+      }
     }
   }
   const pair = ONE_OF[kind];

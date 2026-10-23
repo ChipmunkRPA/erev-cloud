@@ -583,3 +583,54 @@ describe("the figures of a version", () => {
     ).toBe("");
   });
 });
+
+it("saves and displays complete renewal commission evidence and refuses partial comparisons", () => {
+  const values = {
+    amortization_months: "48",
+    "parameters.initial_commission": "2,000.00",
+    "parameters.initial_contract_value": "100,000.00",
+    "parameters.renewal_commission": "1,000.00",
+    "parameters.renewal_contract_value": "50,000.00",
+  };
+  const result = buildVersion(
+    "RENEWAL_EXPECTATION",
+    "ENTERED_AMOUNT",
+    form("RENEWAL_EXPECTATION", { values }),
+    "USD",
+  );
+  expect(result.errors).toEqual({});
+  expect(result.body?.parameters).toEqual({
+    initial_commission: "2000.00",
+    initial_contract_value: "100000.00",
+    renewal_commission: "1000.00",
+    renewal_contract_value: "50000.00",
+  });
+  expect(
+    figuresOf(
+      "RENEWAL_EXPECTATION",
+      version({ amortization_months: 48, parameters: result.body?.parameters ?? {} }),
+    ).map((cell) => cell.id),
+  ).toEqual([
+    "amortization_months",
+    "parameters.initial_commission",
+    "parameters.initial_contract_value",
+    "parameters.renewal_commission",
+    "parameters.renewal_contract_value",
+  ]);
+  const partial = buildVersion(
+    "RENEWAL_EXPECTATION",
+    "ENTERED_AMOUNT",
+    form("RENEWAL_EXPECTATION", { values: { ...values, "parameters.renewal_commission": "" } }),
+    "USD",
+  );
+  expect(partial.errors["parameters.renewal_commission"]).toBeDefined();
+  const zero = buildVersion(
+    "RENEWAL_EXPECTATION",
+    "ENTERED_AMOUNT",
+    form("RENEWAL_EXPECTATION", {
+      values: { ...values, "parameters.initial_contract_value": "0.00" },
+    }),
+    "USD",
+  );
+  expect(zero.errors["parameters.initial_contract_value"]).toBeDefined();
+});

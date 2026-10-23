@@ -343,3 +343,29 @@ and zero npm runtime advisories across all severities. Output digest:
 `d3eadb3604981c65ab13422ffd9a537f2fa90505545fdde6256c0111d951e363`.
 Machine-readable source-bound evidence remains under `.run/reports/audit-deps/`.
 This is a dated dependency check, not a container build, deployment or full-goal completion.
+
+## October 23 renewal commission comparison — implemented
+
+POL-142 now reads explicit comparison evidence from approved RENEWAL_EXPECTATION parameters:
+initial commission/value and renewal commission/value, all in the estimate currency. Public
+estimate forms expose the four optional amounts, require a complete comparison and positive
+contract values, and show the saved evidence in the version figures. API validation enforces
+the same rules; CSV parameter schemas admit the fields. Existing JSON parameter storage and
+typed bundle capture retain the evidence without a schema migration.
+
+For acquisition costs under TERM_PLUS_EXPECTED_RENEWALS_UNLESS_COMMENSURATE, exact rational
+comparison evaluates renewal rate >= configured ratio * initial rate. A passing comparison
+uses the related contract term; otherwise approved amortization months remain. Subsequent
+approved estimates adjust the remaining amortization from the following day under the existing
+prospective convention. Capitalization/expense and later amortization trace parameters retain
+the comparison amounts, ratio, outcome and estimate version. Contract-term/customer-life modes,
+fulfilment costs and old estimates without comparison evidence retain their existing behavior.
+Comparison evidence is at the renewal estimate's existing contract scope, not a new per-payee
+commission-plan allocation mechanism.
+
+Necessary verification: 14 native cost cases (including threshold boundary, below threshold,
+configured ratio and prospective change) plus parameter validation pass; the public API workflow
+rejects incomplete evidence and preserves approved amounts in the original computation bundle.
+Seventeen frontend form cases, frontend type checking and scoped lint/types pass. No deployment,
+new database migration or independent accounting approval was performed. This supersedes the
+POL-142 reader/input gap in the preceding audit; other historical policies remain unaudited.

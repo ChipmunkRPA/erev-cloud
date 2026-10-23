@@ -113,3 +113,11 @@
   termination terms, with matching data-model declarations. All 12 catalogue checks pass.
 - Export permissions and retention execution are unchanged. The separate revision-0166 schema
   parser issue remains open. This supersedes the privacy omission in the preceding checkpoint.
+
+## Migration/schema verification — October 23, 2026
+
+- Fixed multiline constraint and quoted-comma parsing; full migration-chain comparison now runs.
+  Corrected document-only primary-key/default/header omissions; no runtime schema change.
+- Ten architecture and twelve privacy checks pass, including mismatch-detection witnesses.
+  Supersedes the previous parser gap. Release-candidate verification remains outstanding.
+- Publication audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.

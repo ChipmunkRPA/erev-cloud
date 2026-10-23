@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import date
+from decimal import Decimal
 from types import MappingProxyType
 from typing import Annotated, Any, Final, Literal, Self
 
@@ -259,7 +260,34 @@ class _Parameters(BaseModel):
 
 class NoParameters(_Parameters):
     """``BREAKAGE``, ``EXERCISE_LIKELIHOOD``, ``IMPLICIT_PRICE_CONCESSION``,
-    ``RENEWAL_EXPECTATION`` and ``EXPECTED_PURCHASES``: their measurements live in the columns."""
+    and ``EXPECTED_PURCHASES``: their measurements live in the columns."""
+
+
+class RenewalExpectationParameters(_Parameters):
+    initial_commission: NonNegativeDecimal | None = None
+    initial_contract_value: NonNegativeDecimal | None = None
+    renewal_commission: NonNegativeDecimal | None = None
+    renewal_contract_value: NonNegativeDecimal | None = None
+
+    @model_validator(mode="after")
+    def _complete_comparison(self) -> Self:
+        values = (
+            self.initial_commission,
+            self.initial_contract_value,
+            self.renewal_commission,
+            self.renewal_contract_value,
+        )
+        if any(value is not None for value in values):
+            if any(value is None for value in values):
+                raise ValueError(
+                    "Commission comparison requires both commissions and contract values."
+                )
+            if (
+                Decimal(str(self.initial_contract_value)) <= 0
+                or Decimal(str(self.renewal_contract_value)) <= 0
+            ):
+                raise ValueError("Commission comparison contract values must be greater than zero.")
+        return self
 
 
 class ReturnRateParameters(_Parameters):
@@ -316,7 +344,7 @@ ESTIMATE_PARAMETERS: Final[Mapping[EstimateKind, type[_Parameters]]] = MappingPr
         EstimateKind.EAC: EacParameters,
         EstimateKind.EXERCISE_LIKELIHOOD: NoParameters,
         EstimateKind.IMPLICIT_PRICE_CONCESSION: NoParameters,
-        EstimateKind.RENEWAL_EXPECTATION: NoParameters,
+        EstimateKind.RENEWAL_EXPECTATION: RenewalExpectationParameters,
         EstimateKind.ROYALTY_ACCRUAL: RoyaltyAccrualParameters,
         EstimateKind.EXPECTED_PURCHASES: NoParameters,
         EstimateKind.SHARE_BASED_CONSIDERATION: ShareBasedConsiderationParameters,

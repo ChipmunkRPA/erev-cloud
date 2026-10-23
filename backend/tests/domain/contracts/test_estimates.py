@@ -27,31 +27,6 @@ from typing import Any, Final
 from uuid import UUID, uuid4
 
 import pytest
-from erev_api.approvals.engine import ROLE_REQUIRED_DETAIL
-from erev_api.auth.keyring import KeyRing
-from erev_api.clock import FrozenClock
-from erev_api.config import Settings
-from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import (
-    approval_request,
-    approval_step,
-    audit_event,
-    contract_event,
-    estimate,
-    estimate_version,
-    job,
-    role,
-)
-from erev_api.domain.contracts.commands import BookedContract
-from erev_api.enums import ContractEventType
-from erev_api.events.payloads import BillingRecordedV1, CostIncurredV1, DeliveryRecordedV1
-from erev_api.events.stream import EventIn
-from erev_api.files.store import LocalFileStore
-from erev_api.jobs.context import JobRuntime
-from erev_api.jobs.registry import run_job
-from erev_api.main import create_app
-from erev_api.money import MoneyIn
-from erev_engine.trace import reevaluate
 from fastapi import FastAPI
 from sqlalchemy import and_, select, text, update
 from support.db import TestDatabase
@@ -87,6 +62,32 @@ from support.worlds import (
     k03_castellan,
     k03_revenue,
 )
+
+from erev_api.approvals.engine import ROLE_REQUIRED_DETAIL
+from erev_api.auth.keyring import KeyRing
+from erev_api.clock import FrozenClock
+from erev_api.config import Settings
+from erev_api.db.session import DbContext, tenant_session
+from erev_api.db.tables import (
+    approval_request,
+    approval_step,
+    audit_event,
+    contract_event,
+    estimate,
+    estimate_version,
+    job,
+    role,
+)
+from erev_api.domain.contracts.commands import BookedContract
+from erev_api.enums import ContractEventType
+from erev_api.events.payloads import BillingRecordedV1, CostIncurredV1, DeliveryRecordedV1
+from erev_api.events.stream import EventIn
+from erev_api.files.store import LocalFileStore
+from erev_api.jobs.context import JobRuntime
+from erev_api.jobs.registry import run_job
+from erev_api.main import create_app
+from erev_api.money import MoneyIn
+from erev_engine.trace import reevaluate
 
 CONTRACTS: Final = "/api/v1/contracts"
 ESTIMATES: Final = "/api/v1/estimates"
@@ -2274,9 +2275,10 @@ def test_estimate_decision_and_fx_publication_are_serialized(
     """Observe the other real API transaction waiting on the publication gate in PostgreSQL."""
     import threading
 
+    from support.interleave import await_lock_wait, backend_pid, observing_checkouts
+
     from erev_api.approvals import subjects
     from erev_api.domain.contracts import estimates as commands
-    from support.interleave import await_lock_wait, backend_pid, observing_checkouts
 
     world, k06, version_id, estimate_request, fx_request = _pending_fx_crossing(
         app, keyring, clock, files
@@ -2402,3 +2404,48 @@ def test_fx_publication_overtaking_an_estimate_decision_uses_current_rates(
     _stale(app, world.priya, outcome["response"], estimate_request)
     assert _version(app, world.place.author, version_id)["status"] == "WITHDRAWN"
     assert len(_estimate_events(world, k06.contract_id)) == events_before
+
+
+def test_approved_renewal_commission_comparison_reaches_original_bundle(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = k06_world(app, keyring, clock, files)
+    k06 = _k06_with_v1(world, shipped=False)
+    created = post(
+        app,
+        f"{CONTRACTS}/{k06.contract_id}/estimates",
+        world.place.author,
+        {
+            "estimate_kind": "RENEWAL_EXPECTATION",
+            "element_code": "RENEWAL-COMMISSION",
+            "method": "ENTERED_AMOUNT",
+        },
+    )
+    assert created.status_code == 201, created.text
+    parameters = {
+        "initial_commission": "2000.00",
+        "initial_contract_value": "100000.00",
+        "renewal_commission": "1000.00",
+        "renewal_contract_value": "50000.00",
+    }
+    body = {
+        "effective_date": "2026-07-01",
+        "amortization_months": 48,
+        "parameters": parameters,
+        "rationale": "Compare approved renewal commission rates.",
+    }
+    invalid = post(
+        app,
+        f"{ESTIMATES}/{created.json()['id']}/versions",
+        world.place.author,
+        {**body, "parameters": {"initial_commission": "2000.00"}},
+    )
+    assert invalid.status_code == 422, invalid.text
+    draft = _draft(app, world.place.author, created.json()["id"], body)
+    decided = approve(app, _submitted(world, draft), world.priya)
+    assert (decided.status_code, decided.json()["status"]) == (200, "APPROVED"), decided.text
+    assert _version(app, world.place.author, draft)["parameters"] == parameters
+    bundle, _, _ = computed(world.place, k06.group_id)
+    (held,) = [v for v in bundle.estimate_versions if v.element_code == "RENEWAL-COMMISSION"]
+    assert dict(held.parameters) == parameters
+    assert held.status == "APPROVED"
