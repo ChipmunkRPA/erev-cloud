@@ -281,9 +281,14 @@ OK app-role: erev_app has neither SUPERUSER nor BYPASSRLS
 OK immutability-triggers: 627 triggers enabled; every IM-A table carries its DB-01 triggers
 OK audit-chain: latest verification PASS for 3 of 3 tenants
 OK ai: ai.enabled defaults to false; AI enabled for 0 of 3 tenants
-OK setting-references: 41 functions reference only the documented app.* settings
+OK setting-references: 41 functions reference only documented app.* or supported PostgreSQL settings
 OK doctor
 ```
+
+The setting-reference check permits the documented `app.*` names and the PostgreSQL
+`track_commit_timestamp` parameter used by commit-time evidence. Unknown server settings,
+unknown application settings and dynamically constructed names still fail this check.
+This check validates references, not whether commit tracking is enabled.
 
 A failing check prints one `FAIL <check>: <finding>` line per finding instead of its `OK` line, and `make doctor` ends with `FAIL doctor: a control-critical check failed; see the FAIL lines above`.
 
@@ -497,7 +502,7 @@ OK expected: 11 backup-time anchors from erev-20260930T060637Z.digests.json (8 t
 OK verify
 OK row-level-security: 128 tenant tables have forced row level security and a policy
 …
-OK setting-references: 82 functions reference only the documented app.* settings
+OK setting-references: 82 functions reference only documented app.* or supported PostgreSQL settings
 restore-verify: drill duration 19s (restore 11s, migrate 1s, verify 3s, doctor 1s); no cutover RTO in a drill; record .run/reports/restore-verify/report.json
 OK restore-verify
 ```

@@ -102,10 +102,24 @@ def test_rel_07_referenced_settings_parsing(source: str, settings: tuple[str, ..
     assert referenced_settings(source) == settings
 
 
+def test_commit_time_server_setting_is_allowed_but_unknown_settings_fail() -> None:
+    source = "SELECT current_setting('track_commit_timestamp', true)"
+    valid = FunctionSettingReferences("source_commit_time(text, uuid)", referenced_settings(source))
+    assert setting_references((valid, TENANT_FN)).ok
+    for name in ("track_commit_timestamps", "app.track_commit_timestamp", "work_mem"):
+        invalid = FunctionSettingReferences(
+            "probe()", referenced_settings(f"SELECT current_setting('{name}')")
+        )
+        result = setting_references((valid, invalid))
+        assert len(result.failures) == 1
+        assert f"references setting {name}," in result.failures[0]
+
+
 def test_rel_07_setting_references_predicate() -> None:
     ok = setting_references((TENANT_FN, SCOPE_FN, PLAIN_FN))
     assert ok.ok and ok.lines() == [
-        f"OK {SETTING_REFERENCES}: 3 functions reference only the documented app.* settings"
+        f"OK {SETTING_REFERENCES}: 3 functions reference only documented app.* "
+        "or supported PostgreSQL settings"
     ]
     probe = FunctionSettingReferences(
         "tg_probe__data_fix()", ("app.data_fix_other", "app.tenant_id")
@@ -122,7 +136,7 @@ def test_rel_07_setting_references_predicate() -> None:
         "function tg_odd() references a setting whose name is not identifier-shaped (05 REL-07)",
     )
     assert setting_references(()).summary == (
-        "0 functions reference only the documented app.* settings"
+        "0 functions reference only documented app.* or supported PostgreSQL settings"
     )
     # Codex P4C-S6-R1: an unresolved argument can never establish "only documented settings".
     unresolved = setting_references(

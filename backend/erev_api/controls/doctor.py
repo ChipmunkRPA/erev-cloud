@@ -12,7 +12,8 @@ Six checks, each printed as one line ``OK <check>: <summary>``, or as one
 - ``audit-chain``: the latest ``audit_chain_verification`` of every tenant is ``PASS``;
 - ``ai``: AI is off unless ``ai.enabled`` resolves true (D-46);
 - ``setting-references``: no schema ``erev`` function references a ``current_setting`` name
-  outside the 04 list (05 REL-07). ``erev doctor --analyze <tables>`` runs ``ANALYZE`` on
+  outside the 04 list or explicitly supported PostgreSQL settings (05 REL-07).
+  ``erev doctor --analyze <tables>`` runs ``ANALYZE`` on
   schema-``erev`` tables as ``erev_owner`` instead of the checks (05 PERF-27; ``analyze_tables``).
 
 The catalogue checks run as ``erev_app`` through an identity session; the tenant checks read the
@@ -84,6 +85,9 @@ DOCUMENTED_SETTINGS: Final = frozenset(
         "app.data_fix_ticket",
     }
 )
+# Commit-time evidence reads this PostgreSQL setting to decide whether the server can
+# supply authoritative transaction commit timestamps. This is not an app session setting.
+SUPPORTED_SERVER_SETTINGS: Final = frozenset({"track_commit_timestamp"})
 AI_ENABLED: Final = "ai.enabled"
 # [J] SPEC-Q-195: the daily verification runs at 02:00 UTC with up to 3 attempts (runbook "Chain
 # verification"), so an ACTIVE tenant younger than one cycle plus two hours may have none yet.
@@ -470,7 +474,7 @@ def observe_setting_references(connection: Connection) -> tuple[FunctionSettingR
 
 
 def setting_references(functions: Sequence[FunctionSettingReferences]) -> CheckResult:
-    """05 REL-07: a function referencing a setting 04 does not list fails, naming both."""
+    """Reject unknown app and server settings, naming the function and setting."""
     failures: list[str] = []
     for function in functions:
         for name in function.settings:
@@ -484,14 +488,15 @@ def setting_references(functions: Sequence[FunctionSettingReferences]) -> CheckR
                     f"function {function.function} passes current_setting an argument that is "
                     "not a single string literal (05 REL-07)"
                 )
-            elif name not in DOCUMENTED_SETTINGS:
+            elif name not in DOCUMENTED_SETTINGS | SUPPORTED_SERVER_SETTINGS:
                 failures.append(
                     f"function {function.function} references setting {name}, which 04 does not "
                     "list (05 REL-07)"
                 )
     return CheckResult(
         SETTING_REFERENCES,
-        f"{len(functions)} functions reference only the documented app.* settings",
+        f"{len(functions)} functions reference only documented app.* "
+        "or supported PostgreSQL settings",
         tuple(failures),
     )
 
