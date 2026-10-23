@@ -4077,7 +4077,7 @@
   "evidence.auditLog.empty.description": "Changes, approvals, runs, exports and sign-ins appear here with field-level before and after values.",
   "evidence.auditLog.empty.title": "No audit events from {from} to {to}",
   "evidence.auditLog.eventUnknown": "The link names no audit event of this workspace.",
-  "evidence.auditLog.export.unavailable": "The export cannot apply the Object or Outcome filter. Remove that filter to export.",
+  "evidence.auditLog.export.unavailable": "Resolve the selected contract before exporting.",
   "evidence.auditLog.filter.action": "Action",
   "evidence.auditLog.filter.actor": "Actor",
   "evidence.auditLog.filter.actorUnnamed": "another member",

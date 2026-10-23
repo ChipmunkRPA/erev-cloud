@@ -930,9 +930,8 @@ function AuditLogPage({
     );
   };
 
-  // RPT-43 "Export": the range and the filters of the list as the parameters of the run. The report
-  // takes neither the trail of a contract nor an outcome: with either chip the export would hold
-  // other rows than the list, so it is not offered and says why.
+  // Export the same filters as the list. A selected contract must resolve first, or an
+  // absent contract_id would silently export the entire workspace instead of its trail.
   const canExport =
     access.holdsAnywhere(REPORT_RUN_PERMISSION) && access.holdsAnywhere(REPORT_EXPORT_PERMISSION);
   const definition = useQuery({
@@ -940,8 +939,14 @@ function AuditLogPage({
     queryFn: () => fetchReportDefinition(AUDIT_LOG_EXPORT_CODE),
     enabled: canExport,
   });
-  const exportable = contractText === null && query.outcomes.length === 0;
-  const exportParameters: Record<string, string> = {};
+  const exportable = listed;
+  const exportParameters: Record<string, unknown> = {};
+  if (contractId !== null) {
+    exportParameters.contract_id = contractId;
+  }
+  if (query.outcomes.length > 0) {
+    exportParameters.outcome = [...query.outcomes];
+  }
   if (query.from !== null) {
     exportParameters.from = query.from;
   }

@@ -905,3 +905,18 @@ architecture checks pass, closing the previously reported 29 writer classificati
 Seven changed production modules pass mypy; scoped lint passes. This is not a claim that all
 other audit/security or publication checks pass. Portfolio application awaits the owner's two
 calculation choices; other unfinished feature scope remains unchanged. No deployment.
+
+## October 23 filtered audit export — UI integration completed
+
+The Audit log page no longer applies an obsolete restriction that disabled export whenever
+Contract or Outcome was selected. The existing audit_log_export backend and catalogue already
+support contract_id and outcome; the UI now submits the resolved contract identity and complete
+selected outcome array alongside the same actor/action/object-type/date filters used by the list.
+A selected contract must resolve before export is available, so failed/pending lookups cannot
+fall back to a workspace-wide export. Contract trails without explicit dates preserve their
+whole-history semantics. Existing permissions, report retention and downloads are unchanged.
+
+Necessary verification: a UI submission asserts the exact combined contract, multiple-outcome
+and action payload; an unresolved-contract case has no export entry point. Both pass, as do
+TypeScript and scoped ESLint. Backend filtering and retained-source behavior were inspected;
+no backend logic or schema was changed and no new database workflow is claimed. No deployment.

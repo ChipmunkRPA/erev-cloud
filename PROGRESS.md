@@ -265,9 +265,9 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Forecast contract audit linkage — October 23, 2026
+## Filtered audit export — October 23, 2026
 
-- Forecast input-set creation/update/publication and replay now freeze affected contract keys
-  from captured commands and applied imports, making them available in contract audit history.
-- Populated import/replay workflow, all three audit-writer architecture checks and scoped
-  lint/types pass. Prior mixed-SSP checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
+- The Audit log page now exports selected contract trails and outcome filters using the existing
+  report backend. Contract lookup must succeed before exporting; the scope cannot widen silently.
+- Two targeted UI cases, TypeScript and scoped ESLint pass. Updated the user guide. Forecast
+  audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.

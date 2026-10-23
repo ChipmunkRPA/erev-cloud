@@ -1050,35 +1050,41 @@ describe("SF-09:audit-log", () => {
     ]);
   });
 
-  it("Export is not offered with a filter the report does not take", async () => {
-    // RPT-43 takes neither an outcome nor the trail of a contract: its rows would not be the list's.
+  it("exports the selected contract and outcomes with the list filters", async () => {
     serve({ trail: [BOOKED] });
-    const { router } = open("/reports/audit-log?f.outcome=is:DENIED");
+    const requests: Record<string, unknown>[] = [];
+    server.use(
+      http.post(apiUrl("/api/v1/report-runs"), async ({ request }) => {
+        requests.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(job("QUEUED"), { status: 202 });
+      }),
+    );
+    open(
+      "/reports/audit-log?f.object=is:PRJ-CB-2026-01&f.outcome=in:SUCCESS,DENIED&f.action=is:contract.book",
+    );
     await grid();
-    const unavailable = await screen.findByRole("button", { name: "Export" });
-    expect(unavailable.getAttribute("aria-disabled")).toBe("true");
-    expect(unavailable.getAttribute("aria-haspopup")).toBeNull();
-    fireEvent.focus(unavailable);
-    expect(
-      await screen.findByText(
-        "The export cannot apply the Object or Outcome filter. Remove that filter to export.",
-      ),
-    ).toBeTruthy();
+    const button = await screen.findByRole("button", { name: "Export" });
+    await waitFor(() => expect(button.getAttribute("aria-haspopup")).toBe("menu"));
+    fireEvent.click(button);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "CSV with manifest" }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toEqual({
+      report_code: "audit_log_export",
+      output_format: "CSV",
+      parameters: {
+        contract_id: CONTRACT_ID,
+        outcome: ["SUCCESS", "DENIED"],
+        action: "contract.book",
+      },
+    });
+  });
 
-    await router.navigate("/reports/audit-log?f.object=is:PRJ-CB-2026-01");
-    await screen.findByTestId("SF-09-row-9097");
-    expect(screen.getByRole("button", { name: "Export" }).getAttribute("aria-disabled")).toBe(
-      "true",
-    );
-
-    // Every other filter is a parameter of the run: the menu is offered.
-    await router.navigate("/reports/audit-log?f.action=is:contract.book");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Export" }).getAttribute("aria-haspopup")).toBe(
-        "menu",
-      ),
-    );
-    expect(screen.getByRole("button", { name: "Export" }).getAttribute("aria-disabled")).toBeNull();
+  it("does not export a workspace while the selected contract is unresolved", async () => {
+    serve();
+    server.use(http.get(apiUrl("/api/v1/contracts"), () => list([])));
+    open("/reports/audit-log?f.object=is:MISSING");
+    await screen.findByText(/No contract.*MISSING/);
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
   });
 
   it("an event on a report run links to the run record", async () => {

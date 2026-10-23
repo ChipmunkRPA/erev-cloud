@@ -622,6 +622,9 @@ For an existing close-pack id, `GET /api/v1/evidence-packs/{id}` returns its sta
 
 The audit log is read with `GET /api/v1/audit-events` (`audit.read` for all entities: an audit event carries no entity); `POST /api/v1/audit-events/verify` verifies the hash chain, for all entities too, and `GET /api/v1/audit-events/verifications` lists past verifications to any holder of `audit.read`.
 
+The Audit log page's Export menu carries the current contract, outcome, actor, action, object-type and date filters into the export. Multiple selected outcomes are preserved. A contract filter without a date range exports that contract's full trail through the run cutoff; it does not silently apply the workspace's default date range. Until the selected contract resolves successfully, export is unavailable. Existing report and export permissions still apply.
+
+
 ## Policies
 
 Route `/policies` redirects to `/policies/revenue`; the tabs are `/policies/control-rules`, `/policies/accounting`, `/policies/ssp-books`, `/policies/ssp-calculator` and `/policies/account-mapping`. Every configuration object is versioned and follows one lifecycle: a `DRAFT` version is authored (`config.author`), tested where the object has a test command, submitted, and published by an approver other than the author (`config.approve`); reads need `config.read`.

@@ -310,3 +310,10 @@
 - 42 native cases and scoped lint/types pass. Public classification, preview, approval and saved
   Reporting now pass for mixed bases, including retained trace reevaluation. Quantity/removal/term
   reassessment and final publication checks remain open. No deployment.
+
+## Forecast contract audit linkage — October 23, 2026
+
+- Forecast input-set creation/update/publication and replay now freeze affected contract keys
+  from captured commands and applied imports, making them available in contract audit history.
+- Populated import/replay workflow, all three audit-writer architecture checks and scoped
+  lint/types pass. Prior mixed-SSP checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
