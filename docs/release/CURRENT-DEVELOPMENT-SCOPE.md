@@ -314,3 +314,32 @@ All ten architecture checks and all twelve privacy catalogue checks pass. The ar
 checks include negative witnesses for type/scale, nullability and primary-key mismatches,
 plus the new multiline/quoted-comma witness. This supersedes the earlier parser gap. It is an
 offline definition comparison, not a new database upgrade/downgrade or full release-suite run.
+
+## October 23 current-source audit — remaining cost-policy implementation
+
+Read against main `53eb3d9b1a4e0f11b02d4b7815ecad036c360e4d`. The historical B3-22
+cost-policy gap is still present: `s11_costs_loss/capitalise.py` selects the contract term or
+approved RENEWAL_EXPECTATION.amortization_months under POL-141, without evaluating POL-142.
+`costs.commensurate_ratio` occurs in the stage key list and policy memo, but has no calculation
+reader. The public renewal-estimate schemas and typed estimate input expose amortization
+months without the initial/renewal commission-rate comparison inputs.
+
+Required development: carry explicit initial/renewal commission and contract-value evidence
+through the approved renewal estimate and typed input; evaluate the configured comparison;
+apply the resulting term in the existing capitalization/amortization paths and retain its
+calculation evidence. Cover both sides of the threshold and later estimate changes with
+necessary native checks. Preserve existing explicit month estimates when comparison evidence
+is absent; do not invent commission rates from unrelated revenue or relabel missing evidence
+as a completed commensurateness test. This remains an implementation task, not an independent
+accounting-signoff dependency. Other historical policies still require reader-by-reader audit.
+
+## October 23 runtime dependency audit refresh
+
+`make audit-deps` passed on the clean exported source for
+`53eb3d9b1a4e0f11b02d4b7815ecad036c360e4d` (tree
+`00ebb6bfed4b6009b5e02c7de7519ae7f3f2c46f`). All 86 pinned Python runtime distributions
+were audited, including eight marker-qualified requirements; zero Python vulnerabilities
+and zero npm runtime advisories across all severities. Output digest:
+`d3eadb3604981c65ab13422ffd9a537f2fa90505545fdde6256c0111d951e363`.
+Machine-readable source-bound evidence remains under `.run/reports/audit-deps/`.
+This is a dated dependency check, not a container build, deployment or full-goal completion.

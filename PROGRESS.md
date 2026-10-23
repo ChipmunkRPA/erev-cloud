@@ -246,13 +246,6 @@ Current outstanding implementation and verification gaps remain in
   revision-0166 parse error. These remain open; this is not a full-suite pass.
 - Forecast re-export and close-assessment checkpoints moved to REPORTING-CHECKPOINTS-2026-10-22.
 
-## Privacy field catalogue — October 23, 2026
-
-- Reconciled all 11 missing columns: historical commit identity/timing evidence and modification
-  termination terms, with matching data-model declarations. All 12 catalogue checks pass.
-- Export permissions and retention execution are unchanged. The separate revision-0166 schema
-  parser issue remains open. This supersedes the privacy omission in the preceding checkpoint.
-
 ## Migration/schema verification — October 23, 2026
 
 - Fixed multiline constraint and quoted-comma parsing; full migration-chain comparison now runs.
@@ -260,3 +253,12 @@ Current outstanding implementation and verification gaps remain in
 - Ten architecture and twelve privacy checks pass, including mismatch-detection witnesses.
   Supersedes the previous parser gap. Release-candidate verification remains outstanding.
 - Publication audit checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
+
+## Current-source audit — October 23, 2026
+
+- Source-bound dependency audit passes on 53eb3d9b: 86/86 Python runtime packages, zero Python
+  vulnerabilities and zero npm runtime advisories. See CURRENT-DEVELOPMENT-SCOPE for digest.
+- Confirmed a real remaining feature: POL-142 commensurate-renewal-commission comparison is
+  not evaluated by the cost engine. Approved estimates currently supply only amortization
+  months. Input, computation and trace integration remain; release checks alone are insufficient.
+- Privacy checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.

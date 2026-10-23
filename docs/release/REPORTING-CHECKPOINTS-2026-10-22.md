@@ -106,3 +106,10 @@
 - Confirmed existing unassigned-approval alerts and warning UI; historical C-6 is superseded by
   the October 7 B1-15 completion. B2-2/C-7 was reproduced and repaired below.
 - Earlier waterfall checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
+
+## Privacy field catalogue — October 23, 2026
+
+- Reconciled all 11 missing columns: historical commit identity/timing evidence and modification
+  termination terms, with matching data-model declarations. All 12 catalogue checks pass.
+- Export permissions and retention execution are unchanged. The separate revision-0166 schema
+  parser issue remains open. This supersedes the privacy omission in the preceding checkpoint.
