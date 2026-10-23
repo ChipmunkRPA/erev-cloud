@@ -76,6 +76,13 @@ Other engineering is not blocked by this decision.
 
 ## Implemented priorities, with bounded claims
 
+- Close-variance event detail: an opt-in mode now evaluates each business event in original
+  order, retains signed differences, preserves offsetting effects and reconciles driver totals
+  and frozen endpoints. Functional positive/negative same-period modifications are covered,
+  including net zero. Membership/reference/population phases retain explicit boundaries.
+  This is causal replay attribution, not original per-event journal-line ownership; the latter
+  remains outstanding for the modification register described above.
+
 - RPO: royalty remainder and targeted VC exclusions, fixed guarantee retention, separate
   partial-exemption rows, rollforward and close-variance projection, currency rounding and
   retained bindings. Missing exact dated royalty evidence still requires recomputation.

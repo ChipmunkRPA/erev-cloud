@@ -7949,5 +7949,8 @@
   "reports.legacyPositions.currency": "Functional currency (ISO code)",
   "reports.legacyPositions.contract_liability": "Legacy contract liability",
   "reports.legacyPositions.unbilled_receivable": "Legacy unbilled receivable",
-  "reports.legacyPositions.source_reference": "Source reference"
+  "reports.legacyPositions.source_reference": "Source reference",
+  "reports.parameters.attribution_detail": "Attribution detail",
+  "reports.parameters.attribution_detail.driver": "By driver",
+  "reports.parameters.attribution_detail.event": "By event (additional replay)"
 }

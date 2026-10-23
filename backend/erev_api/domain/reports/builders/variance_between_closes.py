@@ -44,6 +44,9 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
     from erev_api.domain.reports import variance_sources
 
     view = params.parameters.get("currency_view", "transaction")
+    detail = params.parameters.get("attribution_detail", "driver")
+    if detail not in ("driver", "event"):
+        raise _invalid()
     if view not in ("transaction", "functional", "reporting"):
         raise Problem(
             "validation-failed",
@@ -117,6 +120,8 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
     }
     if view != "transaction":
         identity["currency_view"] = view
+    if detail == "event":
+        identity["event_details"] = True
     # New reports retain offset evidence; bound older reports keep their row population.
     if (
         params.binding is None
@@ -136,7 +141,10 @@ def calculate(prepared: Prepared, *, engine: Engine) -> Calculated:
     from erev_api.domain.reports import variance_groups, variance_presentation
 
     replay = variance_groups.execute(
-        prepared.pair, engine=engine, currency_view=prepared.currency_view
+        prepared.pair,
+        engine=engine,
+        currency_view=prepared.currency_view,
+        event_details=prepared.identity.get("event_details") is True,
     )
     return Calculated(
         prepared.identity,

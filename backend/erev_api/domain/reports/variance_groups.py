@@ -72,6 +72,7 @@ def execute(
     pair: Pair,
     *,
     engine: Engine = compute,
+    event_details: bool = False,
     currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
 ) -> GroupReplay:
     """Reproduce every monetary endpoint and then aggregate exact driver effects."""
@@ -145,6 +146,7 @@ def execute(
             book_code=scope.book_code,
             period_key=scope.period_key,
             engine=engine,
+            event_details=event_details,
             currency_view=currency_view,
             earlier_reporting_basis=earlier_basis,
             later_reporting_basis=later_basis,
@@ -216,6 +218,7 @@ def execute(
                 if key.contract_external_id in names
             },
             engine=engine,
+            event_details=event_details,
             currency_view=currency_view,
             earlier_reporting_basis=earlier_basis,
             later_reporting_basis=later_basis,

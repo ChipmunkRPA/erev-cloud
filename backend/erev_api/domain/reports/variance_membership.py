@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import fields, replace
 from fractions import Fraction
-from itertools import groupby
 from operator import attrgetter
 from types import MappingProxyType
 from typing import Literal
@@ -18,7 +17,6 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from erev_engine.bundle import EstimateVersionInput, EventInput, InputBundle, ResolvedPolicyInput
 from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
-from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
 
 from erev_api.problems import Problem
 
@@ -30,9 +28,12 @@ from .variance_replay import (
     Execution,
     Metrics,
     Replay,
-    driver,
+    decompose_steps,
     validate_contract_basis,
     validate_reporting_pair,
+)
+from .variance_replay import (
+    event_runs as classified_runs,
 )
 from .variance_reporting import Basis
 
@@ -51,6 +52,7 @@ def execute(
     book_code: str,
     period_key: str,
     engine: Engine,
+    event_details: bool = False,
     currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
     earlier_reporting_basis: Basis | None = None,
     later_reporting_basis: Basis | None = None,
@@ -346,12 +348,7 @@ def execute(
                     key=lambda event: (event.effective_date, event.record_seq, event.event_key),
                 )
                 # Validate every driver before running the counterfactual sequence.
-                event_runs = [
-                    (name, tuple(events))
-                    for name, events in groupby(
-                        business, key=lambda event: driver(event, period_end)
-                    )
-                ]
+                event_runs = classified_runs(business, period_end, event_details=event_details)
                 accumulated = [
                     event
                     for event in bundle.events
@@ -460,12 +457,14 @@ def execute(
         for metric in sorted(metric_keys):
             if metric.contract_external_id not in names:
                 continue
-            evaluations = [
-                Evaluation(step.driver, state.get(metric, Fraction(0)), event_key)
-                for step, state in states
-                for event_key in (step.event_keys or (None,))
-            ]
-            change = decompose(earlier.get(metric, Fraction(0)), evaluations)
+            change = decompose_steps(
+                earlier.get(metric, Fraction(0)),
+                [
+                    (step.driver, step.event_keys, state.get(metric, Fraction(0)))
+                    for step, state in states
+                ],
+                event_details=event_details,
+            )
             if not change.sums_exactly or change.metric_after != later.get(metric, Fraction(0)):
                 raise _refuse("membership/event effects do not reconcile to the frozen change.")
             measures[metric] = change

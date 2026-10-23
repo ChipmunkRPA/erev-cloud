@@ -156,6 +156,7 @@ PARAMETER_SCHEMAS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
         "contract_external_ids": {**_codes(max_items=50)},
         "contract_id": _UUID,
         "currency_view": _one_of("transaction", "functional", "reporting"),
+        "attribution_detail": {**_one_of("driver", "event"), "default": "driver"},
         "legacy_functional_positions": {
             "type": "array",
             "maxItems": 500,
@@ -2595,7 +2596,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         _ALL,
         "Changes in revenue, balances and remaining performance obligations between two locks of "
         "one period, by driver and contract (REQ-RPT-019; REQ-CLS-011).",
-        ("from_period_lock_id", "to_period_lock_id", "currency_view"),
+        ("from_period_lock_id", "to_period_lock_id", "currency_view", "attribution_detail"),
         overrides={"currency_view": _one_of("transaction", "functional", "reporting")},
         sources=("period_lock", "lock_snapshot", "disclosure_snapshot", "contract"),
         joins=(
@@ -2611,6 +2612,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "two locks of one entity, book and period; the later recorded after the earlier",
             "locks of an entity in entity_codes",
             "changes attributed to drivers",
+            "attribution_detail=event evaluates each business event in ENG-06 order and retains "
+            "signed intermediate differences; driver totals and frozen endpoints reconcile "
+            "exactly; structural membership/reference/population phases remain explicit grouped "
+            "effects; default driver detail and older bound runs retain grouped replay",
             "Net-zero contract and driver rows remain visible when nonzero replay effects "
             "offset; contributor details retain signed effect amounts and event keys; "
             "unchanged replays remain empty; older bound runs preserve "

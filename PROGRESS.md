@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Optional per-event close variance — October 22, 2026
+
+- Added Attribution detail: By driver (default) / By event. Detailed mode executes each business
+  event in ENG-06 order, retaining individual signed changes and execution hashes. Driver totals
+  and frozen monetary endpoints still reconcile; reference/FX and membership/population phases
+  remain explicit. No proportional split or journal-posting ownership is claimed.
+- Ordinary and membership replay share the detailed-boundary implementation. A retained choice
+  is checked at prepare/rebuild and contributor reads; old/default runs keep grouped behavior.
+  Migration 0331 freezes schema/IPE metadata; the existing toolbar exposes labelled choices.
+- Necessary verification: 46 replay/catalogue cases, plus two new native net-zero modification
+  variants (USD and GBP), eight toolbar cases, and the event-mode worker/bound-rerun workflow
+  with real empty lock snapshots. Native positive/negative effects are checked against grouped
+  totals; membership functional endpoints also match. Scoped lint/types and metadata parity pass.
+- Original per-event journal ownership in the modification register remains open. This completes
+  a user-selectable causal replay capability, not that separate feature. No deployment.
+
 ## Close-variance offsetting effects — October 22, 2026
 
 - Retain contract rows whose nonzero replay effects offset to zero, including repeated runs
@@ -214,24 +230,6 @@ The goal remains active. No new accounting functionality is claimed by this scop
   or recompute monetary differences. Existing FAIL-only difference presentation is preserved.
 - Necessary verification: all four targeted viewer tie-out cases passed, including actual-only
   and difference-only currency coverage. No deployment; remaining report attribution work stays open.
-
-## Functional activity recognition provenance — October 22, 2026
-
-- Native S13 revenue control flows now carry their upstream recognition source node into S12
-  functional activity evidence. The report reader returns that link and requires its presence
-  in the original trace and matching transaction currency when supplied. Earlier activity
-  evidence without this optional link remains readable without inventing event provenance.
-- The link identifies the original recognition producer, not necessarily the whole control
-  relief amount: concessions, agent relief and calendar projection can adjust the target. It
-  therefore does not imply unique modification-event allocation or enable unsupported foreign
-  modification currency views by itself.
-- Necessary verification passed: 7 focused native/reader cases, including full CHK-080 engine
-  computation through report reading and missing-source refusal, plus all 13 FX-layer cases.
-  Scoped lint/types passed. Existing posting amounts and flow ordering are unchanged.
-- Asked the owner whether the foreign modification view should require actual attributable
-  amounts or show clearly labelled currency equivalents. Pending a response, preserve actual
-  evidence and do not allocate period totals to a single event without proof. Other engineering
-  can continue. No deployment; overall development remains incomplete.
 
 ## Outstanding release verification
 

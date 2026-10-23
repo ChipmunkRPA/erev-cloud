@@ -1240,8 +1240,14 @@ def test_close_source_binding_round_trips_without_reselecting_or_requeuing(
 
 
 @pytest.mark.parametrize(
-    "revoke,currency_view",
-    [(False, "transaction"), (True, "transaction"), (False, "functional"), (False, "reporting")],
+    "revoke,currency_view,detail",
+    [
+        (False, "transaction", "driver"),
+        (True, "transaction", "driver"),
+        (False, "functional", "driver"),
+        (False, "reporting", "driver"),
+        (False, "functional", "event"),
+    ],
 )
 def test_variance_report_worker_and_bound_rerun(
     sources: Sources,
@@ -1249,6 +1255,7 @@ def test_variance_report_worker_and_bound_rerun(
     monkeypatch: pytest.MonkeyPatch,
     revoke: bool,
     currency_view: str,
+    detail: str,
 ) -> None:
     """Seeded empty locks with actual snapshot files, report jobs, storage and rerun."""
     from erev_api.domain.reports import framework
@@ -1271,6 +1278,7 @@ def test_variance_report_worker_and_bound_rerun(
     def calculate(prepared: builder.Prepared, *, engine: Engine) -> builder.Calculated:
         nonlocal calculated
         assert sessions and all(not session.in_transaction() for session in sessions)
+        assert (prepared.identity.get("event_details") is True) == (detail == "event")
         result = original_calculate(prepared, engine=engine)
         calculated = True
         return result
@@ -1300,6 +1308,7 @@ def test_variance_report_worker_and_bound_rerun(
                 output_format="JSON",
                 parameters={
                     "currency_view": currency_view,
+                    "attribution_detail": detail,
                     "from_period_lock_id": str(earlier_id),
                     "to_period_lock_id": body["period_lock_id"],
                 },

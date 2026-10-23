@@ -18,7 +18,12 @@ from typing import Final, Literal
 
 from erev_engine import ENGINE_VERSION, compute
 from erev_engine.bundle import ContractInput, EventInput, InputBundle, OutputBundle
-from erev_engine.stages.s15_disclosures.variance import Decomposition, Evaluation, decompose
+from erev_engine.stages.s15_disclosures.variance import (
+    Decomposition,
+    DriverEffect,
+    Evaluation,
+    decompose,
+)
 
 from erev_api.problems import Problem
 
@@ -160,6 +165,42 @@ def _equal(actual: Metrics, expected: Metrics) -> bool:
     )
 
 
+def event_runs(
+    events: Sequence[EventInput], period_end: date, *, event_details: bool
+) -> list[tuple[str, tuple[EventInput, ...]]]:
+    """Classify before execution; detailed mode preserves each ENG-06 boundary."""
+    if event_details:
+        return [(driver(event, period_end), (event,)) for event in events]
+    return [
+        (name, tuple(group))
+        for name, group in groupby(events, key=lambda event: driver(event, period_end))
+    ]
+
+
+def decompose_steps(
+    before: Fraction,
+    steps: Sequence[tuple[str, tuple[str, ...], Fraction]],
+    *,
+    event_details: bool,
+) -> Decomposition:
+    """Keep actual evaluated boundaries; never assign a grouped amount to its first event."""
+    if not event_details:
+        return decompose(
+            before,
+            [
+                Evaluation(name, value, key)
+                for name, keys, value in steps
+                for key in (keys or (None,))
+            ],
+        )
+    previous = before
+    effects = []
+    for name, keys, value in steps:
+        effects.append(DriverEffect(name, value - previous, keys, value))
+        previous = value
+    return Decomposition(before, previous, tuple(effects))
+
+
 def replay_events(
     before: InputBundle,
     after: InputBundle,
@@ -170,8 +211,9 @@ def replay_events(
     project: Project,
     engine: Engine = compute,
     final_project: Project | None = None,
+    event_details: bool = False,
 ) -> Replay:
-    """Execute one compute per maximal same-driver run, then bind every effect.
+    """Execute each requested event boundary or maximal driver run, then bind every effect.
 
     The projection must read the same period/measure definitions on every output;
     it is server-owned, never supplied by report request JSON. No database or posting
@@ -180,10 +222,7 @@ def replay_events(
     validate_contract_basis(before.contracts, after.contracts)
     added = _validate(before, after)
     # Validate every classification before executing any potentially expensive work.
-    runs = [
-        (name, tuple(events))
-        for name, events in groupby(added, key=lambda event: driver(event, earlier_period_end))
-    ]
+    runs = event_runs(added, earlier_period_end, event_details=event_details)
     expected_before = _metric_values(earlier_metrics)
     expected_after = _metric_values(later_metrics)
     executions: list[Execution] = []
@@ -239,15 +278,11 @@ def replay_events(
         metric_keys.update(state)
     measures: dict[MeasureKey, Decomposition] = {}
     for key in sorted(metric_keys):
-        evaluations: list[Evaluation] = []
-        for name, event_keys, state in states:
-            # decompose accepts one event key per evaluation. Repeating the final
-            # run value preserves all event identities without extra engine calls.
-            evaluations.extend(
-                Evaluation(name, state.get(key, Fraction(0)), event_key)
-                for event_key in (event_keys or (None,))
-            )
-        result = decompose(expected_before.get(key, Fraction(0)), evaluations)
+        result = decompose_steps(
+            expected_before.get(key, Fraction(0)),
+            [(name, keys, state.get(key, Fraction(0))) for name, keys, state in states],
+            event_details=event_details,
+        )
         if not result.sums_exactly or result.metric_after != expected_after.get(key, Fraction(0)):
             raise _refuse("driver effects do not reconcile to the frozen change.")
         measures[key] = result
@@ -267,6 +302,7 @@ def replay_period_money(
     earlier_reporting_basis: Basis | None = None,
     later_reporting_basis: Basis | None = None,
     engine: Engine = compute,
+    event_details: bool = False,
 ) -> Replay:
     """Fixed-period revenue, balance and dated RPO replay over retained inputs."""
     if any(key.measure not in MEASURES for key in earlier_metrics.keys() | later_metrics.keys()):
@@ -292,6 +328,7 @@ def replay_period_money(
         if currency_view == "reporting"
         else None,
         engine=engine,
+        event_details=event_details,
     )
 
     return (

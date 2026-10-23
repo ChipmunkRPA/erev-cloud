@@ -43,6 +43,8 @@ def cell(
             != params.parameters.get("currency_view", "transaction")
             or evidence.get("currency_view", "transaction")
             != params.parameters.get("currency_view", "transaction")
+            or (identity.get("event_details") is True)
+            != (params.parameters.get("attribution_detail", "driver") == "event")
             or evidence["format"] != "erev.close_variance_presentation.v1"
             or identity["version"] != 1
             or binding.report_version != params.report_version

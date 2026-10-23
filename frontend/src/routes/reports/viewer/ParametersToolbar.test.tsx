@@ -250,3 +250,29 @@ it("labels analytical currency equivalents and sends the selected basis", () => 
   expect(screen.getByText("Spot equivalents (not posted amounts)")).toBeTruthy();
   expect(runParameters(modified, context, values)).toMatchObject(values);
 });
+
+it("close variance exposes retained event attribution choice", () => {
+  const modified = {
+    ...definition,
+    code: "variance_between_closes",
+    parameters_schema: {
+      properties: {
+        attribution_detail: { type: "string", enum: ["driver", "event"], default: "driver" },
+      },
+    },
+  };
+  const values = { attribution_detail: "event" };
+  render(
+    <ParametersToolbar
+      definition={modified}
+      context={context}
+      values={values}
+      errors={{}}
+      timeBands={null}
+      onChange={() => {}}
+      onRun={() => {}}
+    />,
+  );
+  expect(screen.getByText("By event (additional replay)")).toBeTruthy();
+  expect(runParameters(modified, context, values)).toMatchObject(values);
+});

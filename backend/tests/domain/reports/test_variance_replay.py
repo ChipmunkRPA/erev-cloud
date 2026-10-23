@@ -204,7 +204,8 @@ def test_dated_rpo_refuses_missing_measurement_trace() -> None:
         Projection(after, "Mock Entity 2", "ASC606", "FY2023-P04")(output)
 
 
-def test_real_engine_replays_one_maximal_run_and_retains_event_provenance() -> None:
+@pytest.mark.parametrize("event_details", [False, True])
+def test_real_engine_replay_supports_driver_and_event_detail(event_details: bool) -> None:
     before, after = _pair()
     calls = []
 
@@ -221,16 +222,23 @@ def test_real_engine_replays_one_maximal_run_and_retains_event_provenance() -> N
         earlier_metrics={KEY: Fraction(20)},
         later_metrics={KEY: Fraction(170)},
         engine=engine,
+        event_details=event_details,
     )
-    assert len(calls) == 3  # baseline, time, one run of two late billing events
+    assert len(calls) == (4 if event_details else 3)
     assert all(bundle.trigger == "DRY_RUN" for bundle in calls)
     assert before.trigger == after.trigger == "COMMAND"
     decomposition = result.measures[KEY]
-    assert [(effect.driver, effect.amount) for effect in decomposition.effects] == [
-        ("PROGRESS", Fraction(0)),
-        ("LATE_EVENT", Fraction(150)),
-    ]
-    assert decomposition.effects[1].event_keys == ("Contract 2/EV-000009", "Contract 2/EV-000010")
+    assert [(effect.driver, effect.amount) for effect in decomposition.effects] == (
+        [("PROGRESS", Fraction(0)), ("LATE_EVENT", Fraction(100)), ("LATE_EVENT", Fraction(50))]
+        if event_details
+        else [("PROGRESS", Fraction(0)), ("LATE_EVENT", Fraction(150))]
+    )
+    assert tuple(key for effect in decomposition.effects for key in effect.event_keys) == (
+        "Contract 2/EV-000009",
+        "Contract 2/EV-000010",
+    )
+    if event_details:
+        assert all(len(effect.event_keys) == 1 for effect in decomposition.effects[1:])
     assert decomposition.sums_exactly
     assert result.executions[-1].input_sha256 == calls[-1].sha256()
     assert len(result.executions[-1].output_sha256) == 64
@@ -1034,6 +1042,18 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     )
     membership = variance_groups.execute(membership_pair)
     reporting_membership = variance_groups.execute(membership_pair, currency_view="reporting")
+    functional_membership = variance_groups.execute(membership_pair, currency_view="functional")
+    detailed_membership = variance_groups.execute(
+        membership_pair, currency_view="functional", event_details=True
+    )
+    assert detailed_membership.driver_totals == functional_membership.driver_totals
+    assert {
+        key: (value.metric_before, value.metric_after)
+        for key, value in detailed_membership.measures.items()
+    } == {
+        key: (value.metric_before, value.metric_after)
+        for key, value in functional_membership.measures.items()
+    }
     assert all(change.sums_exactly for change in reporting_membership.measures.values())
     assert all(
         run.replay.executions[-1].changed_fields == ("reporting_rates",)
@@ -1854,3 +1874,59 @@ def test_reopen_normalization_retains_calendar_and_entity_basis() -> None:
     ):
         with pytest.raises(Problem, match="basis migration"):
             _calendar_states(before, replace(after, entities=(changed, *before.entities[1:])))
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+@pytest.mark.parametrize("net_zero", [False, True])
+def test_same_period_modifications_have_signed_per_event_functional_replay(foreign, net_zero):
+    from erev_engine.stages.s15_disclosures.variance import Decomposition, totals_by_driver
+    from tests.unit.reports.test_modification_event_amounts import _trace
+
+    after, keys = _trace(
+        foreign=foreign,
+        same_period=True,
+        return_input=True,
+        second_delta="-20000.00" if net_zero else "-10000.00",
+    )
+    cutoff = after.known_at - timedelta(days=1)
+    after = replace(
+        after,
+        events=tuple(
+            replace(event, recorded_at=cutoff + timedelta(hours=1))
+            if event.event_key in keys
+            else event
+            for event in after.events
+        ),
+    )
+    before = replace(
+        after, known_at=cutoff, events=tuple(e for e in after.events if e.event_key not in keys)
+    )
+    old_projection = Projection(before, "US01", "ASC606", "FY2026-P04", "functional")
+    new_projection = replace(old_projection, basis=after)
+    earlier, later = old_projection(compute(before)), new_projection(compute(after))
+    args = dict(
+        entity_code="US01",
+        book_code="ASC606",
+        period_key="FY2026-P04",
+        currency_view="functional",
+        earlier_metrics=earlier,
+        later_metrics=later,
+    )
+    grouped = replay_period_money(before, after, **args)
+    detailed = replay_period_money(before, after, **args, event_details=True)
+    for key, result in detailed.measures.items():
+        assert result.sums_exactly
+        grouped_result = grouped.measures.get(key, Decomposition(Fraction(0), Fraction(0), ()))
+        assert (result.metric_before, result.metric_after) == (
+            grouped_result.metric_before,
+            grouped_result.metric_after,
+        )
+        assert totals_by_driver(result.effects) == totals_by_driver(grouped_result.effects)
+    revenue = detailed.measures[MeasureKey("K-01", "GBP" if foreign else "USD", "REVENUE")]
+    changes = [effect for effect in revenue.effects if effect.event_keys]
+    assert [effect.event_keys for effect in changes] == [(keys[0],), (keys[1],)]
+    assert [effect.amount for effect in changes] == (
+        [Fraction(8000), Fraction(-8000 if net_zero else -4000)]
+        if foreign
+        else [Fraction(10000), Fraction(-10000 if net_zero else -5000)]
+    )

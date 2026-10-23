@@ -22,7 +22,7 @@ from tests.engine.s06_modifications.test_s06_prospective import (
 )
 
 
-def _trace(*, foreign=False, same_period=False):
+def _trace(*, foreign=False, same_period=False, return_input=False, second_delta="-10000.00"):
     start = date(2026, 1, 1)
     first = modification_input(
         "MOD-ONE",
@@ -33,7 +33,7 @@ def _trace(*, foreign=False, same_period=False):
     second = modification_input(
         "MOD-TWO",
         date(2026, 4, 2) if same_period else date(2026, 6, 1),
-        [mod_line("O1", "CHANGE", "SKU", "0", "-10000.00")],
+        [mod_line("O1", "CHANGE", "SKU", "0", second_delta)],
         kind="PRICE_CHANGE",
     )
     events = [
@@ -94,6 +94,8 @@ def _trace(*, foreign=False, same_period=False):
                 )
             ),
         )
+    if return_input:
+        return value, [event.event_key for event in events]
     output = compute(value)
     assert len(output.books) == 1
     return output.books[0].trace, [event.event_key for event in events]

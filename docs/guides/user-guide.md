@@ -999,6 +999,15 @@ a total change of zero. Earlier saved runs retain their original row population.
 amounts across contracts remain available under the driver's
 zero-total row as well. A replay with no nonzero effects still produces an empty result.
 
-The effects explain the recorded sequence of calculations; one effect can cover several
-consecutive events of the same driver. The display does not claim a separate amount for each
-such event and does not change the underlying accounting calculations.
+The default **By driver** detail groups consecutive events of the same driver. To inspect
+their individual changes, select **Attribution detail → By event (additional replay)**.
+The report recalculates after each business event in the original effective-date and record
+sequence order. Open a Change amount to see the signed differences and event references.
+Positive and negative effects remain visible even when their net change is zero.
+
+Each effect is a sequential recalculation difference, not the event's original journal line.
+FX and reference changes remain separate phases. Structural combination changes and contract
+population entry/exit remain explicitly grouped phases. Detailed mode requires more work and
+fails if an intermediate input cannot be validly recomputed or the endpoints do not reconcile;
+it does not distribute a grouped amount proportionally. The selected detail is retained for
+same-source reruns, and a bound run cannot switch it. Existing runs retain their original detail.

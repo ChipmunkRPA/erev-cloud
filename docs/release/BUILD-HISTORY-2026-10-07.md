@@ -12298,3 +12298,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This is a reusable report reading layer, not yet a served foreign modification currency view.
   Event-to-flow attribution and transaction-price currency presentation remain required before
   changing that report's admission. No deployment or overall completion claim.
+
+## Functional activity recognition provenance — October 22, 2026
+
+- Native S13 revenue control flows now carry their upstream recognition source node into S12
+  functional activity evidence. The report reader returns that link and requires its presence
+  in the original trace and matching transaction currency when supplied. Earlier activity
+  evidence without this optional link remains readable without inventing event provenance.
+- The link identifies the original recognition producer, not necessarily the whole control
+  relief amount: concessions, agent relief and calendar projection can adjust the target. It
+  therefore does not imply unique modification-event allocation or enable unsupported foreign
+  modification currency views by itself.
+- Necessary verification passed: 7 focused native/reader cases, including full CHK-080 engine
+  computation through report reading and missing-source refusal, plus all 13 FX-layer cases.
+  Scoped lint/types passed. Existing posting amounts and flow ordering are unchanged.
+- Asked the owner whether the foreign modification view should require actual attributable
+  amounts or show clearly labelled currency equivalents. Pending a response, preserve actual
+  evidence and do not allocate period totals to a single event without proof. Other engineering
+  can continue. No deployment; overall development remains incomplete.

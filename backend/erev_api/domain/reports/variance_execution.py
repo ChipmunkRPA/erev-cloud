@@ -179,6 +179,7 @@ def execute(
     earlier_reporting_basis: Basis | None = None,
     later_reporting_basis: Basis | None = None,
     engine: Engine = compute,
+    event_details: bool = False,
 ) -> RetainedReplay:
     """Pure calculation phase; accepts no session and never persists engine output.
 
@@ -281,5 +282,6 @@ def execute(
         earlier_reporting_basis=earlier_reporting_basis,
         later_reporting_basis=later_reporting_basis,
         engine=engine,
+        event_details=event_details,
     )
     return RetainedReplay(before, after, tuple(normalized), counterfactual.sha256(), replay)
