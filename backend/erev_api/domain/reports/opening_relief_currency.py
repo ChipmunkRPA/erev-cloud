@@ -132,6 +132,7 @@ def finish(
     source_key: str,
     legacy_contract_footnote: bool = False,
     signed_reversals: bool = False,
+    per_obligation: bool = False,
 ) -> ReportData:
     from .builders import revenue_from_opening_liability as disclosure
 
@@ -165,6 +166,8 @@ def finish(
     }
     if signed_reversals:
         evidence["method"] = "retained_signed_revenue_sources_v1"
+    if per_obligation:
+        evidence["method"] = "retained_obligation_opening_and_posted_revenue_v1"
     if params.binding is not None and params.binding.evidence[source_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Opening-relief method differs from retained evidence."
@@ -193,6 +196,13 @@ def finish(
         footnote += " Per-obligation consumption is not provided in this contract-level disclosure."
     if legacy_contract_footnote:
         footnote = disclosure.footnote(policies)
+    if per_obligation:
+        footnote = (
+            "FIFO_WITHIN_POB uses each obligation's attributed opening billing less opening "
+            "revenue and its net revenue posted over the selected range, capped by contract "
+            "opening liability and actual liability relief. Other entities retain "
+            "FIFO_WITHIN_CONTRACT. No per-layer ownership amounts are inferred."
+        )
     return ReportData(
         columns=disclosure.COLUMNS,
         rows=tuple(rows),

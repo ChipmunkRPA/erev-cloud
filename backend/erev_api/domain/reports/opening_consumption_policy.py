@@ -18,6 +18,12 @@ OPTIONS = frozenset({"FIFO_WITHIN_CONTRACT", "FIFO_WITHIN_POB"})
 def read(
     session: Session, params: ReportParams, entities: Sequence[tie_outs.EntityRef], book: str
 ) -> list[str]:
+    return sorted(set(by_entity(session, params, entities, book).values()))
+
+
+def by_entity(
+    session: Session, params: ReportParams, entities: Sequence[tie_outs.EntityRef], book: str
+) -> dict[str, str]:
     expected = {str(entity.id) for entity in entities}
     if params.binding is not None and KEY in params.binding.evidence:
         retained = params.binding.evidence[KEY]
@@ -33,7 +39,7 @@ def read(
             )
         ):
             raise tie_outs.invalid("book", "Retained opening-consumption policies are invalid.")
-        return sorted(set(retained["entities"].values()))
+        return dict(retained["entities"])
     # Existing saved runs without this evidence preserve their original read behavior.
     values: dict[str, Any] = {
         str(entity.id): str(
@@ -50,4 +56,4 @@ def read(
     if not set(values.values()) <= OPTIONS:
         raise tie_outs.invalid("book", "An opening-consumption policy is unsupported.")
     tie_outs.record_evidence(params, KEY, {"book": book, "entities": values})
-    return sorted(set(values.values()))
+    return values

@@ -750,6 +750,7 @@ class Entry:
     entry_kind: str | None = None
     line_id: UUID | None = None
     posting_kind: str | None = None
+    subject_key: str | None = None
 
 
 def _lines(
@@ -787,6 +788,7 @@ def _lines(
             subledger_line.c.amount_txn,
             subledger_line.c.amount_functional,
             subledger_line.c.entry_kind,
+            subledger_line.c.subject_key,
             subledger_posting.c.posting_kind,
         )
         .select_from(
@@ -843,6 +845,7 @@ def _lines(
                 entry_kind=entry_kind,
                 line_id=UUID(str(row["id"])),
                 posting_kind=str(row["posting_kind"]),
+                subject_key=row["subject_key"],
             )
         )
     tie_outs.require_members(params, "subledger_line", consumed)

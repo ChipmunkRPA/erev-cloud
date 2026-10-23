@@ -1004,3 +1004,31 @@ foreign-functional layer processing currently follows its layer path without app
 transaction branch's FIFO_WITHIN_POB adjustment. Thus the native transaction formula cannot be
 cited as proof of complete foreign-functional or arbitrary-range policy implementation. Original
 functional billing attribution and locked-source consistency must be resolved in that work.
+
+## October 23 public transaction POB opening relief — bounded implementation
+
+New transaction opening-liability reports apply FIFO_WITHIN_POB for an uncombined contract whose
+principal obligations are performed by its contracting entity and whose opening is unlocked.
+The selected version supplies exact prior-period billed_cum/revenue_cum nodes per obligation;
+selected-range actual posted control lines supply net revenue by their original subject keys.
+Each obligation contributes min(max(opening billing minus revenue, 0), max(range-net revenue, 0)).
+The contract amount is capped by its displayed opening liability and actual liability revenue
+relief. The whole range is evaluated once; monthly opening figures are not summed. This is a
+report classification, not a change to accounting postings or an invented functional-layer split.
+
+New bindings retain policy by entity, opening node identities and values, posted source identities,
+individual eligibility and contract caps. Reruns recompute and compare this evidence. Older bindings
+retain their prior calculation. The footnote identifies the applied POB method. Missing original
+nodes, unidentified revenue subjects, combined members, locked openings, agent obligations and
+cross-entity performance receive explicit refusals when this new transaction method is selected.
+Functional/reporting views keep their existing explicitly disclosed contract/layer method; POB
+integration there remains unfinished. New obligations without prior-period nodes also remain an
+unsupported opening-evidence case, rather than silently substituting zero or latest balances.
+
+Necessary verification: the populated public K01 report applies the new policy and reproduces its
+control totals without consulting current policy on rerun; the existing contract-policy report
+still passes (two DB cases). Seven focused cases cover the 5,000 service opening with an unrelated
+8,000 delivery (only 800 eligible), opening caps, range-net corrections, missing evidence and
+policy retention across views. Five production modules pass mypy; scoped lint passes. Disposable
+DB stopped after verification. No deployment. This closes the ordinary transaction path only;
+combined/locked/foreign-functional and other special-case integration remain work in progress.

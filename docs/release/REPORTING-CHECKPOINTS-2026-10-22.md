@@ -339,3 +339,13 @@
   not read current policy. Three currency-view cases, the public K01 report and lint/types pass.
 - Confirmed remaining gap: FIFO_WITHIN_POB exists in native S15 but public opening-liability
   disclosure still applies contract/group consumption. Amount integration remains unfinished.
+
+## Renewal commission comparison — October 23, 2026
+
+- Added optional complete commission/value evidence to renewal estimate forms, API and CSV
+  schema. POL-142 now decides the acquisition-cost term under the applicable POL-141 option.
+- Later approved changes adjust remaining amortization prospectively; trace records retain
+  comparison inputs, configured ratio and result. Existing estimates without evidence keep months.
+- Native cost/validation cases, populated API approval-to-bundle workflow, frontend forms and
+  scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
+- Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.

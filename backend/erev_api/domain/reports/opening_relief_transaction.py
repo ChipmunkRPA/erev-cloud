@@ -8,15 +8,19 @@ from decimal import Decimal, localcontext
 from typing import Any
 from uuid import UUID
 
-from erev_engine.money import DECIMAL_CONTEXT
-
-from erev_api.domain.reports import locked_ends, tie_outs
+from erev_api.domain.reports import (
+    locked_ends,
+    opening_consumption_policy,
+    opening_relief_pob,
+    tie_outs,
+)
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.opening_relief_currency import finish
 from erev_api.domain.reports.outputs import ReportData
 from erev_api.domain.reports.revenue_attribution import Attribution, for_control
 from erev_api.uow import UnitOfWork
+from erev_engine.money import DECIMAL_CONTEXT
 
 KEY = "opening_relief_transaction_v1"
 ZERO = Decimal(0)
@@ -31,6 +35,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book = tie_outs.book_of(session, params)
     entities, periods, before = rollforward.ranges(session, params)
+    use_pob = params.binding is None or opening_relief_pob.KEY in params.binding.evidence
+    policies = (
+        opening_consumption_policy.by_entity(session, params, entities, book) if use_pob else {}
+    )
+    pob_evidence: dict[str, Any] = {}
     cutoff = tie_outs.cutoff_for(session, params)
     locked = locked_ends.Reader(
         uow,
@@ -217,6 +226,30 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             if entry.flow.is_revenue:
                 recognized[member] += entry.flow.amount
                 relief[member] += attribution.get(index, ZERO)
+        if policies.get(str(entity)) == "FIFO_WITHIN_POB":
+            previous = before.get(entity)
+            if len(members) != 1 or (
+                previous is not None and locked.at(entity, previous) is not None
+            ):
+                raise tie_outs.invalid(
+                    "currency_view",
+                    "Per-obligation opening relief for combined contracts or locked openings "
+                    "requires original obligation-level opening evidence and is not yet supported.",
+                )
+            member = members[0]
+            pob_amount, facts = opening_relief_pob.calculate(
+                session,
+                selected[member],
+                previous,
+                [entry for _, entry in entries],
+                first["contract_liability"],
+                -(
+                    path["REVENUE_FROM_OPENING"]["contract_liability"]
+                    + path["REVENUE_FROM_PERIOD_BILLINGS"]["contract_liability"]
+                ),
+            )
+            relief[member] = pob_amount
+            pob_evidence[f"{version}:{entity}:{currency}"] = facts
         membership[f"{version}:{entity}:{currency}"] = sorted(str(member[0]) for member in members)
         for member in members:
             row = selected[member]
@@ -258,6 +291,15 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         tie_outs.require_members(params, "transaction_revenue_paid_line", paid_members)
         tie_outs.record_members(params, "transaction_revenue_paid_line", paid_members)
         tie_outs.record_evidence(params, signed_key, signed_evidence)
+    if use_pob:
+        if (
+            params.binding is not None
+            and params.binding.evidence[opening_relief_pob.KEY] != pob_evidence
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Per-obligation relief differs from retained evidence."
+            )
+        tie_outs.record_evidence(params, opening_relief_pob.KEY, pob_evidence)
     tie_outs.record_evidence(params, "opening_relief_groups_v1", membership)
     contracts.sort(key=lambda row: row["row_key"])
     return finish(
@@ -274,4 +316,5 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         legacy_contract_footnote=not signed_evidence
         and all(len(members) == 1 for members in groups.values()),
         signed_reversals=bool(signed_evidence),
+        per_obligation="FIFO_WITHIN_POB" in policies.values(),
     )

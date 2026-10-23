@@ -1030,3 +1030,29 @@ def test_historical_gl_never_falls_back_after_latest_source_changes(
         assert tie(rebuilt.json(), tie_outs.TO_ROLLFORWARD_EQ_GL) == tie(
             retained, tie_outs.TO_ROLLFORWARD_EQ_GL
         )
+
+
+@pytest.mark.slow
+def test_opening_liability_pob_public_report_and_retained_rerun(world, monkeypatch):
+    from types import SimpleNamespace
+    from erev_api.domain.reports import opening_consumption_policy as policy
+
+    monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
+    run, rows = report_run(world, "revenue_from_opening_liability", SEPTEMBER)
+    row = keyed(rows)[K01_BALANCE_ROW]
+    assert row["revenue_from_opening"] == usd("9764.38")
+    assert "FIFO_WITHIN_POB uses each obligation" in run["control_totals"]["footnote"]
+
+    def changed_policy(*args, **kwargs):
+        raise AssertionError("A bound rerun must not consult current policy")
+
+    monkeypatch.setattr(policy, "resolve", changed_policy)
+    restarted = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert restarted.status_code == 202, restarted.text
+    complete = run_now(world, UUID(restarted.json()["id"]))
+    assert complete["state"] == "SUCCEEDED", complete
+    rebuilt = get(
+        world.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}", world.maya
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["control_totals"] == run["control_totals"]

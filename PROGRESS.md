@@ -255,19 +255,19 @@ Current outstanding implementation and verification gaps remain in
   months. Input, computation and trace integration remain; release checks alone are insufficient.
 - Privacy checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Renewal commission comparison — October 23, 2026
-
-- Added optional complete commission/value evidence to renewal estimate forms, API and CSV
-  schema. POL-142 now decides the acquisition-cost term under the applicable POL-141 option.
-- Later approved changes adjust remaining amortization prospectively; trace records retain
-  comparison inputs, configured ratio and result. Existing estimates without evidence keep months.
-- Native cost/validation cases, populated API approval-to-bundle workflow, frontend forms and
-  scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
-- Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
-
 ## Frozen opening consumption cap — October 23, 2026
 
 - Native S15 now caps positive opening consumption after applying a frozen opening balance;
   excess is classified as relief from period increases without changing total relief or closing.
 - Eleven focused cases and scoped lint/types pass. Restatement differences remain in Other.
   Public FIFO_WITHIN_POB range/currency integration remains unfinished. No deployment.
+
+## Transaction POB opening disclosure — October 23, 2026
+
+- Public opening-liability reports now apply FIFO_WITHIN_POB for uncombined principal contracts
+  with the same contracting/performing entity and an unlocked opening. Selected-range posted
+  revenue is netted per obligation and capped by its opening billing less revenue, then by the
+  contract's displayed opening and actual liability relief. Original evidence is retained.
+- Public report/rerun and default-policy cases plus seven focused cases pass; scoped types/lint
+  pass. Combined/locked, agent/cross-entity and functional/reporting POB integration remain open.
+- Renewal-commission checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.

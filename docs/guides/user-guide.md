@@ -1052,3 +1052,16 @@ obligation's calculation, labelled with the combined host. A drawer opened from 
 obligation also allows this selection. The submitted event keeps the chosen original key;
 normal preview, permissions and event approval apply. Other progress/cost/milestone drawers
 do not infer original-component measurements from the combined obligation.
+
+### Opening liability consumed by obligation
+
+With `FIFO_WITHIN_POB`, the transaction-currency opening-liability report uses each obligation's
+opening attributed billings less its opening revenue and the net revenue actually posted during
+the selected range. It caps the result at contract opening liability and actual liability relief.
+The report footnote identifies this method; saved reruns retain its original evidence and policy.
+
+This path currently supports uncombined principal contracts performed by their contracting entity
+with an unlocked opening and complete prior-period obligation evidence. Unsupported combined or
+locked openings and agent/cross-entity cases return an explanation instead of a substitute amount.
+Functional and reporting currency views still disclose their contract/layer consumption method;
+per-obligation consumption in those views remains under development.
