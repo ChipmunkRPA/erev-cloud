@@ -483,7 +483,7 @@ export function blockerRows(
       owner: ownerOf("EXCEPTIONS_CLEARED", "revenueAccountant"),
       link: route(
         "/data/exceptions",
-        `entity=${entity}&period=${periodKey}&f.code=is:VC_REASSESSMENT_MISSING`,
+        `blocking=${encodeURIComponent(period.id)}&f.code=is:VC_REASSESSMENT_MISSING`,
         "exceptions",
       ),
       task: null,
@@ -641,7 +641,7 @@ function CockpitView({ cockpit, periods, me, tab, children }: CockpitViewProps) 
   });
   const counts = useQuery({
     queryKey: blockerCountsKey(period.id),
-    queryFn: () => fetchBlockerCounts(period.entity, periodKey),
+    queryFn: () => fetchBlockerCounts(period.id),
     enabled: closes,
   });
   const rows = counts.data === undefined ? null : blockerRows(cockpit, counts.data, built);

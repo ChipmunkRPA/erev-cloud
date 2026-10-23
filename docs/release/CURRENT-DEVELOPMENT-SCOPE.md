@@ -208,7 +208,11 @@ facts from the engine states it already calculated, without another engine pass 
 financial output serialization. Applicable facts become blocking CLOSE exceptions for the
 selected entity/book/period, retaining subject/version or usage dates and the exact input hash.
 The existing exception gate prevents lock while those findings remain open. The close run can
-finish so the accountant can inspect and remedy its findings.
+finish so the accountant can inspect and remedy its findings. The cockpit's VC count and
+its queue link use that same period-state blocking filter, including book scope. Generated VC
+findings carry the element code for the contract's reassessment banner; OPEN and IN_PROGRESS
+items both remain visible. Royalty findings have a readable title. The extended lifecycle and
+two focused UI workflows verify these connections; frontend type/lint checks pass.
 
 Rechecks use stable contract-based identities, including after combination membership moves,
 and settle only previously generated findings for the same book/period and assessed contracts

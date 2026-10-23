@@ -210,6 +210,7 @@ SEVERITIES: Final[Mapping[str, ExceptionSeverity]] = {
 TITLES: Final[Mapping[str, str]] = {
     "PROGRESS_OVER_DELIVERY": "Delivery exceeds the remaining quantity",
     "VC_REASSESSMENT_MISSING": "Variable consideration reassessment missing",
+    "ROYALTY_ACCRUAL_MISSING": "Royalty statement or accrual missing",
     "PRODUCT_UNMAPPED": "Product without an approved product record",
     "LATE_EVENT": "Event in a closed period",
     "CONTRACT_NOT_FOUND": "Contract not found",

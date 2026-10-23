@@ -88,15 +88,10 @@ async function countOf(path: string, query: ListQuery): Promise<number> {
  * `pending_requests`, which API-R-09 request visibility does not filter, so those two rows do not
  * depend on the reader (SCREENS_B §1.1 rev 1.3; D-90a QA-L9-7, L8-C-Q-2).
  */
-export async function fetchBlockerCounts(
-  entity: { readonly id: string; readonly code: string },
-  periodKey: string,
-): Promise<BlockerCounts> {
+export async function fetchBlockerCounts(periodId: string): Promise<BlockerCounts> {
   const vc = await countOf(EXCEPTIONS_PATH, {
     code: "VC_REASSESSMENT_MISSING",
-    entity: entity.code,
-    period: periodKey,
-    status: ["OPEN", "IN_PROGRESS"],
+    blocking: periodId,
   });
   return { vcReassessmentMissing: vc };
 }

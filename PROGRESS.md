@@ -62,6 +62,9 @@ review and publish changes without PR accumulation, and do not deploy.
   no extra engine pass or approval workflow. Existing engine coverage limits remain explicit.
 - Normal close and injected-gap lifecycle workflows pass, including cross-book gate isolation
   and settlement; two native gap cases and scoped lint/types pass. See CURRENT-DEVELOPMENT-SCOPE.
+- UI follow-through: VC counts/links use the same book-specific blocking scope; element banners
+  recognize generated findings and retain in-progress items; royalty titles are readable.
+  Extended backend lifecycle and two focused UI cases pass, with frontend types/lint.
 - Earlier disaggregation checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
 ## Close-variance offsetting effects — October 22, 2026

@@ -331,7 +331,12 @@ function serve(
       HttpResponse.json(cockpit(state, items, counts)),
     ),
     http.get(apiUrl("/api/v1/journal-runs"), empty),
-    http.get(apiUrl("/api/v1/exceptions"), () => counted(counts.vc)),
+    http.get(apiUrl("/api/v1/exceptions"), ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      expect(query.get("blocking")).toBe(STATE_ID);
+      expect(query.get("code")).toBe("VC_REASSESSMENT_MISSING");
+      return counted(counts.vc);
+    }),
     // A reader without approval visibility lists no requests (04 API-R-09), so the approvals list
     // answers 0 for every query: D-90a QA-L9-7 takes BLK-06 and BLK-15 from the cockpit read.
     http.get(apiUrl("/api/v1/approvals"), ({ request }) => {
@@ -639,6 +644,12 @@ describe("SF-05 close cockpit", () => {
     expect(
       within(within(table).getByTestId("SF-05-row-exceptions")).getByRole("cell", { name: "2" }),
     ).toBeTruthy();
+    expect(
+      within(table)
+        .getByTestId("SF-05-row-vc-reassessment-missing")
+        .querySelector("a")
+        ?.getAttribute("href"),
+    ).toBe(`/data/exceptions?blocking=${STATE_ID}&f.code=is:VC_REASSESSMENT_MISSING`);
     // BLK-02 opens the queue on the list its count is made of (§1.1 rev 1.66; 04 §16.14): the items
     // that hold this period's lock, asked by the period's id. The link names no entity, period or
     // status, which left out every item that names no entity or no period.

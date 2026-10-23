@@ -1356,7 +1356,7 @@ def test_close_assessment_gaps_block_only_their_book_and_settle_after_recheck(
                         "entity": AVM_US,
                         "period_key": SEPTEMBER,
                         "contract_key": contract_key,
-                        "estimate_key": "VC-TEST",
+                        "estimate_key": f"{contract_key}/VC-TEST",
                         "version_key": "VC-TEST:1",
                     },
                     {
@@ -1382,6 +1382,14 @@ def test_close_assessment_gaps_block_only_their_book_and_settle_after_recheck(
         )
     )
     assert {f["code"] for f in findings} == {"VC_REASSESSMENT_MISSING", "ROYALTY_ACCRUAL_MISSING"}
+    assert (
+        next(f for f in findings if f["code"] == "VC_REASSESSMENT_MISSING")["business_key"]
+        == "VC-TEST"
+    )
+    assert (
+        next(f for f in findings if f["code"] == "ROYALTY_ACCRUAL_MISSING")["title"]
+        == "Royalty statement or accrual missing"
+    )
     with world.place.uow() as uow:
         state_id = uow.session.scalar(
             select(period_state.c.id).where(

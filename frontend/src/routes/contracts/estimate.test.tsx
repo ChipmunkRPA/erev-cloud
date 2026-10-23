@@ -414,12 +414,18 @@ describe("SF-03:estimate", () => {
       {
         id: "9e9e9e9e-9e9e-4e9e-8e9e-9e9e9e9e9e9e",
         code: "VC_REASSESSMENT_MISSING",
-        status: "OPEN",
+        status: "IN_PROGRESS",
         business_key: "REBATE-DR-01",
         period_id: "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
         contract_id: CONTRACT_ID,
       },
     ];
+    server.use(
+      http.get(apiUrl("/api/v1/exceptions"), ({ request }) => {
+        expect(new URL(request.url).searchParams.getAll("status")).toEqual(["OPEN", "IN_PROGRESS"]);
+        return HttpResponse.json({ items: world.exceptions, next_cursor: null });
+      }),
+    );
     open(`${LIST}/${REBATE_ID}`);
 
     const list = await screen.findByRole("listbox", { name: "Estimated elements" });

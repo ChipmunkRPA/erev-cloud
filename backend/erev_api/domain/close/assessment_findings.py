@@ -68,6 +68,11 @@ def record(
             code=code,
             severity=ExceptionSeverity.BLOCKING,
             message=message,
+            business_key=(
+                str(subject).removeprefix(str(fact["contract_key"]) + "/")
+                if code == "VC_REASSESSMENT_MISSING"
+                else None
+            ),
             dedupe=key,
             contract_id=UUID(str(contract_row["id"])),
             obligation_id=None if obligation is None else UUID(str(obligation["id"])),

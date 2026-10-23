@@ -289,7 +289,7 @@ export async function fetchJudgement(judgementId: string): Promise<Judgement> {
 export async function fetchReassessmentDue(contractId: string): Promise<readonly ExceptionItem[]> {
   const page = await fetchListPage<ExceptionItem>(
     EXCEPTIONS_PATH,
-    { contract: contractId, code: REASSESSMENT_MISSING, status: "OPEN" },
+    { contract: contractId, code: REASSESSMENT_MISSING, status: ["OPEN", "IN_PROGRESS"] },
     null,
     { limit: 200, count: false },
   );
