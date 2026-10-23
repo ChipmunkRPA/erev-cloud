@@ -20,6 +20,24 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Functional activity recognition provenance — October 22, 2026
+
+- Native S13 revenue control flows now carry their upstream recognition source node into S12
+  functional activity evidence. The report reader returns that link and requires its presence
+  in the original trace and matching transaction currency when supplied. Earlier activity
+  evidence without this optional link remains readable without inventing event provenance.
+- The link identifies the original recognition producer, not necessarily the whole control
+  relief amount: concessions, agent relief and calendar projection can adjust the target. It
+  therefore does not imply unique modification-event allocation or enable unsupported foreign
+  modification currency views by itself.
+- Necessary verification passed: 7 focused native/reader cases, including full CHK-080 engine
+  computation through report reading and missing-source refusal, plus all 13 FX-layer cases.
+  Scoped lint/types passed. Existing posting amounts and flow ordering are unchanged.
+- Asked the owner whether the foreign modification view should require actual attributable
+  amounts or show clearly labelled currency equivalents. Pending a response, preserve actual
+  evidence and do not allocate period totals to a single event without proof. Other engineering
+  can continue. No deployment; overall development remains incomplete.
+
 ## Verified functional revenue activity reader — October 22, 2026
 
 - Added a report-layer reader for the new S12 activity evidence. It replays the trace, validates
@@ -208,21 +226,6 @@ review and publish changes without PR accumulation, and do not deploy.
   migration 0315 frozen IPE parity passed. Older OPEN runs retain new-evaluation behavior.
 - This report lists version overrides and approval evidence, not monetary allocation amounts.
   Remaining allocation and other documented Reporting gaps remain open. No deployment.
-
-## SSP change-log retained reconstruction — October 22, 2026
-
-- New runs retain version lifecycle/status inputs, effective dates, entry counts, diff summaries,
-  successor labels, study filenames, full approval requests/decisions and original actor names.
-  Same-source reruns validate tenant/entity scope and filters, restore typed inputs, reapply the
-  lifecycle-date selection and rebuild rows without live reads. Source version IDs are captured.
-- Approval restoration preserves decision IDs, actor identities, timestamps, flags and amounts;
-  no current approval or user lookup is used. Older OPEN runs keep new-evaluation behavior.
-- Necessary validation passed: 43 focused SSP/source-binding cases and actual draft SSP/report
-  API and worker flow. Removing a draft entry changes the fresh log count from seven to six;
-  the saved log reproduces seven and identical rows/output hash. No-session checks cover approval
-  display, timestamps, studies, date selection and scope/filter refusal. Scoped lint/types and
-  migration 0314 frozen IPE parity passed. Ad-hoc historical mutable-state limitations remain.
-  No deployment; remaining SSP and other documented Reporting gaps are still open.
 
 ## Outstanding release verification
 

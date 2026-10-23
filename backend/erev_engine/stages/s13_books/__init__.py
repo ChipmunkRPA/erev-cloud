@@ -1863,6 +1863,7 @@ def _control_flows(
                     effective_date=ends[(target.entity, target.period_key)],
                     record_seq=None,
                     amount=abs(movement),
+                    recognition_source_node=target.node_id,
                 )
             )
     return tuple(flows)

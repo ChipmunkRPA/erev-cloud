@@ -12094,3 +12094,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Ad-hoc historical reads of editable draft entries still require evidence and retain their
   existing refusal. Remaining SSP registers and other documented Reporting gaps remain open.
   No deployment.
+
+## SSP change-log retained reconstruction — October 22, 2026
+
+- New runs retain version lifecycle/status inputs, effective dates, entry counts, diff summaries,
+  successor labels, study filenames, full approval requests/decisions and original actor names.
+  Same-source reruns validate tenant/entity scope and filters, restore typed inputs, reapply the
+  lifecycle-date selection and rebuild rows without live reads. Source version IDs are captured.
+- Approval restoration preserves decision IDs, actor identities, timestamps, flags and amounts;
+  no current approval or user lookup is used. Older OPEN runs keep new-evaluation behavior.
+- Necessary validation passed: 43 focused SSP/source-binding cases and actual draft SSP/report
+  API and worker flow. Removing a draft entry changes the fresh log count from seven to six;
+  the saved log reproduces seven and identical rows/output hash. No-session checks cover approval
+  display, timestamps, studies, date selection and scope/filter refusal. Scoped lint/types and
+  migration 0314 frozen IPE parity passed. Ad-hoc historical mutable-state limitations remain.
+  No deployment; remaining SSP and other documented Reporting gaps are still open.

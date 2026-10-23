@@ -143,6 +143,9 @@ class ControlFlow:
     amount: int
     unconditional_date: date | None = None
     first_receipt_date: date | None = None
+    # Upstream recognition producer, not a claim that all relief is this node alone
+    # (agent relief, concessions and calendar projection can adjust the control target).
+    recognition_source_node: str | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in SIDES:
@@ -462,6 +465,11 @@ class UnitBook:
                 "source_key": flow.source_key,
                 "flow_kind": flow.kind,
                 "effective_date": when.isoformat(),
+                **(
+                    {"recognition_source_node": flow.recognition_source_node}
+                    if flow.recognition_source_node is not None
+                    else {}
+                ),
             },
             narrative_key=_narrative(formula),
         )

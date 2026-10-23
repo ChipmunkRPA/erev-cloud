@@ -86,3 +86,39 @@ def test_old_or_inconsistent_activity_is_not_substituted_with_spot():
     )
     with pytest.raises(RevenueActivityUnavailable, match="reproduce"):
         _read(bad)
+
+
+def test_report_reader_keeps_native_recognition_source_link():
+    from tests.engine.s12_fx_entities.test_s12_functional_member_links import _revenue_output
+
+    output = _revenue_output()
+    book = output.books[0]
+    node = next(n for n in book.trace.nodes if n.measure == "revenue_activity_functional")
+    activities = read(
+        book.trace,
+        obligation_subject=node.params["obligation_subject"],
+        entity_code=node.params["entity"],
+        period_key=node.id.rsplit(":", 1)[1],
+        transaction_currency=node.params["txn_currency"],
+        functional_currency=node.currency,
+    )
+    activity = next(item for item in activities if item.node_id == node.id)
+    assert activity.recognition_source_node == node.params["recognition_source_node"]
+    broken = replace(
+        book.trace,
+        nodes=tuple(
+            replace(n, params={**n.params, "recognition_source_node": "missing"})
+            if n.id == node.id
+            else n
+            for n in book.trace.nodes
+        ),
+    )
+    with pytest.raises(RevenueActivityUnavailable):
+        read(
+            broken,
+            obligation_subject=node.params["obligation_subject"],
+            entity_code=node.params["entity"],
+            period_key=node.id.rsplit(":", 1)[1],
+            transaction_currency=node.params["txn_currency"],
+            functional_currency=node.currency,
+        )

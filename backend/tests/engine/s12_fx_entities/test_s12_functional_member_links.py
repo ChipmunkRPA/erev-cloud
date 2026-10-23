@@ -115,3 +115,25 @@ def test_no_promise_measures_zero() -> None:
         0,
     )
     assert value == "0.00" and cited == ()
+
+
+def _revenue_output() -> OutputBundle:
+    key = "FX-CHK-080-LIABILITY-LAYERS-AT-HISTORICAL-RATES"
+    (bundle,) = _build_checkpoint_bundles(load(ANSWER_KEY_ROOT / "fx" / f"{key}.yaml"))[-1].bundles
+    return compute(bundle)
+
+
+def test_native_functional_activity_links_original_recognition_sources() -> None:
+    output = _revenue_output()
+    checked = 0
+    for book in output.books:
+        nodes = {node.id: node for node in book.trace.nodes}
+        for node in book.trace.nodes:
+            if node.measure != "revenue_activity_functional":
+                continue
+            source = nodes[node.params["recognition_source_node"]]
+            assert source.currency == node.params["txn_currency"]
+            assert source.id != node.id
+            assert source.measure in {"revenue_cum", "agent_relief_cum"}
+            checked += 1
+    assert checked > 0

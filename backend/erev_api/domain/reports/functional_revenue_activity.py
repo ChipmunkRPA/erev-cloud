@@ -32,6 +32,7 @@ class Activity:
     functional_currency: str
     functional_amount: Decimal
     signed_piece_ids: tuple[tuple[str, int], ...]
+    recognition_source_node: str | None = None
 
 
 def _pieces(node: TraceNode) -> tuple[tuple[str, int], ...]:
@@ -138,6 +139,9 @@ def _read(
             raise RevenueActivityUnavailable("Revenue activity direction differs from its inputs.")
         if any(nodes[node_id].currency != functional for node_id, _ in pieces):
             raise RevenueActivityUnavailable("Revenue activity piece currency differs.")
+        recognition_source = params.get("recognition_source_node")
+        if recognition_source is not None and nodes[recognition_source].currency != txn:
+            raise RevenueActivityUnavailable("Recognition source transaction currency differs.")
         actual.update(pieces)
         found.append(
             Activity(
@@ -152,6 +156,7 @@ def _read(
                 functional,
                 Decimal(node.value),
                 pieces,
+                recognition_source,
             )
         )
     if (
