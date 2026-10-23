@@ -906,6 +906,8 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
             status_column="status",
             updatable_columns=frozenset(
                 {
+                    "auto_certify_rule_set_version_id",
+                    "auto_certify_rule_id",
                     "certified_at",
                     "period_lock_id",  # write-once at lock certification (04 rev 1.23; D-98 63)
                     "report_run_id",
@@ -917,7 +919,15 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
                 }
             )
             | _SC_M,
-            set_once=frozenset({"period_lock_id", "source_file_id", "sync_run_id"}),
+            set_once=frozenset(
+                {
+                    "period_lock_id",
+                    "source_file_id",
+                    "sync_run_id",
+                    "auto_certify_rule_set_version_id",
+                    "auto_certify_rule_id",
+                }
+            ),
             pairs=frozenset(
                 {
                     ("DRAFT", "PREPARED"),

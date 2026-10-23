@@ -668,8 +668,8 @@ def test_unposted_batch_classification(
         0,
         0,
     )
-    # Auto-certification is a billing reconciliation's (REC-AUTO-GL-1): no CTL-026 execution here.
-    assert recon.control_executions(world.tenant_id, "CTL-026", draft["id"]) == []
+    (not_certified,) = recon.control_executions(world.tenant_id, "CTL-026", draft["id"])
+    assert str(not_certified["result"]) == "NOT_APPLICABLE"
 
     # Once the GL acknowledges the batch and states its balances, nothing differs.
     _acknowledged(world, run, clock)
@@ -692,6 +692,51 @@ def test_unposted_batch_classification(
         "PASS",
     )
     assert recon.shown(app, world.maya, draft["id"])["is_current"] is False
+
+    # Published GL policy is evaluated only after comparing the attached source.
+    context = DbContext(tenant_id=world.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(context) as session:
+        publish_rule_set(
+            session,
+            tenant_id=world.tenant_id,
+            kind=RuleSetKind.AUTO_APPROVAL,
+            code="AUTO-GL-ZERO",
+            rules=[
+                {
+                    "rule_key": "AUTO-GL-ZERO",
+                    "conditions": [
+                        {"field": "reconciliation.kind", "op": "eq", "value": "SUBLEDGER_TO_GL"},
+                        {"field": "reconciliation.variance_count", "op": "eq", "value": 0},
+                    ],
+                    "outputs": {"auto_approve": True},
+                }
+            ],
+        )
+    candidate = _generated(world, runtime)
+    assert candidate["status"] == "DRAFT"
+    assert recon.control_executions(world.tenant_id, "CTL-026", candidate["id"]) == []
+    certified = recon.attached(
+        app,
+        world.maya,
+        runtime,
+        candidate["id"],
+        {"file_id": recon.uploaded(app, world.maya, "auto-gl-zero.csv", posted)},
+    )
+    assert (certified["status"], certified["variance_count"]) == ("AUTO_CERTIFIED", 0)
+    assert certified["auto_certify_rule"]["rule_key"] == "AUTO-GL-ZERO"
+    (automatic,) = recon.control_executions(world.tenant_id, "CTL-026", candidate["id"])
+    assert str(automatic["result"]) == "PASS"
+    assert automatic["detail"]["rule"] == certified["auto_certify_rule"]
+    (comparison,) = recon.control_executions(world.tenant_id, "CTL-025", candidate["id"])
+    assert comparison["detail"]["auto_certified"] is True
+    assert recon.attach(app, world.maya, candidate["id"], {"file_id": file_id}).status_code == 409
+    # The same published policy must leave real differences to manual review.
+    candidate = _generated(world, runtime)
+    differing = recon.attached(app, world.maya, runtime, candidate["id"], {"file_id": file_id})
+    assert differing["variance_count"] > 0
+    assert (differing["status"], differing["auto_certify_rule"]) == ("DRAFT", None)
+    (automatic,) = recon.control_executions(world.tenant_id, "CTL-026", candidate["id"])
+    assert str(automatic["result"]) == "NOT_APPLICABLE"
 
 
 def test_csv_trial_balance_upload(

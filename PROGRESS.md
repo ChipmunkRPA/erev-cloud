@@ -46,21 +46,13 @@ review and publish changes without PR accumulation, and do not deploy.
   targeted runs; scoped lint/types pass. See LATE-BILLING-RECONCILIATION-2026-10-23.md.
 - Earlier modification-drill checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Optional per-event close variance — October 22, 2026
+## GL automatic certification — October 23, 2026
 
-- Added Attribution detail: By driver (default) / By event. Detailed mode executes each business
-  event in ENG-06 order, retaining individual signed changes and execution hashes. Driver totals
-  and frozen monetary endpoints still reconcile; reference/FX and membership/population phases
-  remain explicit. No proportional split or journal-posting ownership is claimed.
-- Ordinary and membership replay share the detailed-boundary implementation. A retained choice
-  is checked at prepare/rebuild and contributor reads; old/default runs keep grouped behavior.
-  Migration 0331 freezes schema/IPE metadata; the existing toolbar exposes labelled choices.
-- Necessary verification: 46 replay/catalogue cases, plus two new native net-zero modification
-  variants (USD and GBP), eight toolbar cases, and the event-mode worker/bound-rerun workflow
-  with real empty lock snapshots. Native positive/negative effects are checked against grouped
-  totals; membership functional endpoints also match. Scoped lint/types and metadata parity pass.
-- Original per-event journal ownership in the modification register remains open. This completes
-  a user-selectable causal replay capability, not that separate feature. No deployment.
+- Attached GL comparisons now use published kind-specific rules for automatic certification.
+  Only complete, nonempty zero-variance comparisons qualify; no policy is created automatically.
+  Write-once rule IDs, CTL-025/026 and audit evidence retain the decision (migration 0337).
+- Two populated GL/billing workflows and transition parity checks pass; scoped lint/types pass.
+  See CURRENT-DEVELOPMENT-SCOPE.md. No deployment.
 
 ## Close-variance offsetting effects — October 22, 2026
 

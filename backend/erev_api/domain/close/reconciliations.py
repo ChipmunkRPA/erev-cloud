@@ -1472,8 +1472,9 @@ def _auto_certify(
     *,
     variances: int,
     certifying: CertifyingRule | None,
+    row_version: int = 1,
 ) -> None:
-    """REQ-CLS-017 for a reconciliation just inserted with its certifying rule, if any: the move
+    """REQ-CLS-017 after generation or attachment with its certifying rule, if any: the move
     ``DRAFT → AUTO_CERTIFIED`` and the CTL-026 execution — ``PASS`` with the rule for a certified
     reconciliation, ``NOT_APPLICABLE`` for one left to its preparer and reviewer."""
     reconciliation_id = UUID(identity["reconciliation_id"])
@@ -1514,13 +1515,14 @@ def _auto_certify(
         reconciliation_id,
         to_status=ReconciliationStatus.AUTO_CERTIFIED.value,
         expected_status=ReconciliationStatus.DRAFT.value,
-        set_values={"row_version": 2, **_stamps(uow)},
+        set_values={"row_version": row_version + 1, **_stamps(uow)},
+        expected_row_version=row_version,
     )
     uow.audit(
         action=AUTO_CERTIFY_ACTION,
         object_type=OBJECT_TYPE,
         object_id=reconciliation_id,
-        object_version="2",
+        object_version=str(row_version + 1),
         before={"status": ReconciliationStatus.DRAFT.value},
         after={"status": ReconciliationStatus.AUTO_CERTIFIED.value, "rule": rule_detail},
     )
@@ -1972,6 +1974,27 @@ def attach(
         )
         for item in compared.items
     ]
+    # Unknown role amounts must never be treated as a zero variance. A missing
+    # comparison population likewise supplies no evidence for certification.
+    certifying = (
+        certifying_rule(
+            session,
+            kind=ReconciliationKind.SUBLEDGER_TO_GL,
+            variance_count=len(differences),
+            unexplained_other_amount=None,
+            at=uow.now,
+        )
+        if compared.totals and not compared.not_stated
+        else None
+    )
+    rule_values = (
+        {}
+        if certifying is None
+        else {
+            "auto_certify_rule_set_version_id": certifying.rule_set_version_id,
+            "auto_certify_rule_id": certifying.rule_id,
+        }
+    )
     row_version = int(held.row["row_version"])
     source = (
         {"source_file_id": source_file_id}
@@ -1985,6 +2008,7 @@ def attach(
         to_status=None,
         set_values={
             **source,
+            **rule_values,
             "totals": totals,
             "variance_count": len(differences),
             "row_version": row_version + 1,
@@ -2018,7 +2042,7 @@ def attach(
             "roles_not_stated": compared.not_stated,
             "trial_balance_rows": len(lines),
             "rows_not_compared": compared.ignored_lines,
-            "auto_certified": False,
+            "auto_certified": certifying is not None,
         },
         entity_id=scope.entity_id,
         book_code=scope.book_code,
@@ -2050,6 +2074,18 @@ def attach(
             ids=item_ids,
             detail={"reconciliation_id": str(held.id)},
         )
+    _auto_certify(
+        uow,
+        scope,
+        {
+            "reconciliation_id": str(held.id),
+            "reconciliation_no": held.number,
+            "kind": ReconciliationKind.SUBLEDGER_TO_GL.value,
+        },
+        variances=len(differences),
+        certifying=certifying,
+        row_version=row_version + 1,
+    )
     return {"variances": len(differences), "accounts": len(compared.totals)}
 
 

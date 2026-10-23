@@ -27,3 +27,19 @@
 - Necessary checks: 22 register and eight catalogue cases, populated K02 source/component/
   catch-up/spot/reporting drills and refusals, four frontend cases, scoped lint/types and
   metadata parity. No deployment; per-event functional posting ownership remains open.
+
+## Optional per-event close variance — October 22, 2026
+
+- Added Attribution detail: By driver (default) / By event. Detailed mode executes each business
+  event in ENG-06 order, retaining individual signed changes and execution hashes. Driver totals
+  and frozen monetary endpoints still reconcile; reference/FX and membership/population phases
+  remain explicit. No proportional split or journal-posting ownership is claimed.
+- Ordinary and membership replay share the detailed-boundary implementation. A retained choice
+  is checked at prepare/rebuild and contributor reads; old/default runs keep grouped behavior.
+  Migration 0331 freezes schema/IPE metadata; the existing toolbar exposes labelled choices.
+- Necessary verification: 46 replay/catalogue cases, plus two new native net-zero modification
+  variants (USD and GBP), eight toolbar cases, and the event-mode worker/bound-rerun workflow
+  with real empty lock snapshots. Native positive/negative effects are checked against grouped
+  totals; membership functional endpoints also match. Scoped lint/types and metadata parity pass.
+- Original per-event journal ownership in the modification register remains open. This completes
+  a user-selectable causal replay capability, not that separate feature. No deployment.

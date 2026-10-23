@@ -142,6 +142,17 @@ permissions and the original dataset hash. Original reports remain immutable.
 The populated forecast lifecycle passes with original and catalogue reruns in JSON, CSV and
 XLSX, identical data hashes and bindings, and retained source-access checks; scoped lint/types pass.
 
+## GL zero-variance automatic certification
+
+GL reconciliation now evaluates published AUTO_APPROVAL rules at trial-balance attachment,
+using the same kind-specific matching as billing. Only a nonempty, fully stated comparison
+with zero variance can qualify; absent policy or unresolved amounts retain manual review.
+Both file and connector attachments share this path. Rule identity is written once (migration
+0337); CTL-025, CTL-026 and the audit trail retain the comparison and certification evidence.
+No policy is created or published automatically. Necessary verification covers populated file
+attachment with/without policy, differences under the same policy, source-free drafts, and
+existing billing certification, plus transition-migration parity and scoped lint/types.
+
 ## Repository completion evidence still required
 
 After feature completion, refresh the bounded release-candidate checks recorded in PROGRESS.md

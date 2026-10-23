@@ -70,7 +70,11 @@ def test_clo_6_migration_freezes_the_rendered_body() -> None:
     generation = _migration(GENERATION_SUFFIX)
     assert generation is not None
     latest = _loaded(generation)
-    assert latest.TRANSITION_BODY == transitions.transition_trigger_sql("reconciliation")
+    auto_path = _migration("_gl_auto_certification.py")
+    assert auto_path is not None
+    auto = _loaded(auto_path)
+    assert auto.NEW == transitions.transition_trigger_sql("reconciliation")
+    assert auto.OLD == latest.TRANSITION_BODY
     assert latest.PREVIOUS_TRANSITION_BODY == module.TRANSITION_BODY
     assert "'REOPENED>DRAFT'" in module.TRANSITION_BODY
     assert "'REOPENED>DRAFT'" not in latest.TRANSITION_BODY
@@ -80,7 +84,13 @@ def test_trial_balance_columns_are_write_once_and_reopened_is_final() -> None:
     """04 T-CLS-06 rev 1.121 (supervisor ruling R-54 (a), (b))."""
     spec = transitions.TRANSITIONS["reconciliation"]
     assert {"source_file_id", "sync_run_id"} <= spec.updatable_columns
-    assert spec.set_once == {"period_lock_id", "source_file_id", "sync_run_id"}
+    assert spec.set_once == {
+        "period_lock_id",
+        "source_file_id",
+        "sync_run_id",
+        "auto_certify_rule_set_version_id",
+        "auto_certify_rule_id",
+    }
     assert ("REOPENED", "DRAFT") not in spec.pairs
     assert not [pair for pair in spec.pairs if pair[0] == "REOPENED"]
     refused = transitions.violations(
@@ -88,7 +98,7 @@ def test_trial_balance_columns_are_write_once_and_reopened_is_final() -> None:
     )
     assert [error.field for error in refused] == ["status"]
     body = transitions.transition_trigger_sql("reconciliation")
-    for column in ("source_file_id", "sync_run_id"):
+    for column in spec.set_once:
         assert (
             f"IF OLD.{column} IS NOT NULL AND NEW.{column} IS DISTINCT FROM OLD.{column}"
         ) in body
