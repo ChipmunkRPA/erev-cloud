@@ -1779,6 +1779,7 @@ describe("SF-05:reconciliation", () => {
 
     // SCREENS_B §2.2 "Pull failed", read from the record.
     const banner = await screen.findByTestId("SF-05-banner-attach-failed");
+    // The file workflow exposes the optional document format without a GL connection.
     expect(banner.textContent).toContain(
       "The trial balance could not be pulled from NetSuite (mock): GL connection unavailable. Upload a CSV instead.",
     );
@@ -1801,6 +1802,11 @@ describe("SF-05:reconciliation", () => {
         type: "text/csv",
       },
     );
+    expect(
+      screen
+        .getByRole("link", { name: "Download balance and GL detail template" })
+        .getAttribute("href"),
+    ).toBe("/templates/gl-trial-balance-detail.csv");
     fireEvent.change(screen.getByTestId("SF-05-trial-balance-file"), {
       target: { files: [balances] },
     });

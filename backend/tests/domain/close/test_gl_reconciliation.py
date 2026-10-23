@@ -852,6 +852,42 @@ def test_csv_trial_balance_upload(
     assert reviewer["gl_connections"] == []
     assert reviewer["trial_balance"] == pulled["trial_balance"]
 
+    # The optional explicit document format supplies the same evidence as the pull.
+    import csv
+    import io
+
+    from erev_api.domain.close.trial_balance_upload import HEADERS
+
+    content = io.StringIO()
+    writer = csv.writer(content)
+    writer.writerow(HEADERS)
+    for line in lines:
+        writer.writerow((line.account_code, line.currency, str(line.amount), "BALANCE", "", "", ""))
+    for detail in details:
+        writer.writerow(
+            (
+                detail.account_code,
+                detail.currency,
+                str(detail.amount),
+                "DOCUMENT",
+                detail.document_reference,
+                detail.external_id or "",
+                (detail.posted_date or date(2026, 1, 31)).isoformat(),
+            )
+        )
+    third = _generated(world, runtime)
+    detailed_file = recon.uploaded(
+        app, world.maya, "tb-with-documents.csv", content.getvalue().encode()
+    )
+    detailed = recon.attached(app, world.maya, runtime, third["id"], {"file_id": detailed_file})
+    assert detailed["totals"] == pulled["totals"]
+    assert [_facts(item) for item in recon.items_of(app, world.maya, third["id"])] == [
+        _facts(item) for item in recon.items_of(app, world.maya, first["id"])
+    ]
+    evidence = recon.control_executions(tenant_id, "CTL-025", third["id"])[0]["detail"]
+    assert evidence["direct_gl_entries"] == 1
+    assert evidence["erp_billing_documents"] == 1
+
 
 def test_attach_is_refused_by_name(
     app: FastAPI,

@@ -1078,6 +1078,14 @@ function TrialBalanceDropzone({
       <p id={limitId} className="text-body-sm text-fg-3">
         {t("data.imports.upload.limit")}
       </p>
+      <p className="text-body-sm text-fg-2">{t("close.reconciliation.attach.detailHelp")}</p>
+      <a
+        className="text-body-sm text-accent-fg underline"
+        href="/templates/gl-trial-balance-detail.csv"
+        download
+      >
+        {t("close.reconciliation.attach.detailTemplate")}
+      </a>
       {error === null ? null : (
         <p id={errorId} role="alert" className="text-body-sm text-negative-fg">
           {error}

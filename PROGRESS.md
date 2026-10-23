@@ -20,6 +20,22 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## GL detail uploads — October 22, 2026
+
+- The reconciliation file workflow now accepts an optional explicit BALANCE/DOCUMENT format
+  in CSV/XLSX. Closing balances and period document amounts remain separate; documents are
+  passed into the same comparison as connector data to identify direct GL entries, known
+  eRev journals and ERP billing references. Legacy account/currency/amount files still work.
+- Both request and worker validate functional currency, precision, document reference,
+  posting date within the reconciliation period and a corresponding balance row. No document
+  amount is added to the closing balance. Existing file access and source-retention controls apply.
+- Added a downloadable header template and instructions in the attachment UI and user guide.
+  Necessary checks passed: 33 parser/comparison cases, a populated API/worker comparison showing
+  identical connector/file totals and difference items, and the focused upload UI case.
+  Scoped lint/types passed. No database/API-schema changes and no deployment.
+- This closes the file-upload document-attribution gap. It does not establish that every
+  remaining Reporting/system gap is complete; foreign actual posted event attribution remains open.
+
 ## Optional modification currency equivalents — October 22, 2026
 
 - Added an explicit Currency amount basis choice to the modification report. The default
@@ -205,21 +221,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - Fixed a pre-existing current-catalogue seed helper failure reproduced against committed main:
   valid JSON regex/text escapes are now preserved, with JSON round-trip coverage. The historical
   migration seed remains byte-for-byte frozen. No deployment; final release verification remains.
-
-## Legacy journal summary retained reconstruction — October 22, 2026
-
-- New GROSS/DELTA summary runs retain original per-book aggregates, resolved entity/account/key
-  labels, window and source line/partition/posting references. Shared pure view calculation
-  rebuilds line nets, debit/credit sides, entity balances and currency totals. Bound reruns
-  validate tenant/entity scope and mode/book/date selection without current ledger reads.
-- DELTA keeps the existing primary-plus-LEGACY convention. Current book-enable validation applies
-  to original runs; reconstruction uses their retained inputs. Source membership includes original
-  subledger line IDs. Older explicit OPEN bindings keep their original semantics. Migration 0322
-  freezes the report IPE; this does not change journal posting or add financial-currency views.
-- Necessary verification passed: 18 focused reconstruction/source-binding cases, including
-  USD/EUR, same key across entities and sign changes that recalculate debit/credit totals.
-  Actual GROSS and DELTA API/worker runs reproduce rows and output hashes. Scoped lint/types and
-  migration metadata parity passed. No deployment; final repository verification remains open.
 
 ## Outstanding release verification
 

@@ -1226,6 +1226,8 @@
   "close.reconciliation.attach.compare": "Upload and compare",
   "close.reconciliation.attach.connection": "GL connection",
   "close.reconciliation.attach.description": "Pull the trial balance for {entity} {period} from the GL connection, or upload a CSV of account balances.",
+  "close.reconciliation.attach.detailHelp": "Use one BALANCE row per account for closing balances and DOCUMENT rows for current-period GL entries. Documents explain differences; they are not added to the balances. Supply document_reference and posted_date (YYYY-MM-DD); use external_id only for a journal sent by eRev. The original three-column balance format is also accepted.",
+  "close.reconciliation.attach.detailTemplate": "Download balance and GL detail template",
   "close.reconciliation.attach.file": "Trial balance file",
   "close.reconciliation.attach.fileFailed": "The trial balance file could not be compared: {problem}.",
   "close.reconciliation.attach.fileMissing": "Choose a CSV or XLSX file.",

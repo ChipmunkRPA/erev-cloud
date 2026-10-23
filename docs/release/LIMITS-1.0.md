@@ -1,5 +1,22 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## GL detail uploads — October 22, 2026
+
+- The reconciliation file workflow now accepts an optional explicit BALANCE/DOCUMENT format
+  in CSV/XLSX. Closing balances and period document amounts remain separate; documents are
+  passed into the same comparison as connector data to identify direct GL entries, known
+  eRev journals and ERP billing references. Legacy account/currency/amount files still work.
+- Both request and worker validate functional currency, precision, document reference,
+  posting date within the reconciliation period and a corresponding balance row. No document
+  amount is added to the closing balance. Existing file access and source-retention controls apply.
+- Added a downloadable header template and instructions in the attachment UI and user guide.
+  Necessary checks passed: 33 parser/comparison cases, a populated API/worker comparison showing
+  identical connector/file totals and difference items, and the focused upload UI case.
+  Scoped lint/types passed. No database/API-schema changes and no deployment.
+- This closes the file-upload document-attribution gap. It does not establish that every
+  remaining Reporting/system gap is complete; foreign actual posted event attribution remains open.
+
+
 ## Optional modification currency equivalents — October 22, 2026
 
 - Added an explicit Currency amount basis choice to the modification report. The default

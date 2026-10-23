@@ -621,3 +621,69 @@ def test_sheet_without_rows_and_minor_units() -> None:
     assert refused.value.findings == (
         (3, "amount", tb.AMOUNT_PLACES.format(currency="JPY", places=0)),
     )
+
+
+def test_extended_upload_keeps_closing_balances_separate_from_document_movements():
+    from erev_api.domain.close import trial_balance_upload
+
+    sheet = SheetRows(
+        "CSV",
+        trial_balance_upload.HEADERS,
+        (
+            (2, ("2100", "USD", "-750.00", "BALANCE", "", "", "")),
+            (3, ("2100", "USD", "250.00", "DOCUMENT", "GL-250", "", "2026-01-20")),
+        ),
+        frozenset(),
+    )
+    balances, details = trial_balance_upload.read(
+        sheet, functional_currency="USD", start_date=date(2026, 1, 1), end_date=date(2026, 1, 31)
+    )
+    assert balances[0].amount == Decimal("-750")
+    comparison = tb.compare(
+        currency="USD",
+        accounts=["2100"],
+        subledger=_held(a2100="-1000"),
+        portions=[],
+        lines=balances,
+        details=details,
+    )
+    assert len(comparison.items) == 1
+    assert comparison.items[0].item_kind == "DIRECT_GL_ENTRY"
+    assert comparison.items[0].difference == Decimal("250")
+    assert comparison.items[0].gl_document_reference == "GL-250"
+
+
+@pytest.mark.parametrize(
+    "column,value,field",
+    [
+        (6, "2026-02-01", "posted_date"),
+        (6, "20260120", "posted_date"),
+        (4, "", "document_reference"),
+        (3, "TOTAL", "row_type"),
+        (0, "9999", "account"),
+        (1, "EUR", "currency"),
+        (2, "NaN", "amount"),
+    ],
+)
+def test_extended_upload_refuses_unusable_document_rows(column, value, field):
+    from erev_api.domain.close import trial_balance_upload
+
+    row = ["2100", "USD", "250.00", "DOCUMENT", "GL-250", "", "2026-01-20"]
+    row[column] = value
+    sheet = SheetRows(
+        "CSV",
+        trial_balance_upload.HEADERS,
+        (
+            (2, ("2100", "USD", "-750.00", "BALANCE", "", "", "")),
+            (3, tuple(row)),
+        ),
+        frozenset(),
+    )
+    with pytest.raises(tb.SheetError) as error:
+        trial_balance_upload.read(
+            sheet,
+            functional_currency="USD",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+        )
+    assert any(number == 3 and name == field for number, name, _ in error.value.findings)

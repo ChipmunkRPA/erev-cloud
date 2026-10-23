@@ -933,3 +933,29 @@ The default **Source evidence** basis retains the existing admission rules. Spot
 are analytical amounts: they do not claim to reproduce functional revenue posted using
 historical advance or asset layers. Transaction-price component columns remain in original
 contract currency under either basis.
+
+
+### Upload GL documents with a trial balance
+
+The reconciliation attachment screen offers a **balance and GL detail template**. The
+original `account,currency,amount` format remains valid. For document-level explanations,
+use these columns in a CSV or the first worksheet of an XLSX:
+
+```csv
+account,currency,amount,row_type,document_reference,external_id,posted_date
+2100,USD,-750.00,BALANCE,,,
+2100,USD,250.00,DOCUMENT,GL-250,,2026-01-20
+```
+
+Replace the example values with your own. A BALANCE row states the closing balance, once
+per account. DOCUMENT rows describe activity already reflected in that balance; their
+amounts are not added to it. Every document must have a corresponding account balance,
+a document reference and a posting date inside the reconciliation period. All amounts
+are in the entity's functional currency, with debits positive and credits negative.
+Leave document fields empty on BALANCE rows. Use `external_id` only for the original
+external journal identifier supplied by eRev; otherwise leave it empty.
+
+The same comparison rules apply to connector and file data: known eRev journals and ERP
+billing references are distinguished from direct GL entries, and any unexplained residual
+remains visible. A balance-only upload cannot identify documents it does not contain.
+The source file remains attached as the evidence for the comparison.

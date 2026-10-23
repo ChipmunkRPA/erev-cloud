@@ -185,7 +185,7 @@ from erev_api.db.tables import (
     sync_run,
     tenant,
 )
-from erev_api.domain.close import freeze, gates, trial_balance
+from erev_api.domain.close import freeze, gates, trial_balance, trial_balance_upload
 from erev_api.domain.close.reconciliation_balances import (
     BALANCE_SHEET_TYPES as BALANCE_SHEET_TYPES,
 )
@@ -2017,9 +2017,9 @@ def attach(
 
 
 def _file_lines(
-    uow: UnitOfWork, file_id: UUID, *, functional_currency: str
-) -> tuple[gl_ports.TrialBalanceLine, ...]:
-    """The closing balances of an uploaded trial balance (``IMPORT_SOURCE``; .csv or .xlsx); 422
+    uow: UnitOfWork, file_id: UUID, *, functional_currency: str, start_date: date, end_date: date
+) -> tuple[tuple[gl_ports.TrialBalanceLine, ...], tuple[gl_ports.TrialBalanceDetail, ...]]:
+    """Closing balances and optional current-period GL documents (``IMPORT_SOURCE``; CSV/XLSX); 422
     ``validation-failed`` naming the file or every row that cannot be read."""
     session = uow.session
     stored = (
@@ -2042,7 +2042,9 @@ def _file_lines(
             sheet = (
                 parse.read_csv(stream) if media_type == file_policy.CSV else parse.read_xlsx(stream)
             )
-        return trial_balance.lines_of_sheet(sheet, functional_currency=functional_currency)
+        return trial_balance_upload.read(
+            sheet, functional_currency=functional_currency, start_date=start_date, end_date=end_date
+        )
     except parse.ParseError:
         raise _invalid("file_id", FILE_UNREADABLE, rule_id=RULE_SOURCE) from None
     except trial_balance.SheetError as error:
@@ -2118,7 +2120,13 @@ def request_trial_balance(
         # is read. The job reads the bound file as SYSTEM.
         if file_access.bound(session, uow.ctx, body.file_id) is None:
             raise _invalid("file_id", FILE_REQUIRED, rule_id=RULE_SOURCE)
-        _file_lines(uow, body.file_id, functional_currency=scope.functional_currency)
+        _file_lines(
+            uow,
+            body.file_id,
+            functional_currency=scope.functional_currency,
+            start_date=scope.start_date,
+            end_date=scope.end_date,
+        )
         attached = {"file_id": str(body.file_id)}
     else:
         if body.integration_connection_id is None:
@@ -2351,8 +2359,16 @@ def _read_and_attach(jc: JobContext, params: Mapping[str, Any]) -> dict[str, int
         if _already_attached(held, attached):
             return {"variances": int(held.row["variance_count"])}
         _require_attachable(uow, held)
-        lines = _file_lines(uow, file_id, functional_currency=held.scope.functional_currency)
-        counts = attach(uow, held, lines=lines, source_file_id=file_id, job_id=jc.job_id)
+        lines, details = _file_lines(
+            uow,
+            file_id,
+            functional_currency=held.scope.functional_currency,
+            start_date=held.scope.start_date,
+            end_date=held.scope.end_date,
+        )
+        counts = attach(
+            uow, held, lines=lines, details=details, source_file_id=file_id, job_id=jc.job_id
+        )
         uow.commit()
     return counts
 
