@@ -263,3 +263,12 @@
   revenue/RPO, identical saved rerun. Existing activation fixture is reused.
 - RTI, other payment measures, modifications and in-scope combined visibility remain open;
   see CURRENT-DEVELOPMENT-SCOPE. No deployment.
+
+## Combined right-to-invoice — October 23, 2026
+
+- Original components retain their own usage/delivery/invoice source priority and rates;
+  shared events count once. Billing and tax attribution resolve original members to the host.
+- Fixed/excess consideration follows the reviewed 606/842 routing; all-member pricing guards
+  apply. Corrected duplicate tax deduction from already-net invoice amounts.
+- 38 focused cases and scoped lint/types pass. Other measures, modifications and in-scope
+  combination visibility remain open. No deployment.

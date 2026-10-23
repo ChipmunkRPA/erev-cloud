@@ -981,3 +981,57 @@ def test_combined_lease_usage_public_approval_persists_full_scope_amount(
         {"limit": "200"},
     )
     assert restored.json()["items"] == rows
+
+
+def test_latest_status_shows_in_scope_combination_and_retains_saved_evidence(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = br06_lease(
+        app, keyring, clock, files, lessor_combination=True, nonlease_predominates=True
+    ).report
+    clock.advance(STEP)
+    run, rows = report_run(
+        world,
+        "latest_contract_status",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "as_of": "2026-09-30",
+            "contract_external_id": BR06_EXTERNAL_ID,
+        },
+    )
+    assert run["status"] == "SUCCEEDED", run
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["scope_flag"] == "IN_SCOPE_606"
+    assert row["allocated_amount"] == usd("108000.00")
+    assert set(row["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
+    assert row["combination_judgements"].startswith("JDG-")
+    assert "service is predominant" in row["combination_rationales"]
+    assert row["combination_evidence_status"] == "Retained calculation evidence"
+    assert run["control_totals"]["allocated_amount"] == {"USD": "108000.00"}
+
+    from support import worlds
+
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    restored = get(
+        app,
+        f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+        world.maya,
+        {"limit": "200"},
+    )
+    assert restored.json()["items"] == rows
+    _, exclusions = report_run(
+        world,
+        "scope_exclusion_register",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "period_key": SEPTEMBER_2026,
+        },
+    )
+    assert exclusions == []

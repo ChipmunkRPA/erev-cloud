@@ -737,3 +737,29 @@ mypy and changed Python files pass lint. No deployment.
 Still open: populated public RTI persistence/Reporting workflow; other host recognition methods;
 contract modifications; in-scope combined-component visibility. This is not a general ASC842
 measurement engine and does not close the overall publication-readiness goal.
+
+## October 23 in-scope combined-component Reporting — implemented
+
+Latest contract status now shows original component membership, exact reviewed assessment
+numbers, rationales, scope and retained-evidence basis beside the combined obligation amount.
+Both service-predominant IN_SCOPE_606 and lease-predominant LEASE_842 combinations are eligible;
+the scope exclusion register correctly remains restricted to routed-out components. No amounts
+are invented for individual original members and totals continue counting the combined row once.
+
+The source is the selected contract version's hash-checked calculation trace and the exact
+immutable reviewed records it names. The existing scope register shares the rationale reader.
+Latest-status saved inputs now retain this evidence; reruns use it without live membership or
+judgement queries. Old saved inputs and reports without combinations keep their original column
+shape. Mixed datasets leave combination fields blank for ordinary rows. Older combined traces
+without structured membership retain the explicit unavailable-membership explanation.
+
+Verification: a populated approved service-predominant case reports one 108,000 allocation,
+retains both original members and rationale, reruns with identical hash/data and is absent from
+scope exclusions. The existing lease-predominant scope report/rerun also passes. Twenty-eight
+unit cases cover retained/latest inputs and register builders, including old column shape,
+mixed rows and unchanged totals. Both production files pass scoped mypy and lint. User guide
+updated, including its stale statement that POL-231 was entirely unimplemented. No deployment.
+
+This closes the previously listed basic in-scope combination visibility gap through Latest
+contract status. Other recognition measures, contract modifications and public RTI persistence
+verification remain unfinished; the repository is not yet declared complete.

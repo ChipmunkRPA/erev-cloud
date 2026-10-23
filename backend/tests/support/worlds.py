@@ -2034,6 +2034,7 @@ def br06_lease(
     *,
     lessor_combination: bool = False,
     rated_usage: bool = False,
+    nonlease_predominates: bool = False,
 ) -> Br06World:
     """The facts of answer key ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT through the product's
     commands (PRD §2.10 BR-06): Maya, Priya and Marcus as in ``k03_castellan``; AVM-US (USD) with
@@ -2168,8 +2169,16 @@ def br06_lease(
                 "topic": "OTHER",
                 "subject_type": "contract",
                 "subject_id": str(booked.contract["id"]),
-                "conclusion": "The lease predominates in the combined component.",
-                "rationale": "Same transfer pattern; operating lease; equipment is predominant.",
+                "conclusion": (
+                    "The service predominates."
+                    if nonlease_predominates
+                    else "The lease predominates in the combined component."
+                ),
+                "rationale": (
+                    "Same transfer pattern; operating lease; service is predominant."
+                    if nonlease_predominates
+                    else "Same transfer pattern; operating lease; equipment is predominant."
+                ),
                 "codification_refs": ["842-10-15-42A", "842-10-15-42B"],
                 "questionnaire": {
                     "obligation_key": "L2-SERVICE",
@@ -2177,7 +2186,7 @@ def br06_lease(
                     "lessor_asset_class": "Equipment",
                     "lessor_same_transfer_pattern": True,
                     "lessor_operating_lease": True,
-                    "lessor_nonlease_predominates": False,
+                    "lessor_nonlease_predominates": nonlease_predominates,
                 },
             },
         )
@@ -2193,8 +2202,12 @@ def br06_lease(
     )
     # answer key ALC-BR-06: transaction price 27,000.00 net of the lease allocation 81,000.00
     assert (Decimal(version["transaction_price"]), Decimal(version["out_of_scope_amount"])) == (
-        Decimal("0.00") if lessor_combination else Decimal("27000.00"),
-        Decimal("108000.00") if lessor_combination else Decimal("81000.00"),
+        (Decimal("108000.00") if nonlease_predominates else Decimal("0.00"))
+        if lessor_combination
+        else Decimal("27000.00"),
+        (Decimal("0.00") if nonlease_predominates else Decimal("108000.00"))
+        if lessor_combination
+        else Decimal("81000.00"),
     ), version
     lease_obligation_id = place.scalar(
         select(obligation.c.id).where(

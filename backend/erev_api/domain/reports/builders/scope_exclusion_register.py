@@ -252,6 +252,25 @@ def combination_evidence(
     return tuple(components), judgements, "Retained calculation evidence"
 
 
+def combination_rationales(
+    session: Session, row: Mapping[str, Any], judgement_numbers: tuple[str, ...]
+) -> tuple[str, ...]:
+    """Resolve exactly the immutable reviewed records named by the saved computation."""
+    # Reviewed content is immutable even after supersession. Select the exact records
+    # named by the retained computation, not a more recent assessment of the host.
+    evidence = session.execute(
+        select(judgement_record.c.judgement_no, judgement_record.c.rationale).where(
+            judgement_record.c.contract_id == row["contract_id"],
+            judgement_record.c.judgement_no.in_(judgement_numbers),
+            judgement_record.c.reviewed_at <= row["version_known_at"],
+        )
+    ).all()
+    by_number = {str(number): str(rationale) for number, rationale in evidence}
+    if set(by_number) != set(judgement_numbers):
+        raise ValueError("Retained lessor judgement evidence is unavailable")
+    return tuple(f"{number}: {by_number[number]}" for number in judgement_numbers)
+
+
 def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[list[Source], date]:
     """The routed-out obligation versions at each entity's period end; and the as-of date of the
     control totals (the first entity's period end; the run's day without entities)."""
@@ -300,21 +319,7 @@ def sources(uow: UnitOfWork, params: ReportParams, *, book_code: str) -> tuple[l
             traces[version_id],
             obligation_subject_key(str(row["contract_external_id"]), str(row["obligation_key"])),
         )
-        rationales: tuple[str, ...] = ()
-        if combined is not None:
-            # Reviewed content is immutable even after supersession. Select the exact records
-            # named by the retained computation, not a more recent assessment of the host.
-            evidence = session.execute(
-                select(judgement_record.c.judgement_no, judgement_record.c.rationale).where(
-                    judgement_record.c.contract_id == row["contract_id"],
-                    judgement_record.c.judgement_no.in_(combined[1]),
-                    judgement_record.c.reviewed_at <= row["version_known_at"],
-                )
-            ).all()
-            by_number = {str(number): str(rationale) for number, rationale in evidence}
-            if set(by_number) != set(combined[1]):
-                raise ValueError("Retained lessor judgement evidence is unavailable")
-            rationales = tuple(f"{number}: {by_number[number]}" for number in combined[1])
+        rationales = () if combined is None else combination_rationales(session, row, combined[1])
         found.append(
             Source(
                 contract_external_id=str(row["contract_external_id"]),

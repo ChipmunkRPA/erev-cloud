@@ -43,7 +43,6 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -52,11 +51,15 @@ from erev_api.domain.contracts import to_date
 from erev_api.domain.reports import cuts, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_history as history
+from erev_api.domain.reports.builders import scope_exclusion_register as exclusions
 from erev_api.domain.reports.legacy_columns import decimal_text
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, add
+from erev_api.explain import store as trace_store
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import canonical_bytes
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
 CODE: Final = "latest_contract_status"
 EVIDENCE: Final = "latest_status_inputs_v1"
@@ -212,9 +215,27 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     found = cuts.load(session, version_ids, (as_of,), balances=True)
     balances = _balances(found, rows, _balance_rows(session, rows), as_of)
     cut = {version_id: found.at(version_id, as_of) for version_id in version_ids}
+    traces = {version_id: trace_store.load_trace(session, version_id) for version_id in version_ids}
     inputs = []
     for row in rows:
         at = cut[UUID(str(row["contract_version_id"]))][UUID(str(row["id"]))]
+        combined = exclusions.combination_evidence(
+            traces[UUID(str(row["contract_version_id"]))],
+            obligation_subject_key(str(row["contract_external_id"]), str(row["obligation_key"])),
+        )
+        combination = (
+            None
+            if combined is None
+            else {
+                "scope_flag": history.literal(row["scope_flag"]),
+                "combined_components": "; ".join(combined[0]),
+                "combination_judgements": "; ".join(combined[1]),
+                "combination_rationales": "; ".join(
+                    exclusions.combination_rationales(session, row, combined[1])
+                ),
+                "combination_evidence_status": combined[2],
+            }
+        )
         inputs.append(
             {
                 "row": {
@@ -249,6 +270,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     )
                 },
                 "balances": balances.get(_balance_key(row), (ZERO, ZERO)),
+                "combination": combination,
             }
         )
     tie_outs.record_members(params, "latest_status_contract_versions", version_ids)
@@ -292,6 +314,7 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
         figures = _at_as_of(row, at)
         items.append(
             {
+                **(entry.get("combination") or {}),
                 "row_key": f"obligation:{external_id}:{row['obligation_key']}",
                 "contract_external_id": external_id,
                 "obligation_key": str(row["obligation_key"]),
@@ -327,4 +350,17 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
     control["row_count"] = len(items)
     control["contract_count"] = len({item["contract_external_id"] for item in items})
     control["as_of"] = as_of.isoformat()
-    return ReportData(columns=COLUMNS, rows=tuple(items), control_totals=control)
+    columns: tuple[Column, ...] = COLUMNS
+    if any("combination_evidence_status" in item for item in items):
+        added = (
+            Column("scope_flag", "Scope", "code"),
+            Column("combined_components", "Combined original components", "text"),
+            Column("combination_judgements", "Combination assessments", "text"),
+            Column("combination_rationales", "Combination rationales", "text"),
+            Column("combination_evidence_status", "Combination evidence basis", "text"),
+        )
+        columns += added
+        for item in items:
+            for column in added:
+                item.setdefault(column.key, None)
+    return ReportData(columns=columns, rows=tuple(items), control_totals=control)

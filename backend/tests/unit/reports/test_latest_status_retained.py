@@ -69,10 +69,24 @@ def test_original_cuts_recalculate_and_balances_are_counted_once():
     )
     uow = SimpleNamespace(principal=SimpleNamespace(tenant_id=tenant))
     data = latest.build(uow, params)
+    assert data.columns == latest.COLUMNS
+    assert "combined_components" not in data.rows[0]
     assert data.rows[0]["allocated_amount"]["amount"] == "90.00"
     assert data.rows[0]["remaining_allocation"]["amount"] == "40.00"
     assert data.control_totals["contract_asset_and_unbilled"] == {"USD": "20.00"}
     assert data.control_totals["revenue_cum"] == {"USD": "100.00"}
+    record["combination"] = {
+        "scope_flag": "IN_SCOPE_606",
+        "combined_components": "L1; S1",
+        "combination_judgements": "JDG-1",
+        "combination_rationales": "JDG-1: Original approved rationale",
+        "combination_evidence_status": "Retained calculation evidence",
+    }
+    combined = latest.build(uow, params)
+    assert combined.rows[0]["combined_components"] == "L1; S1"
+    assert combined.rows[1]["combined_components"] is None
+    assert combined.control_totals == data.control_totals
+    assert "combination_rationales" in {column.key for column in combined.columns}
     record["cut"]["shift"] = "15"
     assert latest.build(uow, params).rows[0]["remaining_allocation"]["amount"] == "35.00"
     for invalid in (replace(params, entity_ids=()), replace(params, parameters={"book": "IFRS15"})):

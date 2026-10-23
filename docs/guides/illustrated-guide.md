@@ -1606,7 +1606,7 @@ The capture shows the published version 2 of "Accounting policies · Tenant", wi
 
 *SF-13:accounting-version: the published version 2 of "Accounting policies · Tenant" with the first of its 112 parameters and the "Simulation" block; Marcus Webb, Controller.*
 
-Updated October 23: portfolio application (`step1.portfolio_approach`, POL-015) and lessor component combination (`scope.lessor_combination_expedient`, POL-231) remain unimplemented. The historical B3-22 four-parameter limitation is partly superseded: `costs.commensurate_ratio` now compares approved initial/renewal commission evidence, and `material_right.ssp_method` supplies the default for new option terms. The option form reads the product policy resolved for the contract, including retained pins where available. You may explicitly select another method; the saved terms govern subsequent computation. Product policy changes do not rewrite those terms. If book defaults disagree, select a method explicitly. API callers may omit `ssp_method` to use the common resolved default; all required inputs for that method still apply.
+Updated October 23: portfolio application (`step1.portfolio_approach`, POL-015) remains incomplete. Lessor component combination (`scope.lessor_combination_expedient`, POL-231) now supports reviewed eligibility and routing, rated usage and right-to-invoice sources; other recognition measures and modifications remain incomplete. The historical B3-22 four-parameter limitation is partly superseded: `costs.commensurate_ratio` now compares approved initial/renewal commission evidence, and `material_right.ssp_method` supplies the default for new option terms. The option form reads the product policy resolved for the contract, including retained pins where available. You may explicitly select another method; the saved terms govern subsequent computation. Product policy changes do not rewrite those terms. If book defaults disagree, select a method explicitly. API callers may omit `ssp_method` to use the common resolved default; all required inputs for that method still apply.
 
 ### Creating a policy version at workspace or entity level
 
@@ -2333,3 +2333,12 @@ and its answers remain fixed. Readers can inspect history without submission con
 Combined leases appear in the scope exclusion report with their full component set, exact
 reviewed assessment and one combined amount. Modification and variable-payment handling of
 combined components remains under development.
+
+
+For an approved combination, run **Latest contract status** to see its original components,
+assessment numbers, rationale, evidence basis and 606/842 scope alongside one combined amount.
+This includes service-predominant combinations within 606. **Scope exclusion register** shows
+only combinations routed outside 606. Both reports use the selected calculation version's
+retained evidence and preserve it when the report is saved and rerun. They do not divide the
+combined amount among original components. Older traces without structured membership say so
+explicitly. Reports without combinations retain their existing columns.
