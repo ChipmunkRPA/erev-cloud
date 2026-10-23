@@ -2568,6 +2568,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "journal_run",
             "audit_event",
             "legal_entity",
+            "tenant",
             "period",
             "fx_rate",
             "fx_rate_set",
@@ -2582,6 +2583,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "value non-functional contract and billing amounts",
         ),
         filters=(
+            "Reporting currency translates original functional amounts with retained "
+            "approved entity-period average rates, rounds once per entity/period/measure "
+            "and distributes source pennies by signed largest remainder in stable source "
+            "order; revenue journal totals use the same period basis; cells expose retained "
+            "rates and original functional amounts; quarters and years sum translated "
+            "periods",
             "entity code in entity_codes and within the caller's entity scope",
             "book_code = book",
             "period_key from from_period_key to to_period_key",
@@ -2594,7 +2601,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "journal revenue excludes runs cancelled as of source time; unknown historical "
             "state refuses",
             "functional contract/billing amounts use unique approved effective-day spot "
-            "rate; reporting currency and lock datasets unsupported",
+            "rate; lock datasets unsupported",
         ),
         tie_outs=("TO_BBR_EQ_JE_REVENUE",),
     ),

@@ -779,3 +779,57 @@ def test_balance_aging_translates_functional_buckets_and_retains_rerun(world: Re
     )
     assert rebuilt.status_code == 200, rebuilt.text
     assert rebuilt.json()["control_totals"] == run["control_totals"]
+
+
+def test_bbr_reporting_currency_cells_and_bound_rerun(
+    world: ReportWorld, clock: FrozenClock
+) -> None:
+    from support.reference import post
+    from support.worlds import resigned, run_now
+
+    for entity in (AVM_US, AVM_UK):
+        for key in (APRIL, MAY):
+            journal_run(world, period_key=key, entity_code=entity)
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    params = {
+        "entity_codes": [AVM_US, AVM_UK],
+        "book": "ASC606",
+        "from_period_key": APRIL,
+        "to_period_key": MAY,
+        "currency_view": "reporting",
+    }
+    run, rows = report_run(world, "bookings_billings_revenue", params)
+    assert rows and {row["currency"] for row in rows} == {"USD"}
+    assert {row["entity_code"] for row in rows} == {AVM_US, AVM_UK}
+    assert (
+        sum(Decimal(row["revenue"]["amount"]) for row in rows if row["entity_code"] == AVM_UK) > 0
+    )
+    output = get(world.app, f"/api/v1/report-runs/{run['id']}/output", world.maya).json()
+    assert output["tie_out_results"][0]["result"] == "PASS"
+    for row in rows:
+        for measure in ("booked_new", "billings", "revenue"):
+            response = get(
+                world.app,
+                CELL.format(run_id=run["id"]),
+                world.maya,
+                {"row_key": row["row_key"], "column_key": measure},
+            )
+            assert response.status_code == 200, response.text
+            detail = response.json()
+            assert detail["value"] == row[measure]
+            assert sum(
+                (Decimal(c["value"]["amount"]) for c in detail["contributors"]["items"]), Decimal(0)
+            ) == Decimal(row[measure]["amount"])
+            for item in detail["contributors"]["items"]:
+                assert any("Period average:" in text for text in item["details"])
+    started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    completed = run_now(world, UUID(started.json()["id"]))
+    assert completed["state"] == "SUCCEEDED", completed
+    rebuilt = get(
+        world.app,
+        f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/output",
+        world.maya,
+    ).json()
+    assert rebuilt["control_totals"] == output["control_totals"]

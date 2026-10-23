@@ -24,6 +24,7 @@ from erev_api.domain.reports.builders import (
     bbr_currency,
     bbr_journal,
     bbr_modifications,
+    bbr_reporting,
     bbr_sources,
     unknown_filter,
 )
@@ -72,8 +73,10 @@ def dataset(
         raise Problem("invalid-transition", "BBR requires all four attributed measures.")
     if granularity not in {"MONTH", "QUARTER", "YEAR"}:
         raise tie_outs.invalid("granularity", "Choose Month, Quarter or Year.")
-    if currency_view not in {"transaction", "functional"}:
-        raise tie_outs.invalid("currency_view", "Choose a transaction or functional currency view.")
+    if currency_view not in {"transaction", "functional", "reporting"}:
+        raise tie_outs.invalid(
+            "currency_view", "Choose transaction, functional or reporting currency."
+        )
     by_entity = {e.id: e for e in entities}
     values: dict[tuple[UUID, str, str], dict[str, Decimal]] = {}
     labels: dict[tuple[UUID, str], str] = {}
@@ -155,6 +158,15 @@ def dataset(
         tuple(rows),
         {
             "row_count": len(rows),
+            **(
+                {
+                    "currency_view": "reporting",
+                    "translation_basis": "entity_period_average",
+                    "rounding_basis": "entity_period_measure_signed_largest_remainder",
+                }
+                if currency_view == "reporting"
+                else {}
+            ),
             **{
                 f"{m}_total": tie_outs.by_currency({c: v[m] for c, v in totals.items()})
                 for m in MEASURES
@@ -213,8 +225,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             )
         )
     view = str(params.parameters.get("currency_view") or "functional")
-    if view == "functional":
+    if view in {"functional", "reporting"}:
         contributions = dict(bbr_currency.functional(uow, scoped, contributions, entities))
+    if view == "reporting":
+        journal = bbr_journal.selected_rows(uow, scoped, period_ids)
+        rates = bbr_reporting.rates_for(uow, scoped, contributions, entities, periods, journal)
+        contributions = dict(bbr_reporting.translate(contributions, entities, periods, rates))
+        expected = bbr_reporting.journal_totals(journal, rates)
+    else:
+        expected = bbr_journal.totals(uow, scoped, period_ids=period_ids, view=view)
     tie_outs.record_evidence(
         params,
         "bbr_aggregation_inputs_v1",
@@ -224,7 +243,6 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             )
         ),
     )
-    expected = bbr_journal.totals(uow, scoped, period_ids=period_ids, view=view)
     return dataset(
         contributions,
         entities=entities,
@@ -299,14 +317,16 @@ def cell(
         )
         if period is None:
             continue
-        currency = source.currency if view == "transaction" else entity.functional_currency
+        currency = (
+            source.currency if view in {"transaction", "reporting"} else entity.functional_currency
+        )
         bucket, _ = _bucket(period, granularity)
         base = f"period:{encode_key(bucket)}:{encode_key(entity.code)}"
         if row_key not in {base, f"{base}:{currency}"} or row["currency"] != currency:
             continue
         amount = (
             source.amount
-            if view == "transaction" or source.functional_amount is None
+            if view in {"transaction", "reporting"} or source.functional_amount is None
             else source.functional_amount
         )
         if source.source_type == "modification":
@@ -318,6 +338,22 @@ def cell(
             href = f"/contracts/{source.contract_id}/journals"
         else:
             raise Problem("invalid-transition", "Unknown retained BBR contribution source.")
+        details = []
+        if view == "reporting":
+            held = tie_outs.bound_evidence(params, f"bbr_reporting_rate_v1:{entity.id}:{period.id}")
+            rate = held["rates"][str(entity.id)]
+            if held["currency"] != currency or rate["base_currency"] != entity.functional_currency:
+                raise Problem("invalid-transition", "Retained reporting source rate differs.")
+            details = [
+                f"Original functional amount: {source.functional_amount} "
+                f"{entity.functional_currency}",
+                f"Period average: {rate['base_currency']}/{currency} {rate['rate']}; "
+                f"period: {rate['period_key']}",
+                f"Rate reference: {rate['rate_id'] or 'same currency'}; "
+                f"version: {rate['version_id'] or 'same currency'}",
+                "Reporting equivalent; source retains its original currency. "
+                "Rounded per entity/period/measure; source pennies reconcile to that total.",
+            ]
         items.append(
             {
                 "object_type": source.source_type,
@@ -325,6 +361,7 @@ def cell(
                 "measure": column_key,
                 "value": tie_outs.money(amount, currency),
                 "href": href,
+                **({"details": details} if details else {}),
             }
         )
     return row[column_key], items

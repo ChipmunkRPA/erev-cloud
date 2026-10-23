@@ -1024,3 +1024,19 @@ from the entities and periods contributing to that column.
 
 Matching calendar layouts keep their existing fiscal labels. Saved reports retain their original
 column interpretation on same-source reruns; create a new run to use date-aligned columns.
+
+
+### Bookings, billings and revenue in reporting currency
+
+Select **Reporting** in Currency view to compare entities in the tenant's reporting currency.
+Bookings, modifications and bills first use their original functional valuation (or the
+approved effective-day spot rate); revenue uses its posted functional amount. Reporting
+translation then uses the approved average rate for each entity's period. Revenue belongs
+to its posting period, including late-event carries; bookings and bills use their effective
+date. Quarter and year figures sum the translated periods.
+
+Each indicator is rounded once per entity and period. Source-level pennies are distributed
+in a stable order so the cell details add to the displayed amount. The revenue-to-journal
+comparison uses the same period-level conversion basis. Open a monetary cell to see its
+original functional amount and retained reporting rate reference. These are reporting
+equivalents, not additional posted entries. Saved runs reuse their original rates.

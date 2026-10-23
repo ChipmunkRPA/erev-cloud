@@ -20,6 +20,14 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## BBR reporting currency — October 22, 2026
+
+- Reporting view now values all four measures at retained entity-period average rates after
+  original functional valuation. Signed source pennies match period totals; journal comparison
+  uses the same aggregation basis. Cells disclose rates and original functional amounts.
+- Migration 0334 records scope. Eleven BBR unit cases and a populated USD/GBP public report,
+  cell and retained-rerun workflow pass, with scoped lint/types and metadata parity. No deployment.
+
 ## Waterfall calendar columns — October 22, 2026
 
 - New runs align whole reporting intervals by actual dates and retain entity-local period
@@ -232,11 +240,6 @@ review and publish changes without PR accumulation, and do not deploy.
 - This does not add a one-click refresh from the latest production state: the current reset UI
   still offers its original seed or empty. That owner-requested workflow remains to be completed.
   Reporting foreign modification attribution and final candidate verification also remain open.
-
-## Multi-currency tie-out display completeness — October 22, 2026
-
-The viewer includes currencies found only in actual/difference evidence, preserving missing
-values and FAIL-only differences. All four targeted viewer cases passed; no deployment.
 
 ## Outstanding release verification
 

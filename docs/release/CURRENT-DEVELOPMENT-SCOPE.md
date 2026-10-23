@@ -76,6 +76,11 @@ Other engineering is not blocked by this decision.
 
 ## Implemented priorities, with bounded claims
 
+- BBR reporting currency: all four measures translate original functional amounts at pinned
+  entity-period averages, with signed source rounding tied to period totals. Journal revenue
+  uses the same aggregate conversion basis; retained cell evidence names rates and original
+  functional amounts. Foreign-entity report/cell/rerun and signed rounding checks cover this path.
+
 - Modification amount drill: new report cells rebuild saved inputs and open original native
   calculation nodes where retained. Analytical spot/reporting equivalents list their pinned
   rates separately. Missing source identity in older runs requires a new report; amounts are
