@@ -152,6 +152,8 @@ class FxState:
     # T-CON-09 ``_functional`` columns of foreign-currency entities per member and period with their
     # nodes (D-97 (8) T1F-Q-4; ``balances.functional_member_targets``); () without a foreign entity.
     functional_member_balances: tuple[Target, ...] = ()
+    # Disclosure-only original billing allocation; never producer targets for posting.
+    billing_disclosure_targets: tuple[FxTarget, ...] = ()
 
 
 Flow = ControlFlow | MonetaryFlow | ReceivableFlow
@@ -173,6 +175,7 @@ def run(
     movements: list[LayerMovement] = []
     balances: list[LayerBalance] = []
     functional: list[FxTarget] = []
+    billing_disclosure: list[FxTarget] = []
     remeasurement: list[FxTarget] = []
     gain_loss: list[FxTarget] = []
     ic_pairs: list[IcPair] = []
@@ -195,6 +198,15 @@ def run(
             (() if rates is None else rates.rates), ctx.txn_currency, view.functional_currency
         )
         book = UnitBook(ctx, pair, tb, group=allocated.group_code, entity=entity)
+        source_balances = getattr(st, "balances", None)
+        if source_balances is None:
+            source_balances = getattr(getattr(st, "costs", None), "balances", None)
+        for document in getattr(source_balances, "documents", ()):
+            nodes = getattr(document, "attribution_nodes", {})
+            if set(nodes) == set(document.attribution):
+                book.billing_attribution[document.document_key] = {
+                    name: (amount, nodes[name]) for name, amount in document.attribution.items()
+                }
         pairs = PairBook(ctx, allocated, rates, book)
         try:
             result = _measure(book, pairs, allocated.inception_date, flows, _attributions(st))
@@ -214,6 +226,7 @@ def run(
         movements.extend(result.movements)
         balances.extend(result.balances)
         functional.extend(result.functional_targets)
+        billing_disclosure.extend(result.billing_disclosure_targets)
         # D-88 L7-6-Q-6 as amended by D-91: the functional JET-14 release (the posted ordinary
         # release of the stage 10 set) at historical carrying (POL-164).
         functional.extend(release_targets(book, _consideration(st), result.functional_targets))
@@ -224,6 +237,7 @@ def run(
     state = FxState(
         allocated=allocated,
         costs=st,
+        billing_disclosure_targets=tuple(billing_disclosure),
         layer_movements=tuple(movements),
         layer_balances=tuple(balances),
         functional_targets=tuple(functional),

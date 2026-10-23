@@ -300,6 +300,7 @@ class UnitResult:
     remeasurement_targets: tuple[FxTarget, ...]
     gain_loss_targets: tuple[FxTarget, ...]
     findings: tuple[Finding, ...]
+    billing_disclosure_targets: tuple[FxTarget, ...] = ()
 
 
 class UnitBook:
@@ -326,6 +327,9 @@ class UnitBook:
         self.findings: list[Finding] = []
         self.functional: dict[tuple[str, str], Running] = {}
         self.billing_evidence: dict[str, Running] = {}
+        self.billing_attribution: dict[str, dict[str, tuple[int, str]]] = {}
+        self.billing_obligation_evidence: dict[str, Running] = {}
+        self.billing_disclosure_targets: list[FxTarget] = []
         self.remeasurement: dict[tuple[str, str], Running] = {}
         self.gain_loss = Running("fx_gain_loss", self.unit_key, None, "FX_GAIN_LOSS")
         self.functional_targets: list[FxTarget] = []
@@ -340,6 +344,7 @@ class UnitBook:
             tuple(self.remeasurement_targets),
             tuple(self.gain_loss_targets),
             tuple(self.findings),
+            tuple(self.billing_disclosure_targets),
         )
 
     # --- policies and dates ----------------------------------------------------------------------
@@ -504,6 +509,74 @@ class UnitBook:
         sign = 1 if flow.kind == "BILLING" else -1
         running.amount_txn += sign * flow.amount
         running.add(Piece(node, amount, rate), sign)
+        self.record_billing_attribution(flow, period, node, amount, rate, sign)
+
+    def record_billing_attribution(
+        self,
+        flow: ControlFlow,
+        period: dates.PeriodLike,
+        total_node: str,
+        amount: int,
+        rate: RateView,
+        sign: int,
+    ) -> None:
+        """Allocate original invoice functional value, not liability-layer ownership.
+
+        Partial/mixed-date documents need their own admitted subset attribution; the full
+        document's weights must not silently stand in for that missing population.
+        """
+        attributed = self.billing_attribution.get(flow.source_key)
+        if not attributed or sum(value for value, _ in attributed.values()) != sign * flow.amount:
+            return
+        if any(sign * value < 0 for value, _ in attributed.values()):
+            return
+        names = sorted(attributed)
+        weights = [Fraction(sign * attributed[name][0]) for name in names]
+        weight_nodes = []
+        for name in names:
+            value, source = attributed[name]
+            weight_nodes.append(
+                self.tb.node(
+                    measure="billing_attribution_weight",
+                    subject_key=f"{flow.flow_key}@{name}",
+                    period_key=period.period_key,
+                    value=sign * value,
+                    currency=self.txn,
+                    minor_unit=self.mu_txn,
+                    formula_id="fx.gain_loss.sum.v1",
+                    inputs=[source],
+                    params={"signs": str(sign)},
+                    narrative_key="fx.gain_loss.sum",
+                )
+            )
+        shares = largest_remainder(amount, weights, names)
+        for index, (name, share) in enumerate(zip(names, shares, strict=True)):
+            allocated_node = self.tb.node(
+                measure="billing_obligation_activity_functional",
+                subject_key=f"{flow.flow_key}@{name}",
+                period_key=period.period_key,
+                value=share,
+                currency=self.fn,
+                minor_unit=self.mu_fn,
+                formula_id="alloc.largest_remainder.v1",
+                inputs=[total_node, *weight_nodes],
+                params={
+                    "index": str(index),
+                    "keys": ",".join(names),
+                    "entity": self.entity,
+                    "obligation_subject": name,
+                    "source_key": flow.source_key,
+                    "flow_kind": flow.kind,
+                    "sign": str(sign),
+                },
+                exact=Fraction(amount, 10**self.mu_fn) * weights[index] / sum(weights),
+                narrative_key="alloc.largest_remainder",
+            )
+            running = self.billing_obligation_evidence.setdefault(
+                name, Running("billed_obligation_cum", name, None, None)
+            )
+            running.amount_txn += attributed[name][0]
+            running.add(Piece(allocated_node, share, rate), sign)
 
     def credit(
         self,
@@ -1202,6 +1275,10 @@ class UnitBook:
             )
         for _subject, running in sorted(self.billing_evidence.items()):
             self.publish(running, "billed_control_functional", "fx.gain_loss.sum.v1", period)
+        for _subject, running in sorted(self.billing_obligation_evidence.items()):
+            self.billing_disclosure_targets.append(
+                self.publish(running, "billed_obligation_functional", "fx.gain_loss.sum.v1", period)
+            )
         for (measure, _subject), running in sorted(self.functional.items()):
             node_measure, formula_id = _FUNCTIONAL_NODES[measure]
             target = self.publish(running, node_measure, formula_id, period)
@@ -1234,7 +1311,8 @@ class UnitBook:
                         "txn_minor_unit": str(self.mu_txn),
                         "txn_currency": self.txn,
                     }
-                    if running.measure in {"billed_control_cum", "revenue_cum"}
+                    if running.measure
+                    in {"billed_control_cum", "billed_obligation_cum", "revenue_cum"}
                     else {}
                 ),
             },

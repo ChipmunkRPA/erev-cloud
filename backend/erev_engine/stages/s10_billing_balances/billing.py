@@ -20,7 +20,7 @@ Standard library only (DG-ARC-02).
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import date
 from fractions import Fraction
 from types import MappingProxyType
@@ -112,6 +112,7 @@ class BillingDocumentOut:
     effective_date: date
     lines: tuple[Line, ...]
     attribution: Mapping[str, int]  # obligation subject key -> signed minor units (S10-INV-04)
+    attribution_nodes: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -434,6 +435,47 @@ class _Emitter:
         self.restricted_nodes: dict[tuple[str, str], str] = {}  # (measure, subject key) -> node
         for attribution in attributions:
             self._shares(attribution)
+
+    def document_nodes(self, attribution: Attribution) -> Mapping[str, str]:
+        """Complete original document attribution: direct lines plus allocated shared lines."""
+        document = attribution.document
+        obligations = {ob.subject_key: ob for ob in self.st.obligations}
+        nodes: dict[str, str] = {}
+        for subject, amount in sorted(attribution.signed().items()):
+            ob = obligations[subject]
+            inputs: list[str | SourceRef] = []
+            for line in document.lines:
+                if document.contract_key == ob.contract_key and _names_component(
+                    ob, line.obligation_key
+                ):
+                    inputs.append(
+                        SourceRef(
+                            "contract_event",
+                            line.event.event_key,
+                            {
+                                "member": "amount",
+                                "value": money.format_money(
+                                    attribution.sign * line.amount, self.mu
+                                ),
+                            },
+                        )
+                    )
+            share = self.share_nodes.get((document.key, subject))
+            if share is not None:
+                inputs.append(share)
+            nodes[subject] = self.tb.node(
+                measure=f"billing_document_attributed@{document.key}",
+                subject_key=subject,
+                period_key=None,
+                value=amount,
+                currency=self.ctx.txn_currency,
+                minor_unit=self.mu,
+                formula_id=ATTRIBUTION_FORMULA,
+                inputs=inputs,
+                params={"mode": "sum", "as_of": document.effective_date.isoformat()},
+                narrative_key=_narrative(ATTRIBUTION_FORMULA),
+            )
+        return MappingProxyType(nodes)
 
     def _restricted_share(self, restricted: Attribution, counted: Sequence[Line], key: str) -> str:
         """``billed_attributed@<document>@<latest unconditional date>``: the share of ``key`` in the
@@ -807,6 +849,10 @@ def measure(
             )
         )
     emitter = _Emitter(ctx, tb, attributions, st)
+    documents = [
+        replace(document, attribution_nodes=emitter.document_nodes(attribution))
+        for document, attribution in zip(documents, attributions, strict=True)
+    ]
     # Contracts with a line billed under ENGINE mode (S10-R-06): their obligations publish the
     # JET-03 inputs; ERP-mode contracts publish nothing new.
     engine_billed = {

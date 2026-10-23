@@ -264,9 +264,10 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Combined transaction POB disclosure — October 23, 2026
+## Functional POB billing evidence — October 23, 2026
 
-- Combined members now contribute obligation eligibility to one capped group total, displayed
-  with the full member set. No individual relief allocation is invented or double-counted.
-- Public combined report/rerun hashes, ordinary POB regression, 11 focused cases and scoped
-  lint/types pass. Foreign-functional/reporting and special attribution remain open. No deployment.
+- Added original document attribution nodes and functional POB billing evidence using admitted
+  invoice FX amounts and existing remainder allocation. Credit signs and source nodes survive;
+  liability movements and posting targets are unchanged. Public multi-currency integration remains open.
+- Connected S09–S12 invoice/credit case and 24 existing billing/FX cases pass; trace replay,
+  unchanged ledger targets, scoped lint/types pass. Combined checkpoint archived. No deployment.

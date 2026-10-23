@@ -935,3 +935,82 @@ def test_s10_inv_08_performing_entity_holds_no_balance() -> None:
         ("US01", period_key) for period_key in ("FY2026-P01", "FY2026-P02", "FY2026-P03")
     }
     assert _net_position(state, "FY2026-P01") == usd("1000.00") - usd("3000.00")
+
+
+def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sign():
+    from erev_engine.bundle import FxRateInput
+    from erev_engine.stages import s12_fx_entities
+    from erev_engine.stages.state import RateIndex
+    from support import bundles
+
+    ctx = dataclasses.replace(
+        book_context(entity(months=3), currency="EUR"),
+        currencies=bundles.currencies("EUR", "USD"),
+        horizon={bundles.ENTITY_CODE: "FY2026-P01"},
+    )
+    invoice = event_view(
+        CONTRACT_KEY,
+        2,
+        "BILLING_RECORDED",
+        INCEPTION,
+        {
+            "invoice_number": "SHARED",
+            "line_external_id": "SHARED-1",
+            "amount": Decimal("3.00"),
+            "issue_date": INCEPTION,
+        },
+    )
+    credit_date = date(2026, 1, 15)
+    credit = event_view(
+        CONTRACT_KEY,
+        3,
+        "CREDIT_MEMO_RECORDED",
+        credit_date,
+        {
+            "credit_memo_number": "CM-SHARED",
+            "invoice_number": "SHARED",
+            "amount": Decimal("3.00"),
+            "issue_date": credit_date,
+        },
+    )
+    st = allocated_state(
+        [_service(f"P{i}", "1.00", date(2026, 2, 1), date(2026, 3, 31)) for i in (1, 2, 3)],
+        events=[invoice, credit],
+    )
+    rates = RateIndex(
+        tuple(
+            FxRateInput(f"SPOT-{day}", "TEST@v1", "spot", "EUR", "USD", day, None, Decimal(rate))
+            for day, rate in ((INCEPTION, "1.003333333"), (credit_date, "1.000000000"))
+        )
+    )
+    results = []
+    for retained in (True, False):
+        tb = TraceBuilder(engine_version=ENGINE_VERSION)
+        balances, _ = _run(ctx, st, tb=tb)
+        assert all(set(doc.attribution_nodes) == set(doc.attribution) for doc in balances.documents)
+        if not retained:
+            balances = dataclasses.replace(
+                balances,
+                documents=tuple(
+                    dataclasses.replace(doc, attribution_nodes={}) for doc in balances.documents
+                ),
+            )
+        costs = s11_costs_loss.run(ctx, balances, tb)
+        fx = s12_fx_entities.run(ctx, s13_books.costs_view(ctx, costs), tb, rates=rates)
+        assert fx.findings == ()
+        trace = tb.build(root_measures={})
+        assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+        results.append(fx)
+    with_sources, without_sources = results
+    assert with_sources.layer_movements == without_sources.layer_movements
+    assert with_sources.functional_targets == without_sources.functional_targets
+    assert without_sources.billing_disclosure_targets == ()
+    targets = with_sources.billing_disclosure_targets
+    assert len(targets) == 3
+    assert sum(target.amount_txn for target in targets) == 0
+    # The invoice is USD 3.01, the credit USD 3.00; the deterministic residual is retained.
+    assert {target.subject_key: target.amount_functional for target in targets} == {
+        O1: 1,
+        O2: 0,
+        O3: 0,
+    }

@@ -1085,3 +1085,32 @@ resolution. Retained evidence has both original contract IDs and no invented mem
 The ordinary public POB case also passes. Eleven focused cases cover eligibility, a binding group
 cap, original lock sources, range corrections and policy retention. Scoped lint and three production
 module type checks pass. No deployment.
+
+## October 23 functional POB billing evidence — original invoice bridge
+
+Stage 10 now emits one complete signed attribution node per original billing document and POB,
+combining direct event amounts with the existing shared-line allocation nodes. BillingDocumentOut
+carries those node identities. Stage 12 uses the original billing_activity_functional amount at
+its admitted layer date and the stage-10 attributed transaction amounts to allocate invoice
+functional value with existing ALG-01 largest-remainder rounding. Trace inputs link to both the
+actual functional invoice node and original obligation attribution nodes. Credit memo weights
+are normalized to positive weights, then their original sign enters cumulative billing evidence.
+The cumulative nodes retain transaction quantities so a future report consumer can check source
+coverage against its independent billing population before using the functional amounts.
+
+The resulting billed_obligation_functional nodes and billing_disclosure_targets are disclosure
+inputs, never posting targets or assertions about individual historical liability-layer ownership.
+Missing document nodes, mixed signs and partial/mixed-date document flows whose amount does not
+match the complete original attribution do not receive fabricated allocations. Consumers must
+prove complete coverage; merely finding some cumulative evidence is insufficient. No current
+report switches to an incomplete source population. Public functional/reporting POB consumption
+and native foreign-functional POL-126 classification remain unfinished and must consume these
+original sources in subsequent work. Existing traces without these nodes need recomputation
+before that new path can use them.
+
+Necessary verification: a connected S09/S10/S11/S12 foreign invoice and credit workflow allocates
+a EUR 3 invoice (USD 3.01) across three equally weighted POBs and nets a later EUR 3 credit
+(USD 3.00), preserving the deterministic USD 0.01 residual. Every trace node re-evaluates, and
+running with versus without disclosure attribution yields identical layer movements and ordinary
+functional posting targets. Twenty-four existing billing/FX cases also pass. Three production
+modules pass mypy and scoped lint passes. No database, deployment or ledger migration was needed.

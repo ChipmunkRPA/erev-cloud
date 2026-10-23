@@ -366,3 +366,10 @@
 - Public report/rerun and default-policy cases plus seven focused cases pass; scoped types/lint
   pass. Combined/locked, agent/cross-entity and functional/reporting POB integration remain open.
 - Renewal-commission checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+
+## Combined transaction POB disclosure — October 23, 2026
+
+- Combined members now contribute obligation eligibility to one capped group total, displayed
+  with the full member set. No individual relief allocation is invented or double-counted.
+- Public combined report/rerun hashes, ordinary POB regression, 11 focused cases and scoped
+  lint/types pass. Foreign-functional/reporting and special attribution remain open. No deployment.
