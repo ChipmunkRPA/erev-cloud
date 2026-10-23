@@ -19,6 +19,8 @@ from datetime import date
 from decimal import Decimal
 from fractions import Fraction
 
+import pytest
+
 from erev_engine import ENGINE_VERSION
 from erev_engine.bundle import EntityInput, FxRateInput
 from erev_engine.dates import month_end
@@ -327,6 +329,29 @@ def test_s15_r05_revenue_from_opening_liability() -> None:
             if not line_code.startswith("REVENUE_FROM_"):
                 assert amount == found.lines[balance][line_code], (balance, line_code)
     assert pob.balanced
+
+
+@pytest.mark.parametrize(
+    "policy, baseline", [("FIFO_WITHIN_CONTRACT", "5000.00"), ("FIFO_WITHIN_POB", "800.00")]
+)
+@pytest.mark.parametrize("frozen", ["0.00", "200.00", "10000.00"])
+def test_frozen_opening_caps_consumption_without_changing_total_relief(policy, baseline, frozen):
+    ctx, st, records = ex_15_b_context(policy), ex_15_b_state(), ex_15_b()
+    current = rollforward_balances(ctx, st, records, ENTITY, APRIL)
+    retained = rollforward_balances(ctx, st, records, ENTITY, APRIL, opening={CL: usd(frozen)})
+    assert retained.revenue_from_opening_liability == min(usd(baseline), usd(frozen))
+    assert retained.revenue_relief == current.revenue_relief
+    assert retained.lines[CL]["CLOSING"] == current.lines[CL]["CLOSING"]
+    revenue_codes = ("REVENUE_FROM_OPENING_BALANCE", "REVENUE_FROM_OTHER_INCREASES")
+    assert sum(retained.lines[CL][code] for code in revenue_codes) == sum(
+        current.lines[CL][code] for code in revenue_codes
+    )
+    # A changed locked opening remains an explicit OTHER difference, not a balancing repair.
+    assert retained.lines[CL]["OTHER"] == usd("5000.00") - usd(frozen)
+    for values in retained.lines.values():
+        assert (
+            sum(value for code, value in values.items() if code != "CLOSING") == values["CLOSING"]
+        )
 
 
 # --- CHK-081 and EX-12-A (functional views) ------------------------------------------------------

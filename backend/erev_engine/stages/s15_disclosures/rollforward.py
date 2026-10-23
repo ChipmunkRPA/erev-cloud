@@ -353,6 +353,12 @@ def rollforward_balances(
     if opening is not None:
         for balance in BALANCES:
             lines[balance][OPENING] = opening.get(balance, 0)
+        # The retained closing replaces the restated opening. Its smaller liability cannot
+        # fund more opening consumption than it presents; keep total relief unchanged.
+        liability = lines[CONTRACT_LIABILITY]
+        excess = max(0, -liability[_FROM_OPENING] - max(0, liability[OPENING]))
+        liability[_FROM_OPENING] += excess
+        liability[_FROM_OTHER] -= excess
     for values in lines.values():
         moved = sum(amount for code, amount in values.items() if code not in _EDGES)
         values[OTHER] = values[CLOSING] - values[OPENING] - moved

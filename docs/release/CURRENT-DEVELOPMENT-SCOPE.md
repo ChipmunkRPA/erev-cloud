@@ -983,3 +983,24 @@ Complete this integration across selected ranges, currency views, locked opening
 reruns before claiming that policy is supported by the public report. The native period-level
 calculation alone is not sufficient evidence for the report's selected-range semantics. The
 policy-retention change above does not close this monetary implementation gap.
+
+## October 23 frozen opening consumption cap — native correction
+
+Reinspection for the public FIFO_WITHIN_POB integration found that native S15 classified opening
+consumption before substituting a supplied frozen opening. A smaller retained opening could
+therefore be exceeded by the disclosed revenue from opening. After the frozen balances are
+applied, positive consumption now respects the displayed nonnegative opening liability; any
+excess moves to revenue from other period increases. Total liability relief, total revenue,
+closing amounts and memo causes remain unchanged. Existing differences caused by replacing a
+restated opening remain explicit in Other; this correction does not erase a tie-out failure.
+A larger frozen opening does not invent additional consumption or change original attribution.
+
+Necessary verification: six frozen-opening cases across both consumption policies plus five
+existing native rollforward cases pass (11 total), including unchanged total relief and exact
+opening/movement/closing arithmetic. Scoped lint and production mypy pass. No deployment.
+
+The public report integration remains open. Further source inspection also confirms that native
+foreign-functional layer processing currently follows its layer path without applying the
+transaction branch's FIFO_WITHIN_POB adjustment. Thus the native transaction formula cannot be
+cited as proof of complete foreign-functional or arbitrary-range policy implementation. Original
+functional billing attribution and locked-source consistency must be resolved in that work.

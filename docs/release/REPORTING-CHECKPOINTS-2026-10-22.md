@@ -332,3 +332,10 @@
 - 15 native cases and public original-component delivery/return approval and Reporting pass. The
   event drawer now exposes original members; two UI cases and scoped types/lint pass. Remaining
   combined reassessment/measures stay open. No deployment.
+
+## Opening-liability policy evidence — October 23, 2026
+
+- New disclosures retain resolved consumption policies by entity/book, so rerun explanations do
+  not read current policy. Three currency-view cases, the public K01 report and lint/types pass.
+- Confirmed remaining gap: FIFO_WITHIN_POB exists in native S15 but public opening-liability
+  disclosure still applies contract/group consumption. Amount integration remains unfinished.

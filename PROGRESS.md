@@ -265,9 +265,9 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Opening-liability policy evidence — October 23, 2026
+## Frozen opening consumption cap — October 23, 2026
 
-- New disclosures retain resolved consumption policies by entity/book, so rerun explanations do
-  not read current policy. Three currency-view cases, the public K01 report and lint/types pass.
-- Confirmed remaining gap: FIFO_WITHIN_POB exists in native S15 but public opening-liability
-  disclosure still applies contract/group consumption. Amount integration remains unfinished.
+- Native S15 now caps positive opening consumption after applying a frozen opening balance;
+  excess is classified as relief from period increases without changing total relief or closing.
+- Eleven focused cases and scoped lint/types pass. Restatement differences remain in Other.
+  Public FIFO_WITHIN_POB range/currency integration remains unfinished. No deployment.
