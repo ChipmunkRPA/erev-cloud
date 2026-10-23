@@ -302,3 +302,11 @@
   retained calculation membership. It preserves the original key and labels the combined host.
 - Other changes and duplicate additions using those keys are refused in the form. API workflow,
   UI submission, parser/model cases, TypeScript and scoped Python types/lint pass. No deployment.
+
+## Mixed component SSP bases — October 23, 2026
+
+- Combined price changes now calculate each original series component using its own SSP basis
+  and quantity unit before summing remaining weights. Trace parameters preserve each calculation.
+- 42 native cases and scoped lint/types pass. Public classification, preview, approval and saved
+  Reporting now pass for mixed bases, including retained trace reevaluation. Quantity/removal/term
+  reassessment and final publication checks remain open. No deployment.

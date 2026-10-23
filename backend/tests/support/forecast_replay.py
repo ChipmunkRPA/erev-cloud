@@ -6,15 +6,23 @@ from dataclasses import replace
 from uuid import UUID
 
 import pytest
-from erev_api.db.tables import contract, forecast_event_set, import_upload, job
-from erev_api.domain.forecast import replay
-from erev_api.domain.forecast.replay_inputs import ReplayInputs
-from erev_api.enums import TenantKind
-from erev_api.problems import Problem
 from sqlalchemy import func, select
 from support.factories import ImportWorld, workspace
 from support.http import call
 from support.principals import cookie_headers
+
+from erev_api.db.tables import (
+    audit_event,
+    audit_event_contract,
+    contract,
+    forecast_event_set,
+    import_upload,
+    job,
+)
+from erev_api.domain.forecast import replay
+from erev_api.domain.forecast.replay_inputs import ReplayInputs
+from erev_api.enums import TenantKind
+from erev_api.problems import Problem
 
 
 def exercise_replay(world: ImportWorld, source: ReplayInputs) -> None:
@@ -80,5 +88,12 @@ def exercise_replay(world: ImportWorld, source: ReplayInputs) -> None:
         with pytest.raises(Problem):
             replay.apply(uow, bundle, target_set_id=target_id)
         uow.commit()
+    for action in ("forecast_event_set.materialize_files", "forecast_event_set.replay"):
+        linked = world.rows(
+            select(audit_event_contract.c.contract_id)
+            .join(audit_event, audit_event.c.id == audit_event_contract.c.audit_event_id)
+            .where(audit_event.c.object_id == target_id, audit_event.c.action == action)
+        )
+        assert [row["contract_id"] for row in linked] == [contract_id]
     assert world.scalar(select(func.count()).select_from(import_upload)) == imports + 1
     assert world.scalar(select(func.count()).select_from(job)) == jobs

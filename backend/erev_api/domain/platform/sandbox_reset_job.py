@@ -84,7 +84,7 @@ def _export_latest(jc: JobContext, snapshot_id: UUID, requester: UUID) -> None:
         )
         uow.audit(
             action=snapshots.ACTION_REQUESTED,
-            object_type=snapshots.OBJECT_TYPE,
+            object_type="tenant_snapshot",
             object_id=snapshot_id,
             before=None,
             after={"status": RunStatus.QUEUED.value},

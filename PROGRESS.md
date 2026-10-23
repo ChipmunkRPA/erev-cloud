@@ -265,10 +265,9 @@ Current outstanding implementation and verification gaps remain in
   scoped types/lint pass. See CURRENT-DEVELOPMENT-SCOPE for scope and evidence.
 - Schema-verification checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
 
-## Mixed component SSP bases — October 23, 2026
+## Forecast contract audit linkage — October 23, 2026
 
-- Combined price changes now calculate each original series component using its own SSP basis
-  and quantity unit before summing remaining weights. Trace parameters preserve each calculation.
-- 42 native cases and scoped lint/types pass. Public classification, preview, approval and saved
-  Reporting now pass for mixed bases, including retained trace reevaluation. Quantity/removal/term
-  reassessment and final publication checks remain open. No deployment.
+- Forecast input-set creation/update/publication and replay now freeze affected contract keys
+  from captured commands and applied imports, making them available in contract audit history.
+- Populated import/replay workflow, all three audit-writer architecture checks and scoped
+  lint/types pass. Prior mixed-SSP checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.

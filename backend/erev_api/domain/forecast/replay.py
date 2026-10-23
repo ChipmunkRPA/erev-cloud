@@ -65,6 +65,7 @@ def apply(
             uow, target_set_id, expected_version=latest["row_version"], publish=True
         )
         uow.audit(
+            contract_ids=event_sets.audit_contract_ids(uow.session, published),
             action="forecast_event_set.replay",
             object_type="forecast_event_set",
             object_id=target_set_id,

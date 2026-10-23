@@ -3,13 +3,14 @@
 from uuid import UUID
 
 import pytest
-from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import forecast_event_set
 from fastapi import FastAPI
 from sqlalchemy import update
 from sqlalchemy.exc import DBAPIError
 from support.http import call
 from support.principals import Actor, cookie_headers
+
+from erev_api.db.session import DbContext, tenant_session
+from erev_api.db.tables import forecast_event_set
 
 
 def exercise_input_sets(app: FastAPI, source: Actor, sandbox: Actor, tenant_id: UUID) -> None:
@@ -82,6 +83,9 @@ def exercise_input_sets(app: FastAPI, source: Actor, sandbox: Actor, tenant_id: 
 
 def exercise_forecast_imports(world: object) -> None:
     """Run a real progress file through validation, diff and scenario commit."""
+    from sqlalchemy import func, select
+    from support.factories import ImportWorld, run_import_job, upload_import_source
+
     from erev_api.db.tables import (
         approval_request,
         contract,
@@ -89,8 +93,6 @@ def exercise_forecast_imports(world: object) -> None:
         import_upload,
         job,
     )
-    from sqlalchemy import func, select
-    from support.factories import ImportWorld, run_import_job, upload_import_source
 
     assert isinstance(world, ImportWorld)
 
@@ -251,10 +253,11 @@ def exercise_forecast_imports(world: object) -> None:
     from dataclasses import replace
     from unittest.mock import patch
 
+    from support.factories import workspace as command_workspace
+
     from erev_api.db.tables import file_object
     from erev_api.domain.forecast import event_sets, replay_inputs
     from erev_api.problems import Problem
-    from support.factories import workspace as command_workspace
 
     place = command_workspace(
         world.app, world.clock, world.runtime.keyring, world.runtime.files, world.actor
@@ -262,6 +265,23 @@ def exercise_forecast_imports(world: object) -> None:
     next_headers = headers()
     next_headers["If-Match"] = next_version.headers["ETag"]
     next_id = UUID(next_version.json()["id"])
+    from erev_api.db.tables import audit_event, audit_event_contract
+
+    with place.uow() as uow:
+        # Prove the file alone resolves its applied contract, independent of API-command keys.
+        assert event_sets.audit_contract_ids(uow.session, {"import_upload_ids": [import_id]}) == (
+            contract_id,
+        )
+    for object_id, action in (
+        (set_id, "forecast_event_set.publish"),
+        (next_id, "forecast_event_set.create"),
+    ):
+        linked = world.rows(
+            select(audit_event_contract.c.contract_id)
+            .join(audit_event, audit_event.c.id == audit_event_contract.c.audit_event_id)
+            .where(audit_event.c.object_id == object_id, audit_event.c.action == action)
+        )
+        assert [row["contract_id"] for row in linked] == [contract_id]
     next_published = call(
         world.app, "POST", f"/api/v1/forecast-event-sets/{next_id}/publish", headers=next_headers
     )

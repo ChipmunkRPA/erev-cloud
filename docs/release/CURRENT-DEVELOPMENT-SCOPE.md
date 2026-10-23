@@ -881,3 +881,27 @@ reevaluates the entire trace to its stored values. Both API paths passed; the mi
 again after adding the retained-trace assertions. Scoped lint passes, excluding existing import
 ordering. This closes the prior public mixed-basis verification gap for this price-only path.
 Quantity/removal/term reassessment and the broader unfinished scope remain open. No deployment.
+
+## October 23 forecast contract audit linkage — implemented
+
+Forecast input-set version creation now retains the inherited contract population; updates
+and publication retain the union of before/after populations. Captured API commands supply
+explicit contract identities and committed import stream events supply actual imported contract
+identities. Unapplied files do not acquire guessed identities. Replay publication/completion
+and command evidence-file materialization retain their known contract keys. The audit writer
+normalizes/deduplicates them into the existing immutable chain and audit_event_contract index;
+old audit events are not rewritten. Ordinary capture commands already had their own contract key.
+
+Deal previews are classified as optionally contract-scoped: request/computation explicitly name
+no contract, while saving the preview retains the actual created contract. Scenario lifecycle,
+refresh, scenario-wide forecast publications and release-validation commands are classified as
+tenant-level operations; their individual input/application facts retain contract linkage.
+Latest-production sandbox export names its tenant_snapshot audit object explicitly.
+
+Necessary verification: the populated forecast capture/import/publication/replay workflow passes,
+including inherited-version and publication contract index rows, import-only identity resolution,
+replay/materialization index rows and cancellation rollback. All three audit-contract-key
+architecture checks pass, closing the previously reported 29 writer classification findings.
+Seven changed production modules pass mypy; scoped lint passes. This is not a claim that all
+other audit/security or publication checks pass. Portfolio application awaits the owner's two
+calculation choices; other unfinished feature scope remains unchanged. No deployment.

@@ -79,6 +79,8 @@ ALWAYS: Final = frozenset(
 )
 WHERE_NAMED: Final = frozenset(
     {
+        "deal_preview",  # Hypothetical until saved as a scenario contract.
+        "forecast_event_set",  # Captured commands and applied imports name their contracts.
         "ai_proposal",  # extraction may precede a contract; trace explanations name contracts.
         "evidence_pack",  # sample packs name contracts; period/access/change packs may not
         "estimate",  # shared estimates retain their historical member population
@@ -100,6 +102,10 @@ WHERE_NAMED: Final = frozenset(
 )
 OTHER: Final = frozenset(
     {
+        "scenario",  # Tenant-level workspace identity and lifecycle.
+        "scenario_refresh",  # Workspace replacement; replay facts carry contract keys.
+        "forecast_run",  # Scenario-wide publication; input facts carry contract keys.
+        "release_validation",  # Tenant-wide validation command; group evidence carries keys.
         "portfolio",  # Tenant-level descriptive metadata.
         "ai_call_intent",  # AUD-FACT: hashes-only provider start evidence.
         "ai_model_log",  # tenant-level call evidence; proposals carry their subjects.

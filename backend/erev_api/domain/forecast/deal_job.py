@@ -32,6 +32,7 @@ def request(uow: UnitOfWork, proposal: DealInputIn) -> DealPreviewRequestedOut:
         subject_id=identity,
     )
     uow.audit(
+        contract_id=None,  # A hypothetical deal has no saved contract yet.
         action="deal_preview.request",
         object_type="deal_preview",
         object_id=identity,

@@ -83,6 +83,9 @@ def materialize_files(
             else:
                 step["file_id"] = str(bindings[UUID(step["file_id"])])
         uow.audit(
+            contract_ids=tuple(
+                UUID(step["contract_id"]) for step in steps if step["kind"] == "API_COMMAND"
+            ),
             action="forecast_event_set.materialize_files",
             object_type="forecast_event_set",
             object_id=target_set_id,

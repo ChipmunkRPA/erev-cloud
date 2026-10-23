@@ -1,22 +1,47 @@
 """Draft/version/publish lifecycle for scenario input sets; execution belongs to forecast jobs."""
 
 import hashlib
+import re
 from collections.abc import Callable, Mapping
 from typing import Any
 from uuid import UUID
 
-from erev_engine.canonical import canonical_bytes
 from sqlalchemy import Select, insert, select, text, update
 from sqlalchemy.orm import Session
 
 from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id
 from erev_api.db.session import DbContext, set_tenant_context, tenant_session
+from erev_api.db.tables import contract_event, import_upload, scenario, scenario_refresh, tenant
 from erev_api.db.tables import forecast_event_set as sets
-from erev_api.db.tables import import_upload, scenario, scenario_refresh, tenant
 from erev_api.domain.forecast import input_order
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import canonical_bytes
+
+
+def audit_contract_ids(session: Session, values: Mapping[str, Any]) -> tuple[UUID, ...]:
+    """Freeze the contracts named by captured commands and already-applied import events.
+
+    An unapplied file has no established contract population. Do not guess it from its name
+    or current external-id mappings. The import's own later stream appends carry their keys.
+    """
+    found: set[UUID] = set()
+    for command in values.get("api_commands", ()):
+        match = re.fullmatch(r"/contracts/([0-9a-f-]{36})/events", str(command.get("path", "")))
+        if match is None or command.get("method") != "POST":
+            raise Problem("precondition-failed", "A captured forecast command is malformed.")
+        found.add(UUID(match[1]))
+    uploads = values.get("import_upload_ids", ())
+    if uploads:
+        found.update(
+            session.scalars(
+                select(contract_event.c.contract_id)
+                .where(contract_event.c.import_upload_id.in_(uploads))
+                .distinct()
+            )
+        )
+    return tuple(sorted(found))
 
 
 def _scenario(session: Session, context: DbContext) -> UUID:
@@ -116,6 +141,7 @@ def create(uow: UnitOfWork, values: Mapping[str, Any]) -> dict[str, Any]:
         )
     )
     uow.audit(
+        contract_ids=audit_contract_ids(uow.session, {} if previous is None else dict(previous)),
         action="forecast_event_set.create",
         object_type="forecast_event_set",
         object_id=identity,
@@ -189,6 +215,10 @@ def change(
     )
     uow.session.execute(update(sets).where(sets.c.id == identity).values(**changes))
     uow.audit(
+        contract_ids=sorted(
+            set(audit_contract_ids(uow.session, current))
+            | set(audit_contract_ids(uow.session, {**current, **changes}))
+        ),
         action="forecast_event_set.publish" if publish else "forecast_event_set.update",
         object_type="forecast_event_set",
         object_id=identity,
@@ -311,6 +341,7 @@ def attach_import(uow: UnitOfWork, current: Mapping[str, Any], import_id: UUID) 
         },
     )
     uow.audit(
+        contract_ids=audit_contract_ids(uow.session, {"import_upload_ids": [import_id]}),
         action="forecast_event_set.capture_import",
         object_type="forecast_event_set",
         object_id=current["id"],

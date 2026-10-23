@@ -4,7 +4,6 @@ import json
 from typing import Any
 from uuid import UUID
 
-from erev_engine.canonical import canonical_bytes, sha256_hex
 from sqlalchemy import insert, select, text
 
 from erev_api.controls.release import current_release
@@ -14,6 +13,7 @@ from erev_api.domain.forecast import deal_bundle, deal_compute
 from erev_api.problems import Problem
 from erev_api.schemas.deal_previews import DealInputIn
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import canonical_bytes, sha256_hex
 
 
 def retain(uow: UnitOfWork, proposal: DealInputIn, identity: UUID) -> dict[str, Any]:
@@ -76,6 +76,7 @@ def retain(uow: UnitOfWork, proposal: DealInputIn, identity: UUID) -> dict[str, 
     }
     uow.session.execute(insert(deal_preview).values(**row))
     uow.audit(
+        contract_id=None,  # A hypothetical deal has no saved contract yet.
         action="deal_preview.run",
         object_type="deal_preview",
         object_id=identity,
