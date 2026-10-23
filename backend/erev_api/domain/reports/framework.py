@@ -1410,6 +1410,36 @@ def _calendar_errors(
             and len({(row.start_date, row.end_date) for row in selected}) == 1
         ):
             return []
+    if (
+        code
+        in {
+            contract_balance_rollforward_builder.CODE,
+            revenue_from_opening_liability_builder.CODE,
+            rpo_rollforward_builder.CODE,
+        }
+        and parameters.get("from_period_key")
+        and parameters.get("to_period_key")
+    ):
+        from .calendar_alignment import Interval, ranges_match
+
+        records = session.execute(
+            select(
+                period.c.calendar_id, period.c.period_key, period.c.start_date, period.c.end_date
+            ).where(
+                period.c.calendar_id.in_(
+                    select(legal_entity.c.calendar_id).where(legal_entity.c.id.in_(entity_ids))
+                )
+            )
+        ).all()
+        ranges: dict[UUID, list[Interval]] = {}
+        for record in records:
+            ranges.setdefault(record.calendar_id, []).append(
+                Interval(record.period_key, record.start_date, record.end_date)
+            )
+        if len(ranges) == calendars and ranges_match(
+            ranges, str(parameters["from_period_key"]), str(parameters["to_period_key"])
+        ):
+            return []
     return [_finding(f"parameters.{ENTITY_CODES}", CALENDARS_DIFFER, RULE_CALENDARS)]
 
 

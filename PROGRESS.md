@@ -264,11 +264,11 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Same-date snapshots across calendars — October 23, 2026
+## Aligned range reports across calendars — October 23, 2026
 
-- RPO and contract balances now accept separate calendar records when every selected entity's
-  explicit period resolves to the identical start/end interval. Missing/different dates refuse;
-  range-report guards remain. Existing retained output and currency semantics are unchanged.
-- Populated combined totals equal separate runs and retained reruns match; mixed-date refusal
-  and the existing calendar-guard workflow pass, with scoped types/lint. No deployment.
-- POB evidence-refresh checkpoint archived.
+- Contract-balance and RPO rollforwards plus opening-liability revenue now accept separate
+  calendars when both endpoints, every included period and the preceding period align exactly.
+  Missing, reversed, discontinuous or different ranges retain the calendar refusal.
+- Public combined monetary rows equal separate runs and reruns match; mixed-date guards and
+  interval checks pass with scoped types/lint. No date reallocation or posting changes.
+- Snapshot checkpoint archived. No deployment.

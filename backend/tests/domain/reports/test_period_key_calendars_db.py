@@ -442,20 +442,35 @@ def test_snapshot_reports_admit_distinct_calendars_with_identical_dates(world):
         activate=True,
     )
     computed(world.place, UUID(str(booked.combination_group["id"])))
-    for code in ("rpo", "contract_balances"):
-        params = {"entity_codes": [AVM_US, duplicate], **BOOK, "period_key": JAN_SEPTEMBER}
+    for code in (
+        "rpo",
+        "contract_balances",
+        "contract_balance_rollforward",
+        "revenue_from_opening_liability",
+        "rpo_rollforward",
+    ):
+        selection = (
+            {"period_key": JAN_SEPTEMBER}
+            if code in {"rpo", "contract_balances"}
+            else {"from_period_key": "FY2026-P08", "to_period_key": JAN_SEPTEMBER}
+        )
+        params = {"entity_codes": [AVM_US, duplicate], **BOOK, **selection}
         combined, rows = run_of(world, code, params)
         expected = {}
         for entity_code in (AVM_US, duplicate):
             _, single = run_of(world, code, {**params, "entity_codes": [entity_code]})
-            summary = next(row for row in single if row["row_key"] == "TOTAL:USD")
-            for name, value in summary.items():
-                if isinstance(value, dict) and "amount" in value:
-                    expected[name] = expected.get(name, Decimal(0)) + Decimal(value["amount"])
-        summary = next(row for row in rows if row["row_key"] == "TOTAL:USD")
+            summaries = [
+                row for row in single if row["row_key"] == "TOTAL:USD" or row.get("section") == 1
+            ]
+            for summary in summaries:
+                for name, value in summary.items():
+                    if isinstance(value, dict) and "amount" in value:
+                        key = (summary["row_key"], name)
+                        expected[key] = expected.get(key, Decimal(0)) + Decimal(value["amount"])
+        combined_rows = {row["row_key"]: row for row in rows}
         assert expected
-        for name, amount in expected.items():
-            assert Decimal(summary[name]["amount"]) == amount
+        for (key, name), amount in expected.items():
+            assert Decimal(combined_rows[key][name]["amount"]) == amount
         again = post(world.app, f"{REPORT_RUNS}/{combined['id']}/rerun", world.maya, {})
         assert again.status_code == 202, again.text
         assert worlds.run_now(world, UUID(again.json()["id"]))["state"] == "SUCCEEDED"

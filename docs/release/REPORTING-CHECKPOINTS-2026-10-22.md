@@ -453,3 +453,12 @@
 - Populated recompute creates fresh evidence with zero new postings and unchanged income;
   repetition reuses the new result. Two codec/hash/accounting cases and scoped lint pass.
 - Zero-opening checkpoint archived. No deployment or database migration.
+
+## Same-date snapshots across calendars — October 23, 2026
+
+- RPO and contract balances now accept separate calendar records when every selected entity's
+  explicit period resolves to the identical start/end interval. Missing/different dates refuse;
+  range-report guards remain. Existing retained output and currency semantics are unchanged.
+- Populated combined totals equal separate runs and retained reruns match; mixed-date refusal
+  and the existing calendar-guard workflow pass, with scoped types/lint. No deployment.
+- POB evidence-refresh checkpoint archived.

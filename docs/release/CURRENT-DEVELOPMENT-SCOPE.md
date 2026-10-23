@@ -15,6 +15,24 @@ refresh from production must preserve isolation and allow experimentation.
 
 ## Reporting implementation status
 
+### Aligned range reports across separate calendars — implemented October 23
+
+Contract balance rollforward, revenue from opening liability and RPO rollforward can now use
+separate calendar records when an explicit from/to selection proves the same complete fiscal
+range. The proof compares every selected period's key/start/end and the preceding period, and
+checks continuity. Matching first/last dates alone is insufficient. Missing endpoints, reversed
+ranges, different interior periods and missing/different opening periods retain the existing
+calendar refusal. Implicit endpoint selections and other unsupported builders remain guarded.
+
+Necessary verification extends the populated duplicate-January-calendar workflow to all three
+range reports: each aggregate monetary cell equals the sum of independent entity runs and each
+saved rerun reproduces its original rows. Adding the April calendar still refuses the different
+population. Both populated calendar workflows pass; a focused interval case covers same-edge
+interior differences, missing opening/endpoint, reversed and empty selections. Two production
+modules pass type checks and scoped lint passes. Existing postings, currency conversion, source
+retention and date-allocation semantics are unchanged. No deployment or schema migration.
+
+
 ### Snapshot reports across separate calendars — implemented October 23
 
 RPO and contract balances accept an explicitly selected fiscal period across different calendar
