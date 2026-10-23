@@ -1262,6 +1262,44 @@ def test_functional_pob_report_uses_original_invoice_fx(
                 native = frozen["native_closing"]
                 assert native is not None
                 assert native["version"] == frozen["version"]
+                from erev_api.db.tables import contract_version, computation_evidence
+                from erev_api.files.store import open_file
+                import json
+
+                with world.place.uow() as uow:
+                    current_computation = uow.session.scalar(
+                        select(contract_version.c.contract_computation_id).where(
+                            contract_version.c.id == UUID(member["version"])
+                        )
+                    )
+                    saved = (
+                        uow.session.execute(
+                            select(computation_evidence).where(
+                                computation_evidence.c.contract_computation_id
+                                == current_computation
+                            )
+                        )
+                        .mappings()
+                        .one()
+                    )
+                    _, stream = open_file(
+                        uow.session, saved["output_file_id"], files=uow.files, keyring=uow.keyring
+                    )
+                    with stream:
+                        current_output = json.loads(stream.read())
+                current_native = [
+                    item
+                    for book_output in current_output["books"]
+                    if book_output["book_code"] == "ASC606"
+                    for item in book_output["disclosure_rollforwards"]
+                ]
+                assert current_native and all(
+                    item["opening_basis"] == "FROZEN" for item in current_native
+                )
+                assert all(
+                    item["opening_source"]["version"] == frozen["version"]
+                    for item in current_native
+                )
                 assert native["period_key"] == "FY2026-P08"
                 native_functional = [
                     item for item in native["views"] if item["view"] == "FUNCTIONAL"

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from erev_engine.bundle import DisclosureOpeningInput
 from datetime import date
 from types import MappingProxyType
 from typing import Final
@@ -165,6 +166,7 @@ def run(
     balances: object = None,
     fx: object = None,
     capture_obligation_closing: bool = False,
+    frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
     """RPO, exemptions, time bands, the narrative dataset, the waterfall, the RPO rollforward, the
     contract balances rollforward and the prior-period revenue of one book at d_v (§15.2.1 to
@@ -222,6 +224,12 @@ def run(
                         ctx, allocated, records, entity, key, view=FUNCTIONAL
                     )
                 )
+    if frozen_openings:
+        from .frozen_opening import apply
+
+        balance_rows = [
+            apply(ctx, allocated, records, row, frozen_openings) for row in balance_rows
+        ]
     if capture_obligation_closing:
         from .obligation_closing import capture
 

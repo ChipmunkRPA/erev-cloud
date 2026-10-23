@@ -234,6 +234,9 @@ def request_void(
         bundle = bundles.build(
             session, group_id, uow.now, pending, DRY_RUN, pending_contract_id=contract_id
         )
+        from .disclosure_openings import prepare
+
+        bundle = prepare(uow, bundle)
         output = run(bundle)
     except EngineError as error:
         raise engine_problem(error) from error

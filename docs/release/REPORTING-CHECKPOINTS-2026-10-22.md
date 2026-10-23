@@ -672,3 +672,20 @@ not decide whether a host EAC represents its component or the entire combination
 - Remaining: bind these original computation snapshots to authenticated lock history, then
   automatically feed their retained obligation balances into the next native calculation.
   No older computation files or lock records are rewritten or backfilled.
+
+## Lock-bound native closing reader — October 23, 2026
+
+- New opening-relief runs bind native closing evidence to the original version already proven
+  by the authenticated lock-time balance report. The reader uses that version's computation,
+  checks the output file against all retained digests and input identity, then checks book,
+  entity, period end, currency scale and group identity. Duplicate views are refused.
+- The original output payload, file/hash identity and version are retained with the frozen
+  source proof. Reading is cached by version/entity/period/book. Older report bindings keep
+  their previous proof shape; absent historical native output is not backfilled from current data.
+- Public foreign-functional and reporting locked-opening workflows pass: original USD closing
+  obligation eligibility is 11,000, the version differs from the later computation, and saved
+  report rows rerun identically. Three reader cases cover digest/duplicate refusal, legacy
+  absence and old-binding behavior; scoped lint/types pass. No deployment.
+- Remaining native integration: automatically feed the authenticated original obligation
+  balances into the next engine bundle and identify that calculation's opening as frozen.
+  This reader establishes provenance; it does not yet change the next native computation.

@@ -1235,6 +1235,8 @@ def _dry_run(
     current: Mapping[str, Any],
     element: Mapping[str, Any],
     row: Mapping[str, Any],
+    *,
+    uow: UnitOfWork | None = None,
 ) -> tuple[ImpactSummaryOut, Decimal | None]:
     """The group computed in ``DRY_RUN`` with the version applied as if approved now: its
     API-S-ImpactSummary and the catch-up over the whole group (``group_catch_up``)."""
@@ -1258,6 +1260,10 @@ def _dry_run(
             for item in bundle.estimate_versions
         ),
     )
+    from .disclosure_openings import prepare
+
+    if uow is not None:
+        bundle = prepare(uow, bundle)
     output = computation.default_engine()(bundle)
     summary = impact_summary(session, current, bundle, output, pending, computed_at=now)
     before, after = _balances(session, current, bundle, output)
@@ -1433,7 +1439,7 @@ def submit_version(
             set_values={"supersedes_version_id": latest, **_stamps(uow)},
         )
     try:
-        summary, group_impact = _dry_run(session, uow.now, current, element, row)
+        summary, group_impact = _dry_run(session, uow.now, current, element, row, uow=uow)
     except EngineError as error:
         raise engine_problem(error) from error
     # The row's own digest is the content the kernel hashes for the request — the version, and
@@ -1580,7 +1586,7 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         element = _estimate_row(session, _uuid(row["estimate_id"]))
         current = _visible_contract(session, element)
         try:
-            summary, _ = _dry_run(session, uow.now, current, element, row)
+            summary, _ = _dry_run(session, uow.now, current, element, row, uow=uow)
         except EngineError as error:
             raise engine_problem(error) from error
         uow.discard()
@@ -1623,7 +1629,7 @@ def _assert_current_routing(
     """
     session = uow.session
     try:
-        summary, group_impact = _dry_run(session, uow.now, current, element, row)
+        summary, group_impact = _dry_run(session, uow.now, current, element, row, uow=uow)
     except EngineError as error:
         raise engine_problem(error) from error
     # A publication that overtook this transaction is already effective, even if its

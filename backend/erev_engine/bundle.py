@@ -43,6 +43,7 @@ __all__ = [
     "CostAssetVersionOut",
     "Diagnostic",
     "DisclosureRollforwardOut",
+    "DisclosureOpeningInput",
     "EntityInput",
     "EstimateVersionInput",
     "EventInput",
@@ -676,6 +677,21 @@ class PostedAmountInput:
 
 
 @dataclass(frozen=True, slots=True)
+class DisclosureOpeningInput:
+    """Authenticated prior closing, in declared currency minor units; original source proof."""
+
+    book_code: str
+    entity: str
+    period_key: str
+    view: str
+    currency: str
+    opening_date: date
+    balances: Mapping[str, int]
+    obligations: Mapping[str, int]
+    source: Mapping[str, str]
+
+
+@dataclass(frozen=True, slots=True)
 class InputBundle:
     """Everything one computation reads (DG §7 field list; ENGINE_SPEC §0.4)."""
 
@@ -700,6 +716,9 @@ class InputBundle:
     posted: tuple[PostedAmountInput, ...]
     # Persistence evidence evolves independently of monetary rules. Omitted by old bundles.
     evidence_revision: int | None = None
+    disclosure_openings: tuple[DisclosureOpeningInput, ...] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
 
     def sha256(self) -> str:
         """CV-25: SHA-256 of the canonical bundle without ``known_at``; each estimate version
@@ -710,6 +729,8 @@ class InputBundle:
         ``reason_code`` only when set, S14-R-27; its ``rate_refs`` only when present, S14-R-28)."""
         view = {item.name: getattr(self, item.name) for item in fields(self)}
         del view["known_at"]
+        if self.disclosure_openings is None:
+            del view["disclosure_openings"]
         if self.evidence_revision is None:
             del view["evidence_revision"]  # Preserve historical CV-25 hashes.
         view["contracts"] = tuple(item.hash_view() for item in self.contracts)
@@ -865,6 +886,9 @@ class DisclosureRollforwardOut:
     lines: Mapping[str, Mapping[str, int]]
     memo: Mapping[str, int]
     revenue_relief: int
+    opening_source: Mapping[str, str] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
     obligation_closing: Mapping[str, object] | None = field(
         default=None, metadata={"canonical_omit_none": True}
     )

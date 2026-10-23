@@ -660,6 +660,9 @@ def _compute(
     try:
         bundle = bundles.build(session, group_id, uow.now, (), trigger)
         started = time.perf_counter()
+        from .disclosure_openings import prepare
+
+        bundle = prepare(uow, bundle)
         output = run(bundle)
         seconds = time.perf_counter() - started
         if budget_seconds is not None and seconds > budget_seconds:

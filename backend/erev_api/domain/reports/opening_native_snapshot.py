@@ -80,7 +80,7 @@ def read(
                 "currency_view", "Original snapshot period or currency is ambiguous."
             )
         seen.add(key)
-        if item["opening_basis"] != "RESTATED":
+        if item["opening_basis"] not in {"RESTATED", "FROZEN"}:
             raise tie_outs.invalid("currency_view", "Unknown native snapshot calculation basis.")
     return {
         "version": str(row.version_id),

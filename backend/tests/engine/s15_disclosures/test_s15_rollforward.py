@@ -842,3 +842,35 @@ def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_s
     )
     records.fx.billing_attribution_sources = evidence[:1]
     assert capture(ctx, st, records, ENTITY, period, functional=True)["status"] == "UNAVAILABLE"
+
+
+def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening():
+    from types import SimpleNamespace as NS
+    from erev_engine.bundle import DisclosureOpeningInput
+    from erev_engine.stages.s15_disclosures.frozen_opening import apply
+
+    ctx, st, records = ex_15_b_context("FIFO_WITHIN_POB"), ex_15_b_state(), ex_15_b()
+    row = rollforward_balances(ctx, st, records, ENTITY, APRIL)
+    source = DisclosureOpeningInput(
+        book_code=row.book_code,
+        entity=ENTITY,
+        period_key=APRIL,
+        view=row.view,
+        currency=row.currency,
+        opening_date=row.opening_date,
+        balances={role: values["OPENING"] for role, values in row.lines.items()},
+        obligations={SERVICES: usd("5000.00")},
+        source={"lock_id": "lock", "output_sha256": "a" * 64},
+    )
+    with pytest.raises(ValueError, match="complete nonnegative"):
+        apply(ctx, st, records, row, [source])
+    event = NS(
+        event_type="CONTRACT_AMENDED",
+        effective_date=date(2026, 4, 1),
+        contract_key=CONTRACT_KEY,
+        payload={"lines": [{"action": "ADD", "obligation_key": "D"}]},
+    )
+    proven = dataclasses.replace(st, events=(*st.events, event))
+    result = apply(ctx, proven, records, row, [source])
+    assert result.revenue_from_opening_liability == usd("800.00")
+    assert result.revenue_relief == row.revenue_relief

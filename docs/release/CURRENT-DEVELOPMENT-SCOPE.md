@@ -13,6 +13,28 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Automatic frozen native opening handoff — October 23, 2026
+
+- Computation and preview paths attach available authenticated prior-lock native snapshots to
+  a typed disclosure_openings input. The loader reads the original lock/version/output under
+  the computation's group scope, checks unchanged group/member coverage and transaction closing
+  totals, and retains original lock/version/output/binding hashes. Saved inputs replay directly.
+- Stage 15 applies matching book/entity/period/view openings and records FROZEN plus their source
+  proof in saved native outputs. Group balances and original obligation eligibility remain
+  distinct; posting targets are unchanged. Explicit post-opening ADD events can prove zero
+  opening for new obligations; missing ownership proof is refused, not manufactured.
+- The optional input/output fields are omitted for old evidence, preserving earlier hashes.
+  Previews use the same preparation as actual computation. Existing records without a complete
+  matching native snapshot keep their existing RESTATED native path; public report historical
+  source recovery remains available separately.
+- Necessary validation: 25 codec/upgrade cases, 17 focused native/handoff cases, functional and
+  reporting public locked-opening workflows, and a modification preview/approval workflow pass.
+  Saved next-period outputs point to the original locked version; source-bound report reruns
+  remain identical. Scoped lint/types pass. No deployment or journal calculation changes.
+- Remaining scope includes changed combination membership across the lock, broader combined
+  foreign lock histories, and unavailable special-contract/acquired sources. These are not
+  claimed complete by the unchanged-group workflow above.
+
 ## Lock-bound native closing reader — October 23, 2026
 
 - New opening-relief runs bind native closing evidence to the original version already proven

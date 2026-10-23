@@ -1595,6 +1595,9 @@ def _confirmed(
         bundle = bundles.build(
             session, group_id, uow.now, events, DRY_RUN, pending_contract_id=contract_id
         )
+        from .disclosure_openings import prepare
+
+        bundle = prepare(uow, bundle)
         output = run(bundle)
     except EngineError:
         return without, _withheld(Step1GateReason.ENGINE_REFUSED)
@@ -2137,6 +2140,7 @@ def _record_events(
                     current,
                     uow.now,
                     pending,
+                    uow=uow,
                     pending_contract_id=contract_id,
                     engine=engine,
                 )
@@ -2948,6 +2952,7 @@ def dry_run_summary(
     engine: computation.Engine | None = None,
     summarise: bool = True,
     book_code: str | None = None,
+    uow: UnitOfWork | None = None,
 ) -> tuple[InputBundle, OutputBundle, ImpactSummaryOut | None]:
     """DG-CMD-15 (D-98 140 Q-1): the ONE single-group dry run every preview uses — the group's
     bundle at ``known_at`` with ``pending`` appended to ``pending_contract_id`` (and, for CTR-17,
@@ -2967,6 +2972,10 @@ def dry_run_summary(
         pending_modifications=pending_modifications,
     )
     run = engine if engine is not None else computation.default_engine()
+    from .disclosure_openings import prepare
+
+    if uow is not None:
+        bundle = prepare(uow, bundle)
     output = run(bundle)
     if not summarise:
         # D-98 140-A12 CLASSIFY-EMPTY-EVENTS-1: an event-free dry run (a classification carrying a
@@ -3005,7 +3014,7 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         # cites (item STEP1-HOLD-RELEASE-1), counted like the gate.
         events = [*events, *_pending_hold_releases(session, current, uow.now, events)]
         _, _, summary = dry_run_summary(
-            session, current, uow.now, events, pending_contract_id=contract_id
+            session, current, uow.now, events, uow=uow, pending_contract_id=contract_id
         )
         assert summary is not None  # a dry run with pending events summarises
         uow.discard()

@@ -1759,6 +1759,9 @@ def submit_activation(
             if pending
             else bundles.build(session, group_id, uow.now, (), DRY_RUN)
         )
+        from .disclosure_openings import prepare
+
+        bundle = prepare(uow, bundle)
         output = run(bundle)
     except EngineError as error:
         raise engine_problem(error) from error
@@ -1923,6 +1926,9 @@ def activate(
                 DRY_RUN,
                 pending_contract_id=contract_id,
             )
+            from .disclosure_openings import prepare
+
+            bundle = prepare(uow, bundle)
             output = run(bundle)
         except EngineError as error:
             raise engine_problem(error) from error

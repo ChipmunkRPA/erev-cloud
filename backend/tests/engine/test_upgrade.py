@@ -424,3 +424,38 @@ def test_revision_five_retains_obligation_closings_without_rewriting_revision_fo
             captured.append(row.pop("obligation_closing"))
     assert captured and any(item["status"] == "AVAILABLE" for item in captured)
     assert l1_sha256(after) == l1_sha256(before)
+
+
+def test_frozen_opening_bundle_replays_without_changing_posting_targets():
+    from erev_engine.bundle import DisclosureOpeningInput
+
+    base = dataclasses.replace(_computable(), evidence_revision=5)
+    before = output_mapping(compute(base))
+    book = before["books"][0]
+    row = book["disclosure_rollforwards"][0]
+    frozen = DisclosureOpeningInput(
+        book_code=book["book_code"],
+        entity=row["entity"],
+        period_key=row["period_key"],
+        view=row["view"],
+        currency=row["currency"],
+        opening_date=date.fromisoformat(row["opening_date"]),
+        balances={role: 0 for role in row["lines"]},
+        obligations={subject: 0 for subject in row["obligation_closing"]["obligations"]},
+        source={"lock_id": "original-lock", "output_sha256": "a" * 64},
+    )
+    original = dataclasses.replace(base, disclosure_openings=(frozen,))
+    assert original.sha256() == sha256_hex(cv25_view(original))
+    restored = decode_input(encode_input(original))
+    assert restored == original
+    after = output_mapping(compute(restored))
+    changed = after["books"][0]["disclosure_rollforwards"][0]
+    assert changed["opening_basis"] == "FROZEN"
+    assert changed["opening_source"] == dict(frozen.source)
+    assert all(values["OPENING"] == 0 for values in changed["lines"].values())
+    for old_book, new_book in zip(before["books"], after["books"], strict=True):
+        old_book.pop("disclosure_rollforwards", None)
+        new_book.pop("disclosure_rollforwards", None)
+    assert l1_sha256(before) == l1_sha256(after)
+    with pytest.raises(ValueError, match="Duplicate frozen"):
+        compute(dataclasses.replace(original, disclosure_openings=(frozen, frozen)))

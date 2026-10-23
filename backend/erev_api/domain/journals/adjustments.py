@@ -886,6 +886,7 @@ def _measure(
             current,
             uow.now,
             [_event(row, obligations)],
+            uow=uow,
             pending_contract_id=contract_id,
             book_code=book_code,
         )

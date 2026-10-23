@@ -226,6 +226,7 @@ class BalanceRollforward:
     memo: Mapping[str, int]  # S15-R-04 revenue by cause, MEMO_CAUSES order; not in the tie
     revenue_relief: int  # revenue less negative revenue of the period, in the view's currency
     obligation_closing: Mapping[str, object] | None = None
+    opening_source: Mapping[str, str] | None = None
 
     @property
     def revenue_from_opening_liability(self) -> int:

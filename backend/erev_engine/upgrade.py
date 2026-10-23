@@ -147,7 +147,11 @@ def _tagged(obj: object) -> object:
     if isinstance(obj, set | frozenset):
         return sorted((_tagged(item) for item in obj), key=canonical_bytes)
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        return {f.name: _tagged(getattr(obj, f.name)) for f in dataclasses.fields(obj)}
+        return {
+            f.name: _tagged(getattr(obj, f.name))
+            for f in dataclasses.fields(obj)
+            if not (f.metadata.get("canonical_omit_none") and getattr(obj, f.name) is None)
+        }
     raise TypeError(f"the evidence encoding does not support {type(obj).__qualname__}")
 
 
@@ -423,6 +427,8 @@ def cv25_view(bundle: InputBundle, *, engine_version: str | None = None) -> dict
         item.name: getattr(bundle, item.name) for item in dataclasses.fields(bundle)
     }
     del view["known_at"]
+    if bundle.disclosure_openings is None:
+        del view["disclosure_openings"]
     if bundle.evidence_revision is None:
         del view["evidence_revision"]
     view["contracts"] = tuple(item.hash_view() for item in bundle.contracts)
@@ -448,6 +454,8 @@ def attribution_view(bundle: InputBundle) -> dict[str, object]:
     }
     view["engine_version"] = ""
     view["format_version"] = 0
+    if bundle.disclosure_openings is None:
+        del view["disclosure_openings"]
     if bundle.evidence_revision is None:
         del view["evidence_revision"]
     return view

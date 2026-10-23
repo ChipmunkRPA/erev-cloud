@@ -1290,6 +1290,7 @@ def classify(
             current,
             uow.now,
             (),
+            uow=uow,
             pending_contract_id=_uuid(current["id"]),
             pending_modifications=(row,),
             engine=engine,
@@ -1579,6 +1580,9 @@ def _separate_dry_run(
         booked = commands.book_contract(unit, body=body, origin="SYSTEM")
         new_contract = dict(booked.contract)
         bundle = bundles.build(session, _uuid(booked.combination_group["id"]), uow.now, (), DRY_RUN)
+        from .disclosure_openings import prepare
+
+        bundle = prepare(uow, bundle)
         output = computation.default_engine()(bundle)
         summary = impact_summary(
             session, new_contract, bundle, output, [candidate], computed_at=uow.now
@@ -2087,6 +2091,7 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                     current,
                     uow.now,
                     [event],
+                    uow=uow,
                     pending_contract_id=_uuid(current["id"]),
                     pending_modifications=(row,),
                 )

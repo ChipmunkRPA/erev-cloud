@@ -1577,6 +1577,9 @@ def recompute(
     with uow.as_system():
         bundle = bundles.build(uow.session, group_id, uow.now, (), trigger)
         started = time.perf_counter()
+        from .disclosure_openings import prepare
+
+        bundle = prepare(uow, bundle)
         output = run(bundle)
         duration_ms = int((time.perf_counter() - started) * 1000)
         return persist(uow, bundle, output, duration_ms=duration_ms, job_id=job_id)

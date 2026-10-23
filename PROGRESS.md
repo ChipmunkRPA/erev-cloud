@@ -20,22 +20,27 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Lock-bound native closing reader — October 23, 2026
+## Automatic frozen native opening handoff — October 23, 2026
 
-- New opening-relief runs bind native closing evidence to the original version already proven
-  by the authenticated lock-time balance report. The reader uses that version's computation,
-  checks the output file against all retained digests and input identity, then checks book,
-  entity, period end, currency scale and group identity. Duplicate views are refused.
-- The original output payload, file/hash identity and version are retained with the frozen
-  source proof. Reading is cached by version/entity/period/book. Older report bindings keep
-  their previous proof shape; absent historical native output is not backfilled from current data.
-- Public foreign-functional and reporting locked-opening workflows pass: original USD closing
-  obligation eligibility is 11,000, the version differs from the later computation, and saved
-  report rows rerun identically. Three reader cases cover digest/duplicate refusal, legacy
-  absence and old-binding behavior; scoped lint/types pass. No deployment.
-- Remaining native integration: automatically feed the authenticated original obligation
-  balances into the next engine bundle and identify that calculation's opening as frozen.
-  This reader establishes provenance; it does not yet change the next native computation.
+- Computation and preview paths attach available authenticated prior-lock native snapshots to
+  a typed disclosure_openings input. The loader reads the original lock/version/output under
+  the computation's group scope, checks unchanged group/member coverage and transaction closing
+  totals, and retains original lock/version/output/binding hashes. Saved inputs replay directly.
+- Stage 15 applies matching book/entity/period/view openings and records FROZEN plus their source
+  proof in saved native outputs. Group balances and original obligation eligibility remain
+  distinct; posting targets are unchanged. Explicit post-opening ADD events can prove zero
+  opening for new obligations; missing ownership proof is refused, not manufactured.
+- The optional input/output fields are omitted for old evidence, preserving earlier hashes.
+  Previews use the same preparation as actual computation. Existing records without a complete
+  matching native snapshot keep their existing RESTATED native path; public report historical
+  source recovery remains available separately.
+- Necessary validation: 25 codec/upgrade cases, 17 focused native/handoff cases, functional and
+  reporting public locked-opening workflows, and a modification preview/approval workflow pass.
+  Saved next-period outputs point to the original locked version; source-bound report reruns
+  remain identical. Scoped lint/types pass. No deployment or journal calculation changes.
+- Remaining scope includes changed combination membership across the lock, broader combined
+  foreign lock histories, and unavailable special-contract/acquired sources. These are not
+  claimed complete by the unchanged-group workflow above.
 
 ## Rollforward Other explanation — October 23, 2026
 
