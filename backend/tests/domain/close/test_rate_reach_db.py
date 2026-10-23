@@ -1099,7 +1099,7 @@ def test_close_refreshes_legacy_head_without_fx_evidence(
 def test_recompute_refreshes_evidence_revision_once_without_posting_again(
     app, keyring, clock, files, monkeypatch
 ):
-    assert bundles.EVIDENCE_REVISION == 4
+    assert bundles.EVIDENCE_REVISION == 5
     with monkeypatch.context() as legacy:
         legacy.setattr(bundles, "EVIDENCE_REVISION", 1)
         world, contract_id, group_id = _august_run_done(app, keyring, clock, files, monkeypatch)
@@ -1163,6 +1163,8 @@ def test_recompute_refreshes_evidence_revision_once_without_posting_again(
             for row in book.get("disclosure_rollforwards", [])
         ]
         assert native and all(row["opening_basis"] == "RESTATED" for row in native)
+        closing = [row["obligation_closing"] for row in native]
+        assert any(item["status"] == "AVAILABLE" and item["obligations"] for item in closing)
         assert all(row["currency"] and isinstance(row["minor_unit"], int) for row in native)
         assert (
             dict(

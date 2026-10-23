@@ -550,6 +550,7 @@ def _stage_call(
             posted=cb.posted,
             balances=balances,
             fx=fx,
+            capture_obligation_closing=(cb.bundle.evidence_revision or 0) >= 5,
         )
     if spec.stage == "02" and spec.entry is s02_contract_identification.run:
         # D-91 gaps (iii): the deposit fold runs after stage 03 (``_run_book``), so stage 02 folds

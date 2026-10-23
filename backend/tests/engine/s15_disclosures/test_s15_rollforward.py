@@ -782,3 +782,63 @@ def test_original_functional_opening_changes_only_relief_classification():
     )
     assert lines[CL]["REVENUE_FROM_OPENING_BALANCE"] == -usd("100.00")
     assert lines[CL]["REVENUE_FROM_OTHER_INCREASES"] == -usd("120.00")
+
+
+def test_closing_capture_preserves_obligation_eligibility_without_group_allocation():
+    from erev_engine.stages.s15_disclosures.obligation_closing import capture
+
+    ctx, st, records = ex_15_b_context(), ex_15_b_state(), ex_15_b()
+    period = next(p for p in ctx.entities[ENTITY].periods if p.period_key == APRIL)
+    found = capture(ctx, st, records, ENTITY, period, functional=False)
+    assert found["status"] == "AVAILABLE"
+    assert found["obligations"][SERVICES]["liability"] == usd("4200.00")
+    assert found["obligations"][DELIVERY]["liability"] == 0
+    assert found["obligations"][DELIVERY]["revenue"] == usd("8000.00")
+    assert event_key(2) in found["obligations"][SERVICES]["sources"]
+    incomplete = dataclasses.replace(records, attribution={})
+    assert capture(ctx, st, incomplete, ENTITY, period, functional=False)["status"] == "UNAVAILABLE"
+
+
+def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_sources():
+    from types import SimpleNamespace as NS
+    from erev_engine.stages.s15_disclosures.obligation_closing import capture
+
+    ctx = NS(txn_currency="EUR", entities={ENTITY: NS(functional_currency="USD")})
+    own = NS(
+        subject_key=SERVICES,
+        contracting_entity=ENTITY,
+        performing_entity=ENTITY,
+        principal_agent=NS(value="PRINCIPAL"),
+        opening=None,
+    )
+    st = NS(obligations=[own])
+    period = NS(period_key=APRIL, end_date=date(2026, 4, 30))
+    invoice_flow = invoice(1, date(2026, 4, 1), "3.00")
+    credit = dataclasses.replace(invoice(2, date(2026, 4, 2), "3.00"), kind="CREDIT_MEMO")
+    evidence = [
+        NS(
+            entity=ENTITY,
+            period_key=APRIL,
+            source_key=flow.source_key,
+            subject_key=SERVICES,
+            amount_txn=amount,
+            amount_functional=functional,
+            node_id=f"original-{index}",
+        )
+        for index, (flow, amount, functional) in enumerate(
+            ((invoice_flow, 300, 301), (credit, -300, -300))
+        )
+    ]
+    records = NS(
+        flows=[invoice_flow, credit],
+        attribution={invoice_flow.source_key: {SERVICES: 300}, credit.source_key: {SERVICES: -300}},
+        fx=NS(billing_attribution_sources=evidence, functional_targets=[]),
+    )
+    found = capture(ctx, st, records, ENTITY, period, functional=True)
+    item = found["obligations"][SERVICES]
+    assert item["billed"] == item["liability"] == 1
+    assert {invoice_flow.source_key, credit.source_key, "original-0", "original-1"} <= set(
+        item["sources"]
+    )
+    records.fx.billing_attribution_sources = evidence[:1]
+    assert capture(ctx, st, records, ENTITY, period, functional=True)["status"] == "UNAVAILABLE"

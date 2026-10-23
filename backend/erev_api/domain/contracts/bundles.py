@@ -186,7 +186,8 @@ FORMAT_VERSION: Final = 1
 # Revision 3 adds original cost/EAC sources to input-progress calculation nodes.
 # Revision 4 retains native disclosure rollforwards in the immutable output file.
 # Refresh persistence once even when monetary inputs match an earlier evidence revision.
-EVIDENCE_REVISION: Final = 4
+# Revision 5 captures original obligation closing eligibility and source identities.
+EVIDENCE_REVISION: Final = 5
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).

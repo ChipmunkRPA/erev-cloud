@@ -865,6 +865,9 @@ class DisclosureRollforwardOut:
     lines: Mapping[str, Mapping[str, int]]
     memo: Mapping[str, int]
     revenue_relief: int
+    obligation_closing: Mapping[str, object] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
 
 
 @dataclass(frozen=True, slots=True)

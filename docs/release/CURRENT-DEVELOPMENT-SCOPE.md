@@ -13,6 +13,25 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Original obligation closing capture — October 23, 2026
+
+- Evidence revision 5 captures obligation-level cumulative billing, revenue, nonnegative
+  liability eligibility and original flow/node identities inside native rollforward output.
+  The stage-13/15 path supplies this data to the existing immutable computation output file.
+  Group caps remain separate; obligation eligibility is not allocated group liability.
+- Transaction source coverage is checked against each original document. Functional capture
+  requires the same complete document population and reconciled revenue quantities; signed
+  invoice/credit sources survive zero transaction balances and functional FX residuals.
+  Agent/cross-entity/acquired or incomplete sources explicitly record UNAVAILABLE rather than
+  inventing snapshot amounts. These records still describe the original computation, not a lock.
+- Sixteen focused native/codec cases pass, including changed population, a zero-transaction FX
+  residual and unchanged revision-4 outputs. A populated persistence/refresh workflow reads back
+  available obligation data with matching file digest and no additional journal postings;
+  scoped lint/types pass. No deployment.
+- Remaining: bind these original computation snapshots to authenticated lock history, then
+  automatically feed their retained obligation balances into the next native calculation.
+  No older computation files or lock records are rewritten or backfilled.
+
 ## Native disclosure output persistence — October 23, 2026
 
 - Evidence revision 4 adds typed native group balance rollforwards to each framework book's

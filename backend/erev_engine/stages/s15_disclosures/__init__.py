@@ -29,7 +29,7 @@ journal total. Standard library only (DG-ARC-02).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from types import MappingProxyType
 from typing import Final
@@ -164,6 +164,7 @@ def run(
     posted: PostedIndex | None = None,
     balances: object = None,
     fx: object = None,
+    capture_obligation_closing: bool = False,
 ) -> DisclosureState:
     """RPO, exemptions, time bands, the narrative dataset, the waterfall, the RPO rollforward, the
     contract balances rollforward and the prior-period revenue of one book at d_v (§15.2.1 to
@@ -221,6 +222,27 @@ def run(
                         ctx, allocated, records, entity, key, view=FUNCTIONAL
                     )
                 )
+    if capture_obligation_closing:
+        from .obligation_closing import capture
+
+        balance_rows = [
+            replace(
+                row,
+                obligation_closing=capture(
+                    ctx,
+                    allocated,
+                    records,
+                    row.entity,
+                    next(
+                        period
+                        for period in ctx.entities[row.entity].periods
+                        if period.period_key == row.period_key
+                    ),
+                    functional=row.view == FUNCTIONAL and row.currency != ctx.txn_currency,
+                ),
+            )
+            for row in balance_rows
+        ]
     return DisclosureState(
         allocated=allocated,
         as_of=found.as_of,

@@ -410,3 +410,17 @@ def test_native_disclosures_are_saved_only_in_revision_four_output():
     assert all("disclosure_rollforwards" not in book for book in before["books"])
     # Only the retained disclosure collection changes, not contract, schedule or posting outputs.
     assert l1_sha256(after) == l1_sha256(before)
+
+
+def test_revision_five_retains_obligation_closings_without_rewriting_revision_four():
+    old = dataclasses.replace(_computable(), evidence_revision=4)
+    new = dataclasses.replace(old, evidence_revision=5)
+    before = output_mapping(compute(old))
+    after = output_mapping(compute(new))
+    assert output_mapping(compute(decode_input(encode_input(new)))) == after
+    captured = []
+    for book in after["books"]:
+        for row in book.get("disclosure_rollforwards", []):
+            captured.append(row.pop("obligation_closing"))
+    assert captured and any(item["status"] == "AVAILABLE" for item in captured)
+    assert l1_sha256(after) == l1_sha256(before)
