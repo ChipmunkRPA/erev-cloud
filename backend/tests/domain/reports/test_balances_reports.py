@@ -1587,6 +1587,22 @@ def test_combined_foreign_groups_retain_locked_native_and_public_openings(
             assert sum(Fraction(item["posted_relief"]) for item in items) == sum(
                 Fraction(item["target_relief"]) for item in items
             )
+        explained = get(
+            app,
+            CELL.format(run_id=run["id"]),
+            world.maya,
+            params={"row_key": f"summary:{currency}", "column_key": "revenue_from_opening"},
+        )
+        assert explained.status_code == 200, explained.text
+        contributions = explained.json()["contributors"]["items"]
+        assert len(contributions) == 1
+        details = contributions[0]["details"]
+        assert any("Ownership adjustments total: 0 USD" in detail for detail in details)
+        assert any(
+            "original posted relief" in detail and "latest target relief" in detail
+            for detail in details
+        )
+        assert not any("ownership adjustment" in detail and "EUR" in detail for detail in details)
         restarted = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
         assert restarted.status_code == 202, restarted.text
         complete = run_now(world, UUID(restarted.json()["id"]))

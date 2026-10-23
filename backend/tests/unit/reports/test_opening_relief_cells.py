@@ -160,3 +160,85 @@ def test_zero_consumption_does_not_invent_missing_opening_calculation_inputs():
     assert not any(
         "Opening attributed billing" in item or "Eligibility before" in item for item in details
     )
+
+
+def ownership_source():
+    version, period = str(UUID(int=20)), str(UUID(int=21))
+    output = rows()
+    output[0]["_opening_source"]["group_key"] = f"{version}:{ENTITY}:USD"
+    evidence = {
+        "revenue_ownership_alignment_v1": {
+            f"{version}:{ENTITY}:{A}:{period}": [
+                {
+                    "owner": str(A),
+                    "layer": "original-A",
+                    "posted_relief": "5500",
+                    "target_relief": "1100",
+                },
+                {
+                    "owner": str(B),
+                    "layer": "original-B",
+                    "posted_relief": "0",
+                    "target_relief": "4400",
+                },
+            ],
+            f"{UUID(int=99)}:{ENTITY}:{A}:{period}": [
+                {
+                    "owner": str(UUID(int=98)),
+                    "layer": "unrelated",
+                    "posted_relief": "9",
+                    "target_relief": "9",
+                }
+            ],
+        }
+    }
+    return output, evidence
+
+
+def test_ownership_details_retain_zero_sum_adjustments_in_original_currency():
+    from erev_api.domain.reports.opening_relief_cells import OWNERSHIP_KEY
+
+    output, evidence = ownership_source()
+    sources = SourceCollector()
+    sources.evidence.update(evidence)
+    retain(Session(), NS(binding=None, sources=sources), output, view="reporting", rates=[])
+    assert sources.evidence[OWNERSHIP_KEY] is True
+    params = NS(binding=NS(evidence=deepcopy(sources.evidence)), sources=None)
+    value, items = cell(None, params, "summary:GBP", "revenue_from_opening")
+    assert value == {"amount": "26.67", "currency": "GBP"}
+    assert len(items) == 1
+    details = items[0]["_source_set_details"]
+    assert any("ownership adjustment -4400 USD" in line for line in details)
+    assert any("ownership adjustment 4400 USD" in line for line in details)
+    assert (
+        "Ownership adjustments total: 0 USD; posted and target relief total: 5500 USD." in details
+    )
+    assert not any("unrelated" in line for line in details)
+    assert not any("4400 GBP" in line for line in details)
+    retain(Session(), params, ownership_source()[0], view="reporting", rates=[])
+    matching = next(iter(params.binding.evidence["revenue_ownership_alignment_v1"].values()))
+    matching[0]["target_relief"] = "1101"
+    with pytest.raises(Problem, match="validation-failed"):
+        retain(Session(), params, ownership_source()[0], view="reporting", rates=[])
+
+
+def test_old_cell_binding_does_not_acquire_new_ownership_detail():
+    output, evidence = ownership_source()
+    sources = SourceCollector()
+    retain(Session(), NS(binding=None, sources=sources), output, view="reporting", rates=[])
+    saved = deepcopy(sources.evidence)
+    saved.update(evidence)
+    params = NS(binding=NS(evidence=saved), sources=None)
+    retain(Session(), params, ownership_source()[0], view="reporting", rates=[])
+    _, items = cell(None, params, "summary:GBP", "revenue_from_opening")
+    assert not any("ownership adjustment" in line for line in items[0]["_source_set_details"])
+
+
+def test_alignment_refuses_an_owner_outside_the_retained_source_group():
+    output, evidence = ownership_source()
+    matching = next(iter(evidence["revenue_ownership_alignment_v1"].values()))
+    matching[0]["owner"] = str(UUID(int=98))
+    sources = SourceCollector()
+    sources.evidence.update(evidence)
+    with pytest.raises(Problem, match="validation-failed"):
+        retain(Session(), NS(binding=None, sources=sources), output, view="functional", rates=[])

@@ -5,6 +5,7 @@ explain that retained calculation; they do not allocate its net result to histor
 """
 
 from decimal import Decimal
+from fractions import Fraction
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 from urllib.parse import quote
@@ -19,6 +20,7 @@ from . import tie_outs
 from .builders import ReportParams
 
 KEY = "opening_relief_cells_v1"
+OWNERSHIP_KEY = "opening_relief_ownership_detail_v1"
 COLUMNS = ("opening_contract_liability", "revenue_recognized", "revenue_from_opening")
 POB_KEYS = (
     "opening_relief_pob_v1",
@@ -43,6 +45,9 @@ def retain(
         params.binding.evidence
         if params.binding is not None
         else (params.sources.evidence if params.sources is not None else {})
+    )
+    ownership_enabled = "revenue_ownership_alignment_v1" in evidence and (
+        params.binding is None or evidence.get(OWNERSHIP_KEY) is True
     )
     ids = {UUID(identity) for _, source in sources for identity in source["contracts"]}
     owners = {
@@ -70,6 +75,7 @@ def retain(
             "currency": row["currency"],
             "values": {column: row[column] for column in COLUMNS},
             "pob": facts,
+            **({"ownership_alignment": _ownership(source, evidence)} if ownership_enabled else {}),
             "translation_rates": [
                 rate for rate in rates if rate["entity_code"] == row["entity_code"]
             ],
@@ -79,6 +85,68 @@ def retain(
             "currency_view", "Opening disclosure contributions differ from retained sources."
         )
     tie_outs.record_evidence(params, KEY, retained)
+    if ownership_enabled:
+        tie_outs.record_evidence(params, OWNERSHIP_KEY, True)
+
+
+def _ownership(source: dict[str, Any], evidence: Any) -> list[dict[str, Any]]:
+    parts = source.get("group_key", "").split(":")
+    if len(parts) != 3:
+        return []
+    version, entity, currency = parts
+    contracts = set(source["contracts"])
+    result = []
+    for key, items in sorted(evidence["revenue_ownership_alignment_v1"].items()):
+        identity = key.split(":")
+        if len(identity) != 4 or identity[:2] != [version, entity] or identity[2] not in contracts:
+            continue
+        if any(item["owner"] not in contracts for item in items):
+            raise tie_outs.invalid(
+                "currency_view", "Ownership alignment has an unrelated source owner."
+            )
+        if sum((Fraction(item["posted_relief"]) for item in items), Fraction(0)) != sum(
+            (Fraction(item["target_relief"]) for item in items), Fraction(0)
+        ):
+            raise tie_outs.invalid("currency_view", "Ownership alignment does not reconcile.")
+        result.append(
+            {
+                "recipient": identity[2],
+                "period_id": identity[3],
+                "currency": currency,
+                "sources": [dict(item) for item in items],
+            }
+        )
+    return result
+
+
+def _ownership_details(alignments: list[dict[str, Any]]) -> list[str]:
+    result = []
+    for alignment in alignments:
+        currency = alignment["currency"]
+        result.append(
+            "Original posted ownership versus latest computed ownership: member reclassification; "
+            "no additional revenue and no allocation of the group's disclosure total."
+        )
+        result.append(
+            f"Recognition recipient: {alignment['recipient']}; period: {alignment['period_id']}"
+        )
+        total = Fraction(0)
+        adjustment = Fraction(0)
+        for item in alignment["sources"]:
+            change = Fraction(item["target_relief"]) - Fraction(item["posted_relief"])
+            total += Fraction(item["posted_relief"])
+            adjustment += change
+            result.append(
+                f"Owner {item['owner']} · Layer {item['layer']}: "
+                f"original posted relief {item['posted_relief']} {currency}; "
+                f"latest target relief {item['target_relief']} {currency}; "
+                f"ownership adjustment {change} {currency}."
+            )
+        result.append(
+            f"Ownership adjustments total: {adjustment} {currency}; "
+            f"posted and target relief total: {total} {currency}."
+        )
+    return result
 
 
 def _details(source: dict[str, Any]) -> list[str]:
@@ -148,6 +216,7 @@ def _details(source: dict[str, Any]) -> list[str]:
         )
         for period, amount in sorted(facts["period_relief"].items()):
             result.append(f"{period} · Relief before reporting translation: {amount} {currency}")
+    result.extend(_ownership_details(source.get("ownership_alignment", [])))
     for rate in source["translation_rates"]:
         result.append(
             "Retained translation: " + "; ".join(f"{k}={v}" for k, v in sorted(rate.items()))

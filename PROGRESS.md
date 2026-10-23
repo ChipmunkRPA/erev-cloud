@@ -20,28 +20,20 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Foreign locked-group reporting and original posted ownership — October 23, 2026
+## Visible original-versus-target ownership differences — October 23, 2026
 
-- Fixed a public Reporting failure after separately computed foreign contracts are combined.
-  The latest group computation can redistribute historical layer ownership while original
-  posted revenue still names its original sources. Previously an exact ownership comparison
-  rejected these otherwise reconciled reports.
-- New reports retain both posted and target ownership. Original posted evidence and authenticated
-  layer creation dates determine opening-revenue attribution; target ownership still determines
-  the member balance reclassification. The two relief totals must match exactly. The retained
-  alignment makes their zero-sum ownership differences explicit without inventing new revenue.
-  Older bound reports retain their original method; new bound reruns validate the saved alignment.
-- Populated EUR-to-USD workflow: separate contracts, September lock, October deliveries and
-  combination. Native frozen opening is EUR 34,000 / USD 37,400 with both original versions.
-  Public functional revenue/relief is USD 15,400; EUR reporting opening is 33,392.86 at the
-  September closing rate, and revenue/relief is 13,873.87 at the October average rate. Both saved
-  public reports replay identically, including the retained ownership alignment.
-- Four targeted populated workflows pass across the final runs: foreign locked-group reporting,
-  cross-member revenue/returns, exhaustion into an asset, and settlement of another member asset.
-  Scoped types/lint pass. An obsolete test expectation was corrected to select the revenue
-  population from the complete saved control evidence, matching the existing reader.
-- No posting algorithm change or deployment. Partial old-group splits, special/acquired sources
-  and other documented implementation gaps remain open; this is not overall release completion.
+- Opening-liability money-cell explanations now show retained original posted relief, latest
+  target relief and the ownership adjustment for each authenticated owner/layer. The explanation
+  labels these as member reclassifications, not extra revenue or an allocation of group relief,
+  and shows the zero adjustment total alongside the equal posted/target totals.
+- Reporting-currency drill keeps these source differences in the original functional currency.
+  Only matching computation/entity/recipient sources enter a contribution; an owner outside the
+  retained contract set is refused. Existing source-set entity access filtering remains in use.
+- A dedicated retained-detail marker preserves old saved explanations. New reports save the
+  full matching source set and compare it on replay; no live source inference occurs on drill.
+- Eight focused cases and the populated foreign locked-group public workflow pass, including
+  both functional/reporting cell endpoints and identical saved reruns. Scoped lint/types pass.
+  No journal or engine amount changes, no deployment. The overall development scope remains open.
 
 ## Rollforward Other explanation — October 23, 2026
 

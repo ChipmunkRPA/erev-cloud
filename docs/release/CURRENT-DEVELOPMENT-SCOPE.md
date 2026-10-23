@@ -13,6 +13,21 @@ history reproduction and independent accounting sign-off are not development gat
 Keep critical financial permissions, segregation of duties and audit evidence. Sandbox
 refresh from production must preserve isolation and allow experimentation.
 
+## Visible original-versus-target ownership differences — October 23, 2026
+
+- Opening-liability money-cell explanations now show retained original posted relief, latest
+  target relief and the ownership adjustment for each authenticated owner/layer. The explanation
+  labels these as member reclassifications, not extra revenue or an allocation of group relief,
+  and shows the zero adjustment total alongside the equal posted/target totals.
+- Reporting-currency drill keeps these source differences in the original functional currency.
+  Only matching computation/entity/recipient sources enter a contribution; an owner outside the
+  retained contract set is refused. Existing source-set entity access filtering remains in use.
+- A dedicated retained-detail marker preserves old saved explanations. New reports save the
+  full matching source set and compare it on replay; no live source inference occurs on drill.
+- Eight focused cases and the populated foreign locked-group public workflow pass, including
+  both functional/reporting cell endpoints and identical saved reruns. Scoped lint/types pass.
+  No journal or engine amount changes, no deployment. The overall development scope remains open.
+
 ## Foreign locked-group reporting and original posted ownership — October 23, 2026
 
 - Fixed a public Reporting failure after separately computed foreign contracts are combined.
