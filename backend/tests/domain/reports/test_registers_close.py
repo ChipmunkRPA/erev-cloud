@@ -368,6 +368,29 @@ def test_register_event_1_separate_contract_key_names_the_new_contract(
     assert row["applied_event_key"] == "event:SF-ORD-10388:1"
     assert row["row_key"] == f"modification:{row['modification_no']}:O2"
 
+    from support import worlds
+
+    world = worlds.ReportWorld(
+        place=k02.place,
+        priya=k02.priya,
+        marcus=k02.marcus,
+        runtime=runtime,
+        entity_id=k02.entity_id,
+        contracts={},
+    )
+    _, causal_rows = worlds.report_run(
+        world,
+        register.CODE,
+        {
+            "entity_codes": ["AVM-US"],
+            "from_date": "2026-01-01",
+            "to_date": "2027-12-31",
+            "currency_basis": "causal_analysis",
+            "currency_view": "functional",
+        },
+    )
+    assert any(r["contribution"] == "Selected modification" for r in causal_rows)
+
 
 def test_register_cutoff_1_two_cutoffs_around_a_later_application(
     k02: K02World, runtime: JobRuntime, clock: FrozenClock
@@ -1543,3 +1566,125 @@ def test_modification_equivalent_reads_only_approved_dated_spot_rates(
     assert Decimal(data.rows[0]["functional_spot_rate"]) == Decimal("1.1")
     assert "2026-09-15" in data.rows[0]["functional_spot_rate_key"]
     assert register.data_from_inputs(collector.evidence[register.EVIDENCE]) == data
+
+
+def test_modification_causal_calculation_retained_dataset_and_cell(
+    k02, runtime, clock, monkeypatch
+):
+    from erev_api.domain.reports import modification_causal_report as causal
+    from erev_api.jobs import registry
+
+    def fail_immediately(*args, error, **kwargs):
+        raise error
+
+    monkeypatch.setattr(registry, "fail_attempt", fail_immediately)
+    from erev_api.domain.reports.builders import SourceBinding
+    from erev_engine import compute
+
+    contract_id, _ = _applied_upgrade(k02, runtime, clock)
+    clock.advance(timedelta(minutes=1))
+    collector = SourceCollector()
+    params = ReportParams(
+        report_code=register.CODE,
+        report_version=1,
+        parameters={
+            "from_date": "2026-01-01",
+            "to_date": "2027-12-31",
+            "currency_basis": "causal_analysis",
+            "currency_view": "functional",
+        },
+        entity_ids=(k02.entity_id,),
+        known_at=clock.now(),
+        sources=collector,
+    )
+    with k02.place.uow() as uow:
+        prepared = causal.prepare(uow, params)
+    calculated = causal.calculate(prepared, engine=compute)
+    with k02.place.uow() as uow:
+        data = register.build(uow, replace(params, execution_result=calculated))
+    assert data.rows
+    assert any(r["contribution"] == "Selected modification" for r in data.rows)
+    assert all("Causal analysis" in r["basis"] for r in data.rows)
+    binding = SourceBinding(
+        cutoff=clock.now(),
+        versions={},
+        labels={},
+        row_keys=frozenset(r["row_key"] for r in data.rows),
+        report_version=1,
+        evidence=collector.evidence,
+    )
+    bound = replace(params, sources=None, binding=binding)
+    with k02.place.uow() as uow:
+        assert register.build(uow, bound) == data
+        row = next(r for r in data.rows if r["contribution"] == "Selected modification")
+        value, contributors = register.cell(uow.session, bound, row["row_key"], "causal_amount")
+        assert value == row["causal_amount"] == contributors[0]["value"]
+        assert any("Executed input:" in text for text in contributors[0]["details"])
+    with k02.place.uow() as uow, pytest.raises(Problem):
+        register.build(
+            uow, replace(bound, parameters={**bound.parameters, "currency_view": "reporting"})
+        )
+
+    from support import worlds
+
+    world = worlds.ReportWorld(
+        place=k02.place,
+        priya=k02.priya,
+        marcus=k02.marcus,
+        runtime=runtime,
+        entity_id=k02.entity_id,
+        contracts={},
+    )
+    originals = []
+    for view in ("transaction", "functional", "reporting"):
+        original, rows = worlds.report_run(
+            world,
+            register.CODE,
+            {
+                "entity_codes": ["AVM-US"],
+                **params.parameters,
+                "currency_view": view,
+            },
+        )
+        selected = next(r for r in rows if r["contribution"] == "Selected modification")
+        explained = get(
+            k02.app,
+            f"/api/v1/explain/report-runs/{original['id']}/cell",
+            world.maya,
+            {"row_key": selected["row_key"], "column_key": "causal_amount"},
+        )
+        assert explained.status_code == 200, explained.text
+        originals.append((original, rows))
+    body = flows._upgrade_body(reference="CAUSAL-LATER-MOD", questionnaire=dict(ANSWERS))
+    body["lines"][0]["obligation_key"] = "O3"
+    later = flows._create(k02, contract_id, body)
+    flows._classify(k02, later["id"])
+    flows._preview(k02, later["id"], runtime)
+    request = flows._submit(k02, later["id"])
+    clock.advance(timedelta(minutes=1))
+    assert approve(k02.app, request, k02.priya).status_code == 200
+    fresh, current = worlds.report_run(
+        world,
+        register.CODE,
+        {
+            "entity_codes": ["AVM-US"],
+            **params.parameters,
+        },
+    )
+    assert current != originals[1][1]
+    assert sum(r["contribution"] == "Selected modification" for r in current) >= 2
+    for original, rows in originals:
+        started = post(k02.app, f"/api/v1/report-runs/{original['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+        assert finished["state"] == "SUCCEEDED", finished
+        assert finished["result"]["output_sha256_equal"] is True
+
+        restored = get(
+            k02.app,
+            f"/api/v1/report-runs/{started.headers[worlds.REPORT_RUN_ID_HEADER]}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["items"] == rows

@@ -6049,6 +6049,7 @@
   "reports.parameters.currencyView.reporting": "Reporting",
   "reports.parameters.currencyView.transaction": "Transaction",
   "reports.parameters.currency_basis": "Currency amount basis",
+  "reports.parameters.currency_basis.causal_analysis": "Sequential causal analysis",
   "reports.parameters.currency_basis.source": "Source evidence",
   "reports.parameters.currency_basis.spot_equivalent": "Spot equivalents (not posted amounts)",
   "reports.parameters.currency_view": "Currency view",

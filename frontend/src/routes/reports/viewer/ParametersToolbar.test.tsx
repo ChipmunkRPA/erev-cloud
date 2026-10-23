@@ -231,7 +231,7 @@ it("labels analytical currency equivalents and sends the selected basis", () => 
     parameters_schema: {
       properties: {
         currency_view: { type: "string", enum: ["transaction", "functional", "reporting"] },
-        currency_basis: { type: "string", enum: ["source", "spot_equivalent"], default: "source" },
+        currency_basis: { type: "string", enum: ["source", "spot_equivalent", "causal_analysis"], default: "source" },
       },
     },
   };
@@ -248,6 +248,8 @@ it("labels analytical currency equivalents and sends the selected basis", () => 
     />,
   );
   expect(screen.getByText("Spot equivalents (not posted amounts)")).toBeTruthy();
+  fireEvent.click(screen.getByRole("combobox", { name: "Currency amount basis" }));
+  expect(screen.getByText("Sequential causal analysis")).toBeTruthy();
   expect(runParameters(modified, context, values)).toMatchObject(values);
 });
 

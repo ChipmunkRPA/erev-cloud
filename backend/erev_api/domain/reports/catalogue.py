@@ -1581,7 +1581,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         overrides={
             "status": _any_of(list(ModificationStatus)),
             "currency_basis": {
-                **_one_of("source", "spot_equivalent"),
+                **_one_of("source", "spot_equivalent", "causal_analysis"),
                 "default": "source",
                 "title": "Currency amount basis",
             },
@@ -1593,6 +1593,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "approval_decision",
             "judgement_record",
             "contract_version",
+            "contract_computation",
+            "computation_evidence",
+            "contract_event",
             "calc_trace",
             "lock_snapshot",
             "legal_entity",
@@ -1609,6 +1612,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "modification.judgement_record_id = judgement_record.id",
         ),
         filters=(
+            "currency_basis=causal_analysis replays applied modification events in original order "
+            "on a fixed retained basis; baseline plus selected and other event effects reconciles "
+            "to original period revenue; transaction/functional/reporting views are causal "
+            "analysis, not original journal ownership; engine execution is outside transactions "
+            "and saved reruns and cells consume retained results",
             "Monetary cell explanations rebuild retained modification inputs, identify the "
             "original modification UUID and link saved native trace nodes; analytical "
             "equivalents expose pinned spot/average rate evidence separately; old runs "

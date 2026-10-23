@@ -1189,6 +1189,10 @@ def equivalent_rows(
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     refuse_locked_source(params)
+    if params.parameters.get("currency_basis") == "causal_analysis":
+        from .. import modification_causal_report
+
+        return modification_causal_report.build(uow, params)
     view = str(params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW)
     check_view(view, ())
     basis = str(params.parameters.get("currency_basis") or "source")
@@ -1468,6 +1472,10 @@ def cell(
     session: Session, params: ReportParams, row_key: str, column_key: str
 ) -> tuple[Mapping[str, str], list[dict[str, Any]]]:
     """Explain saved monetary cells using retained inputs and original modification identity."""
+    if params.parameters.get("currency_basis") == "causal_analysis":
+        from .. import modification_causal_report
+
+        return modification_causal_report.cell(session, params, row_key, column_key)
     from urllib.parse import quote
 
     refuse_locked_source(params)

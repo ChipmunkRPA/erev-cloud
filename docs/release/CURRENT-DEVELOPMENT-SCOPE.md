@@ -38,17 +38,27 @@ Execute engine calls outside database transactions, with worker heartbeats. Save
 must use their bound results, and source access must cover the full computation group. Keep old
 saved reports unchanged.
 
-Calculation checkpoint: `modification_causal.calculate` now verifies the retained original
-output, executes fixed-cutoff event prefixes as DRY_RUN, and retains execution hashes and
-signed per-event revenue effects using the shared decomposition. Nine native cases cover
-transaction/functional/reporting views, offsetting net-zero changes, an unselected amendment,
-a delivery between modifications and a mismatched original output. A delivery's effect stays
-separate from modifications. This calculation is not yet connected to the register worker,
-report output, cell drill or retained rerun; those are the next implementation work.
+Implemented in the register through Currency amount basis → Sequential causal analysis
+(`currency_basis=causal_analysis`). The worker authorizes retained original computations and
+requires all entities in a computation group to be selected. It calculates outside SQL
+transactions with heartbeats, retains per-step hashes, and rechecks requester access before
+saving. Baseline includes the fixed original posted history; it is not an opening balance.
 
-Necessary completion evidence includes multiple same-period positive
-and negative modifications, transaction/functional/reporting reconciliation and a populated
-public report/cell/rerun workflow after subsequent source changes. This work is not yet complete.
+Transaction, functional and reporting views show baseline, individual selected modifications,
+other events and final period revenue. Signed zero-net changes remain separate; reporting uses
+pinned period-average rates. Approved but unapplied modifications show an explicit unavailable
+row. Separate-contract bookings can show an explicit zero before activation. Amount cells show
+retained calculation evidence. Existing saved reports retain their earlier shape and semantics;
+causal reruns rebuild the saved results without rerunning the engine or reading current amounts.
+Migration 0335 freezes catalogue/schema metadata for the new option.
+
+Necessary verification: nine native causal cases (including USD/GBP effects, reporting,
+offsetting changes and a delivery between modifications); 40 existing variance replay cases;
+two populated database workflows, including public runs/cells in all three views, a later second
+modification and equal-output retained reruns, plus separate-contract booking; ten frontend
+parameter/drill cases; scoped lint/types and catalogue checks. These are bounded examples,
+not proof of every contract/currency combination. Original posted event ownership is no longer
+required for this owner-selected causal-analysis feature.
 
 ### Mixed original sources in revenue attribution
 

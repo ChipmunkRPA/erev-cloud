@@ -20,22 +20,15 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## BBR reporting currency — October 22, 2026
+## Modification causal reporting — October 22, 2026
 
-- Reporting view now values all four measures at retained entity-period average rates after
-  original functional valuation. Signed source pennies match period totals; journal comparison
-  uses the same aggregation basis. Cells disclose rates and original functional amounts.
-- Migration 0334 records scope. Eleven BBR unit cases and a populated USD/GBP public report,
-  cell and retained-rerun workflow pass, with scoped lint/types and metadata parity. No deployment.
-
-## Waterfall calendar columns — October 22, 2026
-
-- New runs align whole reporting intervals by actual dates and retain entity-local period
-  mappings. Same dates combine; differing boundaries remain separate labelled columns, with
-  matching cell sources. Matching layouts and older saved runs preserve their prior shape.
-- Migration 0333 pins IPE metadata. Necessary validation: 14 waterfall unit cases, populated
-  report/retained-rerun workflow, date-label frontend case, scoped lint/types and metadata parity.
-  No partial-period allocation or change to native amounts; no deployment.
+- Owner-selected sequential causal analysis is now exposed in the modification register.
+  Baseline, selected/other event effects and final period revenue reconcile in transaction,
+  functional and reporting views. Cells retain execution evidence; saved reruns preserve results.
+- Migration 0335; nine native causal cases, 40 existing replay cases, two populated public
+  workflows and ten frontend cases pass, with scoped lint/types. No posting-rule change or deployment.
+- BBR reporting currency (0334) and waterfall calendar columns (0333) checkpoints moved to
+  REPORTING-CHECKPOINTS-2026-10-22.md; current scope remains in CURRENT-DEVELOPMENT-SCOPE.
 
 ## Modification amount source drill — October 22, 2026
 

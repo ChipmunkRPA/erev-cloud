@@ -68,9 +68,12 @@ def calculate(
         or len(selected) != len(selected_event_keys)
         or len(indexed) != len(events)
         or not selected <= indexed.keys()
-        or any(events[indexed[key]].event_type != "CONTRACT_AMENDED" for key in selected)
+        or any(
+            events[indexed[key]].event_type not in {"CONTRACT_AMENDED", "CONTRACT_BOOKED"}
+            for key in selected
+        )
     ):
-        raise _refuse("select unique applied amendment events from the retained computation.")
+        raise _refuse("select unique applied modification events from the retained computation.")
     if source.engine_version != ENGINE_VERSION:
         raise _refuse("the retained engine runtime is unavailable.")
     if any(event.recorded_at > source.known_at for event in events):
@@ -79,17 +82,41 @@ def calculate(
     additions = events[first:]
     # Validate classifications before expensive execution. No cutoff is fabricated to
     # satisfy the historical-close replay API: this is one fixed-basis causal scenario.
-    drivers = tuple(driver(event, date.min) for event in additions)
+    drivers = tuple(
+        "NEW_CONTRACT" if event.event_type == "CONTRACT_BOOKED" else driver(event, date.min)
+        for event in additions
+    )
     projection = Projection(
-        source, entity_code, book_code, period_key, currency_view, reporting_basis
+        source,
+        entity_code,
+        book_code,
+        period_key,
+        currency_view,
+        reporting_basis,
+        revenue_only=True,
     )
 
     def project(bundle: InputBundle, output: OutputBundle) -> dict[MeasureKey, Fraction]:
-        return {
+        values = {
             key: amount
             for key, amount in replace(projection, basis=bundle)(output).items()
             if key.measure == "REVENUE"
         }
+        entity = next(e for e in bundle.entities if e.code == entity_code)
+        for contract in bundle.contracts:
+            if contract.contracting_entity_code != entity_code:
+                continue
+            currency = (
+                contract.transaction_currency
+                if currency_view == "transaction"
+                else reporting_basis.currency
+                if reporting_basis is not None
+                else entity.functional_currency
+            )
+            # A complete reproduced book with no revenue is an explicit zero, including
+            # a separate-contract booking that has not yet been activated.
+            values.setdefault(MeasureKey(contract.external_id, currency, "REVENUE"), Fraction(0))
+        return values
 
     def execute(bundle: InputBundle) -> OutputBundle:
         output = engine(bundle)
@@ -101,6 +128,15 @@ def calculate(
     if original.sha256() != source_output_sha256:
         raise _refuse("the original computation does not reproduce its retained output.")
     expected = project(source, original)
+    projection = replace(
+        projection,
+        retained_revenue_subjects=frozenset(
+            row.subject_key
+            for book in original.books
+            if book.book_code == book_code
+            for row in book.obligation_versions
+        ),
+    )
     executions = []
 
     def evaluate(prefix: int, name: str, keys: tuple[str, ...]) -> Metrics:

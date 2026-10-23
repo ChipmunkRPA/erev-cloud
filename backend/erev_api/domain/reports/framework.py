@@ -2438,6 +2438,11 @@ def _export_requester(
         "revenue_from_opening_liability",
     }:
         return report_requester.validation_requester(jc, uow, run)
+    if (
+        str(run["report_code"]) == "modification_register"
+        and report_params(run).parameters.get("currency_basis") == "causal_analysis"
+    ):
+        return report_requester.validation_requester(jc, uow, run)
     stored = run.get("ai_export_access")
     if str(run["report_code"]) in {"period_evidence_pack", "contract_sample_pack"}:
         from erev_api.domain.reports import evidence_catalogue, evidence_catalogue_jobs
@@ -2599,6 +2604,30 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             return book_compute(bundle)
 
         execution_result = book_bridge_replay.calculate(book_prepared, engine=compute_book)
+        jc.heartbeat()
+    if (
+        str(run["report_code"]) == "modification_register"
+        and report_params(run).parameters.get("currency_basis") == "causal_analysis"
+        and report_params(run).binding is None
+    ):
+        from erev_engine import compute as causal_compute
+
+        from erev_api.domain.reports import modification_causal_report
+
+        with jc.unit_of_work() as read_uow:
+            source_run = _lock_run(read_uow.session, run_id)
+            ctx = _export_requester(jc, read_uow, source_run)
+            causal_prepared = modification_causal_report.prepare(
+                read_uow, replace(report_params(source_run), requester=ctx)
+            )
+
+        def compute_causal(bundle: Any) -> Any:
+            jc.heartbeat()
+            return causal_compute(bundle)
+
+        execution_result = modification_causal_report.calculate(
+            causal_prepared, engine=compute_causal
+        )
         jc.heartbeat()
     with jc.unit_of_work() as uow:
         session = uow.session

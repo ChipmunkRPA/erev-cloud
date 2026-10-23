@@ -40,6 +40,10 @@ class Projection:
     period_key: str
     currency_view: Literal["transaction", "functional", "reporting"] = "transaction"
     reporting_basis: Basis | None = None
+    # Counterfactuals may remove an obligation that still has immutable posted history.
+    # Only an authenticated original output may supply these additional identities.
+    retained_revenue_subjects: frozenset[str] = frozenset()
+    revenue_only: bool = False
 
     def __post_init__(self) -> None:
         if self.currency_view not in {"transaction", "functional", "reporting"}:
@@ -103,7 +107,7 @@ class Projection:
         expected_subjects = {
             contract_entity_subject_key(key, self.entity_code): key for key in contracts
         }
-        for row in book.balances:
+        for row in () if self.revenue_only else book.balances:
             if (
                 row.period_key == self.period_key
                 and row.subject_key in expected_subjects
@@ -136,7 +140,7 @@ class Projection:
             raise _refuse("the output obligation identities are duplicated.")
 
         def revenue(subject: str, currency: str, value: int) -> None:
-            if subject not in obligations:
+            if subject not in obligations | self.retained_revenue_subjects:
                 raise _refuse("revenue has no matching output obligation; it cannot be attributed.")
             add(contract_key_from_subject(subject), currency, "REVENUE", value)
 
@@ -169,14 +173,15 @@ class Projection:
                     raise _refuse("a revenue intent must carry nonnegative integer minor units.")
                 currency = line.txn_currency if suffix == "txn" else line.functional_currency
                 revenue(intent.subject_key, currency, value if line.side == "C" else -value)
-        result.update(
-            variance_rpo.project(
-                self.basis,
-                book,
-                entity_code=self.entity_code,
-                period_key=self.period_key,
-                functional=self.currency_view != "transaction",
-                reporting_basis=self.reporting_basis,
+        if not self.revenue_only:
+            result.update(
+                variance_rpo.project(
+                    self.basis,
+                    book,
+                    entity_code=self.entity_code,
+                    period_key=self.period_key,
+                    functional=self.currency_view != "transaction",
+                    reporting_basis=self.reporting_basis,
+                )
             )
-        )
         return result

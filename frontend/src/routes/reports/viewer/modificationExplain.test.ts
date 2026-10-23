@@ -29,6 +29,7 @@ it("opens source details for modification amounts, including native and analytic
         {
           row_key: "modification:MOD-1:O1",
           modification_no: "MOD-1",
+          causal_amount: money,
           tp_change: money,
           catch_up_amount: money,
           tp_fixed: money,
@@ -49,6 +50,7 @@ it("opens source details for modification amounts, including native and analytic
     "catch_up_amount",
     "catch_up_functional_calculation",
     "catch_up_reporting",
+    "causal_amount",
     "tp_change",
     "tp_change_functional_equivalent",
     "tp_fixed",
