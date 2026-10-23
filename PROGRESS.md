@@ -264,11 +264,11 @@ Current outstanding implementation and verification gaps remain in
   types/lint. Combined contracts, foreign-functional and special attribution remain open.
 - Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
 
-## Direct multi-line invoice POB sources — October 23, 2026
+## Shared invoice-line cumulative attribution — October 23, 2026
 
-- Directly attributed invoice lines now carry original source amounts/dates into functional POB
-  evidence. Native and public readers use each line once, including partial opening-period coverage.
-  Each line keeps its actual FX amount; whole-document attribution is not reused for every line.
-- Connected mixed-date/rate, partial-opening and single-line cases plus relevant regressions pass
-  (27 cases), with scoped types/lint. Shared unreferenced lines and special histories remain open.
-- Native functional checkpoint archived. No deployment.
+- Shared/mixed invoice lines now retain increments of original cumulative restricted allocation,
+  conserving document rounding at each billing-date prefix and original per-line FX sources.
+  Negative redistribution is explicitly excluded pending a source-based FX rule.
+- True single-document multi-line, differing-rate, partial-opening and refusal cases pass with
+  relevant regressions (32 cases), scoped types/lint. No posting or balance logic changed.
+- Direct-line checkpoint archived. No deployment.

@@ -482,14 +482,12 @@ class _Emitter:
     def line_nodes(
         self, attribution: Attribution
     ) -> tuple[Mapping[str, Mapping[str, int]], Mapping[str, Mapping[str, str]]]:
-        """Direct multi-line invoice sources; shared-line rounding needs separate evidence."""
+        """Direct lines, or conserving cumulative increments for shared invoice lines."""
         document = attribution.document
-        if (
-            document.kind != INVOICE
-            or len(document.lines) < 2
-            or any(line.obligation_key is None for line in document.lines)
-        ):
+        if document.kind != INVOICE or len(document.lines) < 2:
             return {}, {}
+        if any(line.obligation_key is None for line in document.lines):
+            return self.shared_line_nodes(attribution)
         amounts: dict[str, Mapping[str, int]] = {}
         nodes: dict[str, Mapping[str, str]] = {}
         for line in document.lines:
@@ -529,6 +527,131 @@ class _Emitter:
                 )
                 for subject, amount in shares.items()
             }
+        return amounts, nodes
+
+    def shared_line_nodes(
+        self, attribution: Attribution
+    ) -> tuple[Mapping[str, Mapping[str, int]], Mapping[str, Mapping[str, str]]]:
+        """Keep restricted document rounding at every billing-date prefix.
+
+        Largest remainder is not monotone for all weights. A negative increment needs an
+        explicit FX reattribution rule; it must not be used as a positive invoice weight.
+        """
+        ordered = sorted(
+            attribution.document.lines,
+            key=lambda line: (line.unconditional_date or date.max, line.event.order_key),
+        )
+        prefixes = []
+        prior: Mapping[str, int] = {}
+        for index, line in enumerate(ordered):
+            current = _restricted(self.st, attribution, ordered[: index + 1])
+            signed = current.signed()
+            increment = {
+                key: signed.get(key, 0) - prior.get(key, 0) for key in set(signed) | set(prior)
+            }
+            if any(value < 0 for value in increment.values()):
+                return {}, {}
+            if sum(increment.values()) != line.amount:
+                raise _invariant(
+                    "shared line increment does not conserve its source",
+                    line.event.event_key,
+                    rule="S10-INV-04",
+                )
+            prefixes.append((line, current, increment))
+            prior = signed
+        amounts: dict[str, Mapping[str, int]] = {}
+        nodes: dict[str, Mapping[str, str]] = {}
+        previous_nodes: dict[str, str] = {}
+        for index, (line, current, increment) in enumerate(prefixes):
+            source = line.event.event_key
+            counted = ordered[: index + 1]
+            shared_total = self.tb.node(
+                measure=f"billing_line_shared_total@{source}",
+                subject_key=attribution.document.contract_key,
+                period_key=None,
+                value=current.unreferenced,
+                currency=self.ctx.txn_currency,
+                minor_unit=self.mu,
+                formula_id=ATTRIBUTION_FORMULA,
+                inputs=[
+                    SourceRef(
+                        "contract_event",
+                        item.event.event_key,
+                        {"member": "amount", "value": money.format_money(item.amount, self.mu)},
+                    )
+                    for item in counted
+                    if item.obligation_key is None
+                ],
+                params={"mode": "sum"},
+                narrative_key=_narrative(ATTRIBUTION_FORMULA),
+            )
+            amounts[source] = {key: value for key, value in increment.items() if value}
+            source_nodes: dict[str, str] = {}
+            nodes[source] = source_nodes
+            for subject, total in sorted(current.signed().items()):
+                ob = next(ob for ob in self.st.obligations if ob.subject_key == subject)
+                inputs: list[str | SourceRef] = [
+                    SourceRef(
+                        "contract_event",
+                        item.event.event_key,
+                        {"member": "amount", "value": money.format_money(item.amount, self.mu)},
+                    )
+                    for item in counted
+                    if _names_component(ob, item.obligation_key)
+                ]
+                if subject in current.shares:
+                    inputs.append(
+                        self.tb.node(
+                            measure=f"billing_line_shared@{source}",
+                            subject_key=subject,
+                            period_key=None,
+                            value=current.shares[subject],
+                            currency=self.ctx.txn_currency,
+                            minor_unit=self.mu,
+                            formula_id=ATTRIBUTION_FORMULA,
+                            inputs=[shared_total],
+                            params={
+                                "mode": "apportion",
+                                "key": subject,
+                                "keys": _SEPARATOR.join(current.keys),
+                                "weights": _SEPARATOR.join(
+                                    rational_param(w) for w in current.weights
+                                ),
+                            },
+                            narrative_key=_narrative(ATTRIBUTION_FORMULA),
+                        )
+                    )
+                cumulative = self.tb.node(
+                    measure=f"billing_line_cumulative@{source}",
+                    subject_key=subject,
+                    period_key=None,
+                    value=total,
+                    currency=self.ctx.txn_currency,
+                    minor_unit=self.mu,
+                    formula_id=ATTRIBUTION_FORMULA,
+                    inputs=inputs,
+                    params={"mode": "sum"},
+                    narrative_key=_narrative(ATTRIBUTION_FORMULA),
+                )
+                old = previous_nodes.get(subject)
+                if increment.get(subject, 0):
+                    source_nodes[subject] = self.tb.node(
+                        measure=f"billing_line_attributed@{source}",
+                        subject_key=subject,
+                        period_key=None,
+                        value=increment[subject],
+                        currency=self.ctx.txn_currency,
+                        minor_unit=self.mu,
+                        formula_id="bal.member_sum.v1",
+                        inputs=[cumulative] + ([] if old is None else [old]),
+                        params={
+                            "signs": "+" if old is None else "+-",
+                            "document_key": attribution.document.key,
+                            "as_of": (line.unconditional_date or date.max).isoformat(),
+                        },
+                        narrative_key="bal.member_sum",
+                    )
+                previous_nodes[subject] = cumulative
         return amounts, nodes
 
     def _restricted_share(self, restricted: Attribution, counted: Sequence[Line], key: str) -> str:

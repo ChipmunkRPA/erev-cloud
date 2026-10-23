@@ -408,3 +408,12 @@
 - Connected S09–S15 case plus 12 relevant cases and scoped lint/types pass. Special attribution,
   partial billing and frozen POB opening histories still need their remaining sources/evidence.
 - Reporting-currency checkpoint archived. No deployment.
+
+## Direct multi-line invoice POB sources — October 23, 2026
+
+- Directly attributed invoice lines now carry original source amounts/dates into functional POB
+  evidence. Native and public readers use each line once, including partial opening-period coverage.
+  Each line keeps its actual FX amount; whole-document attribution is not reused for every line.
+- Connected mixed-date/rate, partial-opening and single-line cases plus relevant regressions pass
+  (27 cases), with scoped types/lint. Shared unreferenced lines and special histories remain open.
+- Native functional checkpoint archived. No deployment.

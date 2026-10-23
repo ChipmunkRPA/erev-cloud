@@ -1163,3 +1163,160 @@ def test_native_foreign_pob_classification_uses_original_billing_and_revenue(sec
         3300 if second_date is None else 3450 if second_date.month == 1 else 1650
     )
     assert opening_revenue == 0
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("second_date", [date(2026, 1, 15), date(2026, 2, 15)])
+def test_shared_invoice_line_rounding_conserves_cumulative_sources(shared, second_date):
+    from types import SimpleNamespace
+    from erev_api.domain.reports.opening_pob_functional_nodes import read
+    from erev_engine.bundle import FxRateInput
+    from erev_engine.stages import s12_fx_entities
+    from erev_engine.stages.state import RateIndex
+    from support import bundles
+
+    ctx = dataclasses.replace(
+        book_context(entity(months=3), currency="EUR"),
+        currencies=bundles.currencies("EUR", "USD"),
+        horizon={bundles.ENTITY_CODE: "FY2026-P01"},
+    )
+    ctx = dataclasses.replace(
+        ctx,
+        policies=PolicyResolver(
+            tuple(
+                dataclasses.replace(p, value="ENGINE")
+                if p.code == "billing.posting"
+                else dataclasses.replace(p, value="UNCONDITIONAL_INVOICES_ONLY")
+                if p.code == "balance.position_invoice_basis"
+                else p
+                for p in ctx.policies.all()
+            )
+        ),
+    )
+    dates = (date(2026, 1, 1), second_date)
+    events = [
+        event_view(
+            CONTRACT_KEY,
+            index + 2,
+            "BILLING_RECORDED",
+            dates[0],
+            {
+                "invoice_number": "SHARED-PENNIES",
+                "line_external_id": f"LINE-{index}",
+                "amount": Decimal("0.01"),
+                "issue_date": dates[0],
+                "is_cancellable": index == 1,
+                **({} if shared else {"obligation_key": "P1"}),
+            },
+        )
+        for index, when in enumerate(dates)
+    ]
+    events.append(
+        event_view(
+            CONTRACT_KEY,
+            4,
+            "BILLING_RECORDED",
+            dates[1],
+            {
+                "invoice_number": "SHARED-PENNIES",
+                "line_external_id": "LINE-1",
+                "amount": Decimal("0.01"),
+                "issue_date": dates[0],
+                "is_cancellable": False,
+                **({} if shared else {"obligation_key": "P1"}),
+            },
+        )
+    )
+    st = allocated_state(
+        [_service(key, "1.00", date(2026, 2, 1), date(2026, 3, 31)) for key in ("P1", "P2")],
+        events=events,
+    )
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    balances, _ = _run(ctx, st, tb=tb)
+    (document,) = balances.documents
+    assert document.line_attribution == {
+        events[0].event_key: {O1: 1},
+        events[1].event_key: {O2 if shared else O1: 1},
+    }
+    costs = s11_costs_loss.run(ctx, balances, tb)
+    rates = RateIndex(
+        tuple(
+            FxRateInput(str(i), "TEST@v1", "spot", "EUR", "USD", day, None, Decimal(i + 1))
+            for i, day in enumerate(dates)
+        )
+    )
+    rates = RateIndex(
+        (
+            *rates.rates,
+            FxRateInput(
+                "CLOSE",
+                "TEST@v1",
+                "closing",
+                "EUR",
+                "USD",
+                date(2026, 1, 31),
+                "FY2026-P01",
+                Decimal(2),
+            ),
+        )
+    )
+    fx = s12_fx_entities.run(ctx, s13_books.costs_view(ctx, costs), tb, rates=rates)
+    assert fx.findings == ()
+    trace = tb.build(root_measures={})
+    assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+    nodes = {node.id: node for node in trace.nodes}
+    second_admitted = second_date.month == 1
+    expected_amounts = (
+        (O1, "0.01" if shared or not second_admitted else "0.03"),
+        (O2, "0.02" if shared and second_admitted else "0.00"),
+    )
+    for subject, expected in expected_amounts:
+        billing, revenue, _ = read(
+            nodes,
+            subject=subject,
+            period=SimpleNamespace(key="FY2026-P01", end=date(2026, 1, 31)),
+            txn_currency="EUR",
+            currency="USD",
+            billed=Decimal("0.01")
+            * (
+                (1 if subject == O1 else 0)
+                + (1 if second_admitted and subject == (O2 if shared else O1) else 0)
+            ),
+            revenue=Decimal(0),
+        )
+        assert billing == Decimal(expected)
+        assert revenue == 0
+    assert sum(source.amount_functional for source in fx.billing_attribution_sources) == (
+        3 if second_admitted else 1
+    )
+
+
+def test_shared_line_rounding_does_not_invent_fx_for_negative_redistribution():
+    # Largest remainder can move a previously assigned cent when the total grows 25 -> 26.
+    events = [
+        event_view(
+            CONTRACT_KEY,
+            index + 2,
+            "BILLING_RECORDED",
+            INCEPTION,
+            {
+                "invoice_number": "NONMONOTONE",
+                "line_external_id": f"LINE-{index}",
+                "amount": Decimal(amount),
+                "issue_date": INCEPTION,
+            },
+        )
+        for index, amount in enumerate(("0.25", "0.01"))
+    ]
+    st = allocated_state(
+        [
+            _service(f"P{index}", amount, date(2026, 2, 1), date(2026, 3, 31))
+            for index, amount in enumerate(("15", "15", "9", "5", "5", "2"), start=1)
+        ],
+        events=events,
+    )
+    balances, trace = _run(CTX, st)
+    (document,) = balances.documents
+    assert document.line_attribution == {}
+    assert document.line_attribution_nodes == {}
+    assert not any(node.id.startswith("billing_line_attributed@") for node in trace.nodes)

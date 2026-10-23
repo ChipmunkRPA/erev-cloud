@@ -1226,3 +1226,32 @@ rounding cannot stand in for the document's cumulative restricted allocation. Th
 explicit conserving source bridge. Partial credit memo populations, agent/cross-entity, acquired
 openings and original frozen POB histories retain their existing limitations. This checkpoint
 adds no deployment or database migration.
+
+## October 23 shared invoice-line cumulative attribution
+
+Shared and mixed invoice lines now receive source amounts from differences between consecutive
+restricted document allocations, ordered by the original unconditional date and event order.
+Each prefix uses S10's existing weights, keys and largest-remainder rule. Thus two one-cent
+unreferenced lines allocated equally give the first obligation one cent from the first line and
+the second one cent from the second line; independent line rounding would incorrectly assign
+both to the first obligation. Replayable cumulative/apportionment/difference nodes preserve the
+original event amounts. The existing S12 bridge consumes those line increments and each line's
+original functional amount. No posting targets, liability movements or original billing measures
+are changed.
+
+This only admits nonnegative increments conserving each positive invoice line. Largest remainder
+can reduce an earlier obligation's allocation when the total increases. In that case no fabricated
+positive-weight FX attribution is emitted; complete-source consumers still refuse that missing
+population. An explicit source-based rule is needed before that redistribution can be supported.
+
+Necessary evidence: four connected S09/S10/S11/S12/public-source-reader cases use a single grouped
+invoice with two lines, testing direct and shared attribution and a cancellable second line that
+becomes unconditional in January or February. The first one-cent line uses rate 1 and the second
+rate 2. Shared January evidence is USD 0.01 and USD 0.02 across obligations; when the second line
+enters only in February, January admits just USD 0.01. Each selected transaction quantity is
+checked and every trace node re-evaluates. Earlier same-number/different-event-date samples were
+separate engine documents, not proof of a single grouped invoice; this new coverage corrects that
+verification limitation. A 25-to-26-cent largest-remainder redistribution example confirms that
+negative increments do not receive invented FX sources. The focused suite passes 32 cases and
+scoped type/lint checks pass. Partial credit memos, source-based negative redistribution and the
+remaining agent/cross-entity/acquired/frozen-history paths remain unfinished. No deployment.
