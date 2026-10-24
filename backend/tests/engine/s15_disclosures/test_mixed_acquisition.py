@@ -173,7 +173,9 @@ def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consum
     )
     prior = compute(replace(value, evidence_revision=25)).books[0]
     current = compute(replace(value, evidence_revision=26)).books[0]
-    retained = compute(replace(value, evidence_revision=27)).books[0]
+    retained_bundle = replace(value, evidence_revision=27)
+    retained_result = compute(retained_bundle)
+    retained = retained_result.books[0]
     assert (
         replace(
             retained,
@@ -183,6 +185,68 @@ def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consum
         )
         == current
     )
+    import json
+    from datetime import timedelta
+    from uuid import UUID
+
+    from erev_api.domain.reports.acquisition_native import read
+    from erev_api.domain.reports.tie_outs import PeriodRef
+    from erev_engine.canonical import canonical_bytes
+
+    encoded = json.loads(canonical_bytes(retained_result))
+    for native_row in retained.disclosure_rollforwards:
+        period = PeriodRef(
+            UUID(int=1),
+            native_row.period_key,
+            native_row.period_key,
+            2025,
+            12,
+            4,
+            native_row.opening_date + timedelta(days=1),
+            native_row.closing_date,
+        )
+        selected = read(
+            retained_bundle,
+            encoded,
+            book=retained.book_code,
+            entity=native_row.entity,
+            period=period,
+            functional=native_row.view == "FUNCTIONAL",
+        )
+        assert selected is not None
+        assert selected["members"] == sorted(value.group.member_contract_keys)
+        assert selected["sources"] == json.loads(canonical_bytes(native_row.acquisition_sources))
+        assert selected["amounts"] == {
+            role: lines["BUSINESS_COMBINATIONS"] for role, lines in native_row.lines.items()
+        }
+    if consumption == "FIFO_WITHIN_CONTRACT" and invoice_day == w.CUTOVER and billed == "240000":
+        from copy import deepcopy
+
+        from erev_api.problems import Problem
+
+        functional_row = next(r for r in retained.disclosure_rollforwards if r.view == "FUNCTIONAL")
+        for corruption in ("missing_source", "trace", "currency"):
+            changed = deepcopy(encoded)
+            raw_row = next(
+                r
+                for r in changed["books"][0]["disclosure_rollforwards"]
+                if r["view"] == "FUNCTIONAL"
+            )
+            if corruption == "missing_source":
+                raw_row["acquisition_sources"].pop()
+            elif corruption == "trace":
+                raw_row["acquisition_sources"][0]["trace_node_id"] = "missing-original-node"
+            else:
+                raw_row["currency"] = "USD"
+            with pytest.raises(Problem):
+                read(
+                    retained_bundle,
+                    changed,
+                    book=retained.book_code,
+                    entity=functional_row.entity,
+                    period=period,
+                    functional=True,
+                )
     nodes = {node.id for node in retained.trace.nodes}
     for evidence_row in retained.disclosure_rollforwards:
         sources = evidence_row.acquisition_sources

@@ -367,3 +367,21 @@ is the signed path consumer needed by revision 27 native acquisition evidence. T
 reader still uses its existing guarded legacy path: member ownership and group-to-member transfer
 evidence must be connected before admitting mixed-group sources. No public completeness claim,
 no deployment.
+
+
+## October 24: original native acquisition reader
+
+`acquisition_native.read` reads revision-27 group contributions from original input/output objects
+after the caller authenticates the retained file hashes and version binding. It verifies computation
+identity, book/entity, period boundaries, currency/minor unit and group identity. Transaction sources
+resolve to admitted nonvoided acquisition events and original member subjects; foreign sources
+resolve to actual FX movements and trace nodes, with matching rates, currency and signed amounts.
+Every role must reconcile to its original BUSINESS_COMBINATIONS caption. Historical revisions and
+computations without that exact period snapshot remain unavailable; the reader never recomputes them.
+
+Eight native mixed-group scenarios pass through serialized original output into this reader in both
+views. Missing contributions, replaced trace references and currency mismatches are refused. Scoped
+lint/types pass. The result retains the complete member set and original source sequence; it does
+not invent member allocations. Public integration awaits the presentation choice for group net
+changes that do not have unique member ownership (group-level net row with full sources versus an
+explicit new member allocation rule). The existing public mixed-group guard remains. No deployment.
