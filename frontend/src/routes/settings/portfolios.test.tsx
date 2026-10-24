@@ -165,41 +165,48 @@ it("shows portfolio and member history to a reader without editing controls", as
   expect(screen.queryByRole("button", { name: "Remove member" })).toBeNull();
 });
 
-it("creates a shared definition with the portfolio version and explains supported application", async () => {
-  serve();
-  let body: unknown;
-  let tag: string | null = null;
-  server.use(
-    http.post(apiUrl("/api/v1/portfolios/p1/estimates"), async ({ request }) => {
-      body = await request.json();
-      tag = request.headers.get("If-Match");
-      return HttpResponse.json({ id: "e1" }, { status: 201 });
-    }),
-  );
-  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
-  fireEvent.change(await screen.findByLabelText(/^Estimate code/), {
-    target: { value: "RETURNS" },
-  });
-  fireEvent.change(screen.getByLabelText("Target obligation keys"), {
-    target: { value: "GOODS\nSUPPORT" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Create estimate definition" }));
-  await waitFor(() =>
-    expect(body).toEqual({
-      element_code: "RETURNS",
-      estimate_kind: "RETURN_RATE",
-      method: "RATE",
-      target_obligation_keys: ["GOODS", "SUPPORT"],
-    }),
-  );
-  expect(tag).toBe('"r3"');
-  await waitFor(() =>
-    expect((screen.getByLabelText(/^Estimate code/) as HTMLInputElement).value).toBe(""),
-  );
-  expect(
-    screen.getByText(/Shared return-rate versions can be submitted for independent approval/),
-  ).toBeTruthy();
-});
+it.each(["RETURN_RATE", "BREAKAGE"])(
+  "creates a shared %s definition with selected targets",
+  async (kind) => {
+    serve();
+    let body: unknown;
+    let tag: string | null = null;
+    server.use(
+      http.post(apiUrl("/api/v1/portfolios/p1/estimates"), async ({ request }) => {
+        body = await request.json();
+        tag = request.headers.get("If-Match");
+        return HttpResponse.json({ id: "e1" }, { status: 201 });
+      }),
+    );
+    renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+    fireEvent.change(await screen.findByLabelText(/^Estimate code/), {
+      target: { value: "RETURNS" },
+    });
+    if (kind === "BREAKAGE") {
+      fireEvent.click(screen.getByRole("combobox", { name: /Estimate kind/ }));
+      fireEvent.mouseDown(screen.getByRole("option", { name: "Breakage" }));
+    }
+    fireEvent.change(screen.getByLabelText("Target obligation keys"), {
+      target: { value: "GOODS\nSUPPORT" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create estimate definition" }));
+    await waitFor(() =>
+      expect(body).toEqual({
+        element_code: "RETURNS",
+        estimate_kind: kind,
+        method: "RATE",
+        target_obligation_keys: ["GOODS", "SUPPORT"],
+      }),
+    );
+    expect(tag).toBe('"r3"');
+    await waitFor(() =>
+      expect((screen.getByLabelText(/^Estimate code/) as HTMLInputElement).value).toBe(""),
+    );
+    expect(
+      screen.getByText(/Shared return-rate versions can be submitted for independent approval/),
+    ).toBeTruthy();
+  },
+);
 
 it("creates and edits draft values, retains a refused edit, and discards without losing history", async () => {
   serve();

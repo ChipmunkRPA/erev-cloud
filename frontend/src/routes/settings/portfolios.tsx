@@ -548,7 +548,7 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
                 element_code: code.trim(),
                 estimate_kind: kind,
                 method,
-                ...(kind === "RETURN_RATE" && targets.trim()
+                ...(targets.trim()
                   ? {
                       target_obligation_keys: targets
                         .split("\n")
@@ -593,22 +593,22 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
               />
             )}
           </Field>
-          {kind === "RETURN_RATE" ? (
-            <>
-              <Field name="portfolio-estimate-targets" label={label("targets")}>
-                {(control) => (
-                  <textarea
-                    {...control}
-                    className={controlClass(false, true)}
-                    value={targets}
-                    disabled={command.pending}
-                    onChange={(e) => setTargets(e.target.value)}
-                  />
-                )}
-              </Field>
-              <p className="text-body-sm text-fg-2">{label("targetsHelp")}</p>
-            </>
-          ) : null}
+          <>
+            <Field name="portfolio-estimate-targets" label={label("targets")}>
+              {(control) => (
+                <textarea
+                  {...control}
+                  className={controlClass(false, true)}
+                  value={targets}
+                  disabled={command.pending}
+                  onChange={(e) => setTargets(e.target.value)}
+                />
+              )}
+            </Field>
+            <p className="text-body-sm text-fg-2">
+              {label(kind === "BREAKAGE" ? "breakageTargetsHelp" : "targetsHelp")}
+            </p>
+          </>
           <Field name="portfolio-estimate-method" label={label("estimateMethod")} required>
             {(control) => (
               <Select

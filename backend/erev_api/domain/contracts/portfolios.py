@@ -274,10 +274,6 @@ def _shared_targets(session: Session, portfolio_id: UUID, body: PortfolioEstimat
     keys = body.target_obligation_keys
     if not keys:
         return []
-    if body.estimate_kind != "RETURN_RATE":
-        raise Problem(
-            "validation-failed", "Explicit shared targets currently apply to return estimates."
-        )
     if len(set(keys)) != len(keys):
         raise Problem("validation-failed", "Enter each target obligation key once.")
     population = session.execute(members(portfolio_id)).mappings().all()

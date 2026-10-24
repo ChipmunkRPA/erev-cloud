@@ -7,13 +7,20 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+
 from erev_api.domain.contracts import portfolio_preview as service
 from erev_api.problems import Problem
 from erev_engine.bundle import FxRateInput
 
 
 def setup_preview(
-    monkeypatch, *, dirty=False, currency="USD", identities=(("A", "POINTS"), ("B", "POINTS"))
+    monkeypatch,
+    *,
+    dirty=False,
+    currency="USD",
+    identities=(("A", "POINTS"), ("B", "POINTS")),
+    targets=(),
+    extra=False,
 ):
     portfolio, estimate, version = uuid4(), uuid4(), uuid4()
     members = []
@@ -42,6 +49,15 @@ def setup_preview(
                 ],
             ]
         )
+        if extra:
+            results[-1].append(
+                {
+                    **results[-1][0],
+                    "obligation_id": uuid4(),
+                    "obligation_key": "OTHER",
+                    "original_ssp_selected": Decimal(900),
+                }
+            )
         computed.append({"id": cv, "contract_computation_id": computation})
     session = Mock()
 
@@ -57,7 +73,13 @@ def setup_preview(
     monkeypatch.setattr(
         service.portfolios,
         "get_estimate_definition",
-        Mock(return_value=SimpleNamespace(estimate_kind="BREAKAGE")),
+        Mock(
+            return_value=SimpleNamespace(
+                estimate_kind="BREAKAGE",
+                target_obligation_keys=list(targets),
+                allocation_target="OBLIGATIONS" if targets else "CONTRACT",
+            )
+        ),
     )
     monkeypatch.setattr(
         service.portfolio_estimate_versions,
@@ -184,3 +206,41 @@ def test_delimiters_preserve_independent_original_allocation_sources(monkeypatch
         identities[1]: "6",
     }
     assert len({row.contract_version_id for row in value.shares}) == 2
+
+
+def test_selected_targets_exclude_other_eligible_obligations(monkeypatch):
+    value = service.preview(*setup_preview(monkeypatch, targets=("POINTS",), extra=True))
+    assert [
+        (s.contract_external_id, s.obligation_key, s.breakage_quantity) for s in value.shares
+    ] == [("A", "POINTS", "3"), ("B", "POINTS", "6")]
+    assert value.allocated_total == "9"
+
+
+def test_selected_target_missing_from_one_member_refuses_preview(monkeypatch):
+    args = setup_preview(
+        monkeypatch, targets=("POINTS",), identities=(("A", "POINTS"), ("B", "OTHER"))
+    )
+    with pytest.raises(Problem, match="Every member must retain every selected"):
+        service.preview(*args)
+
+
+def test_breakage_definition_resolves_common_targets_for_each_member():
+    from erev_api.schemas.portfolios import PortfolioEstimateIn
+
+    a, b, oa, ob = uuid4(), uuid4(), uuid4(), uuid4()
+    session = Mock()
+    population = Mock()
+    population.mappings.return_value.all.return_value = [{"contract_id": a}, {"contract_id": b}]
+    targets = Mock()
+    targets.all.return_value = [
+        SimpleNamespace(id=oa, contract_id=a, obligation_key="POINTS"),
+        SimpleNamespace(id=ob, contract_id=b, obligation_key="POINTS"),
+    ]
+    session.execute.side_effect = [population, targets]
+    body = PortfolioEstimateIn(
+        element_code="BREAKAGE",
+        estimate_kind="BREAKAGE",
+        method="RATE",
+        target_obligation_keys=["POINTS"],
+    )
+    assert service.portfolios._shared_targets(session, uuid4(), body) == sorted([oa, ob])

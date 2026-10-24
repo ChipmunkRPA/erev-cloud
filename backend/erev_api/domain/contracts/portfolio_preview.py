@@ -11,15 +11,14 @@ from erev_api.db.tables import combination_group, contract, material_right, obli
 from erev_api.domain.contracts import (
     bundles,
     portfolio_allocation,
-    portfolio_ssp_fx,
     portfolio_estimate_versions,
+    portfolio_ssp_fx,
     portfolios,
     queries,
 )
-from erev_engine.stages.s01_canonicalize import obligation_subject_key
-
 from erev_api.problems import Problem
 from erev_api.schemas.portfolios import PortfolioBreakagePreviewOut, PortfolioBreakageShareOut
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
 
 def preview(
@@ -36,6 +35,9 @@ def preview(
         raise Problem("validation-failed", "SSP quantity allocation applies to shared breakage.")
     if version.currency is None:
         raise Problem("validation-failed", "The shared estimate needs an explicit currency.")
+    target_keys = set(definition.target_obligation_keys)
+    if str(definition.allocation_target) == "OBLIGATIONS" and not target_keys:
+        raise Problem("validation-failed", "The shared breakage target keys are unavailable.")
     total = version.parameters.get("portfolio_total_breakage_quantity")
     if total is None:
         raise Problem("validation-failed", "Enter the portfolio total breakage quantity first.")
@@ -97,6 +99,14 @@ def preview(
             if str(row["recognition_method"]) == "REDEMPTION_PATTERN"
             or row["obligation_id"] in loyalty
         ]
+        if target_keys:
+            eligible = [row for row in eligible if row["obligation_key"] in target_keys]
+            if {row["obligation_key"] for row in eligible} != target_keys:
+                raise Problem(
+                    "validation-failed",
+                    "Every member must retain every selected breakage target as an "
+                    "in-scope redemption or loyalty obligation. Recompute or revise the targets.",
+                )
         if not eligible:
             raise Problem(
                 "validation-failed",
