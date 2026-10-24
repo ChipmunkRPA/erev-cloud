@@ -33,8 +33,12 @@ from erev_engine import dates, money, progress, usage
 from erev_engine.enums import Distinctness
 from erev_engine.errors import EngineError
 from erev_engine.formulas import periods_param, rational_param
-from erev_engine.stages.s09_recognition import eac_version_at, input_progress, input_target
-from erev_engine.stages.s09_recognition import progress_events
+from erev_engine.stages.s09_recognition import (
+    eac_version_at,
+    input_progress,
+    input_target,
+    progress_events,
+)
 from erev_engine.stages.state import (
     AllocatedState,
     AllocationSegment,
@@ -209,11 +213,17 @@ def measure(
             point, delivered_cum=counts.counted, returned_cum=counts.returned
         )
     delivered = point.delivered_cum - point.returned_cum
-    if seg.progress_measure in COST_MEASURES and seg.cause != SegmentCause.TERMINATION:
+    if (
+        seg.progress_measure in COST_MEASURES
+        or (ctx.cost_recovery_boundaries and seg.progress_measure == "COST_RECOVERY")
+    ) and seg.cause != SegmentCause.TERMINATION:
         # ENC-5: the stage 09 target of S09-R-14 to S09-R-16, uninstalled materials included, so
         # the pool, the class D base and the catch-up start from the revenue stage 09 recognised
         # (S06-R-17; S06-INV-02); f keeps the margin-bearing definition of S09-R-14.
-        _eac(st, ob, seg, ev, seg.progress_measure, eac_before=eac_before)
+        # Cost recovery deliberately works without an EAC. Stage 09 selects its
+        # cost cap or the first approved EAC using the same original event position.
+        if seg.progress_measure in COST_MEASURES:
+            _eac(st, ob, seg, ev, seg.progress_measure, eac_before=eac_before)
         fraction, exact, posted, complete = input_target(
             ctx, st, ob, seg, ev.effective_date, event=ev, inclusive=not eac_before
         )

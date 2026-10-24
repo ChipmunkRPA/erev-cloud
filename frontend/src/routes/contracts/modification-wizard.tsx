@@ -298,6 +298,7 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
                 "POINT_IN_TIME",
                 "TIME_ELAPSED",
                 "COST_TO_COST",
+                "COST_RECOVERY",
                 "LABOUR_HOURS",
               ].includes(item.recognition_method) &&
               (item.combined_component_keys?.length ?? 0) > 0,

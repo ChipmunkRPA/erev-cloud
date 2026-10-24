@@ -286,18 +286,34 @@ def test_time_term_continuation_preserves_prior_period_and_reprices_remaining_se
         compute(replace(value, evidence_revision=30))
 
 
-@pytest.mark.parametrize("method", ["COST_TO_COST", "LABOUR_HOURS"])
+@pytest.mark.parametrize(
+    "method,has_eac",
+    [
+        ("COST_TO_COST", True),
+        ("LABOUR_HOURS", True),
+        ("COST_RECOVERY", True),
+        ("COST_RECOVERY", False),
+    ],
+)
 @pytest.mark.parametrize("treatment", ["PROSPECTIVE", "CUMULATIVE_CATCH_UP"])
 def test_input_term_continuation_preserves_progress_and_consumes_later_original_inputs(
-    method, treatment
+    method, has_eac, treatment
 ):
     from tests.engine.s03_pob_builder.test_combined_eac_scope import scenario
     from tests.engine.s03_pob_builder.test_combined_hours import hours
 
     value = (
         scenario()
-        if method == "COST_TO_COST"
+        if method != "LABOUR_HOURS"
         else hours([("SERVICE", "100", "MEMBERS"), ("LEASE", "200", "MEMBERS")])
+    )
+    value = replace(
+        value,
+        pob_template_versions=tuple(
+            replace(t, recognition_method=method) for t in value.pob_template_versions
+        ),
+        estimate_versions=value.estimate_versions if has_eac else (),
+        events=tuple(e for e in value.events if has_eac or e.event_type != "ESTIMATE_CHANGED"),
     )
     original_output = compute(value).books[0]
     contract = value.contracts[0]
@@ -327,22 +343,22 @@ def test_input_term_continuation_preserves_progress_and_consumes_later_original_
     )
     value = replace(
         value,
-        evidence_revision=32,
+        evidence_revision=33,
         contracts=(replace(contract, modifications=(mod,)),),
         events=(*value.events, event),
     )
     before_later = compute(value).books[0]
-    assert before_later.contract_version.columns["revenue_cum"] == 300_000
+    assert before_later.contract_version.columns["revenue_cum"] == (300_000 if has_eac else 30_000)
     later = bundles.event(
         CONTRACT,
         11,
-        "COST_INCURRED" if method == "COST_TO_COST" else "PROGRESS_RECORDED",
+        "COST_INCURRED" if method != "LABOUR_HOURS" else "PROGRESS_RECORDED",
         date(2026, 2, 28),
         {
             "obligation_key": "LEASE",
             **(
                 {"purpose": "PROGRESS_INPUT", "amount": "100"}
-                if method == "COST_TO_COST"
+                if method != "LABOUR_HOURS"
                 else {
                     "measure": "LABOUR_HOURS",
                     "hours_to_date": "300",
@@ -354,7 +370,7 @@ def test_input_term_continuation_preserves_progress_and_consumes_later_original_
         obligation_keys=["LEASE"],
     )
     after = compute(replace(value, events=(*value.events, later))).books[0]
-    assert after.contract_version.columns["revenue_cum"] == 400_000
+    assert after.contract_version.columns["revenue_cum"] == (400_000 if has_eac else 40_000)
 
     def january(book):
         return [
@@ -367,5 +383,22 @@ def test_input_term_continuation_preserves_progress_and_consumes_later_original_
     assert january(after) == january(original_output)
     assert after.obligation_versions[0].columns["end_date"] == date(2026, 6, 30)
     assert reevaluate(after.trace) == {n.id: n.value for n in after.trace.nodes}
+    if not has_eac:
+        excess = bundles.event(
+            CONTRACT,
+            12,
+            "COST_INCURRED",
+            date(2026, 3, 1),
+            {
+                "obligation_key": "LEASE",
+                "purpose": "PROGRESS_INPUT",
+                "amount": "10000",
+            },
+            obligation_keys=["LEASE"],
+        )
+        capped = compute(replace(value, events=(*value.events, later, excess))).books[0]
+        assert capped.contract_version.columns["revenue_cum"] == 1_000_000
+        assert january(capped) == january(original_output)
+        assert reevaluate(capped.trace) == {n.id: n.value for n in capped.trace.nodes}
     with pytest.raises(ValueError, match="original unit measure"):
-        compute(replace(value, evidence_revision=31))
+        compute(replace(value, evidence_revision=32 if method == "COST_RECOVERY" else 31))

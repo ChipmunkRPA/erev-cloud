@@ -1576,11 +1576,13 @@ def test_combined_original_termination_public_workflow(
     assert replay["result"]["output_sha256_equal"] is True
 
 
-@pytest.mark.parametrize("mode", ["quantity", "unit_term", "time_term", "cost_term", "hours_term"])
+@pytest.mark.parametrize(
+    "mode", ["quantity", "unit_term", "time_term", "cost_term", "hours_term", "recovery_term"]
+)
 def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files, mode):
     term_change = mode != "quantity"
     time_terms = mode == "time_term"
-    input_terms = mode in {"cost_term", "hours_term"}
+    input_terms = mode in {"cost_term", "hours_term", "recovery_term"}
     from support.modifications import confirm_answers
     from support.worlds import estimate_version_approved, evidence_file, run_now
 
@@ -1595,6 +1597,7 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         nonlease_predominates=True,
         delivered_units=not (time_terms or input_terms),
         cost_to_cost=mode == "cost_term",
+        cost_recovery=mode == "recovery_term",
         labour_hours=mode == "hours_term",
     )
     world = lease.report
@@ -1626,31 +1629,34 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         accepted = approve(app, delivered.json()["approval_request_id"], world.priya)
         assert accepted.status_code == 200, accepted.text
     if input_terms:
-        element = post(
-            app,
-            f"/api/v1/contracts/{lease.contract_id}/estimates",
-            world.maya,
-            {
-                "estimate_kind": "EAC",
-                "element_code": "TERM-EAC",
-                "method": "COST_BUILDUP",
-                "obligation_key": "L2-SERVICE",
-                "allocation_target": "CONTRACT",
-            },
-        )
-        assert element.status_code == 201, element.text
-        estimate_version_approved(
-            app,
-            world.maya,
-            world.priya,
-            element.json()["id"],
-            {
-                "effective_date": "2026-09-01",
-                ("expected_quantity" if mode == "hours_term" else "expected_total_amount"): "1000",
-                "parameters": {"eac_scope": "COMBINATION"},
-                "rationale": "Complete combined estimate before the common term change.",
-            },
-        )
+        if mode != "recovery_term":
+            element = post(
+                app,
+                f"/api/v1/contracts/{lease.contract_id}/estimates",
+                world.maya,
+                {
+                    "estimate_kind": "EAC",
+                    "element_code": "TERM-EAC",
+                    "method": "COST_BUILDUP",
+                    "obligation_key": "L2-SERVICE",
+                    "allocation_target": "CONTRACT",
+                },
+            )
+            assert element.status_code == 201, element.text
+            estimate_version_approved(
+                app,
+                world.maya,
+                world.priya,
+                element.json()["id"],
+                {
+                    "effective_date": "2026-09-01",
+                    (
+                        "expected_quantity" if mode == "hours_term" else "expected_total_amount"
+                    ): "1000",
+                    "parameters": {"eac_scope": "COMBINATION"},
+                    "rationale": "Complete combined estimate before the common term change.",
+                },
+            )
         head = world.place.scalar(
             select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
         )
@@ -1728,7 +1734,9 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     path = f"/api/v1/modifications/{created.json()['id']}"
     classified = confirm_answers(app, created.json()["id"], world.maya)
     assert classified["proposed_treatments"] == {
-        "L2-SERVICE": "CUMULATIVE_CATCH_UP" if input_terms else "PROSPECTIVE"
+        "L2-SERVICE": "CUMULATIVE_CATCH_UP"
+        if mode in {"cost_term", "hours_term"}
+        else "PROSPECTIVE"
     }
     assert classified["questionnaire"]["combined_reassessment"]["L2-SERVICE"] == assessment
     queued = post(app, path + "/preview", world.maya, {})
@@ -1761,7 +1769,13 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     # MONTHLY_EVEN counts eight completed original months before September 10.
     # Remaining 84,000 spreads over 21.7 months; September earns 0.7 / 21.7.
     assert rows[0]["revenue_cum"] == usd(
-        "32400.00" if input_terms else "26709.68" if time_terms else "27000.00"
+        "300.00"
+        if mode == "recovery_term"
+        else "32400.00"
+        if input_terms
+        else "26709.68"
+        if time_terms
+        else "27000.00"
     )
     assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
     rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})

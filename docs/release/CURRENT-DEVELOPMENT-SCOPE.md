@@ -1992,3 +1992,12 @@ progress carry across the boundary, with earlier periods unchanged in the valida
 Native and public approval/report replay checks pass; see
 [checkpoint](COMBINED-INPUT-TERMS-2026-10-24.md). Cost recovery, percentage/milestone scope,
 divergent terms and splitting remain open. No deployment.
+
+## October 24: cost-recovery modification boundary and common terms
+
+Revision 33 reuses original stage-09 cost-recovery targets at modification boundaries, with
+no invented EAC and no repeated pre-boundary costs. Combined common-end-date changes now
+reach the wizard and approval/application/report replay. Both no-EAC and existing-EAC native
+cases preserve prior periods and enforce the allocation cap. See
+[checkpoint and remaining transition coverage](COST-RECOVERY-BOUNDARIES-2026-10-24.md).
+This supersedes the earlier blanket cost-recovery boundary refusal. No deployment.

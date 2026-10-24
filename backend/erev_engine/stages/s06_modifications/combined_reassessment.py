@@ -72,6 +72,7 @@ def continued(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> se
                 ctx.combined_input_term_reassessment
                 and ob.recognition_method in {"COST_TO_COST", "LABOUR_HOURS"}
             )
+            or (ctx.cost_recovery_boundaries and ob.recognition_method == "COST_RECOVERY")
         )
         if ob.recognition_method not in {"UNITS_DELIVERED", "POINT_IN_TIME"} and not nonunit_terms:
             raise ValueError("Combined quantity continuation requires an original unit measure")

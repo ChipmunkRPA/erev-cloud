@@ -879,7 +879,10 @@ def _amended(
         input_term = (
             ctx.combined_input_term_reassessment
             and original.kind == "TERM_CHANGE"
-            and ob.recognition_method in {"COST_TO_COST", "LABOUR_HOURS"}
+            and (
+                ob.recognition_method in {"COST_TO_COST", "LABOUR_HOURS"}
+                or (ctx.cost_recovery_boundaries and ob.recognition_method == "COST_RECOVERY")
+            )
         )
         allowed = {ModificationTreatment.PROSPECTIVE}
         if input_term:
