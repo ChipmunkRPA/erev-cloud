@@ -101,3 +101,95 @@ def test_destination_balance_date_precedes_later_split():
 def test_destination_balance_requires_dated_scope(day, message):
     with pytest.raises(ValueError, match=message):
         calculate(billed_split(), book_code="ASC606", as_of=day)
+
+
+@pytest.mark.parametrize("billing_date", [date(2026, 8, 1), date(2026, 10, 1)])
+def test_full_compute_nets_effective_destinations_and_posts_reconciling_reclasses(billing_date):
+    value = replace(billed_split(), evidence_revision=53)
+    value = replace(
+        value,
+        events=tuple(
+            sorted(
+                (
+                    replace(
+                        e,
+                        effective_date=billing_date,
+                        payload={**e.payload, "issue_date": billing_date.isoformat()},
+                    )
+                    if e.event_type == "BILLING_RECORDED"
+                    else e
+                    for e in value.events
+                ),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    value = replace(
+        value,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(p, value="ENGINE") if p.code == "billing.posting" else p
+                    for p in book.policies
+                ),
+            )
+            for book in value.books
+        ),
+    )
+    output = compute(value)
+    current = output.books[0]
+    from decimal import localcontext
+
+    from support import intent_totals
+
+    from erev_engine.money import DECIMAL_CONTEXT
+
+    with localcontext(DECIMAL_CONTEXT):
+        close = intent_totals.close_pass(value, [output], "NETTING_RECLASS").books[0]
+    intents = (*current.posting_intents, *close.posting_intents)
+    previous = compute(replace(value, evidence_revision=52)).books[0]
+    assert current.schedules == previous.schedules
+    assert [r for r in current.balances if r.period_key < "FY2026-P09"] == [
+        r for r in previous.balances if r.period_key < "FY2026-P09"
+    ]
+    assert [p for p in current.posting_intents if p.posting_period_key < "FY2026-P09"] == [
+        p for p in previous.posting_intents if p.posting_period_key < "FY2026-P09"
+    ]
+    assert [p for p in current.posting_intents if p.entry_kind == "REVENUE_RECOGNITION"] == [
+        p for p in previous.posting_intents if p.entry_kind == "REVENUE_RECOGNITION"
+    ]
+    for month in (9, 10, 11):
+        period = f"FY2026-P{month:02d}"
+        import calendar
+
+        independent = calculate(
+            value, book_code="ASC606", as_of=date(2026, month, calendar.monthrange(2026, month)[1])
+        )
+        rows = {r.subject_key: r for r in current.balances if r.period_key == period}
+        for destination in independent:
+            for target in destination.member_balances:
+                if target.measure == "contract_liability_current":
+                    continue  # Member maturity allocation is implemented separately from netting.
+                assert rows[target.subject_key].columns[target.measure + "_txn"] == target.value
+        for role in ("CONTRACT_LIABILITY", "CONTRACT_ASSET", "UNBILLED_RECEIVABLE"):
+            ledger = sum(
+                line.amount_txn
+                * (1 if line.side == ("C" if role == "CONTRACT_LIABILITY" else "D") else -1)
+                for intent in intents
+                if intent.posting_period_key <= period
+                for line in intent.lines
+                if line.account_role == role
+            )
+            assert ledger == sum(r.columns[role.lower() + "_txn"] for r in rows.values())
+    assert reevaluate(current.trace) == {n.id: n.value for n in current.trace.nodes}
+    assert compute(value).books[0] == current
+
+
+def test_full_split_refuses_foreign_posting_without_destination_layer_continuation():
+    value = replace(billed_split(), evidence_revision=53)
+    value = replace(
+        value, entities=tuple(replace(e, functional_currency="EUR") for e in value.entities)
+    )
+    with pytest.raises(ValueError, match="same-currency fixed-service"):
+        compute(value)

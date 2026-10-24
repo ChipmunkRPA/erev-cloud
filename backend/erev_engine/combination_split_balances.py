@@ -110,8 +110,11 @@ def calculate(
                 if e.contract_key in members and e.effective_date <= as_of
             ),
         )
-        recognized = s09_recognition.run(ctx, scoped, trace)
-        balances = s10_billing_balances.run(ctx, recognized, trace)
+        # The query has already selected one effective destination. Retained
+        # cross-member split events are allocation lineage, not another partition.
+        scoped_ctx = replace(ctx, prospective_split_netting=False)
+        recognized = s09_recognition.run(scoped_ctx, scoped, trace)
+        balances = s10_billing_balances.run(scoped_ctx, recognized, trace)
         if any(f.severity == "ERROR" for f in (*recognized.findings, *balances.findings)):
             raise ValueError("Destination balance calculation has blocking findings")
 

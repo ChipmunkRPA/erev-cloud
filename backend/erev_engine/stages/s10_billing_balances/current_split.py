@@ -132,6 +132,56 @@ def measure(
                         "relief": "|".join(str(value) for value in relief),
                     },
                 )
+                destinations = [
+                    target
+                    for target in presentation.destination_targets
+                    if target.entity == entity
+                    and target.period_key == period.period_key
+                    and target.measure == "contract_liability"
+                ]
+                if destinations:
+                    destination_members = {
+                        (subject, key): set(members)
+                        for subject, key, members in presentation.destination_members
+                    }
+                    current_parts = []
+                    current_nodes: list[str | SourceRef] = []
+                    relief_by_key = dict(zip(keys, relief, strict=True))
+                    for target in destinations:
+                        selected = sorted(
+                            destination_members[target.subject_key, period.period_key]
+                        )
+                        future = [relief_by_key[key] for key in selected if key in relief_by_key]
+                        value = min(target.value, max(0, sum(future)))
+                        node = tb.node(
+                            measure="contract_liability_current",
+                            subject_key=target.subject_key,
+                            period_key=period.period_key,
+                            value=value,
+                            currency=ctx.txn_currency,
+                            minor_unit=mu,
+                            formula_id=CURRENT_FORMULA,
+                            inputs=[target.node_id],
+                            params={
+                                "as_of": t.isoformat(),
+                                "horizon": h12.isoformat(),
+                                "mode": "cl",
+                                "keys": "|".join(selected),
+                                "relief": "|".join(str(v) for v in future),
+                            },
+                            narrative_key="pos.current_split",
+                        )
+                        current_parts.append(value)
+                        current_nodes.append(node)
+                    nodes["contract_liability_current"] = (
+                        sum(current_parts),
+                        current_nodes,
+                        {
+                            "as_of": t.isoformat(),
+                            "mode": "destinations",
+                            "signs": ",".join("+" for _ in current_nodes),
+                        },
+                    )
                 current = [
                     attributions[(ob.subject_key, period.period_key)]
                     for ob in own
@@ -191,10 +241,14 @@ def measure(
                     value=value,
                     currency=ctx.txn_currency,
                     minor_unit=mu,
-                    formula_id=CURRENT_FORMULA,
+                    formula_id="rec.activity_sum.v1"
+                    if params.get("mode") == "destinations"
+                    else CURRENT_FORMULA,
                     inputs=inputs,
                     params=params,
-                    narrative_key=CURRENT_FORMULA.rsplit(".v", 1)[0],
+                    narrative_key="rec.activity_sum"
+                    if params.get("mode") == "destinations"
+                    else CURRENT_FORMULA.rsplit(".v", 1)[0],
                 )
                 out.append(
                     Target(

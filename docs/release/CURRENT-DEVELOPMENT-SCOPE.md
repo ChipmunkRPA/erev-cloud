@@ -2795,3 +2795,10 @@ open. See CURRENT-ASSET-CURRENCY-2026-10-24.md.
 [Acquired current asset checkpoint](ACQUIRED-CURRENT-ASSET-2026-10-24.md): revision 52 supplies original functional current assets for the supported nonposting single-member recomputed acquisition cutover. Mixed maturity retains a separately reconciling noncurrent amount; journals and income schedules are unchanged. Seventeen focused tests and scoped static checks passed. Remaining combination and specialist limits are unchanged.
 
 [Goal](../00-GOAL.md) now records the owner's current scope and noncommercial license, replacing historical MIT, deployment, full-control and independent-signoff requirements. This checkpoint does not claim the whole repository is complete.
+
+
+## October 24, 2026 — effective split netting in ordinary computation
+
+Revision 53 now calculates same-currency fixed-service destination balances and close-pass reclasses inside ordinary computation. Earlier periods and revenue recognition remain intact; envelope totals sum independent destination balances. See [split netting checkpoint](SPLIT-NETTING-2026-10-24.md). Native calculation and close support are implemented; durable split submit/approve/apply, destination-history navigation and foreign/specialist continuation remain unfinished.
+
+The owner has selected proportional carrying-amount allocation for member current contract liability, with current plus noncurrent equal to each member's total. The earlier “awaiting choice” limitation is superseded; implementation is outstanding, not blocked on user input.

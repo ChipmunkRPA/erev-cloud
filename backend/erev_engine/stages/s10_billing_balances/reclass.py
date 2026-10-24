@@ -198,6 +198,8 @@ class Presentation:
     version_reclass: tuple[ReclassAttribution, ...] = ()  # per obligation at "-"
     entries: tuple[ReclassEntry, ...] = ()  # JET-06 reclass and reversal targets
     members: tuple[Target, ...] = ()  # T-CON-09 balances per "<contract>@<entity>" (S10-R-23)
+    destination_targets: tuple[Target, ...] = ()
+    destination_members: tuple[tuple[str, str, tuple[str, ...]], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1225,6 +1227,8 @@ def present(
     emitter = _Emitter(ctx, st, tb)
     accretion: list[Target] = []
     rights: dict[tuple[str, str], str] = {}
+    destination_targets = []
+    destination_members: list[tuple[str, str, tuple[str, ...]]] = []
     for entity in sorted({ob.contracting_entity for ob in obligations}):
         own = [ob for ob in obligations if ob.contracting_entity == entity]
         measured = billing.periods(ctx, st, entity)
@@ -1287,30 +1291,54 @@ def present(
                 ),
                 classes=MappingProxyType(classes),
             )
-            option = ctx.policies.value(ATTRIBUTION_POLICY, entity=entity, period=period.period_key)
-            if option == POB_DEBIT_POSITIONS:
-                plan = _pob_debit_plan(own, point, mu)
-            elif option == CUMULATIVE_SSP_DELIVERED:
-                plan = _ssp_delivered_plan(st, own, point, _residue(revenue, own, t, scale), mu)
-            else:
-                raise _invariant(
-                    "the reclass attribution key is unknown",
-                    point.parts.subject_key,
-                    rule="S10-R-22",
-                    value=str(option),
+            from .split_netting import aggregate, points
+
+            original_point = point
+            partition = points(ctx, recognition, billed, own, point, tb)
+            start_targets = len(emitter.targets)
+            for selected, point in partition:
+                option = ctx.policies.value(
+                    ATTRIBUTION_POLICY, entity=entity, period=period.period_key
                 )
-            sum_ur = sum(ur for ur, _ in plan.parts.values())
-            sum_ca = sum(ca for _, ca in plan.parts.values())
-            if (sum_ur, sum_ca) != (plan.receivable, plan.asset):
-                raise _invariant(
-                    "the attributions do not sum to the presented balances",
-                    point.parts.subject_key,
-                    rule="S10-INV-03",
-                    period_key=period.period_key,
+                if option == POB_DEBIT_POSITIONS:
+                    plan = _pob_debit_plan(selected, point, mu)
+                elif option == CUMULATIVE_SSP_DELIVERED:
+                    plan = _ssp_delivered_plan(
+                        st, selected, point, _residue(revenue, selected, t, scale), mu
+                    )
+                else:
+                    raise _invariant(
+                        "the reclass attribution key is unknown",
+                        point.parts.subject_key,
+                        rule="S10-R-22",
+                        value=str(option),
+                    )
+                sum_ur = sum(ur for ur, _ in plan.parts.values())
+                sum_ca = sum(ca for _, ca in plan.parts.values())
+                if (sum_ur, sum_ca) != (plan.receivable, plan.asset):
+                    raise _invariant(
+                        "the attributions do not sum to the presented balances",
+                        point.parts.subject_key,
+                        rule="S10-INV-03",
+                        period_key=period.period_key,
+                    )
+                nodes = emitter.attributions(selected, point, plan, period is version_period)
+                split = emitter.split(
+                    selected, point, plan, nodes, option == CUMULATIVE_SSP_DELIVERED
                 )
-            nodes = emitter.attributions(own, point, plan, period is version_period)
-            split = emitter.split(own, point, plan, nodes, option == CUMULATIVE_SSP_DELIVERED)
-            emitter.member_balances(own, point, plan, nodes, split["contract_liability"])
+                emitter.member_balances(selected, point, plan, nodes, split["contract_liability"])
+            if len(partition) > 1:
+                targets = emitter.targets[start_targets:]
+                destination_targets.extend(targets)
+                destination_members.extend(
+                    (
+                        p.parts.subject_key,
+                        p.period.period_key,
+                        tuple(ob.subject_key for ob in selected),
+                    )
+                    for selected, p in partition
+                )
+                emitter.targets[start_targets:] = aggregate(ctx, own, original_point, targets, tb)
     return Presentation(
         targets=tuple(emitter.targets),
         accretion=tuple(accretion),
@@ -1319,6 +1347,8 @@ def present(
         version_reclass=tuple(emitter.version_reclass),
         entries=tuple(emitter.entries),
         members=tuple(emitter.members),
+        destination_targets=tuple(destination_targets),
+        destination_members=tuple(destination_members),
     )
 
 
