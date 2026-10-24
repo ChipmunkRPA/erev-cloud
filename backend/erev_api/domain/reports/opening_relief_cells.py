@@ -232,6 +232,20 @@ def _details(source: dict[str, Any]) -> list[str]:
                         if obligation[field] is None
                         else f"{subject} · {label}: {obligation[field]} {currency}"
                     )
+            intercompany = obligation.get("intercompany_sources")
+            if intercompany:
+                result.append(
+                    f"{subject} · Contracting entity: {intercompany['contracting_entity_id']}; "
+                    f"performing entity: {intercompany['performing_entity_id']}. "
+                    "Contracting-entity control relief; counterpart is intercompany due-to."
+                )
+                for line in intercompany["lines"]:
+                    result.append(
+                        f"Control line: {line['control_line']}; "
+                        f"due-to line: {line['due_to_line']}; "
+                        f"control relief: {line['control_relief']} {currency}; "
+                        "original sources: " + "; ".join(line["sources"])
+                    )
             for line in obligation.get("agent_net_sources", {}).get("lines", []):
                 result.append(
                     f"{subject} · Agent net income: {line['net_income']} {currency}; "

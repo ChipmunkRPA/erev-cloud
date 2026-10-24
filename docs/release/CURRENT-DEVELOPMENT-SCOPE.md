@@ -4,6 +4,13 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Cross-entity principal POB opening — October 23, 2026
+
+Public POB reports now verify contracting-entity liability relief against original intercompany
+due-to sources, retaining entity identities and source proofs across transaction, functional and
+reporting views. Original POB caps and combination caps remain distinct. See
+[checkpoint](INTERCOMPANY-POB-OPENING-2026-10-23.md) for implemented scope and remaining boundaries.
+
 ## Agent contract and POB FIFO reports — October 23, 2026
 
 Both FIFO policies admit original agent sources from any selected-group member across all
@@ -12,7 +19,7 @@ totals are not allocated to members. Revision-3 reports preserve older saved-ver
 See [checkpoint](AGENT-POB-GROUP-SOURCES-2026-10-23.md).
 Mixed opening/current sources now retain net totals and full sources with explicitly unavailable
 opening amounts and incomplete currency totals; see [mixed-source checkpoint](AGENT-MIXED-SOURCES-2026-10-23.md).
-Remaining: cross-entity/acquired sources and owners outside the selected historical group. Historical gross-closing notes below are source
+Remaining: cross-entity agent/acquired sources and owners outside the selected historical group. Historical gross-closing notes below are source
 preparation, not the current report boundary.
 
 ## Original agent gross-control closing evidence — October 23, 2026

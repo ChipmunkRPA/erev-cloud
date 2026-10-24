@@ -1336,7 +1336,10 @@ def test_combined_invoice_settles_another_members_asset(fx: FxWorld) -> None:  #
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
 
 
+@pytest.mark.parametrize("pob_policy", [False, True, "other_member"])
 def test_intercompany_due_to_sources_support_progress_reversal(
+    monkeypatch,
+    pob_policy: bool | str,
     app: FastAPI,
     keyring: KeyRing,
     clock: FrozenClock,
@@ -1376,12 +1379,13 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         members.append(UUID(str(booked.contract["id"])))
     source, recognizer = members
     _grouped(app, report.maya, report.marcus, members)
+    invoice_owner = recognizer if pob_policy is True else source
     head = report.place.scalar(
-        select(contract.c.head_stream_version).where(contract.c.id == source)
+        select(contract.c.head_stream_version).where(contract.c.id == invoice_owner)
     )
     invoice = _invoice("IC-ADV", "2026-04-01", "8000.00")
     invoice["payload"]["amount"]["currency"] = "GBP"
-    _recorded(report, source, int(head), invoice)
+    _recorded(report, invoice_owner, int(head), invoice)
     evidence = worlds.evidence_file(app, report.maya)
     for day, ratio in (("2026-05-31", "0.50"), ("2026-06-30", "0.25")):
         approved_manual_events(
@@ -1420,6 +1424,15 @@ def test_intercompany_due_to_sources_support_progress_reversal(
             ).scalar_one()
             assert role == "INTERCOMPANY_DUE_TO"
             assert attributed.delta.amount == -control["amount_functional"]
+    if pob_policy:
+        from types import SimpleNamespace
+        from erev_api.domain.reports import opening_consumption_policy
+
+        monkeypatch.setattr(
+            opening_consumption_policy,
+            "resolve",
+            lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"),
+        )
     for first, view in (
         ("FY2026-P05", "transaction"),
         ("FY2026-P05", "functional"),
@@ -1439,14 +1452,36 @@ def test_intercompany_due_to_sources_support_progress_reversal(
                 "to_period_key": "FY2026-P06",
             },
         )
-        income = next(row for row in rows if row.get("contract_external_id") == "IC-SERVICE")
+        income = next(
+            row
+            for row in rows
+            if (pob_policy and str(row["row_key"]).startswith("combined:"))
+            or (not pob_policy and row.get("contract_external_id") == "IC-SERVICE")
+        )
         if view in {"transaction", "functional"}:
             assert income["revenue_recognized"]["amount"] == (
                 "2000.00" if first == "FY2026-P05" else "-2000.00"
             )
             assert income["revenue_from_opening"]["amount"] == (
-                "4000.00" if first == "FY2026-P05" else "0.00"
+                ("2000.00" if pob_policy is True else "0.00" if pob_policy else "4000.00")
+                if first == "FY2026-P05"
+                else "0.00"
             )
+        if pob_policy and first == "FY2026-P05":
+            explained = get(
+                app,
+                f"/api/v1/explain/report-runs/{run['id']}/cell",
+                report.maya,
+                {"row_key": income["row_key"], "column_key": "revenue_recognized"},
+            )
+            assert explained.status_code == 200, explained.text
+            details = [
+                text
+                for item in explained.json()["contributors"]["items"]
+                for text in item.get("details", [])
+            ]
+            assert any("counterpart is intercompany due-to" in text for text in details)
+            assert any("due-to line:" in text and "original sources:" in text for text in details)
         restarted = post(app, f"/api/v1/report-runs/{run['id']}/rerun", report.maya, {})
         assert restarted.status_code == 202, restarted.text
         complete = worlds.run_now(report, UUID(restarted.json()["id"]))

@@ -97,6 +97,8 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     open_rows = {(row.contract_id, row.entity_id): row for row in opening}
     close_rows = {(row.contract_id, row.entity_id): row for row in closing}
     contracts: list[dict[str, Any]] = []
+    from .opening_intercompany import Reader as IntercompanyReader
+
     totals: dict[str, dict[str, Decimal]] = {}
     membership: dict[str, list[str]] = {}
     signed_key = "transaction_opening_posted_v1"
@@ -114,6 +116,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             files=uow.files,
         )
     )
+    intercompany_reader = IntercompanyReader(source_uow, params, "transaction")
     frozen_sources = opening_relief_frozen.Reader(source_uow, params)
     agent_key = opening_agent_sources.key_for(
         None if params.binding is None else params.binding.evidence
@@ -344,6 +347,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     first["contract_liability"],
                     consumed,
                     opening_row=frozen_row,
+                    intercompany_reader=intercompany_reader,
                     opening_absent=frozen is not None and frozen_row is None,
                     agent_eligible=agent_results[member].eligible
                     if member in agent_results
@@ -493,6 +497,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     tie_outs.record_evidence(params, "opening_relief_groups_v1", membership)
     if agent_contract.enabled(params):
         agent_contract.retain(params, contract_evidence, contract_paid)
+    intercompany_reader.retain()
     contracts.sort(key=lambda row: row["row_key"])
     return finish(
         uow,

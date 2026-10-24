@@ -14,6 +14,8 @@ from erev_api.domain.reports.builders.contract_balance_rollforward import Entry
 from erev_api.explain import store
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
+from .opening_intercompany import Reader as IntercompanyReader
+
 KEY = "opening_relief_pob_v1"
 ZERO = Decimal(0)
 
@@ -94,6 +96,7 @@ def calculate(
     agent_eligible: Mapping[str, Decimal] | None = None,
     agent_evidence: Mapping[str, Any] | None = None,
     agent_unresolved: set[str] | None = None,
+    intercompany_reader: IntercompanyReader | None = None,
 ) -> tuple[Decimal, dict[str, Any]]:
     """Eligibility for one member, using the selected version and selected posting range.
 
@@ -115,12 +118,21 @@ def calculate(
         item["performing_entity_id"] != row.entity_id or str(item["principal_agent"]) != "PRINCIPAL"
         for item in obligations
     )
-    supported_agents = agent_eligible is not None and all(
-        item["performing_entity_id"] == row.entity_id
+    intercompany = (
+        intercompany_reader.read(row, obligations, entries)
+        if intercompany_reader is not None
+        else {}
+    )
+    supported_special = all(
+        (
+            item["performing_entity_id"] == row.entity_id
+            or obligation_subject_key(row.external_id, item["obligation_key"]) in intercompany
+        )
         and (
             str(item["principal_agent"]) == "PRINCIPAL"
             or (
                 str(item["principal_agent"]) == "AGENT"
+                and agent_eligible is not None
                 and obligation_subject_key(row.external_id, item["obligation_key"])
                 in agent_eligible
             )
@@ -132,11 +144,12 @@ def calculate(
     # currency. Preserve the established principal transaction evidence shape.
     zero_group_opening = opening <= 0 and (functional_currency is not None or special)
     zero_cap = zero_group_opening or zero_special_consumption
-    if not obligations or (not zero_cap and special and not supported_agents):
+    if not obligations or (not zero_cap and special and not supported_special):
         raise tie_outs.invalid(
             "currency_view",
             "Per-obligation opening relief requires same-entity principal obligations or "
-            "verified agent net source sets; other special attribution remains unsupported.",
+            "verified agent net or intercompany control sources; "
+            "other special attribution remains unsupported.",
         )
     subjects = {
         obligation_subject_key(row.external_id, item["obligation_key"]) for item in obligations
@@ -157,10 +170,19 @@ def calculate(
             .mappings()
             .all()
         )
+        original_intercompany = (
+            intercompany_reader.read(source, prior_obligations, [])
+            if intercompany_reader is not None
+            else {}
+        )
         if not prior_obligations or (
             not zero_cap
             and any(
-                item["performing_entity_id"] != row.entity_id
+                (
+                    item["performing_entity_id"] != row.entity_id
+                    and obligation_subject_key(row.external_id, item["obligation_key"])
+                    not in original_intercompany
+                )
                 or (
                     str(item["principal_agent"]) != "PRINCIPAL"
                     and (
@@ -292,6 +314,7 @@ def calculate(
             "opening_billing": str(billed),
             "opening_revenue": str(revenue),
             "posted_revenue": str(recognized[subject]),
+            **({"intercompany_sources": intercompany[subject]} if subject in intercompany else {}),
             "eligible_relief": None if uncertain else str(contribution),
             **({"opening_absence": new[subject]} if subject in new else {}),
             **(

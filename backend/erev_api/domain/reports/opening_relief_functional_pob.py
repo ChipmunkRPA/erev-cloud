@@ -34,6 +34,8 @@ def rows(
     reporting_slices: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], set[tuple[UUID, UUID]]]:
     evidence_key = KEY if reporting_slices is None else "opening_relief_reporting_pob_v1"
+    from .opening_intercompany import Reader as IntercompanyReader
+
     cutoff = tie_outs.cutoff_for(uow.session, params)
     selected = tie_outs.balances_at(
         uow.session,
@@ -73,6 +75,7 @@ def rows(
             files=uow.files,
         )
     )
+    intercompany_reader = IntercompanyReader(source_uow, params, "functional")
     frozen_sources = opening_relief_frozen.Reader(source_uow, params)
     agent_key = opening_agent_sources.key_for(
         None if params.binding is None else params.binding.evidence
@@ -193,6 +196,7 @@ def rows(
                 opening,
                 consumed,
                 opening_row=original,
+                intercompany_reader=intercompany_reader,
                 opening_absent=frozen is not None and original is None,
                 functional_currency=currency,
                 allow_zero_consumption=zero_consumption_safe,
@@ -326,4 +330,5 @@ def rows(
             "currency_view", "Functional POB sources differ from retained evidence."
         )
     tie_outs.record_evidence(params, evidence_key, evidence)
+    intercompany_reader.retain()
     return result, excluded

@@ -15,7 +15,9 @@ views. Original POB caps and single group caps remain distinct; no final member 
 See [current checkpoint](AGENT-POB-GROUP-SOURCES-2026-10-23.md).
 Mixed opening/current source sets now expose complete net totals and sources while marking
 undetermined opening amounts and currency totals unavailable; see [checkpoint](AGENT-MIXED-SOURCES-2026-10-23.md).
-Cross-entity/acquired sources and owners outside the historical group remain unfinished.
+Cross-entity principal POB control attribution is now supported; see
+[checkpoint](INTERCOMPANY-POB-OPENING-2026-10-23.md) for tested currency/history boundaries.
+Cross-entity agents, acquired sources and owners outside the historical group remain unfinished.
 Prior saved source revisions retain their original behavior.
 
 
