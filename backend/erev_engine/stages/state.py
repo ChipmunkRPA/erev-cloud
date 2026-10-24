@@ -270,6 +270,7 @@ class BookContext:
     regroup_future_service: bool = False
     combined_unit_mixed_reassessment: bool = False
     cost_recovery_boundaries: bool = False
+    dated_current_asset: bool = False
     dated_current_liability: bool = False
     retain_boundary_allocation_basis: bool = False
 

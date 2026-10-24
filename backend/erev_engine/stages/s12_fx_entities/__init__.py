@@ -339,6 +339,10 @@ def _functional_member_balances(
         from .current_members import singleton
 
         targets = (*targets, *singleton(ctx, fx, members, tb))
+    if ctx.dated_current_asset:
+        from .current_assets import measure as member_current_assets
+
+        targets = (*targets, *member_current_assets(ctx, fx, members, targets, tb))
     return targets
 
 

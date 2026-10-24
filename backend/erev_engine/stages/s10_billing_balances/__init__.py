@@ -189,6 +189,10 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
         from .current_members import singleton
 
         members = (*members, *singleton(ctx, allocated, current, tb))
+    if ctx.dated_current_asset and all(ob.opening is None for ob in allocated.obligations):
+        from .current_assets import measure as member_current_assets
+
+        members = (*members, *member_current_assets(ctx, allocated, presentation, current, tb))
     return BalanceState(
         allocated=allocated,
         recognition=st,

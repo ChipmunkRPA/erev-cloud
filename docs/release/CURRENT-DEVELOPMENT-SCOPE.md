@@ -2774,3 +2774,17 @@ combination API workflow pass; scoped Ruff/mypy pass. No deployment.
 Combination-member current allocation awaits the user's explicit presentation rule. Acquired
 opening baselines keep the separate cutover path; other nonzero maturity/specialist currency
 gaps and durable split integration remain open. See ORDINARY-CURRENT-LIABILITY-2026-10-24.md.
+
+
+### October 24 — ordinary member current assets in both currencies
+
+Revision 51 exposes dated ordinary current asset amounts for singleton and combined members
+from original obligation maturity/reclassification shares. Functional values use the same
+obligations' native reclass targets, including the prior cumulative target, and stay bounded
+by total carrying. Member transaction amounts reconcile to the group; equal group/member
+identifiers have distinct current trace nodes. Eight focused asset/liability cases and the
+real combination API workflow pass, with scoped lint/types and no posting/schedule changes
+in the checked cases. No deployment.
+Acquired baselines keep their separate path; combined current liability still awaits the
+member-allocation choice. Specialist currency gaps and durable split application remain
+open. See CURRENT-ASSET-CURRENCY-2026-10-24.md.

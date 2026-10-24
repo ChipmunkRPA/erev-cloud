@@ -173,8 +173,19 @@ def measure(
                         period_key=period.period_key,
                         measure=current_name,
                     )
+                from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
+
+                group_measure = (
+                    f"group_{current_name}"
+                    if ctx.dated_current_asset
+                    and any(
+                        contract_entity_subject_key(ob.contract_key, entity) == subject_key
+                        for ob in own
+                    )
+                    else current_name
+                )
                 node_id = tb.node(
-                    measure=current_name,
+                    measure=group_measure,
                     subject_key=subject_key,
                     period_key=period.period_key,
                     value=value,

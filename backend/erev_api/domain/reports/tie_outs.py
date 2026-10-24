@@ -137,8 +137,10 @@ BALANCE_MEASURE_UNTRACED: Final = (
 )
 # T-CON-09 labelled balances. The engine publishes a node per member contract, entity and period
 # end for every one it measures per member (stage 10 / 11; DG-KRN-EXP-01, zeros included); the
-# current parts (measured per GROUP, ENGINE_SPEC_B §10.2.8) and ``accounts_receivable`` outside
-# ``ENGINE`` mode (S10-R-19) have none and stay at the column default.
+# current parts in older evidence (measured per GROUP, ENGINE_SPEC_B §10.2.8) and
+# ``accounts_receivable`` outside ``ENGINE`` mode (S10-R-19) have none and stay at the
+# column default. Revisions 50/51 add ordinary singleton current liability and ordinary
+# member current assets, respectively, as dated member nodes.
 BALANCE_MEASURES: Final = (
     "contract_liability",
     "contract_liability_current",
