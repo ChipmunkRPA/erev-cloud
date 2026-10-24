@@ -541,6 +541,7 @@ def _framework_output(bundle: InputBundle, result: BookResult, ctx: BookContext)
                 memo=row.memo,
                 revenue_relief=row.revenue_relief,
                 obligation_closing=row.obligation_closing,
+                acquisition_sources=row.acquisition_sources,
             )
             for row in (() if disclosure is None else disclosure.balance_rollforwards)
         ),

@@ -173,6 +173,42 @@ def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consum
     )
     prior = compute(replace(value, evidence_revision=25)).books[0]
     current = compute(replace(value, evidence_revision=26)).books[0]
+    retained = compute(replace(value, evidence_revision=27)).books[0]
+    assert (
+        replace(
+            retained,
+            disclosure_rollforwards=tuple(
+                replace(r, acquisition_sources=None) for r in retained.disclosure_rollforwards
+            ),
+        )
+        == current
+    )
+    nodes = {node.id for node in retained.trace.nodes}
+    for evidence_row in retained.disclosure_rollforwards:
+        sources = evidence_row.acquisition_sources
+        assert sources is not None
+        for role, amounts in evidence_row.lines.items():
+            assert (
+                sum(source["amounts"][role] for source in sources)
+                == amounts["BUSINESS_COMBINATIONS"]
+            )
+        for source in sources:
+            assert source["effective_date"] == w.CUTOVER.isoformat()
+            if evidence_row.view == "FUNCTIONAL":
+                assert source["kind"] == "ORIGINAL_FX_MOVEMENT"
+                assert source["trace_node_id"] in nodes
+                assert any(
+                    move.columns["layer_key"] == source["layer_key"]
+                    and move.columns["source_key"] == source["source_key"]
+                    and move.columns["movement_kind"] == source["movement_kind"]
+                    and move.trace_nodes["amount_functional"] == source["trace_node_id"]
+                    for move in retained.fx_layer_movements
+                )
+            else:
+                assert source["kind"] == "ORIGINAL_CUTOVER_EVENT"
+                event = next(e for e in value.events if e.event_key == source["event_key"])
+                assert event.event_type == "OPENING_BALANCE_ESTABLISHED"
+                assert source["subjects"]
     assert current.posting_intents == prior.posting_intents
     assert current.fx_layer_movements == prior.fx_layer_movements
     row = next(r for r in current.disclosure_rollforwards if r.view == "FUNCTIONAL")

@@ -171,6 +171,7 @@ def run(
     acquisition_cutover_closing: bool = False,
     acquisition_functional_cutover: bool = False,
     acquisition_intercompany_sources: bool = False,
+    capture_acquisition_sources: bool = False,
     mixed_acquisition_functional: bool = False,
     mixed_acquisition_rollforward: bool = False,
     mixed_acquisition_closing: bool = False,
@@ -230,6 +231,7 @@ def run(
             mixed_acquisition_closing=mixed_acquisition_closing,
             mixed_acquisition_rollforward=mixed_acquisition_rollforward,
             mixed_acquisition_functional=mixed_acquisition_functional,
+            capture_acquisition_sources=capture_acquisition_sources,
             opening_billing_sources=opening_billing_sources,
         )
         if opening_billing_sources:

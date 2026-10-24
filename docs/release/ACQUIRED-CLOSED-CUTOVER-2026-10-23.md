@@ -328,3 +328,24 @@ receiving fabricated allocations. Closed mixed foreign cutovers may still lack s
 evidence. Public report integration still requires retained group/member acquisition-change sources;
 its population guard remains in place. The full mixed-acquisition reporting path is unfinished.
 No deployment.
+
+
+## October 24: retain signed mixed acquisition source contributions
+
+Evidence revision 27 adds optional acquisition_sources to native mixed-group disclosure rows.
+Transaction entries retain the original cutover event, effective date, original obligation subjects,
+admitted baseline and the signed change in each presented balance. Foreign entries retain the
+original FX source, layer, movement kind, trace node and rate key alongside their signed change.
+The engine checks these contributions against every BUSINESS_COMBINATIONS balance caption.
+Amounts are integer minor units in the enclosing row's currency; source order is original execution
+order. These are group presentation changes, not an invented allocation to individual members.
+
+Eight native foreign-currency witnesses check both transaction and functional source totals,
+original event/FX trace identities, and exact revision 26/27 book equality after removing the new
+evidence field. The 52 focused mixed/acquired/rollforward checks and scoped lint/types pass.
+Historical revisions omit the field and retain their prior output. No journal calculation changes.
+
+Public report integration remains open: its existing acquisition path admits only positive carrying
+balances, and member reporting needs explicit signed contributions consistent with group netting.
+This change retains the original group evidence needed for that integration; it does not remove the
+public guard or claim that member allocation is complete. No deployment.

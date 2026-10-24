@@ -216,6 +216,7 @@ class BalanceInputs:
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
     acquisition_intercompany_sources: bool = False  # Revision 20: contracting control sources
+    capture_acquisition_sources: bool = False  # Revision 27: signed original changes
     mixed_acquisition_functional: bool = False  # Revision 26: original acquired FX sources
     mixed_acquisition_rollforward: bool = False  # Revision 25: dated mixed transaction flows
     mixed_acquisition_closing: bool = False  # Revision 24: per-obligation transaction cutovers
@@ -237,6 +238,7 @@ class BalanceRollforward:
     lines: Mapping[str, Mapping[str, int]]  # balance -> line code -> signed minor units
     memo: Mapping[str, int]  # S15-R-04 revenue by cause, MEMO_CAUSES order; not in the tie
     revenue_relief: int  # revenue less negative revenue of the period, in the view's currency
+    acquisition_sources: tuple[Mapping[str, object], ...] | None = None
     obligation_closing: Mapping[str, object] | None = None
     opening_source: Mapping[str, str] | None = None
 
@@ -400,6 +402,9 @@ def rollforward_balances(
     functional = view == FUNCTIONAL and calendar.functional_currency != ctx.txn_currency
     if mixed and (not functional or records.mixed_acquisition_functional):
         cutover = None
+    acquisition_sources: list[Mapping[str, object]] | None = (
+        [] if mixed and records.capture_acquisition_sources else None
+    )
     relief = 0
     if cutover is None or period.end_date >= cutover:
         if functional:
@@ -418,6 +423,7 @@ def rollforward_balances(
                 cutover,
                 lines,
                 acquired_sources=acquired_sources,
+                acquisition_evidence=acquisition_sources,
             )
             consumption = ctx.policies.value(_POL_126, entity=entity, period=period.period_key)
             if consumption == _WITHIN_POB:
@@ -440,6 +446,7 @@ def rollforward_balances(
                 lines,
                 classify_pob=opening_obligations is None,
                 events=st.events,
+                acquisition_evidence=acquisition_sources,
             )
             if mixed:
                 dates = mixed_acquisition.cutovers(own)
@@ -487,6 +494,13 @@ def rollforward_balances(
     for values in lines.values():
         moved = sum(amount for code, amount in values.items() if code not in _EDGES)
         values[OTHER] = values[CLOSING] - values[OPENING] - moved
+    if acquisition_sources is not None:
+        for role in BALANCES:
+            total = sum(mixed_acquisition.source_amount(item, role) for item in acquisition_sources)
+            if total != lines[role][_COMBINATIONS]:
+                raise EngineError(
+                    "ENGINE_INVARIANT_VIOLATED", "Acquisition sources do not reconcile."
+                )
     return BalanceRollforward(
         unit=unit,
         entity=entity,
@@ -501,6 +515,7 @@ def rollforward_balances(
         ),
         memo=MappingProxyType(memo),
         revenue_relief=relief,
+        acquisition_sources=None if acquisition_sources is None else tuple(acquisition_sources),
     )
 
 
@@ -517,6 +532,7 @@ def _transaction(
     *,
     classify_pob: bool = True,
     events: Sequence[EventView] = (),
+    acquisition_evidence: list[Mapping[str, object]] | None = None,
 ) -> int:
     """The path attribution in the transaction currency (§15.2.2 ``rollforward_contract``)."""
     start, end = period.start_date, period.end_date
@@ -554,7 +570,21 @@ def _transaction(
     )
     for flow in sequence:
         if isinstance(flow, mixed_acquisition.Acquisition):
+            before = {role: lines[role][_COMBINATIONS] for role in BALANCES}
             mixed_acquisition.enter(flow, layers, asset, lines)
+            if acquisition_evidence is not None:
+                acquisition_evidence.append(
+                    {
+                        "kind": "ORIGINAL_CUTOVER_EVENT",
+                        "event_key": flow.event_key,
+                        "effective_date": flow.effective_date.isoformat(),
+                        "subjects": flow.subjects,
+                        "baseline_amounts": dict(flow.amounts),
+                        "amounts": {
+                            role: lines[role][_COMBINATIONS] - before[role] for role in BALANCES
+                        },
+                    }
+                )
             continue
         kind = _KINDS[flow.kind]
         if flow.kind == _REVENUE:
@@ -642,6 +672,7 @@ def _functional(
     lines: dict[str, dict[str, int]],
     *,
     acquired_sources: frozenset[tuple[str, str]] = frozenset(),
+    acquisition_evidence: list[Mapping[str, object]] | None = None,
 ) -> int:
     """The lines from the stage 12 layer movements in the functional currency (REQ-FX-007)."""
     fx = records.fx
@@ -701,6 +732,7 @@ def _functional(
         when = move.effective_date
         if not start <= when <= end or (cutover is not None and when <= cutover):
             continue
+        before = {role: lines[role][_COMBINATIONS] for role in BALANCES}
         amount = move.amount_functional
         kind = move.movement_kind
         if kind == "LIABILITY_LAYER_CREATED":
@@ -754,6 +786,20 @@ def _functional(
                     asset[role] += amount
                     lines[role][code] += amount
                     relief += amount if revenue else 0
+        changes = {role: lines[role][_COMBINATIONS] - before[role] for role in BALANCES}
+        if acquisition_evidence is not None and any(changes.values()):
+            acquisition_evidence.append(
+                {
+                    "kind": "ORIGINAL_FX_MOVEMENT",
+                    "source_key": move.source_key,
+                    "effective_date": move.effective_date.isoformat(),
+                    "layer_key": move.layer_key,
+                    "movement_kind": move.movement_kind,
+                    "trace_node_id": move.trace_node_id,
+                    "rate_key": move.rate_key,
+                    "amounts": changes,
+                }
+            )
     closing = dict.fromkeys(BALANCES, 0)
     for held in fx.layer_balances:
         if held.entity != entity or held.period_key != period.period_key:

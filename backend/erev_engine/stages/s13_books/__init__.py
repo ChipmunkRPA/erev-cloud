@@ -563,6 +563,7 @@ def _stage_call(
             mixed_acquisition_closing=(cb.bundle.evidence_revision or 0) >= 24,
             mixed_acquisition_rollforward=(cb.bundle.evidence_revision or 0) >= 25,
             mixed_acquisition_functional=(cb.bundle.evidence_revision or 0) >= 26,
+            capture_acquisition_sources=(cb.bundle.evidence_revision or 0) >= 27,
             opening_billing_sources=(cb.bundle.evidence_revision or 0) >= 16,
             frozen_openings=cb.bundle.disclosure_openings or (),
         )

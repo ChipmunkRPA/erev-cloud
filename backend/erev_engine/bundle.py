@@ -898,6 +898,9 @@ class DisclosureRollforwardOut:
     opening_source: Mapping[str, str] | None = field(
         default=None, metadata={"canonical_omit_none": True}
     )
+    acquisition_sources: tuple[Mapping[str, object], ...] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
     obligation_closing: Mapping[str, object] | None = field(
         default=None, metadata={"canonical_omit_none": True}
     )

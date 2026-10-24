@@ -17,6 +17,9 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class Acquisition:
     amounts: Mapping[str, int]
+    event_key: str
+    effective_date: date
+    subjects: tuple[str, ...]
 
 
 def is_mixed(own: Sequence[ObligationState]) -> bool:
@@ -78,7 +81,12 @@ def items(
             (
                 cutover,
                 (1, event.record_seq, key, "", "ACQUISITION"),
-                Acquisition(_established(ctx, records, members, entity, cutover)),
+                Acquisition(
+                    _established(ctx, records, members, entity, cutover),
+                    key,
+                    cutover,
+                    tuple(sorted(ob.subject_key for ob in members)),
+                ),
             )
         )
     for flow in records.flows:
@@ -225,3 +233,10 @@ def functional_sources(
     if any(len(flags) != 1 for flags in classifications.values()):
         raise EngineError("ENGINE_INVARIANT_VIOLATED", "Functional source ownership is ambiguous.")
     return frozenset(key for key, flags in classifications.items() if flags == {True})
+
+
+def source_amount(source: Mapping[str, object], role: str) -> int:
+    amounts = source["amounts"]
+    if not isinstance(amounts, Mapping) or type(amounts.get(role)) is not int:
+        raise EngineError("ENGINE_INVARIANT_VIOLATED", "Invalid acquisition source amount.")
+    return int(amounts[role])
