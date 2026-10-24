@@ -305,11 +305,13 @@ function VersionForm({
         <Link to={`/approvals/requests/${version.approval_request_id}`}>{label("approval")}</Link>
       ) : null}
       {networkError ? <Banner tone="negative" title={label("networkError")} /> : null}
-      {estimate.estimate_kind === "RETURN_RATE" ? (
+      {["RETURN_RATE", "BREAKAGE"].includes(estimate.estimate_kind) ? (
         <Field
           name="portfolio-version-targets"
           label={label("targetKeys")}
-          help={label("targetKeysHelp")}
+          help={label(
+            estimate.estimate_kind === "BREAKAGE" ? "breakageTargetKeysHelp" : "targetKeysHelp",
+          )}
         >
           {(control) => (
             <textarea

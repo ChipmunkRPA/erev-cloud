@@ -21,6 +21,9 @@ def setup_preview(
     identities=(("A", "POINTS"), ("B", "POINTS")),
     targets=(),
     extra=False,
+    version_targets=None,
+    stale_population=False,
+    stale_target=False,
 ):
     portfolio, estimate, version = uuid4(), uuid4(), uuid4()
     members = []
@@ -59,6 +62,27 @@ def setup_preview(
                 }
             )
         computed.append({"id": cv, "contract_computation_id": computation})
+    from erev_api.schemas.estimates import SharedEstimateApplicationBasis
+
+    binding = None
+    if version_targets is not None:
+        binding = SharedEstimateApplicationBasis(
+            portfolio_id=portfolio,
+            target_obligation_keys=list(version_targets),
+            members=[
+                {
+                    "contract_id": uuid4() if stale_population else member["contract_id"],
+                    "contract_key": results[index * 3]["external_id"],
+                    "obligation_ids": [
+                        uuid4() if stale_target else row["obligation_id"]
+                        for row in results[index * 3 + 2]
+                        if row["obligation_key"] in version_targets
+                    ],
+                    "obligation_keys": list(version_targets),
+                }
+                for index, member in enumerate(members)
+            ],
+        )
     session = Mock()
 
     def result(value):
@@ -87,6 +111,7 @@ def setup_preview(
         Mock(
             return_value=SimpleNamespace(
                 currency="USD",
+                portfolio_application_basis=binding,
                 effective_date=date(2026, 10, 1),
                 parameters={"portfolio_total_breakage_quantity": "9"},
             )
@@ -244,3 +269,17 @@ def test_breakage_definition_resolves_common_targets_for_each_member():
         target_obligation_keys=["POINTS"],
     )
     assert service.portfolios._shared_targets(session, uuid4(), body) == sorted([oa, ob])
+
+
+def test_version_breakage_targets_override_definition(monkeypatch):
+    args = setup_preview(monkeypatch, targets=("POINTS",), extra=True, version_targets=("OTHER",))
+    value = service.preview(*args)
+    assert {row.obligation_key for row in value.shares} == {"OTHER"}
+    assert [row.breakage_quantity for row in value.shares] == ["4.5", "4.5"]
+
+
+@pytest.mark.parametrize("changed", ["stale_population", "stale_target"])
+def test_version_breakage_targets_reject_changed_original_identities(monkeypatch, changed):
+    args = setup_preview(monkeypatch, version_targets=("POINTS",), **{changed: True})
+    with pytest.raises(Problem, match="Save the draft again"):
+        service.preview(*args)

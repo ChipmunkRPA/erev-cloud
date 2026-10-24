@@ -16,7 +16,7 @@ from support.reference import approve, assign, entity, get, holding, post
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import audit_event, contract, legal_entity, obligation, estimate_version
+from erev_api.db.tables import audit_event, contract, estimate_version, legal_entity, obligation
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 
@@ -416,6 +416,45 @@ def test_portfolio_membership_workflow(
         .where(obligation.c.contract_id == UUID(contract_id))
         .limit(1)
     )
+    # A breakage draft can select and retain its own original-member targets.
+    total_path = saved_total.headers["location"]
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = saved_total.headers["etag"]
+    rejected = call(
+        app,
+        "PUT",
+        total_path,
+        json={
+            **total_values,
+            "target_obligation_keys": ["MISSING-OBLIGATION"],
+        },
+        headers=headers,
+    )
+    assert rejected.status_code == 422, rejected.text
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = saved_total.headers["etag"]
+    targeted_total = call(
+        app,
+        "PUT",
+        total_path,
+        json={
+            **total_values,
+            "target_obligation_keys": [target_key],
+        },
+        headers=headers,
+    )
+    assert targeted_total.status_code == 200, targeted_total.text
+    saved_binding = targeted_total.json()["portfolio_application_basis"]
+    assert saved_binding["target_obligation_keys"] == [target_key]
+    assert saved_binding["members"][0]["contract_id"] == contract_id
+    assert saved_binding["members"][0]["obligation_keys"] == [target_key]
+    assert len(saved_binding["members"][0]["obligation_ids"]) == 1
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = targeted_total.headers["etag"]
+    retained_total = call(app, "PUT", total_path, json=total_values, headers=headers)
+    assert retained_total.status_code == 200, retained_total.text
+    assert retained_total.json()["portfolio_application_basis"] == saved_binding
+
     current_tag = get(app, path, maya).headers["etag"]
     target_body = {
         "element_code": "TARGETED-RETURNS",
@@ -493,9 +532,10 @@ def test_portfolio_membership_workflow(
         == retained_basis
     )
     assert get(app, impact_path, maya).status_code == 422
-    from erev_api.db import transitions
     from sqlalchemy import update
     from sqlalchemy.exc import DBAPIError
+
+    from erev_api.db import transitions
     from erev_api.domain.contracts import estimates as estimate_service
 
     saved_id = UUID(preview_version.json()["id"])

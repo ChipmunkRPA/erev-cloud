@@ -35,3 +35,25 @@ This completes version-specific nonempty target changes alongside member onboard
 frozen unit-cost FX. Shared breakage application, other estimate kinds, combined percentage/
 milestone progress, contract-combination reassessment and special-source opening attribution
 remain unfinished. No deployment or full-system readiness claim.
+
+
+## Shared breakage draft targets — October 24, 2026
+
+Breakage drafts now accept version-specific common obligation keys through the API and editor.
+Saving resolves and retains each current member's original obligation IDs and keys. Omitting keys
+on a later edit retains the saved scope; an explicit unknown key is refused without changing it.
+Original definitions and earlier versions remain unchanged.
+
+The SSP allocation preview selects the saved version targets instead of reverting to the
+original definition. It checks the current population, original contract identity and original
+obligation identities against the saved binding. Changed membership or replaced targets require
+saving the draft again; ineligible redemption/loyalty targets continue to refuse. Existing drafts
+without a binding keep their prior definition-based preview behavior.
+
+This retains target scope only. SSP remains a current-computation preview, not an approved
+frozen effective-date allocation. Shared breakage submission/application and the expected-redemption
+calculation choice remain open; no breakage posting was enabled by this change.
+
+Necessary checks: 33 focused preview/engine cases, 12 portfolio UI cases, scoped Python lint/types
+and frontend TypeScript pass. Public API verification covers selecting targets, rejecting a missing
+key, retaining targets when an edit omits keys, and the existing membership/access workflow; passed.

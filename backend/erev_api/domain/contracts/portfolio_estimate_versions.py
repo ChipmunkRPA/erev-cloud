@@ -12,7 +12,7 @@ from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id, transitions
 from erev_api.db.locking import hold_fx_publication
 from erev_api.db.tables import estimate, estimate_version
-from erev_api.domain.contracts import estimates, portfolios, portfolio_allocation, portfolio_binding
+from erev_api.domain.contracts import estimates, portfolio_allocation, portfolio_binding, portfolios
 from erev_api.problems import Problem
 from erev_api.schemas.estimates import EstimateVersionOut
 from erev_api.schemas.portfolios import PortfolioEstimateVersionIn
@@ -115,11 +115,13 @@ def save(
         values = estimates.validated_version_values(
             uow.session, element, body, default_currency=body.currency
         )
-        if (
-            body.target_obligation_keys is not None
-            and str(element["estimate_kind"]) != "RETURN_RATE"
-        ):
-            raise Problem("validation-failed", "Version target keys apply only to shared returns.")
+        if body.target_obligation_keys is not None and str(element["estimate_kind"]) not in {
+            "RETURN_RATE",
+            "BREAKAGE",
+        }:
+            raise Problem(
+                "validation-failed", "Version target keys apply only to shared returns or breakage."
+            )
         if str(element["estimate_kind"]) == "BREAKAGE":
             if values["parameters"].get("portfolio_total_breakage_quantity") is None:
                 raise Problem(

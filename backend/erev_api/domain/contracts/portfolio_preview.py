@@ -35,7 +35,12 @@ def preview(
         raise Problem("validation-failed", "SSP quantity allocation applies to shared breakage.")
     if version.currency is None:
         raise Problem("validation-failed", "The shared estimate needs an explicit currency.")
-    target_keys = set(definition.target_obligation_keys)
+    binding = version.portfolio_application_basis
+    target_keys = set(
+        binding.target_obligation_keys
+        if binding is not None and binding.target_obligation_keys is not None
+        else definition.target_obligation_keys
+    )
     if str(definition.allocation_target) == "OBLIGATIONS" and not target_keys:
         raise Problem("validation-failed", "The shared breakage target keys are unavailable.")
     total = version.parameters.get("portfolio_total_breakage_quantity")
@@ -44,6 +49,16 @@ def preview(
     members = session.execute(portfolios.members(portfolio_id)).mappings().all()
     if not members:
         raise Problem("validation-failed", "Add portfolio members before previewing allocation.")
+    bound_members = {} if binding is None else {m.contract_id: m for m in binding.members}
+    if binding is not None and (
+        binding.portfolio_id != portfolio_id
+        or len(bound_members) != len(binding.members)
+        or set(bound_members) != {m["contract_id"] for m in members}
+    ):
+        raise Problem(
+            "validation-failed",
+            "The saved breakage population differs. Save the draft again before previewing.",
+        )
     book = book_code or queries.primary_book(session)
     sources = []
     weights = []
@@ -111,6 +126,16 @@ def preview(
             raise Problem(
                 "validation-failed",
                 "Every member must have a retained redemption or loyalty obligation.",
+            )
+        bound = bound_members.get(current["id"])
+        if bound is not None and (
+            bound.contract_key != current["external_id"]
+            or set(bound.obligation_keys) != {row["obligation_key"] for row in eligible}
+            or set(bound.obligation_ids) != {row["obligation_id"] for row in eligible}
+        ):
+            raise Problem(
+                "validation-failed",
+                "The saved breakage targets differ. Save the draft again before previewing.",
             )
         for row in eligible:
             key = obligation_subject_key(current["external_id"], row["obligation_key"])

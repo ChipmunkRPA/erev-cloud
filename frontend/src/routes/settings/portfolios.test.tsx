@@ -429,6 +429,7 @@ it("authors the shared breakage total without a member rate", async () => {
     ["Currency", "USD"],
     ["Rationale", "Portfolio experience"],
     ["Portfolio total breakage quantity (allocated by SSP)", "12.000000000000000001"],
+    ["Target obligation keys for this version", "POINTS"],
   ] as const)
     fireEvent.change(screen.getByLabelText(name), { target: { value } });
   fireEvent.click(screen.getByRole("button", { name: "Save draft version" }));
@@ -437,6 +438,7 @@ it("authors the shared breakage total without a member rate", async () => {
       rate: null,
       expected_quantity: null,
       parameters: { portfolio_total_breakage_quantity: "12.000000000000000001" },
+      target_obligation_keys: ["POINTS"],
     }),
   );
 });

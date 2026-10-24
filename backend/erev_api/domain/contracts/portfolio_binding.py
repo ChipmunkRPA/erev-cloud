@@ -1,4 +1,4 @@
-"""Server-captured shared return targets retained on a draft version and frozen on submission."""
+"""Server-captured shared estimate targets retained on a draft version and frozen on submission."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -7,11 +7,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import obligation, estimate_version
+from erev_api.db.tables import estimate_version, obligation
 from erev_api.domain.contracts import portfolios
 from erev_api.problems import Problem
-from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from erev_api.schemas.estimates import SharedEstimateApplicationBasis, SharedEstimateMemberBinding
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
 
 def capture(
@@ -22,7 +22,7 @@ def capture(
     values: Mapping[str, Any],
     target_keys: list[str] | None = None,
 ) -> dict[str, Any] | None:
-    if str(element["estimate_kind"]) != "RETURN_RATE":
+    if str(element["estimate_kind"]) not in {"RETURN_RATE", "BREAKAGE"}:
         return None
     population = session.execute(portfolios.members(portfolio_id)).mappings().all()
     previous = session.scalar(
@@ -87,7 +87,9 @@ def capture(
             )
         )
     if members and len({tuple(member.obligation_keys) for member in members}) != 1:
-        raise Problem("validation-failed", "Shared return member targets must have matching keys.")
+        raise Problem(
+            "validation-failed", "Shared estimate member targets must have matching keys."
+        )
     current_targets = {m.contract_id: set(m.obligation_ids) for m in members}
     retired_targets = []
     for old in (previous or {}).get("members", []):
@@ -111,8 +113,12 @@ def capture(
             )
     from erev_api.domain.contracts import portfolio_cost_fx
 
-    conversion = portfolio_cost_fx.capture(
-        session, values, sorted({m.contract_id for m in (*members, *retired)})
+    conversion = (
+        portfolio_cost_fx.capture(
+            session, values, sorted({m.contract_id for m in (*members, *retired)})
+        )
+        if str(element["estimate_kind"]) == "RETURN_RATE"
+        else []
     )
     return SharedEstimateApplicationBasis(
         portfolio_id=portfolio_id,
