@@ -614,6 +614,23 @@ class OpeningBalanceEstablishedV2(EventPayload):
         return self
 
 
+class OpeningBalanceEstablishedV3(OpeningBalanceEstablishedV2):
+    """Retain an explicitly selected calculation method on the original opening fact."""
+
+    onboarding_method: Literal["OPENING_BALANCES_AT_CUTOVER", "RECOMPUTE_FROM_INCEPTION"] | None = (
+        None
+    )
+
+    @model_validator(mode="after")
+    def _method(self) -> Self:
+        if self.reason == "LEGACY_MIGRATION" and self.onboarding_method not in {
+            None,
+            "OPENING_BALANCES_AT_CUTOVER",
+        }:
+            raise ValueError("Legacy migration requires OPENING_BALANCES_AT_CUTOVER")
+        return self
+
+
 class EventVoidedV1(EventPayload):
     reason_code: VoidReason
     comment: Memo
@@ -732,9 +749,10 @@ _V1: Final[tuple[tuple[ContractEventType, type[Payload]], ...]] = (
     (ContractEventType.REGROUPED, RegroupedV1),
 )
 
-# Later versions (DG-KRN-EVT-03): OPENING_BALANCE_ESTABLISHED V2 (04 rev 1.61; D-98 candidate 127).
+# Later opening versions: V2 exact amounts; V3 optional original calculation method.
 _LATER: Final[tuple[tuple[ContractEventType, int, type[BaseModel]], ...]] = (
     (ContractEventType.OPENING_BALANCE_ESTABLISHED, 2, OpeningBalanceEstablishedV2),
+    (ContractEventType.OPENING_BALANCE_ESTABLISHED, 3, OpeningBalanceEstablishedV3),
 )
 PAYLOADS: Final[Mapping[tuple[ContractEventType, int], type[BaseModel]]] = MappingProxyType(
     {
@@ -749,14 +767,20 @@ LATEST_SCHEMA_VERSION: Final[Mapping[ContractEventType, int]] = MappingProxyType
 
 def _unchanged(data: Mapping[str, Any]) -> Mapping[str, Any]:
     """The identity upcast: every version-1 body is a valid version-2 body (a four-place API-S-Money
-    amount is an exact amount), so stored bytes and hashes stay as written."""
+    amount is an exact amount); version 3 adds only an optional method. Neither step rewrites
+    stored bytes or hashes."""
     return data
 
 
 # (event type, version n) → the step producing version n + 1 of the payload.
 UPCASTS: Final[
     Mapping[tuple[ContractEventType, int], Callable[[Mapping[str, Any]], Mapping[str, Any]]]
-] = MappingProxyType({(ContractEventType.OPENING_BALANCE_ESTABLISHED, 1): _unchanged})
+] = MappingProxyType(
+    {
+        (ContractEventType.OPENING_BALANCE_ESTABLISHED, 1): _unchanged,
+        (ContractEventType.OPENING_BALANCE_ESTABLISHED, 2): _unchanged,
+    }
+)
 
 
 def model_name(event_type: ContractEventType, schema_version: int) -> str:
@@ -794,7 +818,10 @@ def parse_payload(
 # while it is not stated: a payload that does not state them is stored — and hashed — as it was
 # before the member existed (04 §16.3 rev 1.287; item ACT-FLAGS-1).
 STATED_ONLY: Final[Mapping[type[BaseModel], tuple[str, ...]]] = MappingProxyType(
-    {ContractBookedV1: ("acceptance_clause", "side_letter")}
+    {
+        ContractBookedV1: ("acceptance_clause", "side_letter"),
+        OpeningBalanceEstablishedV3: ("onboarding_method",),
+    }
 )
 
 

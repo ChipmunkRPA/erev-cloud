@@ -2740,6 +2740,28 @@ def onboarding_pins(events: Sequence[EventInput]) -> dict[str, str]:
     return found
 
 
+def explicit_onboarding_methods(events: Sequence[EventInput]) -> dict[str, tuple[str, str]]:
+    """Method and source from immutable opening events; absence preserves historical defaults."""
+    found: dict[str, tuple[str, str]] = {}
+    for event in events:
+        if event.event_type != ContractEventType.OPENING_BALANCE_ESTABLISHED.value:
+            continue
+        method = event.payload.get("onboarding_method")
+        if method is None:
+            continue
+        if method not in {OPENING_BALANCES_AT_CUTOVER, "RECOMPUTE_FROM_INCEPTION"}:
+            raise ValueError("Unknown original onboarding method")
+        if (
+            event.payload.get("reason") == LEGACY_MIGRATION
+            and method != OPENING_BALANCES_AT_CUTOVER
+        ):
+            raise ValueError("Legacy migration requires OPENING_BALANCES_AT_CUTOVER")
+        if event.contract_key in found and found[event.contract_key][0] != method:
+            raise ValueError("Original opening events specify conflicting onboarding methods")
+        found.setdefault(event.contract_key, (str(method), event.event_key))
+    return found
+
+
 def period_end_instant(end_date: date, time_zone: str) -> datetime:
     """The last instant of a period that ends on ``end_date`` in the entity's time zone: one
     microsecond before the next local midnight, in UTC."""
@@ -2807,6 +2829,7 @@ def _policies(
     product_rows: Mapping[str, Mapping[str, Any]],
     template_values: Mapping[str, Mapping[str, Any]],
     onboarding: Mapping[str, str] | None = None,
+    onboarding_methods: Mapping[str, tuple[str, str]] | None = None,
     pins: ProductPins | None = None,
     recorded: Mapping[str, Mapping[str, str]] | None = None,
     entity_ids: Mapping[str, UUID] | None = None,
@@ -2861,13 +2884,17 @@ def _policies(
         source = spec.source_ref if found.source_id is None else str(found.source_id)
         resolved.append(_policy(code, "GROUP", "", value, found.level, source, "K"))
     # 05 RCP-15 rev 1.36: the import-batch level of POL-210, at contract scope, beside the GROUP row
-    for contract_key, event_key in sorted((onboarding or {}).items()):
+    methods = {
+        key: (OPENING_BALANCES_AT_CUTOVER, event) for key, event in (onboarding or {}).items()
+    }
+    methods.update(onboarding_methods or {})
+    for contract_key, (method, event_key) in sorted(methods.items()):
         resolved.append(
             _policy(
                 ONBOARDING_METHOD,
                 "CONTRACT",
                 contract_key,
-                OPENING_BALANCES_AT_CUTOVER,
+                method,
                 "C",
                 event_key,
                 "K",
@@ -3286,6 +3313,7 @@ def _assemble(
     }
     books: list[BookInput] = []
     onboarding = onboarding_pins(events)
+    onboarding_methods = explicit_onboarding_methods(events)
     known_versions = registry.known_versions(session, known_at=known_at)
     override_rows = policy_inputs.approved_rows(session, contract_ids, known_at)
     for book_code in BOOK_ORDER:
@@ -3339,6 +3367,7 @@ def _assemble(
             product_rows=product_rows,
             template_values=template_values,
             onboarding=onboarding,
+            onboarding_methods=onboarding_methods,
             pins=pins,
             recorded=recorded_ssp_versions(
                 session,

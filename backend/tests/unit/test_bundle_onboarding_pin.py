@@ -15,13 +15,14 @@ witnesses are in ``tests/pg/test_migration_capture_pg.py``. CPU only.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date
+
+from support.bundles import event
 
 from erev_api.domain.contracts import bundles
 from erev_api.registry.policies import POLICY_PARAMETERS
 from erev_engine.bundle import EventInput
 from erev_engine.stages.state import PolicyResolver
-from support.bundles import event
 
 BATCH = "01a0f0ff-684d-7de2-9744-8186d008a23f"
 INCEPTION = date(2023, 1, 1)
@@ -110,3 +111,80 @@ def test_the_pin_is_pol_210s_literal_at_contract_scope_and_the_engine_resolves_i
         "GROUP",
         "DEFAULT",
     )
+
+
+def test_explicit_acquisition_method_retains_its_own_event_and_rejects_conflicts():
+    from dataclasses import replace
+
+    import pytest
+
+    original = _opening("ACQUIRED", 3, "BUSINESS_COMBINATION", None)
+    assert bundles.explicit_onboarding_methods([original]) == {}
+    for method in ("OPENING_BALANCES_AT_CUTOVER", "RECOMPUTE_FROM_INCEPTION"):
+        selected = replace(
+            original, schema_version=3, payload={**original.payload, "onboarding_method": method}
+        )
+        assert bundles.explicit_onboarding_methods([selected]) == {
+            "ACQUIRED": (method, original.event_key)
+        }
+    first = replace(
+        original,
+        schema_version=3,
+        payload={**original.payload, "onboarding_method": "OPENING_BALANCES_AT_CUTOVER"},
+    )
+    conflict = replace(
+        first,
+        event_key="ACQUIRED/EV-000004",
+        payload={**original.payload, "onboarding_method": "RECOMPUTE_FROM_INCEPTION"},
+    )
+    with pytest.raises(ValueError, match="conflicting"):
+        bundles.explicit_onboarding_methods([first, conflict])
+
+
+def test_explicit_method_reaches_book_policy_resolution(monkeypatch):
+    from dataclasses import replace
+    from datetime import datetime
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    spec = POLICY_PARAMETERS[bundles.ONBOARDING_METHOD]
+    monkeypatch.setattr(bundles, "POLICY_PARAMETERS", {bundles.ONBOARDING_METHOD: spec})
+    monkeypatch.setattr(
+        bundles.registry,
+        "resolve",
+        lambda *args, **kwargs: SimpleNamespace(
+            value=spec.default_asc606, level="DEFAULT", source_id=None
+        ),
+    )
+    original = _opening("ACQUIRED", 3, "BUSINESS_COMBINATION", None)
+    for method in ("OPENING_BALANCES_AT_CUTOVER", "RECOMPUTE_FROM_INCEPTION"):
+        selected = replace(
+            original, schema_version=3, payload={**original.payload, "onboarding_method": method}
+        )
+        for book in ("ASC606", "IFRS15"):
+            rows = bundles._policies(
+                Mock(),
+                book_code=book,
+                entity_id=None,
+                entities=(),
+                known_at=datetime(2026, 10, 24, tzinfo=UTC),
+                pinned=None,
+                lines=(),
+                product_rows={},
+                template_values={},
+                onboarding={"LEGACY": "LEGACY/EV-000003"},
+                onboarding_methods=bundles.explicit_onboarding_methods([selected]),
+            )
+            resolver = PolicyResolver(rows)
+            actual = resolver.resolved(bundles.ONBOARDING_METHOD, contract="ACQUIRED")
+            assert (actual.value, actual.scope, actual.source_ref) == (
+                method,
+                "CONTRACT",
+                original.event_key,
+            )
+            assert resolver.resolved(bundles.ONBOARDING_METHOD, contract="LEGACY").value == (
+                "OPENING_BALANCES_AT_CUTOVER"
+            )
+            assert resolver.resolved(bundles.ONBOARDING_METHOD, contract="NATIVE").value == (
+                "RECOMPUTE_FROM_INCEPTION"
+            )

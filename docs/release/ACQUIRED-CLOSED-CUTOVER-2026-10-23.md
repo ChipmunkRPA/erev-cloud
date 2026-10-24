@@ -111,3 +111,24 @@ an admitted mid-period acquisition. The current remaining work is public report/
 integration for admitted period-end acquisitions and special-source attribution. Introducing
 mid-period acquisition accounting would require changing the upstream admission and baseline
 rules as a separate feature; this checkpoint neither changes nor claims that capability.
+
+
+## Original acquisition method — October 24, 2026
+
+Public-path preparation exposed a bundle-input gap: only legacy migration pinned
+`onboarding.method`; an acquisition opening otherwise retained the registry default of
+`RECOMPUTE_FROM_INCEPTION`. Opening event schema version 3 now accepts an explicit
+`onboarding_method`: `OPENING_BALANCES_AT_CUTOVER` or `RECOMPUTE_FROM_INCEPTION`.
+The bundle builder resolves that value at contract scope for both books, citing the original
+opening event. Conflicting original selections are refused. Legacy migration keeps its
+fixed opening-balance method and rejects an explicit recompute selection.
+
+Absent selections preserve historical behavior. Identity upcasts and omission of the new
+unset field preserve the prior normalized opening JSON and stored event identity. This
+adds a backend event capability; it does not add an acquisition submission screen or claim
+the full public acquisition report/close/rerun workflow is complete.
+
+Necessary validation: 15 focused payload, schema, bundle-policy and architecture checks
+pass. The actual book-policy assembly and engine resolver honor each selection for both
+books, preserve other contracts' defaults, and retain the original event source. Scoped
+production types and lint pass; generated OpenAPI artifacts are unchanged.

@@ -102,9 +102,9 @@ def test_pending_events_carry_the_registered_latest_version_and_stored_rows_keep
     assert (opening.event_key, opening.stream_version, opening.schema_version) == (
         "C-127/EV-000004",
         4,
-        2,
+        3,
     )
-    assert opening.schema_version == LATEST_SCHEMA_VERSION[OPENING] == 2
+    assert opening.schema_version == LATEST_SCHEMA_VERSION[OPENING] == 3
     assert (activation.event_key, activation.schema_version) == ("C-127/EV-000005", 1)
     assert activation.schema_version == LATEST_SCHEMA_VERSION[ACTIVATED] == 1
     # the pending payload reaches the engine exactly (the amount string, unwrapped, unrounded)
@@ -113,3 +113,23 @@ def test_pending_events_carry_the_registered_latest_version_and_stored_rows_keep
     # the stored row's identity is untouched: its version, hash and body
     assert stored.payload_sha256 == stored_row["payload_sha256"]
     assert stored.payload["obligations"][0]["revenue_cum"] == "120000.00"
+
+
+def test_opening_method_is_explicit_and_old_payloads_keep_identical_json():
+    import pytest
+    from pydantic import ValidationError
+
+    original = payloads.payload_json(
+        payloads.OpeningBalanceEstablishedV2.model_validate(_body("120000.00", "120000.00"))
+    )
+    for version in (1, 2, 3):
+        parsed = payloads.parse_payload(OPENING, version, original)
+        assert payloads.payload_json(parsed) == original
+    for method in ("OPENING_BALANCES_AT_CUTOVER", "RECOMPUTE_FROM_INCEPTION"):
+        body = {**original, "reason": "BUSINESS_COMBINATION", "onboarding_method": method}
+        parsed = payloads.parse_payload(OPENING, 3, body)
+        assert payloads.payload_json(parsed) == body
+    with pytest.raises(ValidationError, match="Legacy migration requires"):
+        payloads.parse_payload(
+            OPENING, 3, {**original, "onboarding_method": "RECOMPUTE_FROM_INCEPTION"}
+        )
