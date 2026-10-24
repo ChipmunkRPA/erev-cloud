@@ -629,6 +629,7 @@ case "$1" in
       printf '{"Service":"api","State":"running","Health":"healthy"}\\n'
     fi
     if [[ "$sub" == "build" ]]; then
+      if [[ "${STUB_COMPOSE_HANG_BUILD:-0}" == "1" ]]; then sleep 600 & wait; fi
       manifest_at "${STUB_MANIFEST_AT_BUILD:-}"
       exit "${STUB_COMPOSE_BUILD_RC:-0}"
     fi
@@ -1630,6 +1631,29 @@ def test_compose_verify_brings_up_smokes_and_tears_down(scratch: Path) -> None:
         )
         done = _run_dep5("scripts/compose_verify.sh", root, env)
     assert done.returncode == 1 and "the worker container is starting, not healthy" in done.stdout
+
+
+def test_compose_verify_stalled_build_stops_before_startup(scratch: Path) -> None:
+    root = _dep5_root(scratch)
+    env = _dep5_env(
+        scratch,
+        root,
+        STUB_COMPOSE_HANG_BUILD="1",
+        EREV_COMPOSE_VERIFY_BUILD_TIMEOUT_SECONDS="2",
+    )
+    done = _run_dep5("scripts/compose_verify.sh", root, env)
+    assert done.returncode != 0
+    report = _report_of(root, "compose-verify")
+    assert report["result"] == "build-failed"
+    assert report["build_timeout_seconds"] == 2
+    assert report["failures"] == [{"stage": "build", "exit_code": 124}]
+    assert report["counts"]["stages"]["build"] == "fail"
+    assert report["counts"]["stages"]["up"] == "not-run"
+    assert report["counts"]["stages"]["ready"] == "not-run"
+    assert not any(line.endswith("-p erev-verify up -d") for line in _calls(scratch).splitlines())
+    assert not (root / "release-manifest.json").exists()
+    log = root / ".run/reports/compose-verify/compose-build.log"
+    assert "build exceeded 2s; client processes stopped" in log.read_text()
 
 
 def test_compose_verify_stalled_startup_fails_and_cleans_up(scratch: Path) -> None:

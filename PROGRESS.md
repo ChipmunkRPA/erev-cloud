@@ -20,6 +20,13 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Bounded local image builds — October 23, 2026
+
+Frontend build passes. Compose image builds now have a configurable 1800-second limit,
+process-group cleanup and recorded failure. Four focused checks and a real short-budget
+Docker timeout pass. Full container verification remains open: image resolution did not
+finish. No deployment. See [local build evidence](docs/release/LOCAL-BUILD-2026-10-23.md).
+
 ## Original agent gross-control closing evidence — October 23, 2026
 
 - Revision 8 captures same-entity agent closing control balances and complete original billing,
