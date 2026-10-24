@@ -13,6 +13,7 @@ from erev_api.domain.reports import (
     opening_consumption_policy,
     opening_relief_pob,
     opening_relief_frozen,
+    opening_agent_sources,
     tie_outs,
 )
 from erev_api.domain.reports.builders import ReportParams
@@ -113,6 +114,10 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
     )
     frozen_sources = opening_relief_frozen.Reader(source_uow, params)
+    use_agent_sources = (
+        params.binding is None or opening_agent_sources.KEY in params.binding.evidence
+    )
+    agent_evidence: dict[str, Any] = {}
     for (version, entity, currency), members in groups.items():
         first = {
             name: sum((open_rows[key].value(name) for key in members if key in open_rows), ZERO)
@@ -222,12 +227,30 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                         for owner, layer, created in result.layer_dates
                     ],
                 }
+        agent_results = {}
+        if use_agent_sources and policies.get(str(entity)) == "FIFO_WITHIN_POB":
+            for member in members:
+                agent_result = opening_agent_sources.read(
+                    source_uow,
+                    selected[member],
+                    [entry for owner, entry in entries if owner == member],
+                    periods[entity][0].start,
+                    first["contract_liability"],
+                )
+                if agent_result is not None:
+                    agent_results[member] = agent_result
+                    paid_members.update(agent_result.paid_lines)
+                    agent_evidence[f"{version}:{entity}:{member[0]}"] = agent_result.evidence
         recognized: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         relief: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         for index, (member, entry) in enumerate(entries):
             if entry.flow.is_revenue:
                 recognized[member] += entry.flow.amount
                 relief[member] += attribution.get(index, ZERO)
+        for member, agent_result in agent_results.items():
+            recognized[member] = sum(
+                (entry.flow.amount for entry in agent_result.entries if entry.flow.is_revenue), ZERO
+            )
         group_identity = f"{version}:{entity}:{currency}"
         membership[group_identity] = sorted(str(member[0]) for member in members)
         if policies.get(str(entity)) == "FIFO_WITHIN_POB":
@@ -252,11 +275,19 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     session,
                     selected[member],
                     previous,
-                    [entry for owner, entry in entries if owner == member],
+                    agent_results[member].entries
+                    if member in agent_results
+                    else [entry for owner, entry in entries if owner == member],
                     first["contract_liability"],
                     consumed,
                     opening_row=frozen_row,
                     opening_absent=frozen is not None and frozen_row is None,
+                    agent_eligible=agent_results[member].eligible
+                    if member in agent_results
+                    else None,
+                    agent_evidence=agent_results[member].evidence
+                    if member in agent_results
+                    else None,
                 )
                 if frozen_facts is not None:
                     facts["frozen_opening"] = frozen_facts
@@ -368,6 +399,15 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "currency_view", "Per-obligation relief differs from retained evidence."
             )
         tie_outs.record_evidence(params, opening_relief_pob.KEY, pob_evidence)
+    if use_agent_sources:
+        if (
+            params.binding is not None
+            and params.binding.evidence[opening_agent_sources.KEY] != agent_evidence
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Agent net opening sources differ from retained evidence."
+            )
+        tie_outs.record_evidence(params, opening_agent_sources.KEY, agent_evidence)
     tie_outs.record_evidence(params, "opening_relief_groups_v1", membership)
     contracts.sort(key=lambda row: row["row_key"])
     return finish(

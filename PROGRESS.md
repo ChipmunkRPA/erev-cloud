@@ -29,21 +29,19 @@ approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](doc
 entry and saved-report replay; partial-member removal remains open;
 [local build/startup](docs/release/LOCAL-BUILD-2026-10-23.md) passes on 13ad937c; security/restore refresh remains. No deployment.
 
-## Original agent gross-control closing evidence — October 23, 2026
+## Agent net opening disclosure — October 23, 2026
 
-- Revision 8 captures same-entity agent closing control balances and complete original billing,
-  control-release and functional source identities. Agent control relief is labelled gross and
-  never stored as net revenue. Functional targets must match original transaction control flows.
-- Evidence explicitly keeps net opening-revenue attribution UNAVAILABLE and places these facts
-  in a separate control_closing record. Existing frozen-opening admission cannot mistake the
-  record for supported net commission attribution. Older revisions remain unchanged.
-- Necessary checks: 26 focused cases pass. A full merchant-agent calculation retains the
-  120,000 prepayment and 120,000 gross release with identical posting intents/balances; foreign
-  source validation retains gross-control amounts and refuses a substituted net commission.
-  Scoped lint/types pass. No deployment.
-- This is retained-source preparation for the unfinished agent opening report, not completion
-  of net revenue attribution. Owner choice for mixed opening/current-period agent receipts is
-  pending, alongside percentage/milestone progress. Cross-entity/acquired sources remain open.
+Transaction FIFO_WITHIN_POB now reads verified net postings separately from gross control
+relief and supplier payable. Uniform complete source sets can establish opening eligibility;
+mixed positive-opening sets and cross-owner sources remain refused. Cell explanations retain
+net totals and complete source identities without invented shares. Legacy saved reports keep
+their former path. This is a bounded implementation, not full agent-report completion:
+functional/reporting currencies, contract FIFO, cross-entity/acquired cases and a dedicated
+agent public-API end-to-end scenario remain open. See
+[checkpoint](docs/release/AGENT-NET-OPENING-2026-10-23.md).
+43 focused cases and seven existing public database/report-rerun cases pass; scoped lint/types
+pass. Earlier revision-8 gross-control evidence remains separately labelled, never net revenue.
+No posting changes or deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

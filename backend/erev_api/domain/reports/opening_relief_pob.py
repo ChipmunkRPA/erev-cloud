@@ -1,7 +1,7 @@
 """Transaction POL-126 disclosure from attributed opening billing and posted POB revenue."""
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -91,6 +91,8 @@ def calculate(
     opening_absent: bool = False,
     functional_currency: str | None = None,
     allow_zero_consumption: bool = True,
+    agent_eligible: Mapping[str, Decimal] | None = None,
+    agent_evidence: Mapping[str, Any] | None = None,
 ) -> tuple[Decimal, dict[str, Any]]:
     """Eligibility for one member, using the selected version and selected posting range.
 
@@ -112,18 +114,28 @@ def calculate(
         item["performing_entity_id"] != row.entity_id or str(item["principal_agent"]) != "PRINCIPAL"
         for item in obligations
     )
-    zero_special_consumption = (
-        allow_zero_consumption and consumed <= 0 and special
+    supported_agents = agent_eligible is not None and all(
+        item["performing_entity_id"] == row.entity_id
+        and (
+            str(item["principal_agent"]) == "PRINCIPAL"
+            or (
+                str(item["principal_agent"]) == "AGENT"
+                and obligation_subject_key(row.external_id, item["obligation_key"])
+                in agent_eligible
+            )
+        )
+        for item in obligations
     )
+    zero_special_consumption = allow_zero_consumption and consumed <= 0 and special
     # A reconciled zero group opening cannot contribute opening relief in any
     # currency. Preserve the established principal transaction evidence shape.
     zero_group_opening = opening <= 0 and (functional_currency is not None or special)
     zero_cap = zero_group_opening or zero_special_consumption
-    if not obligations or (not zero_cap and special):
+    if not obligations or (not zero_cap and special and not supported_agents):
         raise tie_outs.invalid(
             "currency_view",
-            "Per-obligation opening relief requires principal obligations performed by the "
-            "contracting entity; cross-entity and agent attribution remain unsupported.",
+            "Per-obligation opening relief requires same-entity principal obligations or "
+            "verified agent net source sets; other special attribution remains unsupported.",
         )
     subjects = {
         obligation_subject_key(row.external_id, item["obligation_key"]) for item in obligations
@@ -148,7 +160,15 @@ def calculate(
             not zero_cap
             and any(
                 item["performing_entity_id"] != row.entity_id
-                or str(item["principal_agent"]) != "PRINCIPAL"
+                or (
+                    str(item["principal_agent"]) != "PRINCIPAL"
+                    and (
+                        str(item["principal_agent"]) != "AGENT"
+                        or agent_eligible is None
+                        or obligation_subject_key(row.external_id, item["obligation_key"])
+                        not in agent_eligible
+                    )
+                )
                 for item in prior_obligations
             )
         ):
@@ -176,7 +196,14 @@ def calculate(
             "opening_period": None if previous is None else previous.key,
             "posted_lines": sorted(posted),
             "obligations": {
-                subject: {"posted_revenue": str(value)}
+                subject: {
+                    "posted_revenue": str(value),
+                    **(
+                        {"agent_net_sources": agent_evidence[subject]}
+                        if agent_evidence is not None and subject in agent_evidence
+                        else {}
+                    ),
+                }
                 for subject, value in sorted(recognized.items())
             },
             "opening_cap": str(opening),
@@ -248,6 +275,8 @@ def calculate(
             inputs.extend(functional_inputs)
         liability = max(ZERO, billed - revenue)
         contribution = min(liability, max(ZERO, recognized[subject]))
+        if agent_eligible is not None and subject in agent_eligible:
+            contribution = min(contribution, max(ZERO, agent_eligible[subject]))
         formula += contribution
         facts[subject] = {
             "opening_nodes": inputs,
@@ -256,6 +285,11 @@ def calculate(
             "posted_revenue": str(recognized[subject]),
             "eligible_relief": str(contribution),
             **({"opening_absence": new[subject]} if subject in new else {}),
+            **(
+                {"agent_net_sources": agent_evidence[subject]}
+                if agent_evidence is not None and subject in agent_evidence
+                else {}
+            ),
         }
     result = min(max(ZERO, opening), max(ZERO, consumed), formula)
     return result, {

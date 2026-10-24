@@ -208,7 +208,26 @@ def _details(source: dict[str, Any]) -> list[str]:
                 ("eligible_relief", "Eligibility before group caps; not allocated group relief"),
             ):
                 if field in obligation:
+                    if field == "opening_revenue" and "agent_net_sources" in obligation:
+                        label = "Opening gross control relief (includes supplier payable)"
                     result.append(f"{subject} · {label}: {obligation[field]} {currency}")
+            for line in obligation.get("agent_net_sources", {}).get("lines", []):
+                result.append(
+                    f"{subject} · Agent net income: {line['net_income']} {currency}; "
+                    f"gross control relief: {line['gross_relief']} {currency}; "
+                    f"control line: {line['control_line']}"
+                )
+                for net in line["source_sets"]:
+                    result.append(
+                        f"Net line: {net['net_line']}; bucket: {net['bucket']}; "
+                        f"net income: {net['net_income']} {currency}; "
+                        "complete source set (no per-source amounts): "
+                        + "; ".join(
+                            f"{s['contract_id']}/{s['layer_key']} "
+                            f"{s['movement_kind']} [{s['movement_id']}]"
+                            for s in net["sources"]
+                        )
+                    )
             result.append(f"{subject}: opening sources {obligation.get('opening_nodes', [])}")
     if "period_relief" in facts:
         result.append(

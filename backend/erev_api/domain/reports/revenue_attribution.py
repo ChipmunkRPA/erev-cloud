@@ -54,6 +54,7 @@ class AmountProof:
     evidence: tuple[tuple[UUID, str], ...]
     view: str
     sources: tuple[SourceIdentity, ...] = ()
+    layer_dates: tuple[tuple[UUID, str, date], ...] = ()
 
 
 def read(
@@ -468,7 +469,7 @@ def _read(
             source_identities.update((item.movement_id, item) for item in found.sources)
         paid_ids.update((identity, *found.paid_line_ids))
         evidence.update(found.evidence)
-        for owner, layer, created in found.layer_dates if isinstance(found, Attribution) else ():
+        for owner, layer, created in found.layer_dates:
             if (owner, layer) in layer_dates and layer_dates[(owner, layer)] != created:
                 raise ValueError("Revenue history changes original layer creation date.")
             layer_dates[(owner, layer)] = created
@@ -502,6 +503,9 @@ def _read(
             tuple(sorted(evidence, key=str)),
             view,
             tuple(source_identities[key] for key in sorted(source_identities, key=str)),
+            tuple(
+                (owner, layer, created) for (owner, layer), created in sorted(layer_dates.items())
+            ),
         )
         amount_cache[line_id] = proof
         return proof

@@ -290,3 +290,25 @@ def test_special_positive_opening_without_consumption_needs_no_invented_attribut
             functional_currency=functional,
             allow_zero_consumption=False,
         )
+
+
+def test_agent_opening_uses_verified_net_eligibility_not_gross_liability(monkeypatch):
+    session, row, nodes = fixture(monkeypatch)
+    obligations = [
+        {"obligation_key": "S", "performing_entity_id": row.entity_id, "principal_agent": "AGENT"}
+    ]
+    session.execute = lambda *a: NS(mappings=lambda: NS(all=lambda: obligations))
+    amount, facts = pob.calculate(
+        session,
+        row,
+        NS(key="P03"),
+        [entry(1, "S", "800")],
+        D("5000"),
+        D("5000"),
+        agent_eligible={"C/S": D("200")},
+        agent_evidence={"C/S": {"basis": "UNIFORM_NET_SOURCE_SET"}},
+    )
+    assert amount == D("200")
+    assert facts["obligations"]["C/S"]["posted_revenue"] == "800"
+    assert facts["obligations"]["C/S"]["eligible_relief"] == "200"
+    assert facts["obligations"]["C/S"]["agent_net_sources"]["basis"] == "UNIFORM_NET_SOURCE_SET"
