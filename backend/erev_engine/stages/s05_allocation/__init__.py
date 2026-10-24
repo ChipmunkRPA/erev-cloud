@@ -775,6 +775,7 @@ def _state(
         )
     return AllocatedState(
         eac_scope_required=(cb.bundle.evidence_revision or 0) >= 6,
+        combined_unit_boundaries=(cb.bundle.evidence_revision or 0) >= 10,
         hours_scope_required=(cb.bundle.evidence_revision or 0) >= 9,
         hours_source_evidence=(cb.bundle.evidence_revision or 0) >= 7,
         group_code=identified.group_code,

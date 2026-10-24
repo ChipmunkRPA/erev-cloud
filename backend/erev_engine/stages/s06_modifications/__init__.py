@@ -284,7 +284,7 @@ def propose(
     the event, else the modification key under the contract (CV-50).
     """
     ctx.policies.require(("mod.route_selection", price_test.POLICY_CODE))
-    mod = combined.view(st, modification)
+    mod = combined.view(ctx, st, modification)
     header = next(
         (view.header for view in st.contracts if view.header.external_id == mod.contract_key), None
     )
@@ -851,7 +851,7 @@ def _amended(
     """``CONTRACT_AMENDED``: the approved modification under the payload treatments (§6.3), or a
     legacy template when the treatments are one (§6.5)."""
     mod = combined.view(
-        st, ModificationView.of(ev.contract_key, _modification_input(st, ev), event=ev)
+        ctx, st, ModificationView.of(ev.contract_key, _modification_input(st, ev), event=ev)
     )
     subscriptions.check(mod, classify.contract_obligations(st, mod))
     treatments = combined.keyed(
@@ -1154,7 +1154,7 @@ def _terminated(
     the modification's ``chosen_treatments``; an ended obligation takes no treatment.
     """
     found = _modification_input(st, ev)
-    mod = combined.view(st, ModificationView.of(ev.contract_key, found, event=ev))
+    mod = combined.view(ctx, st, ModificationView.of(ev.contract_key, found, event=ev))
     existing = classify.contract_obligations(st, mod)
     progress = {ob.obligation_key: _measure(ctx, st, ob, ev).progress for ob in existing}
     ended = terminations.ended(ev, existing, progress)

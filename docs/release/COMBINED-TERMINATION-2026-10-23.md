@@ -41,3 +41,27 @@ Two populated workflows, 17 form cases, the original-component wizard case, fron
 and scoped backend lint pass. The disposable database was stopped. No deployment. This closes
 the public-verification gap recorded above; partial member removals and quantity/term
 reassessment remain open, along with broader system gaps.
+
+## Original-member quantity bounds and boundary amounts — repaired
+
+A native reproduction accepted removal of 1.5 units from an original member booked for one
+unit because the other member's quantity kept the combined total positive. Revision 10 now
+checks each original member separately, accumulating its signed removal lines before testing
+the bound. Unit-based measures deduct that member's counted deliveries less returns, using the
+same control-transfer rules as recognition. Time-based measures retain the original quantity
+bound and the existing combined remaining-quantity validation; no member progress is invented.
+
+The same exercise exposed a boundary measurement defect: stage 06 read only the host's unit
+ledger, although recognition consumed all original members. After another member's delivery
+and return this could create a termination segment with zero quantity and nonzero net delivery.
+Revision 10 boundary measurement now uses recognition's original-member tally strictly before
+the boundary event, including held-delivery rules. Prospective price changes retain this full
+original delivery baseline as well.
+
+Nineteen focused native termination/price-change cases pass. Witnesses refuse the 1.5-of-1
+removal; refuse a 0.5 removal after 0.75 of one unit was delivered; allow it after 0.5 was returned;
+and successfully compute the resulting termination. A prospective 10,000-to-11,000 price change
+after 0.5 of two units were delivered retains 2,500 earned revenue without further delivery.
+Earlier revision 9 keeps its previous 2,750 result for retained replay; new platform inputs use
+revision 10. Scoped types/lint pass. No deployment. This is a correction to supported complete
+termination and price changes, not implementation of partial-member reassessment.

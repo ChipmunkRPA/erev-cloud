@@ -224,3 +224,45 @@ def test_mixed_series_ssp_bases_recompute_each_original_component(
     assert len(node.inputs) == 2
     assert result.contract_version.columns["transaction_price"] == 1_100_000
     assert reevaluate(result.trace) == {node.id: node.value for node in result.trace.nodes}
+
+
+def test_original_member_delivery_is_retained_at_prospective_price_boundary():
+    value = replace(price_change(), evidence_revision=10)
+    amended = value.events[-1]
+    value = replace(
+        value,
+        pob_template_versions=tuple(
+            replace(t, recognition_method="UNITS_DELIVERED") for t in value.pob_template_versions
+        ),
+        events=(
+            *value.events[:-1],
+            bundles.event(
+                CONTRACT,
+                3,
+                "DELIVERY_RECORDED",
+                date(2026, 1, 5),
+                {
+                    "obligation_key": "LEASE",
+                    "quantity": "0.5",
+                    "trigger": "DELIVERY",
+                },
+                obligation_keys=["LEASE"],
+            ),
+            bundles.event(
+                CONTRACT,
+                4,
+                "CONTRACT_AMENDED",
+                amended.effective_date,
+                amended.payload,
+                obligation_keys=["LEASE"],
+            ),
+        ),
+    )
+    result = compute(value).books[0]
+    assert result.contract_version.columns["transaction_price"] == 1_100_000
+    # Half of one of two original units was already transferred before the price change.
+    # No further delivery occurs: prospective repricing must retain the original 2,500.
+    assert result.contract_version.columns["revenue_cum"] == 250_000
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    legacy = compute(replace(value, evidence_revision=9)).books[0]
+    assert legacy.contract_version.columns["revenue_cum"] == 275_000

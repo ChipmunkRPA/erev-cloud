@@ -34,6 +34,7 @@ from erev_engine.enums import Distinctness
 from erev_engine.errors import EngineError
 from erev_engine.formulas import periods_param, rational_param
 from erev_engine.stages.s09_recognition import eac_version_at, input_progress, input_target
+from erev_engine.stages.s09_recognition import progress_events
 from erev_engine.stages.state import (
     AllocatedState,
     AllocationSegment,
@@ -195,6 +196,18 @@ def measure(
     the pin effective at d among every applied version, the updated EAC of S06-R-15.
     """
     point = st.ledger.at(ob.subject_key, before=ev)
+    if (
+        st.combined_unit_boundaries
+        and ob.combined_component_keys
+        and seg.progress_measure in UNIT_MEASURES
+    ):
+        contract = next(view for view in st.contracts if view.header.external_id == ob.contract_key)
+        counts = progress_events.tally(
+            ctx, st, contract, ob, ev.effective_date, progress_events.Position(ev.order_key, False)
+        )
+        point = dataclasses.replace(
+            point, delivered_cum=counts.counted, returned_cum=counts.returned
+        )
     delivered = point.delivered_cum - point.returned_cum
     if seg.progress_measure in COST_MEASURES and seg.cause != SegmentCause.TERMINATION:
         # ENC-5: the stage 09 target of S09-R-14 to S09-R-16, uninstalled materials included, so

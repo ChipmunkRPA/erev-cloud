@@ -34,6 +34,7 @@ def termination(kind="FULL", keys=("LEASE", "SERVICE")):
     )
     return replace(
         value,
+        evidence_revision=10,
         contracts=(replace(value.contracts[0], modifications=(mod,)),),
         events=(*value.events[:-1], event),
     )
@@ -78,3 +79,86 @@ def test_lease_predominant_combination_termination_stays_outside_606():
     assert result.contract_version.columns["revenue_cum"] == 0
     assert result.contract_version.columns["out_of_scope_amount"] == 100_000
     assert reevaluate(result.trace) == {node.id: node.value for node in result.trace.nodes}
+
+
+@pytest.mark.parametrize("delta", ["-1.5", "-0.5"])
+def test_original_member_removal_cannot_borrow_another_members_quantity(delta):
+    value = termination()
+    header = value.contracts[0]
+    mod = header.modifications[0]
+    mod = replace(mod, lines=({**mod.lines[0], "quantity_delta": Decimal(delta)}, mod.lines[1]))
+    value = replace(value, contracts=(replace(header, modifications=(mod,)),))
+    if delta == "-1.5":
+        with pytest.raises(
+            ValueError, match="LEASE removal exceeds its original remaining quantity"
+        ):
+            compute(value)
+    else:
+        assert compute(value).books[0].contract_version.columns["revenue_cum"] == 100_000
+
+
+@pytest.mark.parametrize("returned", [False, True])
+def test_original_member_removal_uses_net_deliveries_before_termination(returned):
+    from datetime import date
+    from support import bundles
+    from tests.engine.s03_pob_builder.test_s03_elections import CONTRACT
+
+    value = termination()
+    header = value.contracts[0]
+    mod = header.modifications[0]
+    mod = replace(mod, lines=({**mod.lines[0], "quantity_delta": Decimal("-0.5")}, mod.lines[1]))
+    events = [
+        *value.events[:-1],
+        bundles.event(
+            CONTRACT,
+            3,
+            "DELIVERY_RECORDED",
+            date(2026, 1, 5),
+            {
+                "obligation_key": "LEASE",
+                "quantity": "0.75",
+                "trigger": "DELIVERY",
+            },
+            obligation_keys=["LEASE"],
+        ),
+    ]
+    if returned:
+        events.append(
+            bundles.event(
+                CONTRACT,
+                4,
+                "RETURN_RECORDED",
+                date(2026, 1, 6),
+                {
+                    "obligation_key": "LEASE",
+                    "quantity": "0.5",
+                    "reason": "Returned original units",
+                },
+                obligation_keys=["LEASE"],
+            )
+        )
+    events.append(
+        bundles.event(
+            CONTRACT,
+            len(events) + 1,
+            "CONTRACT_TERMINATED",
+            mod.effective_date,
+            value.events[-1].payload,
+        )
+    )
+    value = replace(
+        value,
+        contracts=(replace(header, modifications=(mod,)),),
+        events=tuple(events),
+        pob_template_versions=tuple(
+            replace(template, recognition_method="UNITS_DELIVERED")
+            for template in value.pob_template_versions
+        ),
+    )
+    if returned:
+        assert compute(value).books[0].contract_version.columns["revenue_cum"] == 100_000
+    else:
+        with pytest.raises(
+            ValueError, match="LEASE removal exceeds its original remaining quantity"
+        ):
+            compute(value)

@@ -2,10 +2,14 @@
 
 from collections.abc import Mapping
 from dataclasses import replace
+from fractions import Fraction
 from types import MappingProxyType
 
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
+from erev_engine.stages.s01_canonicalize.convert import payload_fraction, payload_text
 from erev_engine.stages.s06_modifications.classify import ModificationView
-from erev_engine.stages.state import AllocatedState
+from erev_engine.stages.s09_recognition import progress_events
+from erev_engine.stages.state import AllocatedState, BookContext
 
 
 def aliases(st: AllocatedState, contract_key: str) -> dict[str, str]:
@@ -27,7 +31,56 @@ def keyed[T](values: Mapping[str, T], names: Mapping[str, str]) -> Mapping[str, 
     return MappingProxyType(resolved)
 
 
-def view(st: AllocatedState, mod: ModificationView) -> ModificationView:
+def _check_original_removals(
+    ctx: BookContext, st: AllocatedState, mod: ModificationView, hosts: set[str]
+) -> None:
+    if not hosts or not st.combined_unit_boundaries:
+        return
+    contract = next(item for item in st.contracts if item.header.external_id == mod.contract_key)
+    raw = contract.booking.get("lines")
+    if not isinstance(raw, list | tuple):
+        raise ValueError("Combined termination requires original booking lines")
+    originals = {
+        payload_text(line, "obligation_key"): line for line in raw if isinstance(line, Mapping)
+    }
+    aliases_by_key = aliases(st, mod.contract_key)
+    by_host = {
+        ob.obligation_key: ob for ob in st.obligations if ob.contract_key == mod.contract_key
+    }
+    changes: dict[str, Fraction] = {}
+    for line in mod.lines:
+        if aliases_by_key.get(line.obligation_key) in hosts:
+            changes[line.obligation_key] = (
+                changes.get(line.obligation_key, Fraction(0)) + line.quantity_delta
+            )
+    for key, change in changes.items():
+        original = originals.get(key)
+        quantity = None if original is None else payload_fraction(original, "quantity")
+        if quantity is None:
+            raise ValueError("Combined termination requires each original member quantity")
+        ob = by_host[aliases_by_key[key]]
+        remaining = quantity
+        if ob.recognition_method in ("UNITS_DELIVERED", "POINT_IN_TIME"):
+            component = replace(
+                ob,
+                obligation_key=key,
+                subject_key=obligation_subject_key(mod.contract_key, key),
+                combined_component_keys=(),
+            )
+            position = (
+                None if mod.event is None else progress_events.Position(mod.event.order_key, False)
+            )
+            counts = progress_events.tally(
+                ctx, st, contract, component, mod.effective_date, position
+            )
+            remaining -= counts.counted - counts.returned
+        if remaining + change < 0:
+            raise ValueError(
+                f"Combined component {key} removal exceeds its original remaining quantity"
+            )
+
+
+def view(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> ModificationView:
     names = aliases(st, mod.contract_key)
     if not names:
         return mod
@@ -55,6 +108,7 @@ def view(st: AllocatedState, mod: ModificationView) -> ModificationView:
             if names.get(line.obligation_key) == ob.obligation_key
         )
     }
+    _check_original_removals(ctx, st, mod, removed)
     lines = []
     for line in mod.lines:
         host = names.get(line.obligation_key)
