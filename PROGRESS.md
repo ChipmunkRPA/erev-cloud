@@ -20,13 +20,13 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Combined termination and hours — October 23, 2026
+## Explicit combined actual hours — October 23, 2026
 
-Whole-combination termination is implemented in the engine; public verification remains open.
-See [checkpoint](docs/release/COMBINED-TERMINATION-2026-10-23.md).
-Owner confirmed actual-hour scope: explicit whole or member values; sum latest member readings
-only with complete coverage, refuse mixed/missing scope. Implement next; this question is answered.
-[Local build evidence](docs/release/LOCAL-BUILD-2026-10-23.md) remains current. No deployment.
+Implemented the owner’s whole/member scope rule, complete member-batch entry, latest readings,
+and original-source trace reconciliation. 51 native cases, 15 UI cases and a populated public
+approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](docs/release/COMBINED-ACTUAL-HOURS-2026-10-23.md).
+[Termination](docs/release/COMBINED-TERMINATION-2026-10-23.md) still needs public verification;
+[local builds](docs/release/LOCAL-BUILD-2026-10-23.md) remain partly unverified. No deployment.
 
 ## Original agent gross-control closing evidence — October 23, 2026
 

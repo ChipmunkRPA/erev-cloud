@@ -94,6 +94,8 @@ export interface EventForm {
   readonly measure: Measure | null;
   readonly progress: string;
   readonly hours: string;
+  readonly hoursScope: "COMBINATION" | "MEMBERS" | null;
+  readonly memberHours: Readonly<Record<string, string>>;
   readonly milestone: string;
   readonly weight: string;
   readonly purpose: Purpose | null;
@@ -123,6 +125,8 @@ export function emptyEventForm(obligationKey: string | null): EventForm {
     measure: null,
     progress: "",
     hours: "",
+    hoursScope: null,
+    memberHours: {},
     milestone: "",
     weight: "",
     purpose: null,
@@ -159,7 +163,12 @@ function flag(value: YesNo | null): boolean | null {
 }
 
 /** The `events` of the drawer's fields, or the field errors that keep it from validating. */
-export function buildEvents(kind: EventKind, form: EventForm, currency: string): BuiltEvents {
+export function buildEvents(
+  kind: EventKind,
+  form: EventForm,
+  currency: string,
+  combinedKeys: readonly string[] = [],
+): BuiltEvents {
   const errors: Record<string, string> = {};
   const choose = t("contracts.drawer.choose");
   const date = form.effectiveDate;
@@ -204,20 +213,34 @@ export function buildEvents(kind: EventKind, form: EventForm, currency: string):
         errors.progress = t("contracts.drawer.event.percentError");
       }
       const hours = form.hours.trim() === "" ? null : decimalText(form.hours);
-      if (form.measure === "LABOUR_HOURS" && hours === null) {
+      const memberBatch =
+        form.measure === "LABOUR_HOURS" && combinedKeys.length > 0 && form.hoursScope === "MEMBERS";
+      if (form.measure === "LABOUR_HOURS" && combinedKeys.length > 0 && form.hoursScope === null)
+        errors.hoursScope = choose;
+      if (form.measure === "LABOUR_HOURS" && !memberBatch && hours === null) {
         errors.hours = t("contracts.drawer.event.hoursError");
       }
-      items.push({
-        event_type: "PROGRESS_RECORDED",
-        effective_date: effective,
-        obligation_key: form.obligation,
-        payload: {
-          obligation_key: form.obligation,
-          cumulative_progress_ratio: ratio,
-          measure: form.measure,
-          hours_to_date: form.measure === "LABOUR_HOURS" ? hours : null,
-        },
-      });
+      const readings = memberBatch
+        ? combinedKeys.map((key) => ({ key, hours: decimalText(form.memberHours[key] ?? "") }))
+        : [{ key: form.obligation, hours }];
+      for (const reading of readings) {
+        if (memberBatch && reading.hours === null)
+          errors[`memberHours.${reading.key}`] = t("contracts.drawer.event.hoursError");
+        items.push({
+          event_type: "PROGRESS_RECORDED",
+          effective_date: effective,
+          obligation_key: reading.key,
+          payload: {
+            obligation_key: reading.key,
+            cumulative_progress_ratio: ratio,
+            measure: form.measure,
+            hours_to_date: form.measure === "LABOUR_HOURS" ? reading.hours : null,
+            ...(form.measure === "LABOUR_HOURS" && form.hoursScope !== null
+              ? { hours_scope: form.hoursScope }
+              : {}),
+          },
+        });
+      }
       break;
     }
     case "milestone": {
@@ -563,7 +586,13 @@ export function RecordEventDrawer({
   // "Retry" on a dry run that did not succeed: the preview of the same fields is asked for again.
   const [previewRound, setPreviewRound] = useState(0);
   const currency = contract.transaction_currency;
-  const built = buildEvents(kind, form, currency);
+  const combinedKeys =
+    obligations.find(
+      (item) =>
+        item.obligation_key === form.obligation ||
+        item.combined_component_keys?.includes(form.obligation ?? ""),
+    )?.combined_component_keys ?? [];
+  const built = buildEvents(kind, form, currency, combinedKeys);
   const serialised = built.events === null ? null : JSON.stringify(built.events);
   const set = <K extends keyof EventForm>(name: K, value: EventForm[K]) =>
     setForm((current) => ({ ...current, [name]: value }));
@@ -671,6 +700,7 @@ export function RecordEventDrawer({
   const acceptsOriginalComponents =
     kind === "delivery" ||
     kind === "return" ||
+    (kind === "progress" && form.measure === "LABOUR_HOURS") ||
     (kind === "cost" && form.purpose === "PROGRESS_INPUT");
   const currentKeys = new Set(obligations.map((item) => item.obligation_key));
   const originals = new Map<string, string>();
@@ -878,16 +908,48 @@ export function RecordEventDrawer({
               error={shown("progress") ?? server("progress")}
             />
             {labourHours ? (
-              <TextField
-                name="event-hours"
-                label={t("contracts.drawer.event.hours")}
-                required
-                width="money"
-                inputMode="decimal"
-                value={form.hours}
-                onChange={(value) => set("hours", value)}
-                error={shown("hours") ?? server("hours")}
-              />
+              <>
+                {combinedKeys.length > 0 ? (
+                  <SelectField
+                    name="event-hours-scope"
+                    label={t("contracts.drawer.event.hoursScope")}
+                    options={(["COMBINATION", "MEMBERS"] as const).map((value) => ({
+                      value,
+                      label: t(`contracts.drawer.event.hoursScope.${value}`),
+                    }))}
+                    value={form.hoursScope}
+                    onChange={(value) => set("hoursScope", value)}
+                    error={shown("hoursScope")}
+                  />
+                ) : null}
+                {combinedKeys.length > 0 && form.hoursScope === "MEMBERS" ? (
+                  combinedKeys.map((key) => (
+                    <TextField
+                      key={key}
+                      name={`event-hours-${key}`}
+                      label={t("contracts.drawer.event.memberHours", { key })}
+                      required
+                      inputMode="decimal"
+                      value={form.memberHours[key] ?? ""}
+                      onChange={(value) =>
+                        set("memberHours", { ...form.memberHours, [key]: value })
+                      }
+                      error={shown(`memberHours.${key}`)}
+                    />
+                  ))
+                ) : (
+                  <TextField
+                    name="event-hours"
+                    label={t("contracts.drawer.event.hours")}
+                    required
+                    width="money"
+                    inputMode="decimal"
+                    value={form.hours}
+                    onChange={(value) => set("hours", value)}
+                    error={shown("hours") ?? server("hours")}
+                  />
+                )}
+              </>
             ) : null}
           </>
         ) : null}

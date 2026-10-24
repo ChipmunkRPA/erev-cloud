@@ -1397,3 +1397,101 @@ def test_combined_original_cost_approval_and_reporting(app, keyring, clock, file
             assert "350.00" in refused.json()["detail"]
         else:
             assert "unallocated progress costs" in refused.json()["detail"]
+
+
+def test_combined_member_hours_approval_and_saved_reporting(app, keyring, clock, files):
+    from erev_api.db.tables import contract, contract_event
+    from support.worlds import estimate_version_approved, evidence_file, run_now
+
+    lease = br06_lease(
+        app,
+        keyring,
+        clock,
+        files,
+        lessor_combination=True,
+        nonlease_predominates=True,
+        labour_hours=True,
+    )
+    world = lease.report
+    element = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/estimates",
+        world.maya,
+        {
+            "estimate_kind": "EAC",
+            "element_code": "WHOLE-HOURS",
+            "method": "COST_BUILDUP",
+            "obligation_key": "L2-SERVICE",
+            "allocation_target": "CONTRACT",
+        },
+    )
+    assert element.status_code == 201, element.text
+    estimate_version_approved(
+        app,
+        world.maya,
+        world.priya,
+        element.json()["id"],
+        {
+            "effective_date": "2026-09-01",
+            "expected_quantity": "1000",
+            "parameters": {"eac_scope": "COMBINATION"},
+            "rationale": "Expected hours cover the complete reviewed combination.",
+        },
+    )
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+    )
+    submitted = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/events",
+        world.maya,
+        {
+            "events": [
+                {
+                    "event_type": "PROGRESS_RECORDED",
+                    "effective_date": "2026-09-10",
+                    "obligation_key": key,
+                    "payload": {
+                        "obligation_key": key,
+                        "measure": "LABOUR_HOURS",
+                        "hours_to_date": amount,
+                        "hours_scope": "MEMBERS",
+                        "cumulative_progress_ratio": "0.3",
+                    },
+                }
+                for key, amount in [("L1-LEASE", "200"), ("L2-SERVICE", "100")]
+            ],
+            "evidence_file_ids": [evidence_file(app, world.maya)],
+        },
+        if_match=f'"s{head}"',
+    )
+    assert submitted.status_code == 201, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.priya)
+    assert approved.status_code == 200, approved.text
+    stored = world.place.rows(
+        select(contract_event).where(
+            contract_event.c.contract_id == lease.contract_id,
+            contract_event.c.event_type == "PROGRESS_RECORDED",
+        )
+    )
+    assert {r["payload"]["obligation_key"] for r in stored} == {"L1-LEASE", "L2-SERVICE"}
+    assert {r["payload"]["hours_scope"] for r in stored} == {"MEMBERS"}
+    clock.advance(STEP)
+    run, rows = report_run(
+        world,
+        "latest_contract_status",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "as_of": "2026-09-30",
+            "contract_external_id": BR06_EXTERNAL_ID,
+        },
+    )
+    assert run["status"] == "SUCCEEDED", run
+    assert len(rows) == 1
+    assert rows[0]["revenue_cum"] == usd("32400.00")
+    rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    replay = run_now(world, UUID(rerun.json()["id"]))
+    assert replay["state"] == "SUCCEEDED", replay
+    assert replay["result"]["output_sha256_equal"] is True

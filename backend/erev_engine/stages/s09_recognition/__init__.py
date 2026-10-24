@@ -139,6 +139,7 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
     "rec.progress.cost_to_cost.v3",
     "rec.progress.labour_hours.v1",
     "rec.progress.labour_hours.v2",
+    "rec.progress.labour_hours.v3",
     "rec.progress.milestone.v1",
     "rec.progress.output_percent.v1",
     "rec.progress.point_in_time.v1",

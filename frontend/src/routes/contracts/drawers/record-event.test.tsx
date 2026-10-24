@@ -566,3 +566,30 @@ it("clears the original cost member when switching to a capitalized cost purpose
     ],
   });
 });
+
+it("submits complete original-member cumulative hours as one approval batch", async () => {
+  serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+  const captured: unknown[] = [];
+  server.use(
+    http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+      captured.push(await request.json());
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  const { drawer } = await open("progress", false, true);
+  attachCostEvidence(drawer);
+  select(drawer, /^Measure/, "Labour hours");
+  select(drawer, /^Cumulative hour coverage/, "Each original member (enter all members)");
+  type(drawer, /^Cumulative hours — O1/, "100.25");
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  expect(captured).toHaveLength(0);
+  type(drawer, /^Cumulative hours — ORIGINAL/, "0");
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  await waitFor(() => expect(captured).toHaveLength(1));
+  expect(captured[0]).toMatchObject({
+    events: [
+      { obligation_key: "O1", payload: { hours_to_date: "100.25", hours_scope: "MEMBERS" } },
+      { obligation_key: "ORIGINAL", payload: { hours_to_date: "0", hours_scope: "MEMBERS" } },
+    ],
+  });
+});

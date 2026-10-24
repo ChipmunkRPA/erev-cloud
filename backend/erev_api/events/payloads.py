@@ -358,6 +358,7 @@ class ProgressRecordedV1(EventPayload):
     cumulative_progress_ratio: Ratio
     measure: Literal["OUTPUT_PERCENT", "LABOUR_HOURS"]
     hours_to_date: NonNegativeDecimal | None = None
+    hours_scope: Literal["COMBINATION", "MEMBERS"] | None = None
 
 
 class MilestoneAchievedV1(EventPayload):

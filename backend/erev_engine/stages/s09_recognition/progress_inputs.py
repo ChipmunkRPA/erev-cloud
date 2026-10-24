@@ -224,11 +224,80 @@ def _hours_input(
     return latest
 
 
+def _hours_inputs(
+    st: AllocatedState,
+    ob: ObligationState,
+    d: date,
+    position: Position | None = None,
+    *,
+    complete: bool = False,
+) -> tuple[tuple[EventView, Fraction], ...]:
+    members = frozenset(ob.combined_component_keys)
+    if not members:
+        latest = _hours_input(st, ob, d, position)
+        return () if latest is None else (latest,)
+    latest_by_member: dict[str, EventView] = {}
+    for ev in st.measure_events:
+        if (
+            ev.contract_key != ob.contract_key
+            or ev.event_type != _PROGRESS_EVENT
+            or ev.payload.get("measure") != "LABOUR_HOURS"
+            or ev.payload.get("hours_to_date") is None
+            or not admitted(ev, d, position)
+        ):
+            continue
+        key = str(ev.payload.get("obligation_key") or "")
+        if key not in members:
+            continue
+        previous = latest_by_member.get(key)
+        if previous is None or ev.order_key > previous.order_key:
+            latest_by_member[key] = ev
+    if not st.hours_scope_required and not any(
+        ev.payload.get("hours_scope") is not None for ev in latest_by_member.values()
+    ):
+        latest = _hours_input(st, ob, d, position)
+        return () if latest is None else (latest,)
+    if not latest_by_member:
+        return ()
+    scopes = {ev.payload.get("hours_scope") for ev in latest_by_member.values()}
+    if scopes == {"COMBINATION"} and len(latest_by_member) == 1:
+        ev = next(iter(latest_by_member.values()))
+        return ((ev, _amount(ev, ob, "hours_to_date")),)
+    if scopes != {"MEMBERS"}:
+        raise _invariant(
+            "Specify one whole-combination hour reading or explicit member readings; "
+            "mixed or ambiguous scope",
+            ob,
+            rule="COMBINED_HOURS_SCOPE",
+        )
+    if set(latest_by_member) != members:
+        # Causal replay may visit the first member before the rest of a batch. No
+        # partial numerator is admitted. The final period measurement requires all.
+        if position is not None and not complete:
+            return ()
+        raise _invariant(
+            "Cumulative hours are missing for combined members",
+            ob,
+            rule="COMBINED_HOURS_SCOPE",
+            missing_members=",".join(sorted(members - set(latest_by_member))),
+        )
+    return tuple(
+        (latest_by_member[key], _amount(latest_by_member[key], ob, "hours_to_date"))
+        for key in sorted(members)
+    )
+
+
 def hours_to_date(
-    st: AllocatedState, ob: ObligationState, d: date, position: Position | None = None
+    st: AllocatedState,
+    ob: ObligationState,
+    d: date,
+    position: Position | None = None,
+    *,
+    complete: bool = False,
 ) -> Fraction:
-    latest = _hours_input(st, ob, d, position)
-    return Fraction(0) if latest is None else latest[1]
+    return sum(
+        (amount for _, amount in _hours_inputs(st, ob, d, position, complete=complete)), Fraction(0)
+    )
 
 
 def eac_keys(
@@ -598,7 +667,9 @@ def _labour_hours(
     hours = hours_to_date(st, ob, d, position)
     if seg.basis == "PROSPECTIVE":
         boundary_date, before = _before_boundary(st, ob, seg)
-        params["base_hours"] = rational_param(hours_to_date(st, ob, boundary_date, before))
+        params["base_hours"] = rational_param(
+            hours_to_date(st, ob, boundary_date, before, complete=True)
+        )
     params["hours"] = rational_param(hours)
     params["eac_version"] = eac.version_key
     findings: tuple[Finding, ...] = ()
@@ -626,23 +697,25 @@ def _hours_sources(
     roles: list[str] = []
 
     def actual(day: date, at: Position | None, role: str) -> None:
-        item = _hours_input(st, ob, day, at)
-        if item is None:
-            return
-        event, amount = item
-        sources.append(
-            SourceRef(
-                "contract_event",
-                event.event_key,
-                {
-                    "member": "hours_to_date",
-                    "value": format_exact(amount),
-                    "effective_date": event.effective_date.isoformat(),
-                    "obligation_key": str(event.payload.get("obligation_key") or ""),
-                },
+        for event, amount in _hours_inputs(st, ob, day, at, complete=role == "base_hours"):
+            sources.append(
+                SourceRef(
+                    "contract_event",
+                    event.event_key,
+                    {
+                        "member": "hours_to_date",
+                        "value": format_exact(amount),
+                        "effective_date": event.effective_date.isoformat(),
+                        "obligation_key": str(event.payload.get("obligation_key") or ""),
+                        **(
+                            {"hours_scope": str(event.payload["hours_scope"])}
+                            if event.payload.get("hours_scope") is not None
+                            else {}
+                        ),
+                    },
+                )
             )
-        )
-        roles.append(role)
+            roles.append(role)
 
     actual(d, position, "hours")
     if seg.basis == "PROSPECTIVE":
@@ -664,15 +737,24 @@ def _hours_sources(
             )
         )
         roles.append("expected_hours")
+    scoped = st.hours_scope_required or roles.count("hours") > 1 or roles.count("base_hours") > 1
     return replace(
         progress,
-        formula_id="rec.progress.labour_hours.v2",
+        formula_id="rec.progress.labour_hours.v3" if scoped else "rec.progress.labour_hours.v2",
         sources=tuple(sources),
         params=MappingProxyType(
             {
                 **progress.params,
                 "source_roles": ",".join(roles),
                 "expected_source_count": str(len(versions)),
+                **(
+                    {
+                        "hours_source_count": str(roles.count("hours")),
+                        "base_hours_source_count": str(roles.count("base_hours")),
+                    }
+                    if scoped
+                    else {}
+                ),
             }
         ),
     )

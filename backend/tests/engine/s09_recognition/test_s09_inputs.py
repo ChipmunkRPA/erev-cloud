@@ -645,3 +645,55 @@ def test_labour_hour_evidence_keeps_latest_actual_and_prospective_baseline():
     assert FORMULAS[progress.formula_id](values, progress.params) == progress.value
     with pytest.raises(ValueError, match="do not reconcile"):
         FORMULAS[progress.formula_id]((values[0], values[1] + 1, values[2]), progress.params)
+
+
+def test_combined_hours_prospective_baseline_requires_complete_original_members():
+    from erev_engine.errors import EngineError
+    from erev_engine.stages.s09_recognition import progress_inputs
+
+    def scoped(seq, day, value, key):
+        event = _hours(seq, day, value, "0.1")
+        return dataclasses.replace(
+            event, payload={**event.payload, "obligation_key": key, "hours_scope": "MEMBERS"}
+        )
+
+    version = dataclasses.replace(
+        _eac(1, START, hours="1000"), parameters={"eac_scope": "COMBINATION"}
+    )
+    estimate = _estimate_event(3, version)
+    baseline = scoped(4, date(2026, 1, 31), "100", "POB-01")
+    other_base = scoped(5, date(2026, 1, 31), "50", "POB-02")
+    boundary = event_view(CONTRACT_KEY, 6, "CONTRACT_AMENDED", date(2026, 2, 1), {})
+    latest = scoped(7, date(2026, 2, 28), "300", "POB-01")
+    other_latest = scoped(8, date(2026, 2, 28), "200", "POB-02")
+    ob = dataclasses.replace(
+        _c2c("120000", method="LABOUR_HOURS"), combined_component_keys=("POB-01", "POB-02")
+    )
+    seg = dataclasses.replace(
+        ob.segments[0],
+        basis="PROSPECTIVE",
+        effective_date=boundary.effective_date,
+        event_key=boundary.event_key,
+    )
+    st = dataclasses.replace(
+        allocated_state(
+            [ob],
+            events=[estimate, baseline, other_base, boundary, latest, other_latest],
+            estimates=_pins((version, estimate)),
+        ),
+        hours_source_evidence=True,
+        hours_scope_required=True,
+    )
+    measured = progress_inputs.progress(st, ob, seg, latest.effective_date).progress
+    assert measured.value == Fraction(7, 17)
+    assert measured.params["base_hours_source_count"] == "2"
+    values = tuple(Fraction(source.detail["value"]) for source in measured.sources)
+    assert FORMULAS[measured.formula_id](values, measured.params) == measured.value
+    with pytest.raises(ValueError, match="source population"):
+        FORMULAS[measured.formula_id](values, {**measured.params, "base_hours_source_count": "1"})
+    incomplete = dataclasses.replace(
+        st,
+        measure_events=tuple(e for e in st.measure_events if e.event_key != other_base.event_key),
+    )
+    with pytest.raises(EngineError, match="missing"):
+        progress_inputs.progress(incomplete, ob, seg, latest.effective_date)

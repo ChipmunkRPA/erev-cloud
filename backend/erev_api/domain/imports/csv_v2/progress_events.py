@@ -72,6 +72,7 @@ class ProgressEventIn(BaseModel):
     cumulative_progress_ratio: str | None = None
     measure: str | None = None
     hours_to_date: str | None = None
+    hours_scope: Literal["COMBINATION", "MEMBERS"] | None = None
     milestone_code: str | None = None
     cumulative_weight: str | None = None
 
@@ -201,6 +202,7 @@ TEMPLATE: Final = CsvTemplate(
             "obligation_key",
             "trigger",
             "measure",
+            "hours_scope",
             "milestone_code",
             "source_ref",
             "reason",
