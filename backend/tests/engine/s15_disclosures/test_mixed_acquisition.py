@@ -501,3 +501,110 @@ def test_recomputed_combination_current_members_follow_actual_balances(all_recom
     for amount, total in zip(amounts, totals, strict=True):
         assert 0 <= amount <= total
         assert abs(amount * sum(totals) - total * sum(amounts)) <= sum(totals)
+
+
+@pytest.mark.parametrize("mode", ["cutover", "recompute", "ordinary_member"])
+@pytest.mark.parametrize("foreign", [False, True])
+def test_acquired_current_assets_follow_original_member_maturity(mode, foreign):
+    from uuid import UUID
+
+    from erev_api.domain.reports.functional_balances import project
+    from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
+    from erev_engine.trace import reevaluate
+
+    value = w.two_contracts(as_of=date(2026, 1, 31))
+    method = "RECOMPUTE_FROM_INCEPTION" if mode == "recompute" else "OPENING_BALANCES_AT_CUTOVER"
+    value = replace(
+        value,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(p, value=method) if p.code == "onboarding.method" else p
+                    for p in book.policies
+                ),
+            )
+            for book in value.books
+        ),
+    )
+    events = []
+    for event in value.events:
+        if event.event_type == "OPENING_BALANCE_ESTABLISHED":
+            if mode == "ordinary_member" and event.contract_key == w.COLLIDING[0]:
+                continue
+            event = replace(event, payload=w.opening_payload(billed_cum="0"))
+        if event.event_type == "CONTRACT_BOOKED" and event.contract_key == w.COLLIDING[1]:
+            event = replace(
+                event,
+                payload={
+                    **event.payload,
+                    "lines": [
+                        {**line, "end_date": "2028-12-31"} for line in event.payload["lines"]
+                    ],
+                },
+            )
+        events.append(event)
+    calendar = bundles.entity(start=w.INCEPTION, months=48, books=("ASC606",))
+    value = replace(
+        value,
+        evidence_revision=61,
+        events=tuple(events),
+        entities=tuple(
+            replace(
+                entity,
+                periods=(
+                    *entity.periods,
+                    *(
+                        replace(period, states=(("ASC606", "future"),))
+                        for period in calendar.periods
+                        if period.start_date > entity.periods[-1].end_date
+                    ),
+                ),
+            )
+            for entity in value.entities
+        ),
+    )
+    if foreign:
+        value = foreign_value(value)
+    if foreign and mode == "recompute":
+        from erev_engine.errors import EngineError
+
+        for revision in (60, 61):
+            with pytest.raises(EngineError, match="ONBOARDING_DIFFERENCE_UNPOSTED"):
+                compute(replace(value, evidence_revision=revision))
+        return
+    prior = compute(replace(value, evidence_revision=60)).books[0]
+    output = compute(value).books[0]
+    assert output.posting_intents == prior.posting_intents
+    assert output.schedules == prior.schedules
+    assert output.fx_layer_movements == prior.fx_layer_movements
+    assert reevaluate(output.trace) == {n.id: n.value for n in output.trace.nodes}
+    rows = [r for r in output.balances if r.period_key == "FY2026-P01"]
+    assert len(rows) == 2
+    for row in rows:
+        member = next(
+            c.external_id
+            for c in value.contracts
+            if contract_entity_subject_key(c.external_id, w.ENTITY) == row.subject_key
+        )
+        long_lived = member == w.COLLIDING[1]
+        assert row.columns["contract_asset_txn"] > 0
+        assert row.columns["contract_asset_current_txn"] == (
+            0 if long_lived else row.columns["contract_asset_txn"]
+        )
+        if foreign:
+            values = project(
+                output.trace,
+                external_id=member,
+                entity_code=w.ENTITY,
+                period_key=row.period_key,
+                version_id=UUID(int=1),
+                stored={
+                    k: Decimal(v) / 100 if isinstance(v, int) else v for k, v in row.columns.items()
+                },
+                measures=("contract_asset", "contract_asset_current"),
+            )
+            assert values["contract_asset"] > 0
+            assert values["contract_asset_current"] == (
+                0 if long_lived else values["contract_asset"]
+            )

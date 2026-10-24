@@ -451,12 +451,13 @@ def foreign_cutover_value(unconditional=False, long_lived=False, billed="100000"
 
 
 @pytest.mark.parametrize("unconditional,long_lived", [(False, False), (True, False), (False, True)])
+@pytest.mark.parametrize("revision", [52, 61])
 def test_foreign_cutover_current_asset_retains_original_functional_amount(
-    unconditional, long_lived
+    unconditional, long_lived, revision
 ):
     from erev_engine.trace import reevaluate
 
-    value = foreign_cutover_value(unconditional, long_lived)
+    value = replace(foreign_cutover_value(unconditional, long_lived), evidence_revision=revision)
     result = compute(value)
     output = result.books[0]
     prior = compute(replace(value, evidence_revision=51)).books[0]

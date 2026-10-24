@@ -2955,3 +2955,14 @@ with new member nodes and reused without duplicate evidence. Fifty focused cases
 [checkpoint](RECOMPUTED-MEMBER-CURRENT-LIABILITY-2026-10-24.md). This supersedes the revision 59
 recompute exclusion for this presentation feature, not the foreign onboarding-posting refusal.
 No deployment; acquired agents and pending policy decisions remain separate work.
+
+
+### 2026-10-24 — Acquired member current assets
+
+Revision 61 extends original obligation maturity/reclassification evidence to current contract
+assets for principal acquisition members and mixed ordinary/acquired groups. Functional report
+projection and single-member closed-cutover reuse pass without changed postings. Fifty-six
+focused cases pass; see [checkpoint](ACQUIRED-MEMBER-CURRENT-ASSET-2026-10-24.md). The foreign
+recomputed onboarding-posting refusal and acquired-agent exclusion remain. This supersedes the
+ordinary-only restriction of the revision 51 current-asset path for admitted acquisitions.
+No deployment; no new accounting policy assumptions.

@@ -151,10 +151,16 @@ def capture(
 
             # This capture has already verified a single acquired member and a
             # recomputed inception baseline. Its group current asset is its own.
+            existing_currents = {
+                (target.subject_key, target.period_key)
+                for target in functional_targets
+                if target.measure == "contract_asset_current_functional"
+            }
             currents = tuple(
                 replace(target, subject_key=subject)
                 for target in balances.current_split
                 if target.measure == "contract_asset_current"
+                and (subject, target.period_key) not in existing_currents
             )
             functional_targets = (
                 *functional_targets,

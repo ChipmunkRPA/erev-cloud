@@ -23,7 +23,13 @@ def measure(
     *,
     acquired_cutover: bool = False,
 ) -> tuple[Target, ...]:
-    if not acquired_cutover and any(ob.opening is not None for ob in fx.allocated.obligations):
+    from erev_engine.stages.s10_billing_balances.current_members import supported
+
+    if (
+        not acquired_cutover
+        and any(ob.opening is not None for ob in fx.allocated.obligations)
+        and not (ctx.acquired_member_current_asset and supported(ctx, fx.allocated))
+    ):
         return ()
     periods = {
         entity: tuple(p.period_key for p in view.periods) for entity, view in ctx.entities.items()
