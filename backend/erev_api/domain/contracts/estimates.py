@@ -1683,6 +1683,12 @@ def _approve_version(uow: UnitOfWork, version_id: UUID, approval_request_id: UUI
     """``on_approved`` of ``ESTIMATE_VERSION`` (module docstring; DG-CMD-09)."""
     session = uow.session
     hold_fx_publication(session, uow.principal.tenant_id)
+    initial = _version_row(session, version_id)
+    if _estimate_row(session, _uuid(initial["estimate_id"]))["portfolio_id"] is not None:
+        from erev_api.domain.contracts import portfolio_workflow
+
+        portfolio_workflow.approve(uow, version_id, approval_request_id)
+        return
     row = _version_row(session, version_id, lock=True)
     if _text(row["status"]) != SUBMITTED:
         raise LookupError(f"estimate version {version_id} is not submitted")
@@ -1782,6 +1788,18 @@ def _closer(to_status: Literal["REJECTED", "WITHDRAWN"]) -> Any:
             set_values=_stamps(uow),
         )
         element = _estimate_row(session, _uuid(row["estimate_id"]))
+        if element["portfolio_id"] is not None:
+            from erev_api.domain.contracts import portfolio_workflow
+
+            portfolio_workflow._audit(
+                uow,
+                dict(row),
+                dict(element),
+                SUBMITTED,
+                to_status,
+                approval_request_id=str(approval_request_id),
+            )
+            return
         _status_audit(
             uow,
             version_id,

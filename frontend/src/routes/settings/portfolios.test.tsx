@@ -165,7 +165,7 @@ it("shows portfolio and member history to a reader without editing controls", as
   expect(screen.queryByRole("button", { name: "Remove member" })).toBeNull();
 });
 
-it("creates a shared definition with the portfolio version and leaves application unavailable", async () => {
+it("creates a shared definition with the portfolio version and explains supported application", async () => {
   serve();
   let body: unknown;
   let tag: string | null = null;
@@ -197,7 +197,7 @@ it("creates a shared definition with the portfolio version and leaves applicatio
     expect((screen.getByLabelText(/^Estimate code/) as HTMLInputElement).value).toBe(""),
   );
   expect(
-    screen.getByText(/Approval and calculation application are not yet available/),
+    screen.getByText(/Shared return-rate versions can be submitted for independent approval/),
   ).toBeTruthy();
 });
 
@@ -588,4 +588,60 @@ it("calculates shared return impact on demand and shows period changes without p
   fireEvent.click(button);
   await waitFor(() => expect(reads).toBe(2));
   await waitFor(() => expect(screen.queryByText("-400.00")).toBeNull());
+});
+
+it("submits saved shared returns with an ETag and opens the resulting approval", async () => {
+  serve();
+  let version = {
+    id: "v1",
+    version_no: 1,
+    row_version: 4,
+    status: "DRAFT",
+    effective_date: "2026-09-01",
+    currency: "USD",
+    rate: "0.1",
+    parameters: {},
+    scenarios: [],
+    rationale: "Observed returns",
+    approval_request_id: null as string | null,
+  };
+  let tag: string | null = null;
+  server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({
+        items: [
+          { id: "e1", element_code: "RETURNS", estimate_kind: "RETURN_RATE", method: "RATE" },
+        ],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
+      HttpResponse.json({ items: [version], next_cursor: null }),
+    ),
+    http.post(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/submit"), ({ request }) => {
+      tag = request.headers.get("If-Match");
+      version = { ...version, status: "SUBMITTED", row_version: 5, approval_request_id: "a1" };
+      return HttpResponse.json(version);
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
+  fireEvent.click(await screen.findByRole("button", { name: "View version" }));
+  fireEvent.change(screen.getByLabelText("Rate (0 to 1)"), { target: { value: "0.2" } });
+  expect(
+    screen.getByRole("button", { name: "Submit for approval" }).getAttribute("aria-disabled"),
+  ).toBe("true");
+  fireEvent.change(screen.getByLabelText("Rate (0 to 1)"), { target: { value: "0.1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Submit for approval" }));
+  await waitFor(() => expect(tag).toBe('"r4"'));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Submit for approval" })).toBeNull(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "View version" }));
+  expect(
+    (await screen.findByRole("link", { name: "View approval request" })).getAttribute("href"),
+  ).toBe("/approvals/requests/a1");
+  expect(
+    screen.getByRole("button", { name: "Withdraw submission" }).getAttribute("aria-disabled"),
+  ).toBeNull();
 });

@@ -38,9 +38,10 @@ from erev_api.domain.contracts import (
     queries,
     portfolio_preview,
     portfolio_impact,
+    portfolio_workflow,
 )
 from erev_api.schemas.common import ListOut
-from erev_api.schemas.estimates import EstimateOut, EstimateVersionOut
+from erev_api.schemas.estimates import EstimateOut, EstimateVersionOut, EstimateVersionSubmitIn
 from erev_api.schemas.portfolios import (
     PortfolioBreakagePreviewOut,
     PortfolioImpactOut,
@@ -511,3 +512,55 @@ def impact_preview(
         return portfolio_impact.preview(
             session, ctx, portfolio_id, estimate_id, version_id, deps.clock.now()
         )
+
+
+@router.post(
+    VERSION_PATH + "/{version_id}/submit",
+    operation_id="portfolio_estimate_versions_submit",
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def submit_version(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    version_id: UUID,
+    body: EstimateVersionSubmitIn,
+    cmd: EditContext,
+    deps: Deps,
+) -> Response:
+    def handle(uow: UnitOfWork) -> EstimateVersionOut:
+        portfolio_estimate_versions.get(uow.session, uow.ctx, portfolio_id, estimate_id, version_id)
+        return portfolio_workflow.submit(
+            uow,
+            version_id,
+            comment=body.comment,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        )
+
+    return run_command(cmd, deps, handle, etag=lambda out: row_etag(out.row_version))
+
+
+@router.post(
+    VERSION_PATH + "/{version_id}/withdraw",
+    operation_id="portfolio_estimate_versions_withdraw",
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def withdraw_version(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    version_id: UUID,
+    body: EstimateVersionSubmitIn,
+    cmd: EditContext,
+    deps: Deps,
+) -> Response:
+    def handle(uow: UnitOfWork) -> EstimateVersionOut:
+        portfolio_estimate_versions.get(uow.session, uow.ctx, portfolio_id, estimate_id, version_id)
+        return portfolio_workflow.withdraw(
+            uow,
+            version_id,
+            comment=body.comment,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        )
+
+    return run_command(cmd, deps, handle, etag=lambda out: row_etag(out.row_version))

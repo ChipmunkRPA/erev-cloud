@@ -245,12 +245,10 @@ Current outstanding implementation and verification gaps remain in
 
 ## Owner-selected shared estimates — October 23, 2026
 
-Shared estimates override local estimates; shared breakage uses a total quantity allocated by
-SSP. Combined scope changes are reassessed from their effective date, preserving earlier groups
-and revenue. These choices supersede earlier pending-choice notes. Explicit total authoring and
-saved member bindings and native impact previews are implemented. Approval/application,
-recomputation and reassessment remain open. See
-[checkpoint](docs/release/SAVED-SHARED-BINDINGS-2026-10-23.md).
+Shared overrides local; breakage totals use SSP allocation; combination changes require effective-date
+reassessment. Shared return-rate drafts now support frozen bindings, impact previews, independent
+approval, atomic member application/recomputation and withdrawal. Other shared kinds and scope
+reassessment remain open. See [checkpoint](docs/release/SHARED-RETURN-WORKFLOW-2026-10-23.md).
 
 ## Locked POB opening sources — October 23, 2026
 

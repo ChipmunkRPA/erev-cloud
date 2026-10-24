@@ -10,7 +10,7 @@ from support import worlds
 from support.db import TestDatabase
 from support.http import call
 from support.principals import colleague, cookie_headers, member
-from support.reference import assign, entity, get, holding, post
+from support.reference import approve, assign, entity, get, holding, post
 
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
@@ -536,3 +536,91 @@ def test_portfolio_membership_workflow(
                     .values(portfolio_application_basis={})
                 )
             status_savepoint.rollback()
+
+    # Restore membership, save the current basis, then exercise real public approval.
+    joined = post(
+        app,
+        path + "/members",
+        maya,
+        {"contract_id": contract_id, "rationale": "Apply shared returns"},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert joined.status_code == 201, joined.text
+    version_path = preview_version.headers["location"]
+    saved = call(
+        app,
+        "PUT",
+        version_path,
+        headers={
+            **cookie_headers(maya.token, maya.csrf_token, key=True),
+            "If-Match": get(app, version_path, maya).headers["etag"],
+        },
+        json=values,
+    )
+    assert saved.status_code == 200, saved.text
+    missing = post(app, version_path + "/submit", maya, {}, if_match=saved.headers["etag"])
+    assert missing.status_code == 422, missing.text
+    evidence = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": str(saved_id),
+            "file_object_id": file_id,
+        },
+    )
+    assert evidence.status_code == 201, evidence.text
+    submitted = post(
+        app,
+        version_path + "/submit",
+        maya,
+        {},
+        if_match=get(app, version_path, maya).headers["etag"],
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["status"] == "SUBMITTED"
+    request_id = submitted.json()["approval_request_id"]
+    assert approve(app, request_id, maya).status_code == 403
+    approved = approve(app, request_id, world.marcus)
+    assert approved.status_code == 200, approved.text
+    applied = get(app, version_path, maya).json()
+    assert applied["status"] == "APPROVED"
+    assert len(applied["applied_event_ids"]) == 1
+    assert (
+        world.place.scalar(
+            select(contract.c.latest_computation_id).where(contract.c.id == UUID(contract_id))
+        )
+        != before_computation
+    )
+
+    # A submitted follow-up can be withdrawn without changing the applied version.
+    followup = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        values,
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert followup.status_code == 201, followup.text
+    follow_path = followup.headers["location"]
+    attached = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": followup.json()["id"],
+            "file_object_id": file_id,
+        },
+    )
+    assert attached.status_code == 201, attached.text
+    pending = post(
+        app, follow_path + "/submit", maya, {}, if_match=get(app, follow_path, maya).headers["etag"]
+    )
+    assert pending.status_code == 200, pending.text
+    withdrawn = post(app, follow_path + "/withdraw", maya, {}, if_match=pending.headers["etag"])
+    assert withdrawn.status_code == 200, withdrawn.text
+    assert withdrawn.json()["status"] == "WITHDRAWN"
+    assert withdrawn.json()["applied_event_ids"] == []
+    assert get(app, version_path, maya).json()["status"] == "APPROVED"

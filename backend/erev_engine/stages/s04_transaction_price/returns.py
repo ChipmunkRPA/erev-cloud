@@ -116,11 +116,15 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
     key = item.estimate_keys[0] if item.estimate_keys else ""
     shared_precedence = (st.identified.canonical.bundle.evidence_revision or 0) >= 11
     keys = item.estimate_keys if shared_precedence else (key,)
-    versions = {
-        applied.version.version_key: applied
-        for source in keys
-        for applied in st.identified.canonical.estimates.pins.get(source, ())
-    }
+    versions = {}
+    for source in keys:
+        for applied in st.identified.canonical.estimates.pins.get(source, ()):
+            # Shared applications are recorded in each member stream. The first event
+            # establishes the version's position, consistently with EstimatePins.pin.
+            if (st.identified.canonical.bundle.evidence_revision or 0) >= 12:
+                versions.setdefault(applied.version.version_key, applied)
+            else:
+                versions[applied.version.version_key] = applied
     ordered = sorted(
         versions.values(), key=lambda v: (v.version.effective_date, v.version.version_no)
     )

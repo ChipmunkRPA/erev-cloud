@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { DataGrid } from "../../components/data-grid/DataGrid";
 import type { GridColumn } from "../../components/data-grid/types";
@@ -198,7 +199,20 @@ function VersionForm({
     ifMatch: rowIfMatch(version?.row_version ?? 0),
     invalidates: [KEY],
   });
-  const pending = command.pending || discard.pending;
+  const submit = useCommand({
+    method: "POST",
+    path: `${path}/${version?.id ?? ""}/submit`,
+    ifMatch: rowIfMatch(version?.row_version ?? 0),
+    invalidates: [KEY],
+  });
+  const withdraw = useCommand({
+    method: "POST",
+    path: `${path}/${version?.id ?? ""}/withdraw`,
+    ifMatch: rowIfMatch(version?.row_version ?? 0),
+    invalidates: [KEY],
+  });
+  const dirty = JSON.stringify(values) !== JSON.stringify(valuesOf(version));
+  const pending = command.pending || discard.pending || submit.pending || withdraw.pending;
   const fields = [
     "effective_date",
     "currency",
@@ -234,6 +248,11 @@ function VersionForm({
     >
       <RefusalBanner problem={command.problem} conflict={command.banner} />
       <RefusalBanner problem={discard.problem} conflict={discard.banner} />
+      <RefusalBanner problem={submit.problem} conflict={submit.banner} />
+      <RefusalBanner problem={withdraw.problem} conflict={withdraw.banner} />
+      {version?.approval_request_id ? (
+        <Link to={`/approvals/requests/${version.approval_request_id}`}>{label("approval")}</Link>
+      ) : null}
       {networkError ? <Banner tone="negative" title={label("networkError")} /> : null}
       {shownFields.map((key) => (
         <Field
@@ -395,6 +414,38 @@ function VersionForm({
             }}
           >
             {label("discard")}
+          </Button>
+        ) : null}
+        {editable && version && estimate.estimate_kind === "RETURN_RATE" ? (
+          <Button
+            loading={submit.pending}
+            disabledReason={
+              pending ? label("saving") : dirty ? label("saveBeforeSubmit") : undefined
+            }
+            onClick={() => {
+              setNetworkError(false);
+              void submit.submit({}).then((outcome) => {
+                if (outcome.kind === "succeeded") onDone();
+                if (outcome.kind === "network-error") setNetworkError(true);
+              });
+            }}
+          >
+            {label("submit")}
+          </Button>
+        ) : null}
+        {writable && version?.status === "SUBMITTED" && estimate.estimate_kind === "RETURN_RATE" ? (
+          <Button
+            loading={withdraw.pending}
+            disabledReason={pending ? label("saving") : undefined}
+            onClick={() => {
+              setNetworkError(false);
+              void withdraw.submit({}).then((outcome) => {
+                if (outcome.kind === "succeeded") onDone();
+                if (outcome.kind === "network-error") setNetworkError(true);
+              });
+            }}
+          >
+            {label("withdraw")}
           </Button>
         ) : null}
         <Button onClick={onDone} disabledReason={pending ? label("saving") : undefined}>

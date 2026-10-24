@@ -983,8 +983,9 @@ def test_shared_returns_override_local_only_after_effective_date(revision):
         ((), (C_RET,), 960_000, 900_000),
     ],
 )
+@pytest.mark.parametrize("duplicate_application", [False, True])
 def test_frozen_shared_membership_changes_only_from_version_effective_date(
-    first_scope, second_scope, jan, feb
+    first_scope, second_scope, jan, feb, duplicate_application
 ):
     from erev_engine.bundle import PortfolioInput
     from erev_engine.stages.s09_recognition import run
@@ -1028,6 +1029,11 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
                     *base.events,
                     changed(C_RET, 7, first, first.effective_date),
                     changed(C_RET, 8, second, second.effective_date),
+                    *(
+                        (changed(C_RET, 9, second, second.effective_date),)
+                        if duplicate_application
+                        else ()
+                    ),
                 ),
                 key=lambda e: (e.effective_date, e.record_seq, e.event_key),
             )
@@ -1041,6 +1047,11 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
     assert totals["FY2026-P02"] == feb
     path = allocated.return_paths[O_RET]
     transition = next(pin for pin in path.pins if pin.version_key == second.version_key)
+    assert transition.event_order_key == (
+        second.effective_date,
+        8,
+        changed(C_RET, 8, second, second.effective_date).event_key,
+    )
     before = pin_at(path, second.effective_date, Position(transition.event_order_key, False))
     after = pin_at(path, second.effective_date, Position(transition.event_order_key, True))
     assert before.expected_quantity == (8 if first_scope else 4)
