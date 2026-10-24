@@ -442,3 +442,34 @@ def test_portfolio_membership_workflow(
     assert targeted.json()["target_obligation_keys"] == [target_key]
     assert targeted.json()["allocation_target"] == "OBLIGATIONS"
     assert get(app, targeted.headers["location"], maya).json() == targeted.json()
+
+    preview_version = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        values,
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert preview_version.status_code == 201, preview_version.text
+    impact_path = preview_version.headers["location"] + "/impact-preview"
+    assert get(app, impact_path, hidden).status_code == 404
+    impact = get(app, impact_path, maya)
+    assert impact.status_code == 200, impact.text
+    assert impact.json()["basis"] == "SHARED_RETURN_DRY_RUN"
+    assert len(impact.json()["groups"]) == 1
+    assert impact.json()["groups"][0]["members"][0]["contract_id"] == contract_id
+    assert impact.json()["groups"][0]["source_computation_id"] == str(before_computation)
+    assert len(impact.json()["groups"][0]["input_sha256"]) == 64
+    assert impact.json()["groups"][0]["members"][0]["revenue_by_period"]
+    repeated = get(app, impact_path, maya).json()["groups"]
+    assert repeated[0]["members"] == impact.json()["groups"][0]["members"]
+    assert repeated[0]["catch_up_amount"] == impact.json()["groups"][0]["catch_up_amount"]
+    after_preview = get(app, preview_version.headers["location"], maya).json()
+    assert after_preview["status"] == "DRAFT"
+    assert after_preview["applied_event_ids"] == []
+    assert (
+        world.place.scalar(
+            select(contract.c.latest_computation_id).where(contract.c.id == UUID(contract_id))
+        )
+        == before_computation
+    )

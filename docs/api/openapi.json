@@ -32288,6 +32288,143 @@
         "title": "PortfolioEstimateVersionIn",
         "type": "object"
       },
+      "PortfolioImpactGroupOut": {
+        "properties": {
+          "book_code": {
+            "title": "Book Code",
+            "type": "string"
+          },
+          "catch_up_amount": {
+            "title": "Catch Up Amount",
+            "type": "string"
+          },
+          "combination_group_id": {
+            "format": "uuid",
+            "title": "Combination Group Id",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "input_sha256": {
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioImpactMemberOut"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "source_computation_id": {
+            "format": "uuid",
+            "title": "Source Computation Id",
+            "type": "string"
+          },
+          "source_contract_version_id": {
+            "format": "uuid",
+            "title": "Source Contract Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_computation_id",
+          "source_contract_version_id",
+          "input_sha256",
+          "combination_group_id",
+          "book_code",
+          "currency",
+          "catch_up_amount",
+          "members"
+        ],
+        "title": "PortfolioImpactGroupOut",
+        "type": "object"
+      },
+      "PortfolioImpactMemberOut": {
+        "properties": {
+          "balances_after": {
+            "items": {
+              "$ref": "#/components/schemas/ImpactBalanceOut"
+            },
+            "title": "Balances After",
+            "type": "array"
+          },
+          "balances_before": {
+            "items": {
+              "$ref": "#/components/schemas/ImpactBalanceOut"
+            },
+            "title": "Balances Before",
+            "type": "array"
+          },
+          "contract_external_id": {
+            "title": "Contract External Id",
+            "type": "string"
+          },
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "revenue_by_period": {
+            "items": {
+              "$ref": "#/components/schemas/ImpactRevenuePeriodOut"
+            },
+            "title": "Revenue By Period",
+            "type": "array"
+          }
+        },
+        "required": [
+          "contract_id",
+          "contract_external_id",
+          "balances_before",
+          "balances_after",
+          "revenue_by_period"
+        ],
+        "title": "PortfolioImpactMemberOut",
+        "type": "object"
+      },
+      "PortfolioImpactOut": {
+        "properties": {
+          "basis": {
+            "const": "SHARED_RETURN_DRY_RUN",
+            "default": "SHARED_RETURN_DRY_RUN",
+            "title": "Basis",
+            "type": "string"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioImpactGroupOut"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "portfolio_id": {
+            "format": "uuid",
+            "title": "Portfolio Id",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "portfolio_id",
+          "version_id",
+          "computed_at",
+          "groups"
+        ],
+        "title": "PortfolioImpactOut",
+        "type": "object"
+      },
       "PortfolioIn": {
         "additionalProperties": false,
         "properties": {
@@ -91588,6 +91725,120 @@
           "API-R-32 Estimates and portfolios"
         ],
         "x-erev-permission": "estimate.create"
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{version_id}/impact-preview": {
+      "get": {
+        "operationId": "portfolio_return_impact_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "estimate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Estimate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioImpactOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Impact Preview",
+        "tags": [
+          "API-R-32 Estimates and portfolios"
+        ],
+        "x-erev-permission": "contract.read"
       }
     },
     "/api/v1/portfolios/{portfolio_id}/members": {

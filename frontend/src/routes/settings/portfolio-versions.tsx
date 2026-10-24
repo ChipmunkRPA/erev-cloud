@@ -14,6 +14,7 @@ import { queryKey } from "../../lib/api/query-keys";
 import type { components } from "../../lib/api/schema";
 import { t } from "../../lib/i18n/t";
 import { PortfolioAllocation } from "./portfolio-allocation";
+import { PortfolioImpact } from "./portfolio-impact";
 import { PortfolioEvidence } from "./portfolio-evidence";
 
 type Estimate = components["schemas"]["EstimateOut"];
@@ -126,6 +127,16 @@ export function PortfolioVersions({
         <PortfolioAllocation
           key={`${selected.id}:${selected.row_version}:${portfolio.row_version}`}
           path={`${path}/${selected.id}/allocation-preview`}
+          revision={`${selected.row_version}:${portfolio.row_version}`}
+        />
+      ) : null}
+      {selected &&
+      selected !== "new" &&
+      estimate.estimate_kind === "RETURN_RATE" &&
+      ["DRAFT", "SUBMITTED"].includes(selected.status) ? (
+        <PortfolioImpact
+          key={`${selected.id}:${selected.row_version}:${portfolio.row_version}`}
+          path={`${path}/${selected.id}/impact-preview`}
           revision={`${selected.row_version}:${portfolio.row_version}`}
         />
       ) : null}

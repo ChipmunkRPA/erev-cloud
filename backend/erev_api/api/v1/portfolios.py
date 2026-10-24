@@ -29,6 +29,7 @@ from erev_api.api.lists import (
 )
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
+from erev_api.db.session import tenant_session
 from erev_api.db.tables import contract, estimate, estimate_version, portfolio, portfolio_member
 from erev_api.domain.contracts import (
     estimates,
@@ -36,11 +37,13 @@ from erev_api.domain.contracts import (
     portfolios,
     queries,
     portfolio_preview,
+    portfolio_impact,
 )
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.estimates import EstimateOut, EstimateVersionOut
 from erev_api.schemas.portfolios import (
     PortfolioBreakagePreviewOut,
+    PortfolioImpactOut,
     PortfolioEstimateIn,
     PortfolioEstimateVersionIn,
     PortfolioIn,
@@ -486,3 +489,25 @@ def allocation_preview(
             book_code,
         ),
     )
+
+
+@router.get(
+    VERSION_PATH + "/{version_id}/impact-preview",
+    operation_id="portfolio_return_impact_preview",
+    response_model=PortfolioImpactOut,
+    responses=problem_responses(*READ_PROBLEMS),
+)
+def impact_preview(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    version_id: UUID,
+    ctx: ReadContext,
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> PortfolioImpactOut:
+    # Authorization, membership, baseline and native input must see one population.
+    with tenant_session(
+        ctx.principal.db_context, read_only=True, isolation_level="REPEATABLE READ"
+    ) as session:
+        return portfolio_impact.preview(
+            session, ctx, portfolio_id, estimate_id, version_id, deps.clock.now()
+        )

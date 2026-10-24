@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from erev_api.enums import EstimateMethod
 from erev_api.money import CurrencyCode
 from erev_api.schemas.estimates import Code, EstimateVersionCreateIn, Key
+from erev_api.schemas.events import ImpactBalanceOut, ImpactRevenuePeriodOut
 from erev_api.schemas.roles import CODE_LENGTH
 from erev_api.schemas.users import LABEL_LENGTH, MEMO_LENGTH
 
@@ -88,3 +89,30 @@ class PortfolioBreakagePreviewOut(BaseModel):
     total_breakage_quantity: str
     allocated_total: str
     shares: list[PortfolioBreakageShareOut]
+
+
+class PortfolioImpactMemberOut(BaseModel):
+    contract_id: UUID
+    contract_external_id: str
+    balances_before: list[ImpactBalanceOut]
+    balances_after: list[ImpactBalanceOut]
+    revenue_by_period: list[ImpactRevenuePeriodOut]
+
+
+class PortfolioImpactGroupOut(BaseModel):
+    source_computation_id: UUID
+    source_contract_version_id: UUID
+    input_sha256: str
+    combination_group_id: UUID
+    book_code: str
+    currency: str
+    catch_up_amount: str
+    members: list[PortfolioImpactMemberOut]
+
+
+class PortfolioImpactOut(BaseModel):
+    basis: Literal["SHARED_RETURN_DRY_RUN"] = "SHARED_RETURN_DRY_RUN"
+    portfolio_id: UUID
+    version_id: UUID
+    computed_at: datetime
+    groups: list[PortfolioImpactGroupOut]

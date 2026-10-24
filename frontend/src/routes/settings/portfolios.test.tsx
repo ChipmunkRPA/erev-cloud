@@ -494,3 +494,85 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   await waitFor(() => expect(reads).toBe(2));
   await waitFor(() => expect(screen.queryByText("retained-source-1")).toBeNull());
 });
+
+it("calculates shared return impact on demand and shows period changes without posting", async () => {
+  serve();
+  let reads = 0;
+  const money = (amount: string) => ({ amount, currency: "USD" });
+  server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({
+        items: [
+          { id: "e1", element_code: "RETURNS", estimate_kind: "RETURN_RATE", method: "RATE" },
+        ],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
+      HttpResponse.json({
+        items: [
+          {
+            id: "v1",
+            version_no: 1,
+            row_version: 1,
+            status: "DRAFT",
+            effective_date: "2026-09-01",
+            currency: "USD",
+            rate: "0.08",
+            parameters: {},
+            scenarios: [],
+            rationale: "Shared returns",
+          },
+        ],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/impact-preview"), () => {
+      reads++;
+      if (reads > 1) return problemResponse("validation-failed", 422, "Recompute affected groups");
+      return HttpResponse.json({
+        basis: "SHARED_RETURN_DRY_RUN",
+        portfolio_id: "p1",
+        version_id: "v1",
+        groups: [
+          {
+            combination_group_id: "g1",
+            book_code: "ASC606",
+            currency: "USD",
+            catch_up_amount: "400.00",
+            source_contract_version_id: "baseline-version",
+            source_computation_id: "calc1",
+            input_sha256: "a".repeat(64),
+            members: [
+              {
+                contract_id: "c1",
+                contract_external_id: "RETURNS-A",
+                balances_before: [{ balance: "revenue", amount: money("9600.00") }],
+                balances_after: [{ balance: "revenue", amount: money("9200.00") }],
+                revenue_by_period: [
+                  {
+                    period_key: "FY2026-P01",
+                    before: money("9600.00"),
+                    after: money("9200.00"),
+                    change: money("-400.00"),
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
+  fireEvent.click(await screen.findByRole("button", { name: "View version" }));
+  const button = await screen.findByRole("button", { name: "Calculate shared impact" });
+  expect(reads).toBe(0);
+  fireEvent.click(button);
+  await screen.findByText("-400.00");
+  expect(screen.getByText("baseline-version", { exact: false })).toBeTruthy();
+  fireEvent.click(button);
+  await waitFor(() => expect(reads).toBe(2));
+  await waitFor(() => expect(screen.queryByText("-400.00")).toBeNull());
+});

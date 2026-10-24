@@ -6059,6 +6059,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{version_id}/impact-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Impact Preview */
+    get: operations["portfolio_return_impact_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/portfolios/{portfolio_id}/members": {
     parameters: {
       query?: never;
@@ -20268,6 +20285,76 @@ export interface components {
       scenarios?: components["schemas"]["ScenarioIn"][];
       /** Unconstrained Amount */
       unconstrained_amount?: string | null;
+    };
+    /** PortfolioImpactGroupOut */
+    PortfolioImpactGroupOut: {
+      /** Book Code */
+      book_code: string;
+      /** Catch Up Amount */
+      catch_up_amount: string;
+      /**
+       * Combination Group Id
+       * Format: uuid
+       */
+      combination_group_id: string;
+      /** Currency */
+      currency: string;
+      /** Input Sha256 */
+      input_sha256: string;
+      /** Members */
+      members: components["schemas"]["PortfolioImpactMemberOut"][];
+      /**
+       * Source Computation Id
+       * Format: uuid
+       */
+      source_computation_id: string;
+      /**
+       * Source Contract Version Id
+       * Format: uuid
+       */
+      source_contract_version_id: string;
+    };
+    /** PortfolioImpactMemberOut */
+    PortfolioImpactMemberOut: {
+      /** Balances After */
+      balances_after: components["schemas"]["ImpactBalanceOut"][];
+      /** Balances Before */
+      balances_before: components["schemas"]["ImpactBalanceOut"][];
+      /** Contract External Id */
+      contract_external_id: string;
+      /**
+       * Contract Id
+       * Format: uuid
+       */
+      contract_id: string;
+      /** Revenue By Period */
+      revenue_by_period: components["schemas"]["ImpactRevenuePeriodOut"][];
+    };
+    /** PortfolioImpactOut */
+    PortfolioImpactOut: {
+      /**
+       * Basis
+       * @default SHARED_RETURN_DRY_RUN
+       * @constant
+       */
+      basis: "SHARED_RETURN_DRY_RUN";
+      /**
+       * Computed At
+       * Format: date-time
+       */
+      computed_at: string;
+      /** Groups */
+      groups: components["schemas"]["PortfolioImpactGroupOut"][];
+      /**
+       * Portfolio Id
+       * Format: uuid
+       */
+      portfolio_id: string;
+      /**
+       * Version Id
+       * Format: uuid
+       */
+      version_id: string;
     };
     /** PortfolioIn */
     PortfolioIn: {
@@ -50966,6 +51053,70 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  portfolio_return_impact_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        portfolio_id: string;
+        estimate_id: string;
+        version_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PortfolioImpactOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
         headers: {
           [name: string]: unknown;
         };
