@@ -7,8 +7,8 @@ explain that retained calculation; they do not allocate its net result to histor
 from decimal import Decimal
 from fractions import Fraction
 from typing import Any
-from uuid import NAMESPACE_URL, UUID, uuid5
 from urllib.parse import quote
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -253,6 +253,11 @@ def _details(source: dict[str, Any]) -> list[str]:
                     f"control line: {line['control_line'] or 'none (net/supplier reallocation)'}"
                 )
                 for net in line["source_sets"]:
+                    if net.get("historical_source_owners"):
+                        result.append(
+                            "Original computation evidence verifies source owners outside "
+                            "the selected report group; no per-owner net amount is inferred."
+                        )
                     result.append(
                         f"Net line: {net['net_line']}; bucket: {net['bucket']}; "
                         f"net income: {net['net_income']} {currency}; "

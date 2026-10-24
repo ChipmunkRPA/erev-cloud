@@ -8,10 +8,6 @@ from fractions import Fraction
 from typing import Any
 from uuid import UUID, uuid5
 
-from erev_engine import upgrade
-from erev_engine.canonical import canonical_bytes
-from erev_engine.money import minor_to_decimal
-from erev_engine.trace import SourceRef
 from sqlalchemy import select
 
 from erev_api.db.tables import contract, legal_entity, period, subledger_line
@@ -20,6 +16,10 @@ from erev_api.domain.reports import revenue_roles, revenue_trace
 from erev_api.domain.reports.fx_paid_periods import paid_origins
 from erev_api.explain.store import trace_from_row
 from erev_api.uow import UnitOfWork
+from erev_engine import upgrade
+from erev_engine.canonical import canonical_bytes
+from erev_engine.money import minor_to_decimal
+from erev_engine.trace import SourceRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +55,7 @@ class AmountProof:
     view: str
     sources: tuple[SourceIdentity, ...] = ()
     layer_dates: tuple[tuple[UUID, str, date], ...] = ()
+    verified_source_owners: tuple[UUID, ...] = ()
 
 
 def read(
@@ -405,6 +406,7 @@ def _read(
         previous=None if before is None else str(delta.inputs[1]).rsplit(":", 1)[-1],
         basis=basis,
     )
+    verified_source_owners = set(owners.values())
     source_identities = {
         identity: SourceIdentity(
             identity,
@@ -467,6 +469,7 @@ def _read(
             paid.extend(found.delta.movements)
         else:
             source_identities.update((item.movement_id, item) for item in found.sources)
+            verified_source_owners.update(found.verified_source_owners)
         paid_ids.update((identity, *found.paid_line_ids))
         evidence.update(found.evidence)
         for owner, layer, created in found.layer_dates:
@@ -506,6 +509,7 @@ def _read(
             tuple(
                 (owner, layer, created) for (owner, layer), created in sorted(layer_dates.items())
             ),
+            tuple(sorted(verified_source_owners, key=str)),
         )
         amount_cache[line_id] = proof
         return proof

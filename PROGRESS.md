@@ -43,15 +43,14 @@ combination total across three currency views. See [group sources](docs/release/
 [Mixed sources](docs/release/AGENT-MIXED-SOURCES-2026-10-23.md) retain net totals and full sources,
 with unavailable opening amounts explicitly marked. Cross-entity principal POB verifies original
 [due-to sources](docs/release/INTERCOMPANY-POB-OPENING-2026-10-23.md).
-Cross-entity agents and historical-group outsiders remain open. No deployment.
+Historical agent owners now use verified original membership: [checkpoint](docs/release/AGENT-HISTORICAL-OWNERS-2026-10-24.md).
+Cross-entity agents and principal historical-group outsiders remain open. No deployment.
 
 ## Acquired POB sources — October 23, 2026
 
-[Revision 14](docs/release/ACQUIRED-POB-BASELINE-2026-10-23.md) restores native transaction baselines;
-[revision 15](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md) fixes exact closed-cutover group balances.
-[Revision 16](docs/release/ACQUIRED-FUNCTIONAL-SOURCES-2026-10-23.md) connects original cutover FX
-to functional POB classification, closing sources and the report reader. Journals remain unchanged.
-35 targeted cases pass. Public acquisition entry/report workflows and mixed-sign allocation remain open.
+Native acquisition evidence and public close/lock coverage are tracked in the
+[acquisition checkpoint](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
+Mixed groups, agents and recomputed baselines remain unfinished.
 
 ## Rollforward Other explanation — October 23, 2026
 

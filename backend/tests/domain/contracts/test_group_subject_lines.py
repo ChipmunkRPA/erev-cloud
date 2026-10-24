@@ -1679,6 +1679,15 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 assert later.amount == suppliers[-1][amount]
                 assert len({item.layer_key for item in later.sources}) == 2
                 assert all(not hasattr(item, "amount") for item in later.sources)
+                assert {item.contract_id for item in later.sources} <= set(
+                    later.verified_source_owners
+                )
+                from erev_api.domain.reports.opening_agent_sources import _owners
+
+                assert _owners(later, {identity}, True) == ([str(source_owner)] if combined else [])
+                if combined:
+                    with pytest.raises(ValueError, match="verified original membership"):
+                        _owners(later, {identity}, False)
             else:
                 later = read(uow, suppliers[-1]["id"], view=view)
                 assert later.delta.amount == suppliers[-1][amount]

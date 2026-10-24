@@ -7,16 +7,19 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from erev_api.uow import UnitOfWork
+
 from . import (
     opening_agent_sources,
     opening_relief_periods,
-    opening_relief_availability as availability,
     revenue_attribution,
     tie_outs,
 )
+from . import (
+    opening_relief_availability as availability,
+)
 from .builders import ReportParams
 from .builders.contract_balance_rollforward import Entry
-from erev_api.uow import UnitOfWork
 
 KEY = "agent_contract_opening_v1"
 ZERO = Decimal(0)
@@ -48,6 +51,7 @@ def calculate(
     view: str,
     allow_zero_consumption: bool = True,
     allow_unresolved: bool = False,
+    allow_historical_owners: bool = False,
 ) -> Result | None:
     owners = {row.contract_id for row in rows}
     agents = {}
@@ -64,6 +68,7 @@ def calculate(
             allowed_source_contracts=owners,
             classify_opening=not (allow_zero_consumption and consumed <= 0),
             allow_unresolved=allow_unresolved,
+            allow_historical_owners=allow_historical_owners,
         )
         if found is not None:
             agents[key] = found

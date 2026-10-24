@@ -12,6 +12,7 @@ from sqlalchemy import select
 
 from erev_api.db.tables import obligation_version
 from erev_api.domain.reports import revenue_attribution, tie_outs
+from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import Entry
 from erev_api.uow import UnitOfWork
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
@@ -21,6 +22,29 @@ PREVIOUS_KEY = "agent_opening_source_sets_v2"
 KEY = "agent_opening_source_sets_v3"
 SUPPORTED_KEYS = (KEY, PREVIOUS_KEY, LEGACY_KEY)
 ZERO = Decimal(0)
+HISTORY_KEY = "agent_historical_source_owners_v1"
+
+
+def historical_enabled(params: ReportParams) -> bool:
+    """Preserve saved-report admission while retaining the historical-owner interpretation."""
+    if params.binding is not None and HISTORY_KEY not in params.binding.evidence:
+        return False
+    value = {"basis": "ORIGINAL_COMPUTATION_AND_PAID_HISTORY"}
+    if params.binding is not None and params.binding.evidence[HISTORY_KEY] != value:
+        raise tie_outs.invalid("currency_view", "Historical agent source interpretation differs.")
+    tie_outs.record_evidence(params, HISTORY_KEY, value)
+    return True
+
+
+def _owners(
+    proof: revenue_attribution.AmountProof, allowed: set[UUID], historical: bool
+) -> list[str]:
+    outside = {source.contract_id for source in proof.sources} - allowed
+    if outside and (not historical or not outside <= set(proof.verified_source_owners)):
+        raise ValueError(
+            "Agent sources outside the selected group lack verified original membership."
+        )
+    return sorted(map(str, outside))
 
 
 def key_for(evidence: Mapping[str, Any] | None) -> str:
@@ -77,6 +101,7 @@ def read(
     allowed_source_contracts: set[UUID] | None = None,
     classify_opening: bool = True,
     allow_unresolved: bool = False,
+    allow_historical_owners: bool = False,
 ) -> Result | None:
     if view not in {"transaction", "functional"}:
         raise ValueError("Agent source view must be transaction or functional.")
@@ -144,11 +169,7 @@ def read(
                 posted_amount = txn if view == "transaction" else functional
                 if proof.amount != Fraction(posted_amount):
                     raise ValueError("Agent net amount differs from its original posting.")
-                if any(source.contract_id not in allowed_owners for source in proof.sources):
-                    raise ValueError(
-                        "Agent opening attribution across original member owners "
-                        "remains unsupported."
-                    )
+                historical_owners = _owners(proof, allowed_owners, allow_historical_owners)
                 category = category_for(proof, entry.subject_key)
                 amount = -Decimal(posted_amount)
                 net += amount
@@ -158,6 +179,11 @@ def read(
                 paid.update(proof.paid_line_ids)
                 lines.append(
                     {
+                        **(
+                            {"historical_source_owners": historical_owners}
+                            if historical_owners
+                            else {}
+                        ),
                         "net_line": str(identity),
                         "bucket": category,
                         "net_income": str(amount),
@@ -211,8 +237,7 @@ def read(
             proof = revenue_attribution.verify_component(uow, entry.line_id, view=view)
             if proof.amount != -Fraction(entry.flow.amount):
                 raise ValueError("Agent net-only amount differs from the original posting.")
-            if any(source.contract_id not in allowed_owners for source in proof.sources):
-                raise ValueError("Agent net-only sources cross original member owners.")
+            historical_owners = _owners(proof, allowed_owners, allow_historical_owners)
             category = category_for(proof, entry.subject_key)
             amount = entry.flow.amount if category == "OPENING" else ZERO
             eligible[entry.subject_key] += amount
@@ -238,6 +263,11 @@ def read(
                     ],
                     "source_sets": [
                         {
+                            **(
+                                {"historical_source_owners": historical_owners}
+                                if historical_owners
+                                else {}
+                            ),
                             "net_line": str(entry.line_id),
                             "bucket": category,
                             "net_income": str(entry.flow.amount),

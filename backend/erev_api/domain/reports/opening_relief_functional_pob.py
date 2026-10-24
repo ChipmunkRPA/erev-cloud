@@ -8,10 +8,12 @@ from uuid import UUID
 
 from erev_api.domain.reports import (
     opening_agent_sources,
-    opening_relief_availability as availability,
     opening_relief_frozen,
     opening_relief_pob,
     tie_outs,
+)
+from erev_api.domain.reports import (
+    opening_relief_availability as availability,
 )
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
@@ -156,6 +158,7 @@ def rows(
                     view="functional",
                     net_entries=all_net.get(key, []),
                     allow_unresolved=availability.enabled(params),
+                    allow_historical_owners=opening_agent_sources.historical_enabled(params),
                     allowed_source_contracts={member.contract_id for member in members}
                     if agent_key == opening_agent_sources.KEY
                     else None,
