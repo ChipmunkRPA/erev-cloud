@@ -1,0 +1,218 @@
+"""Install prospective allocation segments for a reviewed contract split boundary.
+
+The caller retains the complete original state and separately persists effective membership.
+This kernel changes future allocations only; it does not perform database membership changes.
+"""
+
+from dataclasses import replace
+from fractions import Fraction
+
+from erev_engine.combination_split import SplitBasis
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
+from erev_engine.stages.s02_contract_identification import IdentifiedState
+from erev_engine.stages.s06_modifications import boundary_state, pool, segments, weights
+from erev_engine.stages.state import (
+    AllocatedState,
+    BookContext,
+    EventView,
+    Finding,
+)
+from erev_engine.trace import TraceBuilder
+
+
+def install(
+    ctx: BookContext,
+    state: AllocatedState,
+    event: EventView,
+    plan: SplitBasis,
+    identified: IdentifiedState,
+    trace: TraceBuilder,
+) -> AllocatedState:
+    """Recheck native boundary measurements and dated weights before installing a plan.
+
+    Keep every earlier segment, original quantity, price, billing plan and recognition ledger.
+    The new segment starts at original posted revenue and recognizes only the assigned
+    remainder over the remaining service. Redistribution is not a price concession/refund.
+    """
+    if (plan.book_code, plan.currency, plan.effective_date) != (
+        ctx.book_code,
+        ctx.txn_currency,
+        event.effective_date,
+    ):
+        raise ValueError("Split plan differs from the calculation boundary")
+    if plan.boundary_event_key is not None and plan.boundary_event_key != event.event_key:
+        raise ValueError("Split plan names a different original boundary event")
+    if set(member.contract_key for member in plan.members) != {
+        c.header.external_id for c in state.contracts
+    }:
+        raise ValueError("Split plan differs from the original member population")
+    originals = {
+        obligation_subject_key(member.contract_key, row.obligation_key): row
+        for member in plan.members
+        for row in member.original
+    }
+    if len(originals) != sum(len(m.original) for m in plan.members) or set(originals) != {
+        o.subject_key for o in state.obligations
+    }:
+        raise ValueError("Split plan must retain every original obligation exactly once")
+    if any(
+        segment.event_key == event.event_key for ob in state.obligations for segment in ob.segments
+    ):
+        raise ValueError("The split allocation boundary is already installed")
+    if len({m.destination for m in plan.members}) < 2:
+        raise ValueError("A split requires at least two destinations")
+    befores = {}
+    selected = {}
+    for ob in state.obligations:
+        if (
+            ob.scope_flag != "IN_SCOPE_606"
+            or ob.principal_agent != "PRINCIPAL"
+            or ob.performing_entity != ob.contracting_entity
+            or ob.opening is not None
+            or ob.combined_component_keys
+            or ob.material_right is not None
+            or ob.is_vc_line
+            or ob.recognition_method not in {"TIME_ELAPSED", "UNITS_DELIVERED"}
+        ):
+            raise ValueError(
+                "Split application needs a supported original fixed-service obligation"
+            )
+        row = originals[ob.subject_key]
+        segment = segments.in_force(state, ob, event)
+        if segment is None or any(s.component != "FIXED" for s in ob.segments):
+            raise ValueError("Split allocation requires a complete fixed-service basis")
+        before = segments.measure(ctx, state, ob, segment, event)
+        if (
+            segment.a_posted,
+            before.posted,
+            before.remaining_quantity,
+            segment.x_exact,
+            before.exact,
+        ) != (
+            row.allocation_minor,
+            row.recognized_minor,
+            row.remaining_quantity,
+            row.allocation_exact,
+            row.recognized_exact,
+        ):
+            raise ValueError("Split source measurement changed; rebuild its allocation")
+        findings: list[Finding] = []
+        weight = (
+            None
+            if before.progress == 1
+            else weights.existing(
+                ctx, identified, ob, before, (), event, None, findings, state=state
+            )
+        )
+        if before.progress != 1 and (
+            weight is None or any(f.severity == "ERROR" for f in findings)
+        ):
+            raise ValueError("Split remaining SSP cannot be resolved")
+        value = Fraction(0) if weight is None else weight.value
+        if (
+            value != row.remaining_ssp
+            or (() if weight is None else weight.sources) != row.remaining_ssp_sources
+        ):
+            raise ValueError("Split remaining SSP changed; rebuild its allocation")
+        befores[ob.subject_key], selected[ob.subject_key] = before, value
+    mu = segments.minor_unit(ctx)
+    group_pool = pool.Pool(
+        state.group_code,
+        tuple(
+            pool.Member(key, before.segment.a_posted, before.posted)
+            for key, before in sorted(befores.items())
+        ),
+        0,
+        0,
+        0,
+    )
+    if (
+        group_pool.posted != plan.unrecognized_minor
+        or sum(b.posted for b in befores.values()) != plan.recognized_minor
+    ):
+        raise ValueError("Split totals differ from the original boundary")
+    member_weights = [
+        (
+            m.contract_key,
+            sum(
+                (
+                    selected[obligation_subject_key(m.contract_key, r.obligation_key)]
+                    for r in m.original
+                ),
+                Fraction(0),
+            ),
+        )
+        for m in plan.members
+    ]
+    expected = pool.preview(group_pool, member_weights, mu)
+    if group_pool.posted and not sum((w for _, w in member_weights), Fraction(0)):
+        raise ValueError("Nonzero split consideration requires remaining SSP")
+    for member in plan.members:
+        if expected[member.contract_key][0] != member.remaining_after_minor:
+            raise ValueError("Split member allocation differs from remaining SSP")
+    # The group pool is preserved; member adjustments below are internal allocation transfers.
+    group_node = pool.emit(
+        ctx, trace, event, group_pool, mu, {"basis": "PROSPECTIVE_COMBINATION_SPLIT"}
+    )
+    member_shares = pool.apportion(ctx, trace, event, group_pool, group_node, member_weights, mu)
+    changed = {}
+    for member in plan.members:
+        keys = sorted(
+            obligation_subject_key(member.contract_key, r.obligation_key) for r in member.original
+        )
+        old_remaining = sum(befores[key].segment.a_posted - befores[key].posted for key in keys)
+        member_pool = pool.Pool(
+            member.contract_key,
+            tuple(
+                pool.Member(key, befores[key].segment.a_posted, befores[key].posted) for key in keys
+            ),
+            member_shares[member.contract_key].posted - old_remaining,
+            0,
+            0,
+        )
+        ordered = [(key, selected[key]) for key in keys]
+        shares_before = pool.preview(member_pool, ordered, mu)
+        if {
+            r.obligation_key: shares_before[
+                obligation_subject_key(member.contract_key, r.obligation_key)
+            ][0]
+            for r in member.original
+        } != dict(member.obligation_shares):
+            raise ValueError("Split obligation allocation differs from remaining SSP")
+        node = pool.emit(ctx, trace, event, member_pool, mu, {"basis": "SPLIT_ALLOCATION_TRANSFER"})
+        shares = pool.apportion(ctx, trace, event, member_pool, node, ordered, mu)
+        for ob in state.obligations:
+            if ob.subject_key not in shares:
+                continue
+            before, share = befores[ob.subject_key], shares[ob.subject_key]
+            boundary = segments.prospective(
+                ctx,
+                event,
+                before=before,
+                x_exact=Fraction(before.posted, 10**mu) + share.exact,
+                a_posted=before.posted + share.posted,
+                totals=replace(before.segment.totals, quantity=before.remaining_quantity),
+                progress_measure=before.segment.progress_measure,
+                weight=selected[ob.subject_key],
+                billing_plan=before.segment.remaining_billing_plan,
+                boundary_no=before.segment.modification_boundary_no + 1,
+            )
+            changed[ob.subject_key] = replace(ob, segments=(*ob.segments, boundary))
+    result = replace(state, obligations=tuple(changed[ob.subject_key] for ob in state.obligations))
+    for ob in result.obligations:
+        before = befores[ob.subject_key]
+        after = segments.measure(ctx, result, ob, ob.segments[-1], event)
+        if after.posted != before.posted:
+            raise ValueError("A prospective split cannot change previously recognized revenue")
+        segments.emit_catch_up(
+            ctx,
+            trace,
+            event,
+            ob.subject_key,
+            before=before,
+            after=after,
+            share_node=f"mod_share@{event.event_key}:{ob.subject_key}:-",
+            base=before.posted,
+        )
+    boundary_state.emit(ctx, trace, state, result, event)
+    return result

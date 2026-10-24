@@ -2700,3 +2700,13 @@ retry a refused read. Incomplete authorization cannot produce a partial allocati
 inputs or encountering refusal hides older results. See
 [scope and necessary verification](COMBINATION-SPLIT-PREVIEW-2026-10-24.md).
 Actual split submission, approval, historical membership and prospective application remain open.
+
+
+## October 24: native prospective split allocation application
+
+Revision 49 can apply an explicit split allocation boundary in the native fold, preserving
+old income segments and allocating only the unrecognized pool. Full native computation and
+trace reevaluation pass; earlier targets and billing terms are preserved. This advances the
+calculation layer beyond preview but does not yet persist new effective group membership.
+See [native scope and remaining integration](COMBINATION-SPLIT-PREVIEW-2026-10-24.md).
+Public split proposals/approval/application and historical report integration remain open.

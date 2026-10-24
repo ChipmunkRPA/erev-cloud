@@ -696,8 +696,33 @@ def _fold(
         if boundary_cutoff is not None and ev.effective_date > boundary_cutoff:
             break
         priced = len(st.tp_history)
-        handler = BOUNDARY_HANDLERS[ev.event_type]
         before = st
+        if (
+            ev.event_type == "COMBINATION_CHANGED"
+            and "prospective_split_destinations" in ev.payload
+        ):
+            from erev_engine.combination_split import prepare as prepare_split
+            from erev_engine.combination_split_apply import install as install_split
+
+            destinations = ev.payload["prospective_split_destinations"]
+            if (cb.bundle.evidence_revision or 0) < 49 or not isinstance(destinations, Mapping):
+                raise ValueError(
+                    "Prospective split boundaries require revision 49 and member destinations"
+                )
+            if ev.payload.get("action") != "LEAVE" or any(
+                not isinstance(key, str) or not isinstance(value, str)
+                for key, value in destinations.items()
+            ):
+                raise ValueError("Prospective split requires a LEAVE event with named destinations")
+            plan = prepare_split(
+                cb.bundle,
+                book_code=ctx.book_code,
+                event_key=ev.event_key,
+                destinations=destinations,
+            )
+            st = install_split(ctx, st, ev, plan, identified, tb)
+            continue
+        handler = BOUNDARY_HANDLERS[ev.event_type]
         if handler is s06_modifications.apply:
             st = s06_modifications.apply(ctx, st, ev, tb, identified=identified, price_at=price)
         elif handler is s08_estimates_late_events.apply:

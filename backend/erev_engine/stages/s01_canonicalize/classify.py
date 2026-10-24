@@ -55,7 +55,10 @@ def classify(events: Sequence[EventView]) -> Classification:
             if event.contract_key in bookings:
                 raise ValueError(f"{event.event_key}: a contract has one booking (REQ-DAT-017)")
             bookings[event.contract_key] = event
-        elif event.event_type in BOUNDARY_EVENT_TYPES:
+        elif event.event_type in BOUNDARY_EVENT_TYPES or (
+            event.event_type == "COMBINATION_CHANGED"
+            and "prospective_split_destinations" in event.payload
+        ):
             boundary.append(event)
         else:
             measure.append(event)

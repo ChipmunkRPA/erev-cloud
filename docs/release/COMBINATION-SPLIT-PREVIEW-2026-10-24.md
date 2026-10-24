@@ -60,3 +60,27 @@ values are not displayed as rounded financial amounts.
 Two focused UI cases pass for exact selected query values, result clearing after edits/refusal,
 and refusal of partial population. Frontend TypeScript and scoped ESLint pass. This completes
 the preview entry, not split submission/approval/application. No deployment.
+
+
+## Native prospective application boundary — revision 49
+
+The native fold recognizes an explicit COMBINATION_CHANGED / LEAVE input carrying
+`prospective_split_destinations`. At revision 49 it rebuilds the remaining-SSP plan strictly
+before that event and installs prospective fixed-allocation segments for the complete group.
+Earlier input revisions reject this new payload. Ordinary JOIN/LEAVE behavior is unchanged.
+The API producer remains revision 48 until the durable workflow is connected.
+
+The installer rechecks original amounts, posted income, remaining quantities and SSP sources.
+The group pool stays constant; internal member allocations do not create price concessions,
+refund components or changes to original stated prices/billing plans. Each new segment starts
+at original posted income and recognizes its assigned remainder over remaining service.
+Old segments remain intact. Existing native pool, share, catch-up and allocation-state trace
+formulas describe the boundary and reevaluate successfully.
+
+Seven split cases pass, including full native computation, preserved earlier monthly targets,
+final revenue conservation, unit-delivery income retained without acceleration, stale/invented
+member-allocation refusal and the revision gate. The existing boundary-query cases also pass;
+scoped Ruff/mypy pass. No public approval/application claim is made: durable split proposals,
+source freshness at approval, effective membership, destination computations and reporting
+across membership boundaries still require integration. The calculation envelope continues to
+contain the original group and is not itself a persisted membership split. No deployment.
