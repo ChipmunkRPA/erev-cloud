@@ -1348,8 +1348,9 @@ def test_functional_liability_aging_preserves_original_dates(world: World, monet
     assert after["tie_out_results"][0]["result"] == "PASS"
 
 
+@pytest.mark.parametrize("currency_view", ["functional", "reporting"])
 def test_functional_disclosure_pack_uses_foreign_contract_sources(
-    world: World, monkeypatch: pytest.MonkeyPatch
+    world: World, monkeypatch: pytest.MonkeyPatch, currency_view: str
 ) -> None:
     """A public pack carries GBP source amounts, with a retained identical rerun."""
     from erev_api.db.tables import job, report_run
@@ -1361,11 +1362,33 @@ def test_functional_disclosure_pack_uses_foreign_contract_sources(
     from erev_api.jobs import registry
 
     def expose_failure(*args, error, **kwargs):
-        raise error
+        raise AssertionError(getattr(error, "errors", str(error))) from error
 
     monkeypatch.setattr(registry, "fail_attempt", expose_failure)
     contract_id, _ = delivered(world)
     _recorded(world, contract_id, 3, _invoice("PREPAY", "2026-07-01", "90000.00"))
+    if currency_view == "reporting":
+        created = post(
+            world.app,
+            RATE_SETS,
+            world.maya,
+            {
+                "code": "PACK-OPENING",
+                "name": "Prior closing for reporting",
+                "rate_type": "closing",
+            },
+        )
+        assert created.status_code == 201, created.text
+        _published_version(
+            world.app,
+            world.maya,
+            world.marcus,
+            created.json()["id"],
+            [
+                {**USD_GBP, "rate": "0.8", "period_key": "FY2026-P06"},
+            ],
+            coverage=("2026-06-01", "2026-06-30"),
+        )
     with world.place.uow() as uow:
         cutoff = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
     world.place.clock.set(cutoff)
@@ -1386,7 +1409,7 @@ def test_functional_disclosure_pack_uses_foreign_contract_sources(
                 "entity_codes": [ENTITY],
                 "book": BOOK,
                 "period_key": "FY2026-P07",
-                "currency_view": "functional",
+                "currency_view": currency_view,
                 "quarter": False,
             },
         },
@@ -1439,15 +1462,20 @@ def test_functional_disclosure_pack_uses_foreign_contract_sources(
         assert not collected.pending
         assert len(collected.children) == 9
         for child in collected.children:
-            assert child.run["parameters"]["currency_view"] == "functional"
+            assert child.run["parameters"]["currency_view"] == currency_view
             currencies = {row["currency"] for row in child.data.rows if row.get("currency")}
-            assert currencies <= {"GBP"}, (child.source.key, currencies)
+            assert currencies <= ({"GBP"} if currency_view == "functional" else {"USD"}), (
+                child.source.key,
+                currencies,
+            )
         disaggregation = next(
             c for c in collected.children if c.source.key == "disaggregation:PERIOD"
         )
         assert disaggregation.data.rows
         assert any(
-            Decimal(row["total"]["amount"]) == Decimal("43200") for row in disaggregation.data.rows
+            Decimal(row["total"]["amount"])
+            == (Decimal("43200") if currency_view == "functional" else Decimal("53333.33"))
+            for row in disaggregation.data.rows
         )
     original = execute(parent_id)
     repeated = post(world.app, f"/api/v1/report-runs/{parent_id}/rerun", actor, {})
@@ -1455,4 +1483,4 @@ def test_functional_disclosure_pack_uses_foreign_contract_sources(
     rerun_id = UUID(repeated.headers["X-Erev-Report-Run-Id"])
     rerun = execute(rerun_id)
     assert rerun["output_sha256"] == original["output_sha256"]
-    assert rerun["parameters"]["currency_view"] == "functional"
+    assert rerun["parameters"]["currency_view"] == currency_view

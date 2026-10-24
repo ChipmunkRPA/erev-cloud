@@ -67,8 +67,10 @@ def requests(
         raise Problem(
             "validation-failed", "Choose one entity, an accounting book and an aware cutoff."
         )
-    if currency_view not in {"transaction", "functional"}:
-        raise Problem("validation-failed", "Choose transaction or functional disclosure currency.")
+    if currency_view not in {"transaction", "functional", "reporting"}:
+        raise Problem(
+            "validation-failed", "Choose transaction, functional or reporting disclosure currency."
+        )
     period = calendar.named(period_key, "period_key")
     ranges = [("PERIOD", period)]
     if quarter:

@@ -20,11 +20,11 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Functional disclosure packs — October 23, 2026
+## Multi-currency disclosure packs — October 24, 2026
 
-Live packs now propagate the selected functional currency across all nine children and retain
-it for replay. Foreign populated and legacy locked workflows pass; zero-opening RPO no longer
-requires a pre-contract FX rate. See [checkpoint](docs/release/FUNCTIONAL-DISCLOSURE-2026-10-23.md).
+Live packs propagate functional/reporting currency across all nine children and retained replay.
+Cost reporting uses monthly FX with separate translation/rounding and original carrying checks.
+See [checkpoint](docs/release/REPORTING-DISCLOSURE-2026-10-24.md). Locked sources retain their basis.
 
 ## Combined actual hours and termination — October 23, 2026
 

@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
@@ -130,6 +130,7 @@ class CostMovement:
     currency: str
     in_range: bool
     contract_external_id: str
+    period_end: date | None = None
 
 
 def classify(
@@ -375,6 +376,7 @@ def _movements(
                 currency=currency,
                 in_range=row["period_end_date"] >= range_start[entity_id],
                 contract_external_id=str(row["external_id"]),
+                period_end=row["period_end_date"],
             )
         )
     tie_outs.require_members(params, "subledger_line", consumed)
@@ -399,7 +401,7 @@ def _check_view(
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
-    found, periods, _ = ranges(session, params)
+    found, periods, before = ranges(session, params)
     movements = _movements(
         session,
         entity_ids=params.entity_ids,
@@ -421,6 +423,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         cutoff=cutoff,
         params=params,
     )
+    from erev_api.domain.reports import cost_reporting
+
+    if params.parameters.get("currency_view") == "reporting" and (
+        params.binding is None or params.binding.evidence.get(cost_reporting.KEY) is True
+    ):
+        return cost_reporting.build(
+            uow, params, found, periods, before, movements, closing_balances
+        )
     return ReportData(
         columns=COLUMNS,
         rows=tuple(rows),

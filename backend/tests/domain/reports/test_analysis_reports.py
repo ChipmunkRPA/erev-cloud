@@ -1136,3 +1136,87 @@ def test_book_bridge_foreign_revenue_uses_posted_functional_amounts(
     data = get(app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
     assert data.status_code == 200, data.text
     assert data.json()["items"] == reporting_rows
+
+
+def test_cost_reporting_currency_uses_retained_monthly_rates(app, keyring, clock, files):
+    from support.reference import approve, post
+    from support.worlds import resigned, run_now
+
+    world = k02_marrowby_commission(app, keyring, clock, files, reporting_currency="GBP")
+    for kind, values in (("closing", [(8, "0.7"), (9, "0.9")]), ("average", [(9, "0.8")])):
+        created = post(
+            app,
+            "/api/v1/fx-rate-sets",
+            world.maya,
+            {
+                "code": f"COST-{kind}",
+                "name": f"Cost {kind}",
+                "rate_type": kind,
+            },
+        )
+        assert created.status_code == 201, created.text
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{created.json()['id']}/versions",
+            world.maya,
+            {
+                "coverage_from": "2026-08-01",
+                "coverage_to": "2026-09-30",
+                "rates": [
+                    {
+                        "base_currency": "USD",
+                        "quote_currency": "GBP",
+                        "period_key": f"FY2026-P{month:02d}",
+                        "rate": rate,
+                    }
+                    for month, rate in values
+                ],
+            },
+        )
+        assert draft.status_code == 201, draft.text
+        submitted = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            world.maya,
+            {"comment": "Cost reporting rates"},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert submitted.status_code == 200, submitted.text
+        approved = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+        assert approved.status_code == 200, approved.text
+    with world.place.uow() as uow:
+        cutoff = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
+    clock.set(cutoff)
+    world = resigned(world)
+    run, rows = report_run(
+        world,
+        "contract_cost_rollforward",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "from_period_key": SEPTEMBER_2026,
+            "to_period_key": SEPTEMBER_2026,
+            "currency_view": "reporting",
+        },
+    )
+    assert {r["currency"] for r in rows} == {"GBP"}
+    values = {r["line_code"]: D(r["amount"]["amount"]) for r in rows}
+    assert {k: values[k] for k in ("OPENING", "AMORTIZATION", "FX", "ROUNDING", "CLOSING")} == {
+        "OPENING": D("5603.84"),
+        "AMORTIZATION": D("-394.52"),
+        "FX": D("1551.78"),
+        "ROUNDING": 0,
+        "CLOSING": D("6761.10"),
+    }
+    assert tie_of(run, "TO_COST_ROLLFORWARD_BALANCES")["result"] == "PASS"
+    repeated = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert repeated.status_code == 202, repeated.text
+    assert run_now(world, UUID(repeated.json()["id"]))["state"] == "SUCCEEDED"
+    from erev_api.db.tables import report_run as runs
+
+    saved = world.place.rows(
+        select(runs).where(runs.c.id == UUID(repeated.headers["X-Erev-Report-Run-Id"]))
+    )[0]
+    assert saved["output_sha256"] == world.place.scalar(
+        select(runs.c.output_sha256).where(runs.c.id == UUID(run["id"]))
+    )

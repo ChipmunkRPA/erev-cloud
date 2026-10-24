@@ -4,6 +4,13 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Reporting-currency disclosure packs — October 24, 2026
+
+Live packs now admit reporting currency across all nine children. Contract costs translate
+monthly with explicit FX/rounding, conserved category endpoints, retained rates and independent
+original carrying checks. See [checkpoint](REPORTING-DISCLOSURE-2026-10-24.md). This supersedes
+the live reporting-pack gap below; additional currency lock snapshots remain unfinished.
+
 ## Functional disclosure packs — October 23, 2026
 
 Live disclosure packs now support functional currency across all nine child reports, section

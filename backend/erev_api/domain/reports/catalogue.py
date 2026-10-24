@@ -2350,6 +2350,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "contract",
             "period",
             "lock_snapshot",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
             "cost_asset_version.contract_cost_asset_id = contract_cost_asset.id",
@@ -2358,6 +2362,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "schedule_line.subject_id = contract_cost_asset.id",
         ),
         filters=(
+            "Reporting currency translates original functional cost movements monthly at average "
+            "rates and endpoints at closing rates; FX and rounding are separate; source carrying "
+            "tie-outs remain mandatory; original rate identities are retained for reruns and "
+            "old saved reporting views preserve their prior shape",
             _SCOPE,
             _BOOK,
             _PERIODS,
@@ -3117,7 +3125,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "The revenue disclosures of one entity, book and period with every tie-out printed, from "
         "the lock snapshots when the period is locked (REQ-RPT-003).",
         ("entity_codes", "book", "period_key", "period_lock_id", "quarter", "currency_view"),
-        overrides={**_ONE_ENTITY, "currency_view": _one_of("transaction", "functional")},
+        overrides={
+            **_ONE_ENTITY,
+            "currency_view": _one_of("transaction", "functional", "reporting"),
+        },
         sources=("report_run", "disclosure_snapshot", "registry_version", "period_lock"),
         joins=(
             "report_run.child_report_run_ids holds the section runs",
@@ -3126,7 +3137,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ),
         filters=(
             "one entity of entity_codes, book and period_key",
-            "live packs propagate transaction (default) or functional currency to every child; "
+            "live packs propagate transaction (default), functional or reporting currency "
+            "to every child; "
             "retained reruns preserve that basis; locked packs retain their frozen currency",
             "section runs of revenue_waterfall, contract_balances, contract_balance_rollforward, "
             "revenue_from_opening_liability, revenue_from_prior_period_obligations, rpo, "

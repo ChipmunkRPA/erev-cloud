@@ -27,7 +27,7 @@ CALENDAR = Calendar(
 )
 
 
-@pytest.mark.parametrize("currency_view", ["transaction", "functional"])
+@pytest.mark.parametrize("currency_view", ["transaction", "functional", "reporting"])
 def test_child_schemas_and_fiscal_quarter_range(currency_view: str) -> None:
     plan = requests(
         entity_code="US",

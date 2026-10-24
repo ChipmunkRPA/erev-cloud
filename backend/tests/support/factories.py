@@ -1932,6 +1932,7 @@ def seat_world(
     chart: Sequence[tuple[str, str, str, str, str]] = AVM_US_CHART,
     zero_priced: Sequence[str] = (),
     untemplated: Sequence[str] = (),
+    reporting_currency: str = "USD",
 ) -> SeatWorld:
     """PRD §2.6 for K-02 and K-09: Maya (Revenue Accountant, SSP Analyst) prepares; Priya (SSP
     Approver) approves US-LIST 2026-H1; Marcus (Controller, SSP Approver, Tenant Admin; MFA)
@@ -1943,7 +1944,7 @@ def seat_world(
     ``zero_priced`` product code gets the template and an observable point of 0.00 USD (CTR-9
     ``TOTAL_SSP_ZERO``). Each ``untemplated`` product code gets no default template and an
     observable point of 2,400.00 USD (DIN-11 ``PRODUCT_UNMAPPED``)."""
-    maya_member = member(keyring, clock)
+    maya_member = member(keyring, clock, reporting_currency=reporting_currency)
     assign(maya_member, "revenue_accountant")
     maya = holding(app, maya_member, "ssp_analyst")
     approvers: dict[str, Actor] = {}
@@ -1956,7 +1957,12 @@ def seat_world(
             assign(someone, code)
         approvers[name] = enrolled(app, clock, someone)
     marcus = approvers["marcus"]
-    enabled = put(app, "/api/v1/tenant-currencies", marcus, {"currency_codes": ["USD"]})
+    enabled = put(
+        app,
+        "/api/v1/tenant-currencies",
+        marcus,
+        {"currency_codes": sorted({"USD", reporting_currency})},
+    )
     assert enabled.status_code == 200, enabled.text
     calendar_id = calendar(app, maya, years=(2026, 2027, 2028, 2029))
     created = entity(app, maya, code="AVM-US", calendar_id=calendar_id)

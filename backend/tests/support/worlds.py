@@ -2298,7 +2298,12 @@ def commission(reference: str, amount: str, day: date) -> EventIn:
 
 
 def k02_marrowby_commission(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    *,
+    reporting_currency: str = "USD",
 ) -> ReportWorld:
     """WLD-K-02 ``SF-ORD-10002`` with its commission, through the product's commands:
     ``support.factories.seat_world`` (AVM-US, USD, calendar 2026 to 2029, FY2026-P01 to P09 open;
@@ -2311,7 +2316,9 @@ def k02_marrowby_commission(
     the commission asset in September 2026 (WLD-X-08)."""
     from support.factories import k02_body, seat_world
 
-    seats = seat_world(app, keyring, clock, files, chart=COMMISSION_CHART)
+    seats = seat_world(
+        app, keyring, clock, files, chart=COMMISSION_CHART, reporting_currency=reporting_currency
+    )
     booked = booked_contract(seats.place, k02_body(seats.customers["C-02"]), activate=True)
     appended(
         seats.place,
