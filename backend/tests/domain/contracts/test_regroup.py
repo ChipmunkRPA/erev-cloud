@@ -732,8 +732,14 @@ def test_regroup_permission_prd_1_modification_create_alone_does_not_regroup(
 
 
 @pytest.mark.parametrize(
-    "shared_group,completed_target,transfer_date",
-    [(False, False, None), (True, False, None), (False, True, None), (False, False, "2026-09-01")],
+    "shared_group,completed_target,transfer_date,unposted",
+    [
+        (False, False, None, False),
+        (True, False, None, False),
+        (False, True, None, False),
+        (False, False, "2026-09-01", False),
+        (False, False, None, True),
+    ],
 )
 def test_retained_posted_pair_workflow(
     k02: K02World,
@@ -744,18 +750,31 @@ def test_retained_posted_pair_workflow(
     shared_group: bool,
     completed_target: bool,
     transfer_date: str | None,
+    unposted: bool,
 ) -> None:
     """Public retained transfer: classify, preview, approve and apply both sides atomically."""
     from erev_api.jobs.context import JobRuntime
 
-    source = activated_contract(
-        k02.place, booked_contract(k02.place, _two_line_body(k02, "REGROUP-SOURCE"), activate=False)
-    )
+    source_body = _two_line_body(k02, "REGROUP-SOURCE")
+    if unposted:
+        for line in source_body["lines"]:
+            line["start_date"] = "2026-10-01"
+            # Discounted original service stays prospective when transferred in full.
+            line["quantity"] = str(int(line["quantity"]) * 2)
+    source = activated_contract(k02.place, booked_contract(k02.place, source_body, activate=False))
     target_body = _one_line_body(k02, "REGROUP-TARGET")
+    if unposted:
+        target_body["lines"][0]["start_date"] = "2026-10-01"
     if completed_target:
         target_body["lines"][0]["end_date"] = "2026-03-31"
     target = activated_contract(k02.place, booked_contract(k02.place, target_body, activate=False))
     source_id, target_id = (UUID(str(item.contract["id"])) for item in (source, target))
+    if unposted:
+        assert not k02.place.rows(
+            select(subledger_line.c.id).where(
+                subledger_line.c.contract_id.in_([source_id, target_id])
+            )
+        )
     if shared_group:
         grouped = post(
             k02.app,
@@ -837,11 +856,19 @@ def test_retained_posted_pair_workflow(
     assert len({row["questionnaire"]["regroup_target_input_sha256"] for row in prepared}) == 1
     assert not _events(k02, source_id, ContractEventType.REGROUPED)
     assert not _events(k02, target_id, ContractEventType.REGROUPED)
+    if unposted:
+        assert not k02.place.rows(
+            select(subledger_line.c.id).where(
+                subledger_line.c.contract_id.in_([source_id, target_id])
+            )
+        )
 
     runtime = JobRuntime(clock=clock, keyring=keyring, files=LocalFileStore(app_settings.file_root))
     for identity in ids:
         classified = modification_flows._classify(k02, identity)
         assert classified["chosen_treatments"], classified
+        if unposted:
+            assert set(classified["chosen_treatments"].values()) == {"PROSPECTIVE"}
         modification_flows.confirm_modification_answers(k02.app, identity, k02.place.author)
     # Inspect real dry-run results; do not replace either engine calculation.
     preview_results = []

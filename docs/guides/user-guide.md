@@ -77,7 +77,7 @@ lines, enter a comment, and choose
 lines' booking terms; both contracts are recalculated. Find the new draft in the contracts list.
 The action requires contract-creation permission. If the contract is no longer eligible, the
 server refuses the move and the drawer keeps the selection and comment. The server also checks the target status and conflicting obligation keys before making changes.
-For a posted active contract, choose **Transfer remaining service**. Select an existing active
+For an active contract, including one with no postings yet, choose **Transfer remaining service**. Select an existing active
 contract in the same entity and currency, choose lines, enter a comment and optionally enter the
 effective date, then choose **Prepare paired modifications**. Leaving the date blank uses today
 in the entity timezone. The date cannot precede either contract's inception. This creates two drafts;
@@ -88,7 +88,8 @@ creation and modification preparation permissions are required. The supported ba
 or unit-based service where transaction and functional currencies match. New/draft destinations,
 foreign currency, estimates, combined obligations, material rights, agents, specialist balances
 and other progress methods remain unsupported and return a validation error. Changes to either
-contract's retained input require rebuilding and reviewing the pair.
+contract's retained input require rebuilding and reviewing the pair. Separate-contract treatment
+is not supported for these pairs; classification is not automatically overridden.
 
 A contract moves through the statuses `DRAFT`, `PENDING_REVIEW`, `ACTIVE`, `COMPLETED`, `TERMINATED` and `VOIDED`; a document that fails the contract criteria is `NOT_A_CONTRACT`. The API under `/api/v1/contracts`:
 

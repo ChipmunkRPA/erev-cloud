@@ -383,3 +383,24 @@ paired effective dates, approval/application, conservation and causal/close repl
 cases pass, covering explicit/default dates, invalid entry and both modification links. Scoped
 lint and backend/frontend types pass; API schema and user guide updated. This is not new evidence
 for every closed-period or historical-grouping scenario. No deployment.
+
+
+### ACTIVE contracts before their first posting (2026-10-24)
+
+The supported existing-ACTIVE-to-existing-ACTIVE fixed-service transfer now prepares
+an approval pair even when neither contract has posted yet. Actual posting presence remains
+an audit fact; it no longer selects immediate inception movement for ACTIVE pairs. Frozen
+book-specific source amounts, target freshness, modification permissions, classification,
+paired previews and spanning approval are unchanged. Unposted draft moves retain their
+immediate inception behavior; mixed draft/ACTIVE destinations remain refused.
+
+Five public workflow scenarios passed, including a future-start discounted service transfer
+with no initial postings, both DRAFT pair rows without new events/postings, normal prospective
+classification, preview, approval/application, allocation conservation and retained causal/close
+variance replay. The other scenarios cover posted cross-group/shared-group transfers, a target
+whose prior fixed service is fully performed, and an authored effective date. An initial at-SSP
+fixture classified as SEPARATE_CONTRACT and was correctly refused: that treatment remains
+unsupported for retained pairs and is not automatically overridden. This is not a claim of
+full regroup support or production readiness. No deployment.
+
+Three focused draft-move/mixed-status/date regressions also passed. Scoped Ruff and mypy checks passed.

@@ -1,9 +1,10 @@
 """Move draft lines or prepare a retained transfer between existing active contracts.
 
-Two unposted drafts are regrouped from inception and recomputed immediately. After posting,
-two existing ACTIVE contracts may prepare a pair of DRAFT modifications for ordinary fixed
+Two unposted drafts are regrouped from inception and recomputed immediately.
+Two existing ACTIVE contracts may prepare a pair of DRAFT modifications for ordinary fixed
 service in the same entity and functional/transaction currency. Both sides require modification
-permission, classification and preview; one spanning approval applies both sides atomically.
+permission, classification and preview; one spanning approval applies both sides atomically,
+even when neither contract has posted yet.
 Source book-specific remaining consideration and target inputs are retained and checked again
 before submission/application. Unsupported consideration, progress, currency and destination
 cases refuse before pair creation. New targets remain available only for unposted draft moves.
@@ -105,7 +106,7 @@ def _failed(field: str, rule_id: str, message: str) -> Problem:
 
 
 def _posted(session: Session, contract_ids: Sequence[UUID]) -> bool:
-    """Whether any T-SL-04 line of the contracts has posted (the S06-R-27 case switch)."""
+    """Whether any T-SL-04 line of the contracts has posted."""
     found = session.execute(
         select(subledger_line.c.id)
         .where(subledger_line.c.contract_id.in_(list(contract_ids)))
@@ -123,8 +124,7 @@ def _refused(message: str) -> Problem:
 
 
 def _refuse_at_once(row: Mapping[str, Any]) -> None:
-    """While no line has posted the pair is applied without a request, so both contracts are
-    drafts (04 §16.1 rev 1.234): 409 ``invalid-transition`` naming a contract that is not."""
+    """An immediate inception move requires two unposted drafts (04 §16.1 rev 1.234)."""
     status = _text(row["status"])
     if status == ContractStatus.DRAFT.value:
         return
@@ -405,16 +405,16 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             TERMS_MISSING.format(external_id=source["external_id"], key=lacking[0]),
         )
     retained_transfer = (
-        posted
-        and body.target_contract_id is not None
+        body.target_contract_id is not None
         and _text(source["status"]) == ContractStatus.ACTIVE.value
         and _text(locked[body.target_contract_id]["status"]) == ContractStatus.ACTIVE.value
     )
+    requires_approval = posted or retained_transfer
     if body.effective_date is not None and not retained_transfer:
         raise _failed(
             "effective_date",
             RULE_TARGET,
-            "An authored transfer date is available only for a posted transfer "
+            "An authored transfer date is available only for an approved transfer "
             "between active contracts.",
         )
     if retained_transfer:
@@ -481,7 +481,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
     book_lines: dict[str, dict[str, list[dict[str, Any]]]] = {"OUT": {}, "IN": {}}
     basis_evidence: dict[str, Any] = {}
     target_digest: str | None = None
-    if posted:
+    if requires_approval:
         original = bundles.build(session, _uuid(source["combination_group_id"]), uow.now)
         if retained_transfer:
             target_basis = bundles.build(session, _uuid(target["combination_group_id"]), uow.now)
@@ -563,7 +563,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
                 "obligation_keys", RULE_TARGET, "The source lacks a primary-book transfer basis."
             )
     regroup_id = new_id()
-    status = ModificationStatus.DRAFT if posted else ModificationStatus.APPLIED
+    status = ModificationStatus.DRAFT if requires_approval else ModificationStatus.APPLIED
     out_id = _insert_row(
         uow,
         current=source,
@@ -576,7 +576,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             action=mods.REMOVE,
             currency=currency,
             external_id=str(source["external_id"]),
-            posted=posted,
+            posted=requires_approval,
             transfer_basis=transfer_basis,
         ),
         effective_date=effective,
@@ -588,7 +588,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             "regroup_source_basis": basis_evidence,
             **({"regroup_target_input_sha256": target_digest} if target_digest else {}),
         }
-        if posted
+        if requires_approval
         else None,
     )
     in_id = _insert_row(
@@ -603,7 +603,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             action=mods.ADD,
             currency=currency,
             external_id=str(source["external_id"]),
-            posted=posted,
+            posted=requires_approval,
             transfer_basis=transfer_basis,
         ),
         effective_date=effective,
@@ -615,7 +615,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             "regroup_source_basis": basis_evidence,
             **({"regroup_target_input_sha256": target_digest} if target_digest else {}),
         }
-        if posted
+        if requires_approval
         else None,
     )
     uow.audit(
@@ -629,15 +629,16 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             "target_contract_id": str(target_id),
             "obligation_keys": keys,
             "posted": posted,
+            "requires_approval": requires_approval,
             "effective_date": effective.isoformat(),
             "modification_ids": [str(out_id), str(in_id)],
         },
         comment=body.comment,
         contract_ids=[contract_id, target_id],
     )
-    if posted:
+    if requires_approval:
         return RegroupOut(modification_ids=[out_id, in_id])
-    # Before posting: the pair applies now — REGROUPED OUT on the source, IN on the target.
+    # Draft inception move: apply REGROUPED OUT on the source, IN on the target.
     out_row = mods._row(session, out_id)
     in_row = mods._row(session, in_id)
     (out_event,) = append_events(

@@ -437,7 +437,7 @@ def contracts_regroup(
 ) -> Response:
     """Move unposted draft lines immediately, or prepare paired modifications for a supported
     fixed-service transfer between existing active contracts in the same entity and functional
-    currency. Posted transfers require modification permission and approval before application;
+    currency. Active transfers require modification permission and approval before application;
     unsupported destinations, currencies and consideration/progress bases refuse."""
 
     def handle(uow: UnitOfWork) -> RegroupOut:

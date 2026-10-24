@@ -59682,7 +59682,7 @@
     },
     "/api/v1/contracts/{contract_id}/regroup": {
       "post": {
-        "description": "Move unposted draft lines immediately, or prepare paired modifications for a supported\nfixed-service transfer between existing active contracts in the same entity and functional\ncurrency. Posted transfers require modification permission and approval before application;\nunsupported destinations, currencies and consideration/progress bases refuse.",
+        "description": "Move unposted draft lines immediately, or prepare paired modifications for a supported\nfixed-service transfer between existing active contracts in the same entity and functional\ncurrency. Active transfers require modification permission and approval before application;\nunsupported destinations, currencies and consideration/progress bases refuse.",
         "operationId": "contracts_regroup",
         "parameters": [
           {

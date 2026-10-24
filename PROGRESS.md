@@ -22,7 +22,7 @@ review and publish changes without PR accumulation, and do not deploy.
 
 ## Retained split causal reporting — October 24, 2026
 
-Fixed-service posted transfers now have workbench/API entry, paired preview/approval and causal
+Fixed-service ACTIVE transfers now have workbench/API entry, paired preview/approval and causal
 reporting. Both ACTIVE contracts must use functional currency; specialist scenarios remain gated. See [checkpoint](docs/release/REGROUP-BOUNDARY-BASIS-2026-10-24.md).
 
 ## Rated usage entry — October 24, 2026
