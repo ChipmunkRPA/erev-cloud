@@ -1870,3 +1870,41 @@ modules pass together (29 tests); scoped Python lint passes. No database migrati
 accounting calculation changed. This is not a full-suite or production-readiness claim.
 Shared-breakage application, combined-member royalty treatment and effective-date
 combination reassessment remain separate unfinished functionality. No deployment.
+
+
+## Remaining implementation dependencies — October 24, 2026
+
+Code inspection after `48ce4731` distinguishes existing Reporting paths from the remaining
+source-calculation work. These are implementation findings, not a readiness assessment or
+replacement for the full scope above.
+
+- RPO exemption endpoints, monthly translated movements and unexplained differences already
+  have viewer, XLSX and PDF presentation. CSV manifests retain control totals. Relevant paths:
+  `domain/reports/outputs/rpo_exemptions.py`, `outputs/manifest.py` and
+  `routes/reports/viewer/RpoExemptionDetails.tsx`. Do not rebuild these as missing reports.
+- GL reconciliation already has dated functional balance reads and ledger-chain cutoff handling
+  in `domain/close/reconciliation_balances.py`. This inspection does not prove all scenarios;
+  no specific new missing calculation was established in this pass.
+- Shared breakage is still explicitly refused by `portfolio_workflow._lock`,
+  `portfolio_impact.preview` and `portfolio_engine.shared_return_contract`. The working draft
+  target binding and book-specific preview do not establish application support.
+- The next shared-breakage implementation needs effective-date SSP/entitlement sources, frozen
+  per-member allocations in the submitted version, approval freshness over those sources,
+  atomic member application and native member pins overriding local estimates. The current
+  `portfolio_preview` reads latest obligation versions; copying its result into an approval
+  would freeze the wrong temporal basis after later modifications. Determine the expected
+  redemption denominator before enabling impact or postings; the earlier question remains open.
+- Cross-entity agents require both net-source and contracting-control support. Removing only
+  the same-entity filter in `opening_agent_sources.read` is insufficient: the intercompany
+  reader accepts principal due-to proofs, while the POB calculation separately checks the
+  performing entity and agent eligibility. Retain net totals and complete source sets without
+  manufacturing layer allocations.
+- Mixed acquired/existing groups still refuse in `acquisition_flows.read`. Current acquisition
+  evidence reads the original member cutover balance and requires every group member to have
+  the same acquired baseline. Removing the membership guard alone could relabel ordinary
+  prior business as acquisition. An explicit acquisition-only amount source is needed first.
+
+Effective-date combination reassessment remains a separate authorized feature: quantity, term
+or partial-removal changes must preserve earlier grouping and recognized revenue. The existing
+DATA_CORRECTION LEAVE path recomputes from inception and cannot substitute for that feature.
+No deployment, posting change or additional accounting-policy choice was made in this inspection.
