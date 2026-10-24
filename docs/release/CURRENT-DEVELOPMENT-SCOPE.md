@@ -2271,3 +2271,19 @@ Necessary verification: two component command cases pass for exact body/idempote
 shaped 409 refusal with preserved inputs; frontend type checking and scoped lint pass. This is
 component/service-contract evidence, not full browser-to-live-API acceptance. User guide updated.
 No backend calculation change and no deployment.
+
+
+## Existing draft transfer targets — October 24, 2026
+
+The draft-line move drawer now offers new or existing draft destinations. Existing targets are
+loaded with a draft/entity query and cursor pagination, then filtered again by identity, DRAFT
+status, entity and transaction currency. Loading, empty-list, failure/retry and load-more states
+are visible. No target is submitted unless it remains in a successfully loaded candidate set;
+new-target creation remains independent of candidate loading. Backend eligibility/key-conflict
+checks and shared idempotent command handling remain authoritative.
+
+Three focused component cases pass, including choosing a second-page target, excluding the
+source/active/foreign-currency records, exact target request body, existing new-target behavior
+and input retention on a 409 refusal. Frontend types and scoped lint pass. User guide updated.
+This completes existing-target selection in the draft drawer, not after-posting transfer support
+or live-browser financial acceptance. No deployment.

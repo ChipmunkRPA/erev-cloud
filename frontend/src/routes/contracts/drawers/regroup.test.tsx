@@ -70,3 +70,65 @@ it("keeps the selection and comment when the server refuses a now-posted contrac
     "Separate draft order.",
   );
 });
+
+it("loads further target pages, excludes ineligible drafts, and submits the selected target", async () => {
+  const targetId = "7e8f90a1-b2c3-4d4e-8f5a-6b7c8d9e0f1a";
+  const onClose = vi.fn();
+  const sent: unknown[] = [];
+  server.use(
+    http.get(apiUrl("/api/v1/currencies"), () =>
+      HttpResponse.json({
+        items: [
+          { code: "USD", minor_unit: 2, name: "US Dollar", numeric_code: "840", is_active: true },
+          {
+            code: "GBP",
+            minor_unit: 2,
+            name: "Pound Sterling",
+            numeric_code: "826",
+            is_active: true,
+          },
+        ],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/contracts"), ({ request }) => {
+      const cursor = new URL(request.url).searchParams.get("cursor");
+      return HttpResponse.json({
+        items: cursor
+          ? [workbenchContract({ id: targetId, external_id: "TARGET", status: "DRAFT" })]
+          : [
+              contract,
+              workbenchContract({ id: "active", external_id: "ACTIVE", status: "ACTIVE" }),
+              workbenchContract({
+                id: "foreign",
+                external_id: "FOREIGN",
+                status: "DRAFT",
+                transaction_currency: "GBP",
+              }),
+            ],
+        next_cursor: cursor ? null : "next",
+      });
+    }),
+    http.post(apiUrl(`/api/v1/contracts/${contract.id}/regroup`), async ({ request }) => {
+      sent.push(await request.json());
+      return HttpResponse.json({ modification_ids: ["out", "in"] }, { status: 201 });
+    }),
+  );
+  renderWithApp(<RegroupDrawer contract={contract} obligations={obligations} onClose={onClose} />);
+  await fill();
+  fireEvent.click(screen.getByRole("radio", { name: "Existing draft contract" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Load more draft contracts" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Load more draft contracts" })).toBeNull(),
+  );
+  const target = screen.getByRole("combobox", { name: "Target contract" });
+  fireEvent.keyDown(target, { key: "ArrowDown" });
+  expect(screen.queryByRole("option", { name: "ACTIVE" })).toBeNull();
+  expect(screen.queryByRole("option", { name: "FOREIGN" })).toBeNull();
+  fireEvent.mouseDown(await screen.findByRole("option", { name: "TARGET" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move lines" }));
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+  expect(sent).toEqual([
+    { obligation_keys: ["O1"], comment: "Separate draft order.", target_contract_id: targetId },
+  ]);
+});
