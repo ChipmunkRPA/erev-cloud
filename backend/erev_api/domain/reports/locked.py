@@ -275,7 +275,7 @@ def reconcile_selectors(
         errors.append(ProblemError(field=f"parameters.{key}", rule_id=RULE, message=message))
 
     admitted = ADMITTED_KEYS | (
-        {"currency_view"} if kind in snapshot_views.KINDS and not disclosure else set()
+        {"currency_view"} if kind in snapshot_views.KINDS or disclosure else set()
     )
     for key in sorted(given):
         if key not in (admitted | {"quarter"} if disclosure else admitted):
@@ -295,7 +295,9 @@ def reconcile_selectors(
             )
     parameters: dict[str, Any] = {"period_lock_id": str(scope.lock_id)}
     if "currency_view" in given and "currency_view" in admitted:
-        if given["currency_view"] not in snapshot_views.VIEWS:
+        if disclosure and given["currency_view"] != "transaction":
+            refuse("currency_view", "This disclosure lock retains transaction-currency sources.")
+        elif given["currency_view"] not in snapshot_views.VIEWS:
             refuse("currency_view", "Choose transaction, functional or reporting currency.")
         parameters["currency_view"] = given["currency_view"]
     if "known_at" in given:
@@ -327,6 +329,10 @@ def run_mismatch(run: Mapping[str, Any], scope: LockScope) -> str | None:
     if snapshot_kind_of(str(run.get("report_code"))) in snapshot_views.KINDS:
         admitted = admitted | {"currency_view"}
         if parameters.get("currency_view", "transaction") not in snapshot_views.VIEWS:
+            return "parameters.currency_view"
+    if run.get("report_code") == "disclosure_pack":
+        admitted = admitted | {"currency_view"}
+        if parameters.get("currency_view", "transaction") != "transaction":
             return "parameters.currency_view"
     if run.get("report_code") == "disclosure_pack" and isinstance(parameters.get("quarter"), bool):
         admitted = admitted | {"quarter"}

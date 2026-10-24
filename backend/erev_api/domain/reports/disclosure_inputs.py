@@ -146,6 +146,8 @@ def from_facts(
                 or stamp.parameters != document["parameters"]
                 or stamp.output_sha256 != item["output_sha256"]
                 or stamp.book != facts["book"]
+                or stamp.parameters.get("currency_view", "transaction")
+                != facts["parameters"].get("currency_view", "transaction")
                 or stamp.entity_codes != (facts["policies"]["entity_code"],)
             ):
                 raise ValueError("child stamp")

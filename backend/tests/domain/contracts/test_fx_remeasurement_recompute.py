@@ -1346,3 +1346,113 @@ def test_functional_liability_aging_preserves_original_dates(world: World, monet
         "amount": "8600.00" if monetary else "8400.00",
     }
     assert after["tie_out_results"][0]["result"] == "PASS"
+
+
+def test_functional_disclosure_pack_uses_foreign_contract_sources(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A public pack carries GBP source amounts, with a retained identical rerun."""
+    from erev_api.db.tables import job, report_run
+    from erev_api.domain.reports import disclosure_children, disclosure_results
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+
+    from erev_api.jobs import registry
+
+    def expose_failure(*args, error, **kwargs):
+        raise error
+
+    monkeypatch.setattr(registry, "fail_attempt", expose_failure)
+    contract_id, _ = delivered(world)
+    _recorded(world, contract_id, 3, _invoice("PREPAY", "2026-07-01", "90000.00"))
+    with world.place.uow() as uow:
+        cutoff = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
+    world.place.clock.set(cutoff)
+    actor = principals.workspace(
+        world.app,
+        world.place.author.member,
+        principals.sign_in(world.app, world.place.author.member.email),
+        world.place.author.secret,
+    )
+    created = post(
+        world.app,
+        "/api/v1/report-runs",
+        actor,
+        {
+            "report_code": "disclosure_pack",
+            "output_format": "JSON",
+            "parameters": {
+                "entity_codes": [ENTITY],
+                "book": BOOK,
+                "period_key": "FY2026-P07",
+                "currency_view": "functional",
+                "quarter": False,
+            },
+        },
+    )
+    assert created.status_code == 202, created.text
+    parent_id = UUID(created.headers["X-Erev-Report-Run-Id"])
+    with world.place.uow() as uow:
+        children = disclosure_children.ensure(uow, parent_id)
+        uow.commit()
+    runtime = JobRuntime(
+        clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+    )
+
+    def execute(run_id):
+        with world.place.uow() as uow:
+            row = (
+                uow.session.execute(select(report_run).where(report_run.c.id == run_id))
+                .mappings()
+                .one()
+            )
+            job_id = row["job_id"]
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == job_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            job_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+        with world.place.uow() as uow:
+            result = dict(
+                uow.session.execute(select(report_run).where(report_run.c.id == run_id))
+                .mappings()
+                .one()
+            )
+            assert result["status"] == "SUCCEEDED", (
+                result["report_code"],
+                result["problem"],
+                uow.session.scalar(select(job.c.problem).where(job.c.id == job_id)),
+            )
+            return result
+
+    for child in children:
+        execute(child.run_id)
+    with world.place.uow() as uow:
+        collected = disclosure_results.collect(uow, parent_id)
+        assert not collected.pending
+        assert len(collected.children) == 9
+        for child in collected.children:
+            assert child.run["parameters"]["currency_view"] == "functional"
+            currencies = {row["currency"] for row in child.data.rows if row.get("currency")}
+            assert currencies <= {"GBP"}, (child.source.key, currencies)
+        disaggregation = next(
+            c for c in collected.children if c.source.key == "disaggregation:PERIOD"
+        )
+        assert disaggregation.data.rows
+        assert any(
+            Decimal(row["total"]["amount"]) == Decimal("43200") for row in disaggregation.data.rows
+        )
+    original = execute(parent_id)
+    repeated = post(world.app, f"/api/v1/report-runs/{parent_id}/rerun", actor, {})
+    assert repeated.status_code == 202, repeated.text
+    rerun_id = UUID(repeated.headers["X-Erev-Report-Run-Id"])
+    rerun = execute(rerun_id)
+    assert rerun["output_sha256"] == original["output_sha256"]
+    assert rerun["parameters"]["currency_view"] == "functional"

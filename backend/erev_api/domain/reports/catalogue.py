@@ -364,6 +364,25 @@ JOURNAL_COMMIT_NOTE: Final = (
 )
 
 
+OPENING_POB_IPE: Final = {
+    "filters": [
+        "New transaction and functional FIFO_WITHIN_POB runs use original obligation "
+        "openings and range-net posted control revenue; group caps do not establish "
+        "member ownership",
+        "Functional POB billing requires complete original document coverage, including "
+        "cancelling invoices and credits; revenue quantities reconcile to original "
+        "transaction nodes; incomplete sources refuse and older bindings retain their "
+        "original method",
+    ],
+    "joins": [
+        "POB subject keys join selected obligation versions to original billing/revenue "
+        "trace nodes",
+        "locked POB openings use the authenticated disclosure pack balance report source binding",
+    ],
+    "source_tables": ["obligation_version", "report_run", "disclosure_snapshot"],
+}
+
+
 def _definition(
     code: str,
     name: str,
@@ -379,7 +398,7 @@ def _definition(
     overrides: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> ReportDefinition:
     schema = parameters_schema(keys, overrides)
-    return ReportDefinition(
+    definition = ReportDefinition(
         code=code,
         version=1,
         name=name,
@@ -416,6 +435,10 @@ def _definition(
         },
         tie_outs=tuple(tie_outs),
     )
+    if code == "revenue_from_opening_liability":
+        for key, values in OPENING_POB_IPE.items():
+            definition.ipe_logic[key].extend(values)
+    return definition
 
 
 # --- shared IPE phrases -----------------------------------------------------------------------
@@ -3093,8 +3116,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ("XLSX", "PDF", "JSON"),
         "The revenue disclosures of one entity, book and period with every tie-out printed, from "
         "the lock snapshots when the period is locked (REQ-RPT-003).",
-        ("entity_codes", "book", "period_key", "period_lock_id", "quarter"),
-        overrides=_ONE_ENTITY,
+        ("entity_codes", "book", "period_key", "period_lock_id", "quarter", "currency_view"),
+        overrides={**_ONE_ENTITY, "currency_view": _one_of("transaction", "functional")},
         sources=("report_run", "disclosure_snapshot", "registry_version", "period_lock"),
         joins=(
             "report_run.child_report_run_ids holds the section runs",
@@ -3103,6 +3126,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ),
         filters=(
             "one entity of entity_codes, book and period_key",
+            "live packs propagate transaction (default) or functional currency to every child; "
+            "retained reruns preserve that basis; locked packs retain their frozen currency",
             "section runs of revenue_waterfall, contract_balances, contract_balance_rollforward, "
             "revenue_from_opening_liability, revenue_from_prior_period_obligations, rpo, "
             "rpo_rollforward and disaggregation (T-RPT-01 rule 2)",

@@ -4,6 +4,13 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Functional disclosure packs — October 23, 2026
+
+Live disclosure packs now support functional currency across all nine child reports, section
+assembly and retained reruns. Zero-opening RPO no longer requires a preceding FX rate solely
+for a zero opening term. Locked packs retain their transaction sources; reporting-currency
+packs remain unfinished. See [checkpoint](FUNCTIONAL-DISCLOSURE-2026-10-23.md).
+
 ## Acquired functional sources — October 23, 2026
 
 Revision 16 connects original cutover billing attribution and actual FX amounts to native

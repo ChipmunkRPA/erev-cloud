@@ -20,14 +20,17 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Explicit combined actual hours — October 23, 2026
+## Functional disclosure packs — October 23, 2026
 
-Implemented the owner’s whole/member scope rule, complete member-batch entry, latest readings,
-and original-source trace reconciliation. 51 native cases, 15 UI cases and a populated public
-approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](docs/release/COMBINED-ACTUAL-HOURS-2026-10-23.md).
-[Termination](docs/release/COMBINED-TERMINATION-2026-10-23.md) now passes public approval,
-entry and saved-report replay; partial-member removal remains open;
-[local build/startup](docs/release/LOCAL-BUILD-2026-10-23.md) passes on 13ad937c; security/restore refresh remains. No deployment.
+Live packs now propagate the selected functional currency across all nine children and retain
+it for replay. Foreign populated and legacy locked workflows pass; zero-opening RPO no longer
+requires a pre-contract FX rate. See [checkpoint](docs/release/FUNCTIONAL-DISCLOSURE-2026-10-23.md).
+
+## Combined actual hours and termination — October 23, 2026
+
+Explicit scopes, complete member inputs and original-source reconciliation pass public approval
+and report replay. See [hours](docs/release/COMBINED-ACTUAL-HOURS-2026-10-23.md) and
+[termination](docs/release/COMBINED-TERMINATION-2026-10-23.md). Partial removal remains open.
 
 ## Agent and cross-entity POB sources — October 23, 2026
 

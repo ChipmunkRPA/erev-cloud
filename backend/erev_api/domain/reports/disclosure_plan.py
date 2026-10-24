@@ -61,11 +61,14 @@ def requests(
     period_key: str,
     known_at: datetime,
     quarter: bool,
+    currency_view: str = "transaction",
 ) -> tuple[ChildRequest, ...]:
     if not entity_code or book not in {"ASC606", "IFRS15"} or known_at.tzinfo is None:
         raise Problem(
             "validation-failed", "Choose one entity, an accounting book and an aware cutoff."
         )
+    if currency_view not in {"transaction", "functional"}:
+        raise Problem("validation-failed", "Choose transaction or functional disclosure currency.")
     period = calendar.named(period_key, "period_key")
     ranges = [("PERIOD", period)]
     if quarter:
@@ -86,7 +89,7 @@ def requests(
         "book": book,
         "known_at": known_at.astimezone(UTC).isoformat(),
         "known_at_basis": "historical",
-        "currency_view": "transaction",
+        "currency_view": currency_view,
     }
     planned = []
     for code, sections in SECTIONS.items():
@@ -148,6 +151,7 @@ def queue(uow: UnitOfWork, planned: tuple[ChildRequest, ...]) -> tuple[ChildSour
                 row["book_code"] != expected["book"]
                 or row["known_at"] != datetime.fromisoformat(expected["known_at"])
                 or row["parameters"].get("entity_codes") != expected["entity_codes"]
+                or row["parameters"].get("currency_view") != expected["currency_view"]
                 or row["period_lock_id"] is not None
             ):
                 raise Problem(

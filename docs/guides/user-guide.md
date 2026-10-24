@@ -360,6 +360,10 @@ report rebuilds from its retained redacted source records and rechecks current r
 
 Create `disclosure_pack` through `POST /api/v1/report-runs` with one `entity_codes` entry,
 `book` (`ASC606` or `IFRS15`), an explicit `period_key`, and optionally `quarter: true`.
+For a live draft, choose `currency_view: functional` to use the entity’s original functional
+amounts across all nine child reports; `transaction` remains the default. The saved pack and
+its reruns retain the selected basis. A lock retains its original transaction-currency sources
+and cannot be relabelled as a functional-currency pack.
 Choose `JSON`, `XLSX` or `PDF`. This currently produces a draft for a period that was open
 at the selected source time. To use a locked source, pass its `period_lock_id` as described
 below; a non-open live period is refused. New successful lock approvals save frozen evidence.

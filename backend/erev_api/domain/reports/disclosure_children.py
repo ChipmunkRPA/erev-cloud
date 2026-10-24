@@ -62,7 +62,7 @@ def _read(uow: UnitOfWork, parent: Mapping[str, Any]) -> tuple[ChildSource, ...]
             or (row["created_by"], row["created_by_kind"])
             != (parent["created_by"], parent["created_by_kind"])
             or p.get("known_at_basis") != "historical"
-            or p.get("currency_view") != "transaction"
+            or p.get("currency_view") != parent["parameters"].get("currency_view", "transaction")
             or row["job_id"] is None
         ):
             raise _refuse("an attached child differs from its parent scope or initiator.")
@@ -165,6 +165,7 @@ def ensure(uow: UnitOfWork, parent_id: UUID) -> tuple[ChildSource, ...]:
             period_key=period.key,
             known_at=params.known_at,
             quarter=bool(params.parameters.get("quarter")),
+            currency_view=str(params.parameters.get("currency_view", "transaction")),
         )
         children = disclosure_plan.queue(uow, planned)
         ids = [child.run_id for child in children]

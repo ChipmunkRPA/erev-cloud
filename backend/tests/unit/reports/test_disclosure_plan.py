@@ -27,7 +27,8 @@ CALENDAR = Calendar(
 )
 
 
-def test_child_schemas_and_fiscal_quarter_range() -> None:
+@pytest.mark.parametrize("currency_view", ["transaction", "functional"])
+def test_child_schemas_and_fiscal_quarter_range(currency_view: str) -> None:
     plan = requests(
         entity_code="US",
         book="ASC606",
@@ -35,6 +36,7 @@ def test_child_schemas_and_fiscal_quarter_range() -> None:
         period_key="FY2027-P02",
         known_at=datetime(2026, 7, 1, tzinfo=UTC),
         quarter=True,
+        currency_view=currency_view,
     )
     assert len(plan) == 16
     assert len({item.key for item in plan}) == 16
@@ -48,6 +50,7 @@ def test_child_schemas_and_fiscal_quarter_range() -> None:
         assert item.body.parameters["known_at_basis"] == "historical"
         assert item.body.parameters["entity_codes"] == ["US"]
         assert item.body.parameters["book"] == "ASC606"
+        assert item.body.parameters["currency_view"] == currency_view
         if item.basis == "QUARTER_TO_DATE":
             assert item.body.parameters["from_period_key"] == "FY2027-P01"
             assert item.body.parameters["to_period_key"] == "FY2027-P02"

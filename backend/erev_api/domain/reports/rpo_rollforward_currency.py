@@ -33,6 +33,14 @@ def project(
     list[dict[str, str]],
 ]:
     session = uow.session
+    # A proven zero opening contributes no opening-rate term. Preserve the original
+    # rate population of saved reports created before this rule.
+    zero_opening_key = "rpo_zero_opening_fx_v1"
+    skip_zero_opening = (
+        params.binding is None or params.binding.evidence.get(zero_opening_key) is True
+    )
+    if skip_zero_opening:
+        tie_outs.record_evidence(params, zero_opening_key, True)
     cache: dict[tuple[UUID, str, UUID, str], tuple[reporting_currency.Translation, ...]] = {}
     evidence: dict[str, dict[str, Any]] = {}
     totals: dict[tuple[str, str, str], rpo.ContractLines] = {}
@@ -129,7 +137,9 @@ def project(
                 close_legs = chain(entity, item.currency, period, "closing")
                 average_legs = chain(entity, item.currency, period, "average")
                 open_legs = (
-                    chain(entity, item.currency, prior, "closing") if prior is not None else ()
+                    chain(entity, item.currency, prior, "closing")
+                    if prior is not None and (raw_open != 0 or not skip_zero_opening)
+                    else ()
                 )
                 target = close_legs[-1].currency if close_legs else entity.functional_currency
                 values = {

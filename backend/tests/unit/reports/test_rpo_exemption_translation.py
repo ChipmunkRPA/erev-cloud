@@ -210,3 +210,66 @@ def test_combined_partial_exemptions_keep_translated_rule_amounts_reconciled(mon
     assert converted.excluded == Decimal("166.65")
     assert sum(amount for _, amount in converted.partial_exemptions) == converted.excluded
     assert converted.total == Decimal("27.78")
+
+
+@pytest.mark.parametrize("saved", [None, False, True])
+def test_zero_opening_needs_no_prior_rate_but_legacy_source_population_is_preserved(
+    monkeypatch, saved
+):
+    from erev_api.domain.reports.builders import SourceBinding, SourceCollector
+
+    eid = uuid4()
+    prior = tie_outs.PeriodRef(
+        uuid4(), "JAN", "Jan", 2026, 1, 1, date(2026, 1, 1), date(2026, 1, 31)
+    )
+    current = tie_outs.PeriodRef(
+        uuid4(), "FEB", "Feb", 2026, 2, 1, date(2026, 2, 1), date(2026, 2, 28)
+    )
+    now = datetime.now(UTC)
+    flag = "rpo_zero_opening_fx_v1"
+    binding = (
+        None
+        if saved is None
+        else SourceBinding(
+            now,
+            {},
+            {},
+            frozenset(),
+            evidence={flag: True} if saved else {},
+        )
+    )
+    sources = SourceCollector()
+    params = ReportParams(
+        "rpo_rollforward",
+        1,
+        {"currency_view": "functional"},
+        (eid,),
+        now,
+        binding=binding,
+        sources=sources,
+    )
+    entity = tie_outs.EntityRef(eid, "E", uuid4(), "GBP", "UTC")
+    uow = SimpleNamespace(session=None, principal=SimpleNamespace(tenant_id=uuid4()))
+    monkeypatch.setattr(rpo, "rows_at", lambda *a, **k: ())
+    monkeypatch.setattr(
+        rpo,
+        "rollforward_lines",
+        lambda *a, **k: (
+            rpo.ContractLines(
+                "C", None, "E", "USD", dict.fromkeys(rpo.ROLLFORWARD_LINES, Decimal(0))
+            ),
+        ),
+    )
+    calls = []
+
+    def rates(*args, periods, **kwargs):
+        calls.append(periods[eid].key)
+        return reporting_currency.Translation("GBP", {eid: {"rate": "0.8", "base_currency": "USD"}})
+
+    monkeypatch.setattr(reporting_currency, "rates_for_period", rates)
+    result, *_ = rpo_rollforward_currency.project(
+        uow, params, None, (entity,), {eid: (current,)}, {eid: prior}, {}
+    )
+    assert ("JAN" in calls) is (saved is False)
+    assert result[0].lines["FX"] == 0
+    assert result[0].lines["ROUNDING"] == 0
