@@ -446,6 +446,8 @@ it("authors the shared breakage total without a member rate", async () => {
 it("previews saved shared breakage sources and clears obsolete shares on a refused refresh", async () => {
   serve();
   let refuse = false;
+  let changedSource = false;
+  let changedTarget = false;
   let reads = 0;
   let retained: Record<string, unknown> | null = null;
   const requestedBooks: (string | null)[] = [];
@@ -509,11 +511,11 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
             {
               contract_id: "c1",
               contract_external_id: "LOYALTY-A",
-              computation_id: "original-computation",
+              computation_id: changedSource ? "new-computation" : "original-computation",
               computation_output_sha256: "a".repeat(64),
               contract_version_id: book ? "ifrs-source" : "retained-source-1",
-              obligation_id: "o1",
-              obligation_key: "POINTS",
+              obligation_id: changedTarget ? "o2" : "o1",
+              obligation_key: changedTarget ? "NEW-POINTS" : "POINTS",
               ssp: "100",
               ssp_conversion: {
                 original_ssp: "80",
@@ -562,6 +564,30 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   fireEvent.click(screen.getByRole("button", { name: "Save this allocation basis" }));
   await screen.findByText(/Saved allocation basis: IFRS15/);
   expect(retained).toMatchObject({ book_code: "IFRS15", version_id: "v1", allocated_total: "9" });
+  fireEvent.click(screen.getByRole("combobox", { name: "Allocation book" }));
+  fireEvent.mouseDown(screen.getByRole("option", { name: "IFRS15" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preview SSP allocation" }));
+  await screen.findByText(
+    "Saved allocation matches this preview. Saving still rechecks the sources.",
+  );
+  changedSource = true;
+  fireEvent.click(screen.getByRole("button", { name: "Preview SSP allocation" }));
+  await screen.findByText(
+    "Saved allocation differs from this preview. Review the changes before saving a replacement.",
+  );
+  expect(screen.getByRole("table", { name: "Allocation changes" })).toBeTruthy();
+  expect(screen.getByText("Changed source or quantity")).toBeTruthy();
+  expect(screen.getAllByText("new-computation").length).toBeGreaterThan(0);
+  changedTarget = true;
+  fireEvent.click(screen.getByRole("button", { name: "Preview SSP allocation" }));
+  await screen.findByText("Added target");
+  expect(screen.getByText("Removed target")).toBeTruthy();
+  refuse = true;
+  fireEvent.click(screen.getByRole("button", { name: "Preview SSP allocation" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("table", { name: "Allocation changes" })).toBeNull(),
+  );
+  expect(screen.getByText(/Saved allocation basis: IFRS15/)).toBeTruthy();
 });
 
 it("calculates shared return impact on demand and shows period changes without posting", async () => {

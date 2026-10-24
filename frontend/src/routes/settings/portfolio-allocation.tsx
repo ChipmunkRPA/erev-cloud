@@ -17,6 +17,9 @@ import { t } from "../../lib/i18n/t";
 
 type Version = components["schemas"]["EstimateVersionOut"];
 type Preview = components["schemas"]["PortfolioBreakagePreviewOut"];
+import { AllocationTable } from "./portfolio-allocation-table";
+import { AllocationReview, SavedAllocation } from "./portfolio-allocation-review";
+
 const label = (key: string) => t(`settings.portfolioAllocation.${key}`);
 
 export function PortfolioAllocation({
@@ -56,9 +59,7 @@ export function PortfolioAllocation({
       {networkError ? <Banner tone="negative" title={label("networkError")} /> : null}
       {Object.entries(version.portfolio_application_basis?.breakage_allocations ?? {}).map(
         ([code, snapshot]) => (
-          <p key={code} className="text-body-sm break-all">
-            {label("retained")}: {code} · {String(snapshot.sha256)}
-          </p>
+          <SavedAllocation key={code} code={code} snapshot={snapshot} />
         ),
       )}
       <p className="text-body-sm text-fg-2">{label("help")}</p>
@@ -98,6 +99,12 @@ export function PortfolioAllocation({
             {" · "}
             {label("effectiveDate")}: {preview.data.effective_date}
           </p>
+          <AllocationReview
+            current={preview.data}
+            saved={
+              version.portfolio_application_basis?.breakage_allocations?.[preview.data.book_code]
+            }
+          />
           {editable ? (
             <Button
               loading={retain.pending}
@@ -112,65 +119,7 @@ export function PortfolioAllocation({
               {label("retain")}
             </Button>
           ) : null}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-body-sm">
-              <caption>{label("sources")}</caption>
-              <thead>
-                <tr>
-                  {["contract", "obligation", "ssp", "entitlement", "quantity", "version"].map(
-                    (key) => (
-                      <th key={key} scope="col" className="p-2">
-                        {label(key)}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {preview.data.shares.map((share) => (
-                  <tr key={`${share.contract_id}:${share.obligation_id}`}>
-                    <td className="p-2">{share.contract_external_id}</td>
-                    <td className="p-2">{share.obligation_key}</td>
-                    <td className="p-2">
-                      {share.ssp} {preview.data.currency}
-                      {share.ssp_conversion ? (
-                        <details>
-                          <summary>{label("conversion")}</summary>
-                          <p>
-                            {share.ssp_conversion.original_ssp}{" "}
-                            {share.ssp_conversion.source_currency}
-                            {" × "}
-                            {share.ssp_conversion.rate}
-                            {" = "}
-                            {share.ssp} {share.ssp_conversion.target_currency}
-                          </p>
-                          <p>
-                            {label("effectiveDate")}: {share.ssp_conversion.effective_date}
-                          </p>
-                          <p>
-                            {label("rateSource")}: {share.ssp_conversion.rate_key}
-                            {" · "}
-                            {share.ssp_conversion.rate_version_key}
-                            {" · "}
-                            {share.ssp_conversion.rate_date}
-                          </p>
-                        </details>
-                      ) : null}
-                    </td>
-                    <td className="p-2">{share.entitlement_quantity}</td>
-                    <td className="p-2">{share.breakage_quantity}</td>
-                    <td className="p-2">
-                      <details>
-                        <summary>{share.contract_version_id}</summary>
-                        <p>{share.computation_id}</p>
-                        <p className="break-all">{share.computation_output_sha256}</p>
-                      </details>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AllocationTable value={preview.data} />
         </>
       ) : null}
     </section>

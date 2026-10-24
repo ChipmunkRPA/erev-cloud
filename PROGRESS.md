@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [foreign rollforward](docs/release/ACQUISITION-FUNCTIONAL-ROLLFORWARD-2026-10-24.md) supports functional/reporting views; classification pending.
+Oct 24: [saved breakage review](docs/release/SHARED-BREAKAGE-REVIEW-2026-10-24.md) shows allocation/source changes; application still pending.
