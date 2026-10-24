@@ -101,7 +101,7 @@ def test_split_refuses_omitting_original_members(targets):
         )
 
 
-def application_setup(measure="TIME_ELAPSED"):
+def application_setup(measure="TIME_ELAPSED", group_collision=False):
     from types import MappingProxyType
 
     from erev_engine import ENGINE_VERSION, fold_book
@@ -110,6 +110,8 @@ def application_setup(measure="TIME_ELAPSED"):
     from erev_engine.trace import SourceRef, TraceBuilder
 
     value = combined()
+    if group_collision:
+        value = replace(value, group=replace(value.group, group_key=value.contracts[0].external_id))
     day = date(2026, 9, 16)
     if measure == "UNITS_DELIVERED":
         delivery = bundles.event(
@@ -161,14 +163,17 @@ def application_setup(measure="TIME_ELAPSED"):
     return value, ctx, state, identified, plan, event, trace
 
 
-def test_native_split_installs_future_segments_without_rewriting_history():
+@pytest.mark.parametrize("group_collision", [False, True])
+def test_native_split_installs_future_segments_without_rewriting_history(group_collision):
     from support.recognition import targets_by_period
 
     from erev_engine.combination_split_apply import install
     from erev_engine.stages import s09_recognition
     from erev_engine.trace import reevaluate
 
-    _, ctx, state, identified, plan, event, trace = application_setup()
+    _, ctx, state, identified, plan, event, trace = application_setup(
+        group_collision=group_collision
+    )
     result = install(ctx, state, event, plan, identified, trace)
     for old, new, member in zip(state.obligations, result.obligations, plan.members, strict=True):
         assert new.segments[:-1] == old.segments

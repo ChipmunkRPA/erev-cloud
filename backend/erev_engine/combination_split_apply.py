@@ -151,10 +151,16 @@ def install(
         if expected[member.contract_key][0] != member.remaining_after_minor:
             raise ValueError("Split member allocation differs from remaining SSP")
     # The group pool is preserved; member adjustments below are internal allocation transfers.
-    group_node = pool.emit(
-        ctx, trace, event, group_pool, mu, {"basis": "PROSPECTIVE_COMBINATION_SPLIT"}
+    # Group and contract natural keys can coincide. Reserve a distinct group-pool
+    # measure namespace instead of treating a contract key as an obligation subject.
+    pool.emit(
+        ctx,
+        trace,
+        replace(event, event_key=f"{event.event_key}~split-group"),
+        group_pool,
+        mu,
+        {"basis": "PROSPECTIVE_COMBINATION_SPLIT", "source_event": event.event_key},
     )
-    member_shares = pool.apportion(ctx, trace, event, group_pool, group_node, member_weights, mu)
     changed = {}
     for member in plan.members:
         keys = sorted(
@@ -166,7 +172,7 @@ def install(
             tuple(
                 pool.Member(key, befores[key].segment.a_posted, befores[key].posted) for key in keys
             ),
-            member_shares[member.contract_key].posted - old_remaining,
+            expected[member.contract_key][0] - old_remaining,
             0,
             0,
         )

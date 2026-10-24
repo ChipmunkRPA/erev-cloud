@@ -84,3 +84,11 @@ scoped Ruff/mypy pass. No public approval/application claim is made: durable spl
 source freshness at approval, effective membership, destination computations and reporting
 across membership boundaries still require integration. The calculation envelope continues to
 contain the original group and is not itself a persisted membership split. No deployment.
+
+
+The split group-pool trace now uses a distinct event namespace from member pools; it does
+not place unescaped contract identities into obligation share node ids. Eight focused cases
+pass, including native installation when a group code equals a contract external id. A full
+computation of that same-name case separately exposes an existing duplicate node in stage-10
+balance presentation; that downstream namespace gap remains open and is not covered by the
+ordinary distinct-name full-computation witness above.
