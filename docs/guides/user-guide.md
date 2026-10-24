@@ -1203,8 +1203,10 @@ amount, and cost journal lines retain their rate references; they do not transla
 at the current closing rate. This applies when occurrence and capitalisation share a date.
 On termination, acceleration releases the remaining historical carrying amount, including
 the final rounding residue, so the expense and cost-asset balance reconcile. Foreign costs
-involving impairment, impairment reversal, clawback or delayed capitalisation still require
-additional functional measurement and are refused.
+involving impairment, impairment reversal or clawback still require additional functional
+measurement and are refused. Costs incurred before contract activation are capitalised on
+the activation date using that date’s applicable spot rate. Subsequent amortisation retains
+that historical functional amount; the system does not create a cost asset before activation.
 
 
 ### Cost rollforward by asset

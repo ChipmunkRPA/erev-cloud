@@ -2857,3 +2857,11 @@ refuse rather than rebuild. See [checkpoint](COST-ASSET-FROZEN-VIEWS-2026-10-24.
 Member current liabilities retain the approved proportional carrying-value allocation.
 This completes the frozen-detail gap recorded in the preceding cost-asset checkpoint;
 remaining specialist foreign-cost and split measurement gaps are unchanged. No deployment.
+
+
+### 2026-10-24 — Foreign cost capitalization on activation
+
+Revision 57 closes delayed capitalization for ordinary foreign contract costs using the existing
+stage-11 activation date and its spot rate. Native posting/carrying and trace checks pass.
+See [checkpoint](COST-ASSET-DEFERRED-2026-10-24.md). Foreign impairment, reversal and clawback
+remain open; no deployment or additional business approval workflow.

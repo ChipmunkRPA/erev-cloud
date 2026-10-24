@@ -111,7 +111,7 @@ def test_missing_cost_spot_rate_is_reported():
 
 
 def test_same_currency_costs_keep_existing_outputs():
-    value = source()
+    value = replace(source(), evidence_revision=57)
     value = replace(
         value, entities=tuple(replace(e, functional_currency="USD") for e in value.entities)
     )
@@ -193,3 +193,71 @@ def test_termination_accelerates_remaining_historical_cost(spot, expected):
     assert all(dict(result.line_rates)[line.line_key] == (("cost-spot", "1"),) for line in lines)
     with pytest.raises(EngineError, match="no functional amount"):
         compute(replace(value, evidence_revision=55))
+
+
+def test_cost_before_activation_uses_capitalization_date_rate():
+    value = replace(source(), evidence_revision=57)
+    activation = date(2026, 3, 1)
+    value = replace(
+        value,
+        events=tuple(
+            sorted(
+                (
+                    replace(e, effective_date=activation)
+                    if e.event_type == "CONTRACT_ACTIVATED"
+                    else e
+                    for e in value.events
+                ),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+        fx_rates=tuple(
+            sorted(
+                (
+                    *value.fx_rates,
+                    FxRateInput(
+                        "activation-spot",
+                        "1",
+                        "spot",
+                        "USD",
+                        "EUR",
+                        activation,
+                        None,
+                        Decimal(".8"),
+                    ),
+                ),
+                key=lambda r: (
+                    r.rate_type,
+                    r.base_currency,
+                    r.quote_currency,
+                    r.effective_date,
+                    r.version_key,
+                ),
+            )
+        ),
+    )
+    result = compute(value).books[0]
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    capital = [n for n in result.trace.nodes if n.measure == "cost_capitalised_functional"]
+    assert capital and all(Decimal(n.value) == Decimal("8000") for n in capital)
+    assert all(n.params["capitalization_date"] == "2026-03-01" for n in capital)
+    assert not [n for n in capital if n.id.endswith((":FY2026-P01", ":FY2026-P02"))]
+    held = [
+        n
+        for n in result.trace.nodes
+        if n.measure == "cost_asset_carrying_functional" and n.id.endswith(":FY2026-P12")
+    ]
+    assert held and all(Decimal(n.value) == Decimal("4000") for n in held)
+    lines = [
+        line
+        for entry in result.posting_intents
+        if entry.posting_period_key <= "FY2026-P12"
+        for line in entry.lines
+        if line.account_role == "COST_TO_OBTAIN_ASSET"
+    ]
+    assert sum((1 if line.side == "D" else -1) * line.amount_functional for line in lines) == 400000
+    assert all(
+        dict(result.line_rates)[line.line_key] == (("activation-spot", "1"),) for line in lines
+    )
+    with pytest.raises(EngineError, match="no functional amount"):
+        compute(replace(value, evidence_revision=56))

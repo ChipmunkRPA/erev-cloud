@@ -42,7 +42,7 @@ def measure(
         if any(t.value and t.measure not in supported for t in own):
             continue
         event = next(e for e in fx.allocated.events if e.event_key == spec.asset_key)
-        if event.effective_date != spec.capitalization_date:
+        if event.effective_date != spec.capitalization_date and not ctx.historical_cost_deferred:
             continue
         pair = Rates(() if rates is None else rates.rates, ctx.txn_currency, currency)
         try:
