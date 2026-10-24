@@ -2899,3 +2899,12 @@ Closed the frontend gap for retained cost currency and category/asset variants: 
 remain usable under a lock and both parameters reach the report run, while the source period
 and other filters remain fixed. One hundred focused UI cases, scoped lint and types pass.
 See [checkpoint](COST-ASSET-FROZEN-VIEWS-2026-10-24.md). No deployment.
+
+
+### 2026-10-24 — PDF dependency security refresh
+
+Patched pypdf 6.21.1 to 6.21.2 for three new parser denial-of-service advisory records.
+All 86 runtime Python dependencies and npm runtime dependencies audit clean; 25 PDF checks
+pass, two Linux-only cases skip on macOS. Frontend build passes with unchanged chunk warning.
+See [checkpoint](PDF-DEPENDENCY-2026-10-24.md); Linux/container verification remains separate.
+No deployment; pending accounting input choices are unchanged.

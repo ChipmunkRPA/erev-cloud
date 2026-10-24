@@ -27,7 +27,7 @@ dependencies = [
   "pydantic-settings>=2.7",
   "pyotp>=2.9",
   # Worker PDF extraction with context-local parser limits (AIA-13; BSD-3-Clause).
-  "pypdf>=6.21.1,<7",
+  "pypdf>=6.21.2,<7",
   "python-multipart>=0.0.20",
   "pyyaml>=6.0",
   "sqlalchemy>=2.0.36",

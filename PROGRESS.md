@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [locked cost report controls](docs/release/COST-ASSET-FROZEN-VIEWS-2026-10-24.md) connects currency and asset-detail selection to frozen runs.
+Oct 24: [PDF dependency patch](docs/release/PDF-DEPENDENCY-2026-10-24.md) resolves three advisories; runtime audit clean, PDF checks pass.
