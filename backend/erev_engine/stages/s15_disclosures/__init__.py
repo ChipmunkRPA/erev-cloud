@@ -168,6 +168,7 @@ def run(
     capture_obligation_closing: bool = False,
     capture_agent_control: bool = False,
     acquired_pob_opening: bool = False,
+    capture_recomputed_acquisition: bool = False,
     acquisition_cutover_closing: bool = False,
     acquisition_functional_cutover: bool = False,
     acquisition_intercompany_sources: bool = False,
@@ -222,8 +223,15 @@ def run(
     )
     balance_rows: list[BalanceRollforward] = []
     if isinstance(balances, BalanceState) and isinstance(fx, FxState):
+        from . import acquisition_recomputed
+
         records = replace(
             balances_rollforward.balance_inputs(ctx, balances, fx, intents, posted),
+            recomputed_acquisition_closings=(
+                acquisition_recomputed.capture(ctx, balances)
+                if capture_recomputed_acquisition
+                else {}
+            ),
             acquired_pob_opening=acquired_pob_opening,
             acquisition_cutover_closing=acquisition_cutover_closing,
             acquisition_functional_cutover=acquisition_functional_cutover,

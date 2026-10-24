@@ -2454,3 +2454,27 @@ unsupported for retained pairs and is not automatically overridden. This is not 
 full regroup support or production readiness. No deployment.
 
 Three focused draft-move/mixed-status/date regressions also passed. Scoped Ruff and mypy checks passed.
+
+
+## October 24: recomputed acquisition POB eligibility from original targets
+
+Evidence revision 38 captures original billed_cum and revenue_cum targets for same-entity
+principal acquired obligations under RECOMPUTE_FROM_INCEPTION. Transaction POB closing
+snapshots retain those actual amounts and trace IDs. FIFO_WITHIN_POB uses the original
+previous-period targets and counts only current-period relief, avoiding duplication of
+pre-opening flows. Authenticated frozen openings retain priority. The snapshot never
+substitutes imported ERP amounts for absent recomputed targets.
+
+This handles positive, negative and zero revenue onboarding differences and ENGINE invoices
+whose recomputed billing differs from the imported baseline. Targets are indexed once by
+original subject, entity and period. Revision 37 and earlier retain their existing admission
+and output behavior; posting intents and journal amounts are unchanged.
+
+Necessary verification: 51 focused native acquired/mixed/intercompany scenarios pass,
+including 13 new cases across both FIFO policies, three imported revenue amounts, ERP/ENGINE
+billing, ASC606/IFRS15 and missing original closed-cutover targets. New source IDs resolve to
+original trace nodes; closing liability and opening-relief captions reconcile. Scoped Ruff
+and mypy pass. This completes native transaction eligibility for admitted recomputed targets;
+foreign-functional source capture, unavailable closed-period targets and the guarded public
+acquisition reader still require work. Mixed public-report presentation still awaits the
+owner's choice. No deployment or overall readiness claim.

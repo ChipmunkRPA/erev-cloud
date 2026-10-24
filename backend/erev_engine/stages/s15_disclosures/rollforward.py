@@ -68,6 +68,7 @@ from erev_engine.stages.state import (
     Target,
 )
 
+from .acquisition_recomputed import Closing
 from .acquisition_sources import intercompany_enabled
 
 __all__ = [
@@ -212,6 +213,10 @@ class BalanceInputs:
         default_factory=lambda: MappingProxyType({})
     )
     fx: FxState | None = None  # stage 12 state, for the functional view
+    # Revision 38: original cumulative transaction targets, keyed by period end.
+    recomputed_acquisition_closings: Mapping[tuple[str, date], Closing] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
     acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
@@ -842,6 +847,7 @@ def _within_obligations(
     billed: dict[str, int] = {}
     before: dict[str, int] = {}
     during: dict[str, int] = {}
+    recomputed = set()
     if mixed and opening_obligations is None:
         for ob in own:
             baseline = baseline_of(ob)
@@ -857,6 +863,19 @@ def _within_obligations(
     ):
         for ob in own:
             baseline = baseline_of(ob)
+            if (
+                baseline is not None
+                and baseline.cutover_date == cutover
+                and baseline.method == "RECOMPUTE_FROM_INCEPTION"
+            ):
+                closing = records.recomputed_acquisition_closings.get(
+                    (ob.subject_key, start - timedelta(days=1))
+                )
+                if closing is not None:
+                    billed[ob.subject_key] = closing.billed
+                    before[ob.subject_key] = closing.revenue
+                    recomputed.add(ob.subject_key)
+                    continue
             if (
                 baseline is None
                 or baseline.cutover_date != cutover
@@ -880,10 +899,16 @@ def _within_obligations(
         if flow.kind in ("BILLING", "CREDIT_MEMO"):
             if when < start:
                 for subject, amount in sorted(records.attribution.get(flow.source_key, {}).items()):
-                    if subject in subjects and (subject not in dates or when > dates[subject]):
+                    if (
+                        subject in subjects
+                        and subject not in recomputed
+                        and (subject not in dates or when > dates[subject])
+                    ):
                         billed[subject] = billed.get(subject, 0) + amount
         elif flow.kind in (_REVENUE, _NEGATIVE_REVENUE) and flow.subject_key in subjects:
             if flow.subject_key in dates and when <= dates[flow.subject_key]:
+                continue
+            if flow.subject_key in recomputed and when < start:
                 continue
             signed = flow.amount if flow.kind == _REVENUE else -flow.amount
             found = before if when < start else during

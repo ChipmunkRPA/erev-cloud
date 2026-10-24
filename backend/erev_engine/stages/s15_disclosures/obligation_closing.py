@@ -33,6 +33,7 @@ def capture(
         and getattr(records, "mixed_acquisition_closing", False)
     )
     baselines = {}
+    recomputed = {}
     if acquired:
         if not getattr(records, "acquired_pob_opening", False):
             return unavailable("Original principal, same-entity sources are required.")
@@ -42,11 +43,20 @@ def capture(
             return unavailable("Acquired agents require original gross/net baseline attribution.")
         for ob in acquired if mixed else own:
             baseline = baseline_of(ob)
+            if baseline is not None and baseline.method == "RECOMPUTE_FROM_INCEPTION":
+                closing = records.recomputed_acquisition_closings.get(
+                    (ob.subject_key, period.end_date)
+                )
+                if closing is not None and not functional:
+                    recomputed[ob.subject_key] = closing
             if (
                 ob.opening is None
                 or ob.opening.get("reason") != "BUSINESS_COMBINATION"
                 or baseline is None
-                or baseline.method != "OPENING_BALANCES_AT_CUTOVER"
+                or (
+                    baseline.method != "OPENING_BALANCES_AT_CUTOVER"
+                    and ob.subject_key not in recomputed
+                )
             ):
                 return unavailable("Complete original acquisition baselines are required.")
             baselines[ob.subject_key] = baseline
@@ -113,6 +123,10 @@ def capture(
                 continue
             revenue[flow.subject_key] += flow.amount * (1 if flow.kind == "REVENUE" else -1)
             sources[flow.subject_key].add(flow.source_key)
+    for subject, closing in recomputed.items():
+        billed[subject] = closing.billed
+        revenue[subject] = closing.revenue
+        sources[subject] = set(closing.sources)
     if functional:
         fx = records.fx
         if fx is None:

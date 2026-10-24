@@ -57,7 +57,7 @@ Performing-entity agent revenue and specialist regrouping remain open.
 
 Native acquisition evidence and public close/lock coverage are tracked in the
 [acquisition checkpoint](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
-Mixed groups, agents and recomputed baselines remain unfinished.
+Native recomputed POB targets now work; public mixed/agent/foreign paths remain unfinished.
 
 ## Rollforward Other explanation — October 23, 2026
 
