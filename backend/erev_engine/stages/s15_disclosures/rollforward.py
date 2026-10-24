@@ -209,6 +209,7 @@ class BalanceInputs:
     )
     fx: FxState | None = None  # stage 12 state, for the functional view
     acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
+    acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
 
 
 @dataclass(frozen=True, slots=True)
@@ -523,6 +524,34 @@ def _transaction(
             asset[role] += need
             lines[role][code] += need
     closing = {role: presented.get((_MEASURES[role], period.period_key), 0) for role in BALANCES}
+    if (
+        records.acquisition_cutover_closing
+        and cutover == end
+        and not any((_MEASURES[role], period.period_key) in presented for role in BALANCES)
+    ):
+        # A closed cutover may lie beyond the last postable calculation period. Missing
+        # targets are not zero balances: at the exact cutover the original baseline is
+        # authoritative. Do not extrapolate it to a later reporting date.
+        for ob in own:
+            baseline = baseline_of(ob)
+            if (
+                not _acquired(ob)
+                or baseline is None
+                or baseline.cutover_date != cutover
+                or ob.performing_entity != entity
+                or ob.principal_agent.value != "PRINCIPAL"
+                or (
+                    baseline.revenue_cum > baseline.billed_cum
+                    and (ob.subject_key, period.period_key) not in records.right_classes
+                )
+            ):
+                raise EngineError(
+                    "ENGINE_INVARIANT_VIOLATED",
+                    "Acquisition closing requires complete original baselines "
+                    "and asset classification.",
+                    detail={"rule": "S15-R-06", "stage": "15", "entity": entity},
+                )
+        closing = _established(ctx, records, own, entity, cutover)
     for role in BALANCES:
         lines[role][CLOSING] = closing[role]
     _captions(asset, closing, lines)

@@ -8,6 +8,14 @@ live-business migration and independent accounting sign-off are outside the owne
 development scope; historical production-use requirements below are not development blockers.
 
 
+## Closed acquisition cutover — October 23, 2026
+
+Revision 15 uses complete original baselines for native transaction closing at an exact
+closed cutover with absent presented targets, removing the false zero/OTHER offset without
+posting or reopening periods. See [checkpoint](ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
+Foreign and broader acquired-history work remains open.
+
+
 ## Acquired POB baseline — October 23, 2026
 
 Native transaction POB eligibility and closing snapshots now retain original acquisition

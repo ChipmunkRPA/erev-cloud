@@ -61,6 +61,8 @@ def test_acquired_pob_opening_preserves_baseline_and_journals(at, pre_invoice):
     )
     old = erev_engine.compute(replace(value, evidence_revision=13))
     new = erev_engine.compute(replace(value, evidence_revision=14))
+    latest = erev_engine.compute(replace(value, evidence_revision=15))
+    assert latest.books == new.books  # Existing targets retain priority over cutover fallback.
     for prior, book in zip(old.books, new.books, strict=True):
         assert book.posting_intents == prior.posting_intents
         assert prior.disclosure_rollforwards[0].obligation_closing == {
@@ -115,3 +117,30 @@ def test_acquired_baseline_does_not_override_authenticated_frozen_opening():
         opening_obligations={"C/P": 100},
     )
     assert lines["CONTRACT_LIABILITY"]["REVENUE_FROM_OPENING_BALANCE"] == 0
+
+
+@pytest.mark.parametrize("method", ["OPENING_BALANCES_AT_CUTOVER", "RECOMPUTE_FROM_INCEPTION"])
+@pytest.mark.parametrize("consumption", ["FIFO_WITHIN_POB", "FIFO_WITHIN_CONTRACT"])
+def test_closed_cutover_uses_original_baseline_without_posting(method, consumption):
+    value = w.chk_121(
+        as_of=date(2025, 12, 31),
+        policies={
+            "onboarding.method": method,
+            "rollforward.opening_liability_consumption": consumption,
+        },
+    )
+    prior = erev_engine.compute(replace(value, evidence_revision=14))
+    current = erev_engine.compute(replace(value, evidence_revision=15))
+    for old, book in zip(prior.books, current.books, strict=True):
+        assert old.posting_intents == book.posting_intents == ()
+        row = next(r for r in book.disclosure_rollforwards if r.view == "TRANSACTION")
+        old_row = next(r for r in old.disclosure_rollforwards if r.view == "TRANSACTION")
+        amount = 12000000 if book.book_code == "ASC606" else 9000000
+        assert old_row.lines["CONTRACT_LIABILITY"]["CLOSING"] == 0
+        assert old_row.lines["CONTRACT_LIABILITY"]["OTHER"] == -amount
+        values = row.lines["CONTRACT_LIABILITY"]
+        assert values["OPENING"] == 0
+        assert values["BUSINESS_COMBINATIONS"] == values["CLOSING"] == amount
+        assert values["OTHER"] == values["REVENUE_FROM_OPENING_BALANCE"] == 0
+        for role, lines in row.lines.items():
+            assert lines["CLOSING"] == sum(v for k, v in lines.items() if k != "CLOSING"), role

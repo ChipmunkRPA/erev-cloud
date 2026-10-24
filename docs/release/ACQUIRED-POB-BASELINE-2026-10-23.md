@@ -32,6 +32,6 @@ The frozen-opening guard, existing native snapshot/union cases and scoped lint/t
 This completes the native transaction baseline correction and closing-source capture, not the
 entire acquired Reporting feature. Foreign-functional source amounts, recompute-from-inception
 baselines, public acquired-report workflows and broader acquired locked histories still need
-implementation or verification. A closed cutover with no later open calculation horizon also
-needs separate investigation: the existing native group closing can be absent even though the
-original obligation baseline exists. No migration-to-live or deployment work is included.
+implementation or verification. The exact closed-cutover missing group closing is subsequently
+fixed in [revision 15](ACQUIRED-CLOSED-CUTOVER-2026-10-23.md); broader acquired histories remain
+open. No migration-to-live or deployment work is included.

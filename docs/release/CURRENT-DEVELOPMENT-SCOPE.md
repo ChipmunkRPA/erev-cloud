@@ -4,6 +4,14 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Closed acquisition cutover — October 23, 2026
+
+Revision 15 uses complete original baselines for native transaction closing at an exact
+closed cutover with absent presented targets, removing the false zero/OTHER offset without
+posting or reopening periods. See [checkpoint](ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
+Foreign and broader acquired-history work remains open.
+
+
 ## Acquired POB baseline — October 23, 2026
 
 Native transaction POB eligibility and closing snapshots now retain original acquisition

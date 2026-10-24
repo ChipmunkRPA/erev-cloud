@@ -553,6 +553,7 @@ def _stage_call(
             capture_obligation_closing=(cb.bundle.evidence_revision or 0) >= 5,
             capture_agent_control=(cb.bundle.evidence_revision or 0) >= 8,
             acquired_pob_opening=(cb.bundle.evidence_revision or 0) >= 14,
+            acquisition_cutover_closing=(cb.bundle.evidence_revision or 0) >= 15,
             frozen_openings=cb.bundle.disclosure_openings or (),
         )
     if spec.stage == "02" and spec.entry is s02_contract_identification.run:

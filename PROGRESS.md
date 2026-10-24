@@ -43,7 +43,8 @@ Cross-entity agents and historical-group outsiders remain open. No deployment.
 Revision 14 restores original cutover baselines to native transaction POB eligibility and closing
 source snapshots without changing journals. 37 focused cases pass; see
 [checkpoint](docs/release/ACQUIRED-POB-BASELINE-2026-10-23.md). Foreign-functional, recomputed and
-public acquired-report/locked-history paths remain open.
+public acquired-report/locked-history paths remain open. Revision 15 fixes native group closing
+at an exact closed cutover; 32 focused checks pass ([checkpoint](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md)).
 
 ## Rollforward Other explanation — October 23, 2026
 

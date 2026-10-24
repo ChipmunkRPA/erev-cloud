@@ -168,6 +168,7 @@ def run(
     capture_obligation_closing: bool = False,
     capture_agent_control: bool = False,
     acquired_pob_opening: bool = False,
+    acquisition_cutover_closing: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
     """RPO, exemptions, time bands, the narrative dataset, the waterfall, the RPO rollforward, the
@@ -217,6 +218,7 @@ def run(
         records = replace(
             balances_rollforward.balance_inputs(ctx, balances, fx, intents, posted),
             acquired_pob_opening=acquired_pob_opening,
+            acquisition_cutover_closing=acquisition_cutover_closing,
         )
         for entity in entities:
             key = rpo.period_of(ctx, entity, found.as_of)
