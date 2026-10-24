@@ -560,6 +560,7 @@ def _stage_call(
             acquisition_cutover_closing=(cb.bundle.evidence_revision or 0) >= 15,
             acquisition_functional_cutover=(cb.bundle.evidence_revision or 0) >= 19,
             acquisition_intercompany_sources=(cb.bundle.evidence_revision or 0) >= 20,
+            mixed_acquisition_closing=(cb.bundle.evidence_revision or 0) >= 24,
             opening_billing_sources=(cb.bundle.evidence_revision or 0) >= 16,
             frozen_openings=cb.bundle.disclosure_openings or (),
         )

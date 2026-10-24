@@ -27,6 +27,11 @@ def capture(
     agents = {ob.subject_key for ob in own if ob.principal_agent.value == "AGENT"}
     acquired = [ob for ob in own if ob.opening is not None]
     cutover = None
+    mixed = (
+        bool(acquired)
+        and len(acquired) != len(own)
+        and getattr(records, "mixed_acquisition_closing", False)
+    )
     baselines = {}
     if acquired:
         if not getattr(records, "acquired_pob_opening", False):
@@ -35,7 +40,7 @@ def capture(
             return unavailable("Original acquisition closing sources are unavailable in this view.")
         if agents:
             return unavailable("Acquired agents require original gross/net baseline attribution.")
-        for ob in own:
+        for ob in acquired if mixed else own:
             baseline = baseline_of(ob)
             if (
                 ob.opening is None
@@ -77,7 +82,7 @@ def capture(
             flow.entity != entity
             or when is None
             or when > period.end_date
-            or (not functional and cutover is not None and when <= cutover)
+            or (not functional and not mixed and cutover is not None and when <= cutover)
         ):
             continue
         if flow.kind in {"BILLING", "CREDIT_MEMO"}:
@@ -89,12 +94,23 @@ def capture(
                 key = (flow.source_key, subject)
                 if subject not in subjects or key in documents:
                     return unavailable("Billing attribution has duplicate or unknown sources.")
+                baseline = baselines.get(subject)
+                if (
+                    mixed
+                    and not functional
+                    and baseline is not None
+                    and when <= baseline.cutover_date
+                ):
+                    continue
                 documents[key] = amount
                 billed[subject] += amount
                 sources[subject].add(flow.source_key)
         elif flow.kind in {"REVENUE", "NEGATIVE_REVENUE"}:
             if flow.subject_key not in subjects:
                 return unavailable("Revenue has an unknown obligation source.")
+            baseline = baselines.get(flow.subject_key)
+            if mixed and not functional and baseline is not None and when <= baseline.cutover_date:
+                continue
             revenue[flow.subject_key] += flow.amount * (1 if flow.kind == "REVENUE" else -1)
             sources[flow.subject_key].add(flow.source_key)
     if functional:

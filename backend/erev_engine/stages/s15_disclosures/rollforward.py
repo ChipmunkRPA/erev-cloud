@@ -214,6 +214,7 @@ class BalanceInputs:
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
     acquisition_intercompany_sources: bool = False  # Revision 20: contracting control sources
+    mixed_acquisition_closing: bool = False  # Revision 24: per-obligation transaction cutovers
     opening_billing_sources: bool = False  # Revision 16: original cutover FX attribution
 
 

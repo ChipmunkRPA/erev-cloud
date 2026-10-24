@@ -258,3 +258,26 @@ pass, including existing same-entity acquisition cases and the earlier revision'
 Scoped lint and types pass. Two public open/locked cross-entity scenarios also pass.
 Different-calendar and broader multiple-member histories, mixed acquired/existing populations,
 agents and recomputed baselines remain unfinished; no overall readiness claim or deployment.
+
+
+## October 24: mixed-group closing eligibility
+
+Evidence revision 24 allows original POB closing eligibility for principal groups containing
+ordinary obligations alongside acquired obligations with a common admitted cutover. Transaction
+capture seeds only acquired baselines and excludes pre-cutover flows only for those obligations.
+Ordinary members retain their earlier billing/revenue, credit memos and negative revenue. A shared
+billing source can therefore contribute its ordinary share without duplicating its acquired share.
+
+Functional capture retains the full original billing/cutover-correction population and reconciles
+transaction amounts against original FX attribution and revenue targets before accepting functional
+amounts. Missing FX source records remain unavailable. Prior revisions retain their original result,
+and a full native single-acquisition comparison proves revision 23/24 book outputs unchanged.
+The closing witness covers baseline plus post-cutover activity, ordinary prior history, returns,
+shared documents, foreign sources and missing-source refusal. All 18 acquired-closing cases and
+scoped lint/types pass. The mixed closing witness supplies original flow/FX records to capture;
+a full native mixed-group public report path is still to be verified.
+
+This does not complete mixed acquisition rollforward increases. `acquisition_flows.read` still
+requires explicit acquisition attribution before relaxing its population guard, and closed foreign
+mixed-group cutovers may still lack supplementary FX evidence. Agents, different acquisition dates,
+and recomputed baselines remain open. No deployment.
