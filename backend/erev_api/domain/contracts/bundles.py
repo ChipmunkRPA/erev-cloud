@@ -162,6 +162,7 @@ from erev_engine.currencies import ISO_4217
 from erev_engine.money import decimal_to_minor
 from erev_engine.stages.s01_canonicalize import (
     contract_subject_key,
+    encode_key,
     group_entity_subject_key,
     obligation_subject_key,
 )
@@ -1214,6 +1215,15 @@ def _optional_decimal(value: Any) -> Decimal | None:
     return None if value is None else Decimal(str(value))
 
 
+def _estimate_key(element: Mapping[str, Any], contract_key: str) -> str:
+    code = str(element["element_code"])
+    return (
+        f"PORTFOLIO:{element['portfolio_id']}/{encode_key(code)}"
+        if element.get("portfolio_id") is not None
+        else obligation_subject_key(contract_key, code)
+    )
+
+
 def estimate_version_input(
     version: Mapping[str, Any],
     element: Mapping[str, Any],
@@ -1235,7 +1245,7 @@ def estimate_version_input(
     probability is not passed, so the version carries its stored amounts (S04-R-05).
     """
     element_code = str(element["element_code"])
-    estimate_key = obligation_subject_key(contract_key, element_code)
+    estimate_key = _estimate_key(element, contract_key)
     version_no = int(version["version_no"])
     scenarios = [item for item in version["scenarios"] or () if isinstance(item, Mapping)]
     weighted = bool(scenarios) and all(item.get("probability") is not None for item in scenarios)
@@ -1259,7 +1269,7 @@ def estimate_version_input(
         direction=_text_of(element["direction"]),
         allocation_target=str(element["allocation_target"]),
         target_obligation_keys=tuple(
-            sorted(obligation_keys[target] for target in targets if target in obligation_keys)
+            sorted({obligation_keys[target] for target in targets if target in obligation_keys})
         ),
         obligation_key=None
         if obligation_id is None
@@ -1301,6 +1311,8 @@ def _estimate_versions(
     *,
     contracts: Mapping[UUID, Mapping[str, Any]],
     obligation_keys: Mapping[UUID, str],
+    portfolios: Sequence[PortfolioInput] = (),
+    obligation_owners: Mapping[UUID, UUID] | None = None,
 ) -> tuple[tuple[EstimateVersionInput, ...], dict[str, str]]:
     """The versions the included and pending ``ESTIMATE_CHANGED`` events name, in bundle order
     (estimate key, version number), and their keys by version id (S01-R-18)."""
@@ -1336,14 +1348,26 @@ def _estimate_versions(
     for row in versions:
         element = elements.get(UUID(str(row["estimate_id"])))
         contract_id = None if element is None else element["contract_id"]
-        if element is None or contract_id is None or UUID(str(contract_id)) not in contracts:
-            continue  # [J] portfolio-scoped versions apply through CTR-13
-        members.append((row, element, str(contracts[UUID(str(contract_id))]["external_id"])))
+        if element is None:
+            raise ValueError("An applied estimate version has no retained definition")
+        if contract_id is None:
+            from .portfolio_engine import shared_return_contract
+
+            external_id = shared_return_contract(
+                row,
+                element,
+                contracts=contracts,
+                portfolios=portfolios,
+                obligation_keys=obligation_keys,
+                obligation_owners=obligation_owners or {},
+            )
+        elif UUID(str(contract_id)) in contracts:
+            external_id = str(contracts[UUID(str(contract_id))]["external_id"])
+        else:
+            raise ValueError("An applied estimate belongs to a contract outside the computation")
+        members.append((row, element, external_id))
     keys = {
-        str(row["id"]): (
-            f"{obligation_subject_key(external_id, str(element['element_code']))}"
-            f"@v{int(row['version_no'])}"
-        )
+        str(row["id"]): f"{_estimate_key(element, external_id)}@v{int(row['version_no'])}"
         for row, element, external_id in members
     }
     inputs = [
@@ -3070,8 +3094,17 @@ def _assemble(
     obligation_keys = {UUID(str(row["id"])): str(row["obligation_key"]) for row in obligation_rows}
     ssp_versions, ssp_rows, _ = resolution.approved_versions(session)
     ssp_version_keys = {str(row["id"]): key for key, row in ssp_rows.items()}
+    portfolios = portfolio_inputs(session, contracts, known_at)
     estimate_versions, estimate_keys = _estimate_versions(
-        session, stored, pending_events, contracts=contracts, obligation_keys=obligation_keys
+        session,
+        stored,
+        pending_events,
+        contracts=contracts,
+        obligation_keys=obligation_keys,
+        portfolios=portfolios,
+        obligation_owners={
+            UUID(str(row["id"])): UUID(str(row["contract_id"])) for row in obligation_rows
+        },
     )
     native, native_ids, native_rows = _native_modifications(
         session,
@@ -3299,7 +3332,7 @@ def _assemble(
             criterion=group["criterion"],
             previous_stream_heads=previous_heads,
             products=products,
-            portfolios=portfolio_inputs(session, contracts, known_at),
+            portfolios=portfolios,
         ),
         contracts=headers,
         events=events,
