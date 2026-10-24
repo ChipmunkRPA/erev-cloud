@@ -63,3 +63,31 @@ exact original-source reconciliation and paired remaining-unit/current-term line
 Scoped types/lint pass. This does not reopen the public after-posting command: other consideration
 components, multi-book transfer amounts and paired approval/application still need integration.
 No deployment.
+
+
+## Revision 36: book-specific transfer pricing
+
+Inspection found an additional native defect: REGROUPED was absent from the consideration
+accumulator used by boundary/final transaction-price calculation. A posted incoming transfer
+could therefore create an obligation with zero allocation. Revision 36 includes signed
+consideration for posted transfers; moves already represented in original bookings are excluded
+to avoid double counting. Earlier evidence retains its original calculation behavior.
+
+The native modification handler and transaction-price source reader now consume the same
+complete `regroup_book_lines` map for their calculation book. Missing books, changed member
+populations, wrong direction/sign and mismatched money currencies refuse. Source references
+identify the book-specific basis. The stage-06 memo key includes the selected book's map so
+shared policy settings cannot cause one book's transfer to reuse another book's allocation.
+
+The withdrawn API branch constructs signed source/target line maps for every enabled source
+framework book and retains original input digest plus exact/minor-unit source basis in both
+modification questionnaires. LEGACY transfer evidence is not fabricated. This is preparation
+code behind the existing refusal, not a reopened public workflow or approval freshness proof.
+
+Verification: 44 targeted book-loop, transfer and line cases pass. A populated two-book native
+case applies 50,000 under ASC606 and 45,000 under IFRS15 and verifies corresponding transaction
+price, allocation and exact trace replay. A missing book refuses; an ordinary unmapped posted
+transfer now adds its consideration; before-posting moves are not double counted. Scoped
+lint/types pass. Remaining work includes other consideration components, source-side transfer
+conservation, target book compatibility, approval-time basis validation and atomic paired apply.
+No deployment.

@@ -248,6 +248,7 @@ def _insert_row(
     regroup_id: UUID,
     comment: str,
     status: ModificationStatus,
+    questionnaire: Mapping[str, Any] | None = None,
 ) -> UUID:
     principal = uow.principal
     modification_id = new_id()
@@ -262,7 +263,7 @@ def _insert_row(
             kind=kind.value,
             status=status.value,
             lines=[dict(line) for line in lines],
-            questionnaire={},
+            questionnaire=dict(questionnaire or {}),
             currency=str(current["transaction_currency"]).strip(),
             proposed_treatments={},
             chosen_treatments={},
@@ -478,22 +479,73 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
     effective = holds.entity_date(session, source, uow.now)
     transfer_basis: dict[str, FixedBoundaryBasis] = {}
     amounts: dict[str, Decimal] = {}
+    book_lines: dict[str, dict[str, list[dict[str, Any]]]] = {"OUT": {}, "IN": {}}
+    basis_evidence: dict[str, Any] = {}
     if posted:
         original = bundles.build(session, _uuid(source["combination_group_id"]), uow.now)
-        measured = fixed_boundary_basis(
-            original,
-            book_code=queries.primary_book(session),
-            effective_date=effective,
-            contract_key=str(source["external_id"]),
-            obligation_keys=tuple(keys),
+        primary = queries.primary_book(session)
+        source_header = next(
+            c for c in original.contracts if c.external_id == source["external_id"]
         )
-        transfer_basis = {item.obligation_key: item for item in measured}
-        scale = 10 ** original.currencies[currency].minor_unit
-        with localcontext(money.DECIMAL_CONTEXT):
-            amounts = {
-                item.obligation_key: Decimal(item.remaining_minor) / Decimal(scale)
-                for item in measured
+        for book in original.books:
+            if source_header.contracting_entity_code not in book.entity_codes:
+                continue
+            if book.book_code == "LEGACY":
+                raise _failed(
+                    "obligation_keys",
+                    RULE_TARGET,
+                    "Legacy-book transfers need separate retained recognition evidence.",
+                )
+            measured = fixed_boundary_basis(
+                original,
+                book_code=book.book_code,
+                effective_date=effective,
+                contract_key=str(source["external_id"]),
+                obligation_keys=tuple(keys),
+            )
+            basis = {item.obligation_key: item for item in measured}
+            scale = 10 ** original.currencies[currency].minor_unit
+            with localcontext(money.DECIMAL_CONTEXT):
+                book_amounts = {
+                    item.obligation_key: Decimal(item.remaining_minor) / Decimal(scale)
+                    for item in measured
+                }
+            for direction, sign, action in (("OUT", -1, mods.REMOVE), ("IN", 1, mods.ADD)):
+                book_lines[direction][book.book_code] = _move_lines(
+                    booking,
+                    keys,
+                    book_amounts,
+                    sign=sign,
+                    action=action,
+                    currency=currency,
+                    external_id=str(source["external_id"]),
+                    posted=True,
+                    transfer_basis=basis,
+                )
+            basis_evidence[book.book_code] = {
+                "input_sha256": measured[0].input_sha256,
+                "effective_date": effective.isoformat(),
+                "position": "AFTER_RETAINED_EVENTS_ON_DATE",
+                "source_contract": str(source["external_id"]),
+                "obligations": {
+                    item.obligation_key: {
+                        "allocation_exact": str(item.allocation_exact),
+                        "recognized_exact": str(item.recognized_exact),
+                        "remaining_exact": str(item.remaining_exact),
+                        "allocation_minor": item.allocation_minor,
+                        "recognized_minor": item.recognized_minor,
+                        "remaining_minor": item.remaining_minor,
+                        "remaining_quantity": str(item.remaining_quantity),
+                    }
+                    for item in measured
+                },
             }
+            if book.book_code == primary:
+                transfer_basis, amounts = basis, book_amounts
+        if not transfer_basis:
+            raise _failed(
+                "obligation_keys", RULE_TARGET, "The source lacks a primary-book transfer basis."
+            )
     regroup_id = new_id()
     status = ModificationStatus.DRAFT if posted else ModificationStatus.APPLIED
     out_id = _insert_row(
@@ -515,6 +567,12 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
         regroup_id=regroup_id,
         comment=body.comment,
         status=status,
+        questionnaire={
+            "regroup_book_lines": book_lines["OUT"],
+            "regroup_source_basis": basis_evidence,
+        }
+        if posted
+        else None,
     )
     in_id = _insert_row(
         uow,
@@ -535,6 +593,12 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
         regroup_id=regroup_id,
         comment=body.comment,
         status=status,
+        questionnaire={
+            "regroup_book_lines": book_lines["IN"],
+            "regroup_source_basis": basis_evidence,
+        }
+        if posted
+        else None,
     )
     uow.audit(
         action=REGROUP_ACTION,

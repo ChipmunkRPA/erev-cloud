@@ -78,3 +78,88 @@ def test_separate_contract_regroup_also_uses_only_future_service():
     assert moved.columns["start_date"] == MOD_DATE
     assert actual.schedules == expected.schedules
     assert reevaluate(actual.trace) == {n.id: n.value for n in actual.trace.nodes}
+
+
+def test_regroup_book_specific_amount_drives_both_price_and_native_allocation():
+    value = incoming(separate=True, revision=36)
+    contract = value.contracts[0]
+    mod = contract.modifications[0]
+    maps = {
+        "ASC606": [
+            {
+                "obligation_key": "POB-02",
+                "action": "ADD",
+                "quantity_delta": "1",
+                "consideration_delta": {"amount": "50000", "currency": "USD"},
+            }
+        ],
+        "IFRS15": [
+            {
+                "obligation_key": "POB-02",
+                "action": "ADD",
+                "quantity_delta": "1",
+                "consideration_delta": {"amount": "45000", "currency": "USD"},
+            }
+        ],
+    }
+    mod = replace(mod, questionnaire={**mod.questionnaire, "regroup_book_lines": maps})
+    book = value.books[0]
+    value = replace(
+        value,
+        contracts=(replace(contract, modifications=(mod,)),),
+        books=(book, replace(book, book_code="IFRS15", is_primary=False)),
+        entities=tuple(
+            replace(
+                entity,
+                periods=tuple(
+                    replace(
+                        period, states=(*period.states, ("IFRS15", dict(period.states)["ASC606"]))
+                    )
+                    for period in entity.periods
+                ),
+            )
+            for entity in value.entities
+        ),
+    )
+    result = compute(value)
+    for output, amount in zip(result.books, (5000000, 4500000), strict=True):
+        moved = next(
+            o for o in output.obligation_versions if o.columns["obligation_key"] == "POB-02"
+        )
+        assert moved.columns["allocated_amount"] == amount
+        assert output.contract_version.columns["transaction_price"] == 24000000 + amount
+        assert moved.columns["start_date"] == MOD_DATE
+        assert reevaluate(output.trace) == {n.id: n.value for n in output.trace.nodes}
+    assert mod.lines[0]["consideration_delta"] == 60000
+    with pytest.raises(ValueError, match="missing the calculation book"):
+        compute(
+            replace(
+                value,
+                contracts=(
+                    replace(
+                        contract,
+                        modifications=(
+                            replace(
+                                mod,
+                                questionnaire={"regroup_book_lines": {"ASC606": maps["ASC606"]}},
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+
+
+def test_revision_36_counts_unmapped_transfer_and_does_not_double_booking_moves():
+    from tests.engine.s06_modifications.test_s06_exercise import regroup_bundle
+
+    output = compute(incoming(revision=36, separate=True)).books[0]
+    moved = next(o for o in output.obligation_versions if o.columns["obligation_key"] == "POB-02")
+    assert moved.columns["allocated_amount"] == 6000000
+    assert output.contract_version.columns["transaction_price"] == 30000000
+    value = regroup_bundle()
+    before = compute(value)
+    after = compute(replace(value, evidence_revision=36))
+    assert [b.contract_version.columns["transaction_price"] for b in before.books] == [
+        b.contract_version.columns["transaction_price"] for b in after.books
+    ]

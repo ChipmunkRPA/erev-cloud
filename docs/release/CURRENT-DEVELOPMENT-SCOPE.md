@@ -2081,3 +2081,14 @@ uses the dated remaining units/amount and current term rather than original book
 15 focused cases and scoped type/lint checks pass. Public after-posting regroup remains disabled
 pending other consideration components, multi-book amounts and atomic paired approval/application.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Book-specific regroup pricing and cache separation
+
+Evidence revision 36 fixes omitted REGROUPED consideration in boundary/final transaction price
+and consumes complete per-book transfer lines consistently in price and allocation. Stage-06
+cache keys separate differing book bases. The withdrawn preparation branch retains signed maps
+and source evidence per framework book in both modifications; public after-posting remains
+refused pending source conservation, non-fixed components, target compatibility, approval
+freshness and atomic apply. 44 focused book/transfer/line cases and scoped types/lint pass.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.

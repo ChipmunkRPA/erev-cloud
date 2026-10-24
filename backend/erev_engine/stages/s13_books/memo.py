@@ -330,6 +330,16 @@ def stage_key(spec: StageSpec, previous: str, ctx: BookContext, cb: CanonicalBun
     )
     members = STAGE_CONTEXT_MEMBERS.get(spec.stage, ())
     context = {member: CONTEXT_VIEWS[member](ctx, cb) for member in sorted(members)}
+    if spec.stage == "06" and ctx.regroup_book_basis:
+        transfers = []
+        for contract_key, contract in sorted(cb.contracts.items()):
+            for mod in contract.header.modifications:
+                books = mod.questionnaire.get("regroup_book_lines")
+                if isinstance(books, Mapping):
+                    transfers.append((contract_key, mod.modification_key, books.get(ctx.book_code)))
+        if transfers:
+            context["regroup_book_lines"] = transfers
+
     return sha256_hex(
         {
             "context": context,

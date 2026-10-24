@@ -19,12 +19,13 @@ which case applies. Private to stage 06. Standard library only (DG-ARC-02).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import date
 from types import MappingProxyType
 from typing import Final
 
-from erev_engine.stages.s01_canonicalize import payload_text
+from erev_engine.stages.s01_canonicalize import payload_fraction, payload_text
 from erev_engine.stages.s06_modifications.classify import ModificationView
 from erev_engine.stages.state import AllocatedState, EventView, SegmentCause
 
@@ -95,4 +96,56 @@ def future_service(mod: ModificationView, ev: EventView) -> ModificationView:
         if start is None or date.fromisoformat(str(start)) < ev.effective_date:
             members["start_date"] = ev.effective_date.isoformat()
         lines.append(replace(line, members=MappingProxyType(members)))
+    return replace(mod, lines=tuple(lines))
+
+
+def book_basis(
+    mod: ModificationView, ev: EventView, book_code: str, *, currency: str
+) -> ModificationView:
+    """Read the complete frozen transfer lines for this book, preserving original input."""
+    books = mod.questionnaire.get("regroup_book_lines")
+    if books is None:
+        return mod
+    if not isinstance(books, Mapping) or book_code not in books:
+        raise ValueError("Regroup transfer basis is missing the calculation book")
+    rows = books[book_code]
+    if not isinstance(rows, (list, tuple)) or any(not isinstance(row, Mapping) for row in rows):
+        raise ValueError("Regroup book lines must contain a complete original population")
+    by_key = {str(row.get("obligation_key")): row for row in rows}
+    if len(by_key) != len(rows) or set(by_key) != {line.obligation_key for line in mod.lines}:
+        raise ValueError("Regroup book lines differ from the original obligation population")
+    direction = payload_text(ev.payload, "direction")
+    if direction not in (IN, OUT):
+        raise ValueError("Regroup book basis requires an IN or OUT direction")
+    sign = 1 if direction == IN else -1
+    lines = []
+    for line in mod.lines:
+        row = by_key[line.obligation_key]
+        action = "ADD" if direction == IN else "REMOVE"
+        if line.action != action or row.get("action") != action:
+            raise ValueError("Regroup book line action differs from its transfer direction")
+        quantity = payload_fraction(row, "quantity_delta")
+        raw_amount = row.get("consideration_delta")
+        if isinstance(raw_amount, Mapping):
+            if raw_amount.get("currency") != currency:
+                raise ValueError("Regroup book consideration currency differs from the contract")
+            amount = payload_fraction(raw_amount, "amount")
+        else:
+            amount = payload_fraction(row, "consideration_delta")
+        if quantity is None or amount is None or quantity * sign <= 0 or amount * sign < 0:
+            raise ValueError(
+                "Regroup book amounts and quantities must follow the transfer direction"
+            )
+        members = dict(line.members)
+        for field in ("start_date", "end_date"):
+            if field in row:
+                members[field] = row[field]
+        lines.append(
+            replace(
+                line,
+                quantity_delta=quantity,
+                consideration_delta=amount,
+                members=MappingProxyType(members),
+            )
+        )
     return replace(mod, lines=tuple(lines))

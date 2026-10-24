@@ -362,6 +362,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         combined_unit_term_reassessment=(cb.bundle.evidence_revision or 0) >= 30,
         combined_time_term_reassessment=(cb.bundle.evidence_revision or 0) >= 31,
         combined_input_term_reassessment=(cb.bundle.evidence_revision or 0) >= 32,
+        regroup_book_basis=(cb.bundle.evidence_revision or 0) >= 36,
         regroup_future_service=(cb.bundle.evidence_revision or 0) >= 35,
         combined_unit_mixed_reassessment=(cb.bundle.evidence_revision or 0) >= 34,
         cost_recovery_boundaries=(cb.bundle.evidence_revision or 0) >= 33,
@@ -763,7 +764,7 @@ def _unconstrained_history(ctx: BookContext, pob: PobState, st: AllocatedState) 
                 None,
                 rates[at],
                 added=sum(
-                    (amount for _, amount in _added_references(st, at, None, contract)),
+                    (amount for _, amount in _added_references(st, at, None, contract, ctx=ctx)),
                     Fraction(0),
                 ),
             )
@@ -816,7 +817,7 @@ def _version_price(
             before=None,
             rates=_rates(st, version_date, None),
             boundary=last_event,
-            added=_added_references(st, version_date, None),
+            added=_added_references(st, version_date, None, ctx=ctx),
         )
     return dataclasses.replace(st, tp_history=(*st.tp_history, measured))
 
@@ -885,7 +886,7 @@ def _trace_boundary_price(
     """
     appended = st.tp_history[-1]
     following = next((item for item in st.events if item.order_key > ev.order_key), None)
-    added = _added_references(st, appended.at, following)
+    added = _added_references(st, appended.at, following, ctx=ctx)
     for position in (following, ev):
         rates = _rates(st, appended.at, position)
         measured = s04_transaction_price.price_at(
@@ -917,7 +918,7 @@ def price_binding(pob: PobState) -> s06_modifications.PriceAt:
     ) -> TpBuildUp:
         rates = _rates(st, at, before)
         found = s04_transaction_price.price_at(ctx, pob, at, None, before=before, rates=rates)
-        added = _added_consideration(st, at, before)
+        added = _added_consideration(st, at, before, ctx=ctx)
         if added == 0:
             return found
         minor_unit = ctx.currencies[ctx.txn_currency].minor_unit
@@ -964,12 +965,19 @@ def _rates(st: AllocatedState, at: date, before: EventView | None) -> dict[str, 
     return rates
 
 
-def _added_consideration(st: AllocatedState, at: date, before: EventView | None) -> Fraction:
-    return sum((amount for _, amount in _added_references(st, at, before)), Fraction(0))
+def _added_consideration(
+    st: AllocatedState, at: date, before: EventView | None, *, ctx: BookContext | None = None
+) -> Fraction:
+    return sum((amount for _, amount in _added_references(st, at, before, ctx=ctx)), Fraction(0))
 
 
 def _added_references(
-    st: AllocatedState, at: date, before: EventView | None, contract_key: str | None = None
+    st: AllocatedState,
+    at: date,
+    before: EventView | None,
+    contract_key: str | None = None,
+    *,
+    ctx: BookContext | None = None,
 ) -> tuple[tuple[SourceRef, Fraction], ...]:
     """The consideration the boundary events before the position add, one source reference per
     addition with its value (CV-53): member ``additional_consideration`` of an exercise, member
@@ -992,7 +1000,24 @@ def _added_references(
             amount = payload_fraction(ev.payload, "additional_consideration") or Fraction(0)
             add(ev, amount, member="additional_consideration")
             continue
-        if ev.event_type not in _WITH_LINES:
+        if ev.event_type == "REGROUPED" and ctx is not None and ctx.regroup_book_basis:
+            # Before-posting moves are already in booking prices. Posted transfers
+            # remain modifications and must contribute their signed consideration.
+            contract = next(c for c in st.contracts if c.header.external_id == ev.contract_key)
+            booking_lines = contract.booking.get("lines", ())
+            moved_keys = ev.payload.get("obligation_keys", ())
+            if not isinstance(booking_lines, (list, tuple)) or not isinstance(
+                moved_keys, (list, tuple)
+            ):
+                raise ValueError("Regroup needs original booking lines and moved obligation keys")
+            booked = {str(line["obligation_key"]) for line in booking_lines}
+            moved = set(moved_keys)
+            direction = payload_text(ev.payload, "direction")
+            if (direction == "IN" and moved <= booked) or (
+                direction == "OUT" and not moved & booked
+            ):
+                continue
+        elif ev.event_type not in _WITH_LINES:
             continue
         key = payload_text(ev.payload, "modification_id")
         header = headers.get(ev.contract_key)
@@ -1004,11 +1029,21 @@ def _added_references(
         if modification is None:
             continue
         view = s06_modifications.ModificationView.of(ev.contract_key, modification)
+        book_specific = False
+        if ctx is not None and ctx.regroup_book_basis and ev.event_type == "REGROUPED":
+            from erev_engine.stages.s06_modifications import regroup
+
+            book_specific = "regroup_book_lines" in view.questionnaire
+            view = regroup.book_basis(view, ev, ctx.book_code, currency=ctx.txn_currency)
+
         for index, line in enumerate(view.lines):
             add(
                 ev,
                 line.consideration_delta,
-                member="consideration_delta",
+                member="questionnaire.regroup_book_lines"
+                if book_specific
+                else "consideration_delta",
+                **({"book": str(ctx.book_code)} if book_specific and ctx is not None else {}),
                 line=str(index),
                 obligation_key=line.obligation_key,
             )
