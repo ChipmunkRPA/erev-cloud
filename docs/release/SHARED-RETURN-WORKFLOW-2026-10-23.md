@@ -5,7 +5,7 @@ member streams and recomputation of each affected combination group. The portfol
 editor exposes submission, withdrawal and the linked approval request. Unsaved edits must be
 saved before submission; all commands use the current version ETag.
 
-Submission requires supporting evidence (or the existing valid no-change attestation), saved
+Submission requires supporting evidence, saved
 explicit member targets and a successful native impact preview. The approval request stores
 group/member balance and period effects. Existing maker/editor exclusion and controller routing
 apply. Multi-currency impacts are not presented as one functional-currency amount; the routing
@@ -33,6 +33,7 @@ audit lineage. Withdrawal leaves the earlier approved version effective.
 Only shared return-rate versions are enabled for application. Other shared estimate kinds remain
 in draft/preview workflows. Shared breakage has total/SSP preview, but its expected-redemption
 input policy remains unresolved. Do not infer expected redemptions by subtracting breakage from
-entitlements: that can change unclaimed-property liabilities. Empty-population retirement,
-target changes and effective-date combination reassessment remain unfinished. This checkpoint
+entitlements: that can change unclaimed-property liabilities. Empty-population retirement was subsequently completed in
+[the retirement checkpoint](SHARED-RETURN-RETIREMENT-2026-10-23.md). Target changes and
+effective-date combination reassessment remain unfinished. This checkpoint
 is not full-system production-readiness verification. No deployment was performed.

@@ -23001,6 +23001,8 @@ export interface components {
        * Format: uuid
        */
       portfolio_id: string;
+      /** Retired Members */
+      retired_members?: components["schemas"]["SharedEstimateMemberBinding"][];
       /**
        * Schema Version
        * @default 1

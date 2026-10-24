@@ -23,6 +23,7 @@ from erev_api.domain.contracts import (
 )
 from erev_api.domain.contracts.activation import engine_problem
 from erev_api.problems import Problem
+from erev_api.schemas.estimates import SharedEstimateApplicationBasis
 from erev_api.schemas.portfolios import (
     PortfolioImpactOut,
     PortfolioImpactGroupOut,
@@ -63,15 +64,21 @@ def preview(
         .one()
     )
     if row.get("portfolio_application_basis") is not None:
-        if row["portfolio_application_basis"] != portfolio_binding.capture(
-            session, portfolio_id, element
+        if SharedEstimateApplicationBasis.model_validate(
+            row["portfolio_application_basis"]
+        ) != SharedEstimateApplicationBasis.model_validate(
+            portfolio_binding.capture(session, portfolio_id, element)
         ):
             raise Problem(
                 "validation-failed", "Member bindings changed. Save the draft again before preview."
             )
-    member_ids = [
-        m["contract_id"] for m in session.execute(portfolios.members(portfolio_id)).mappings()
-    ]
+    member_ids = (
+        portfolio_binding.recipients(row["portfolio_application_basis"])
+        if row.get("portfolio_application_basis") is not None
+        else [
+            m["contract_id"] for m in session.execute(portfolios.members(portfolio_id)).mappings()
+        ]
+    )
     if not member_ids:
         raise Problem("validation-failed", "Add members before previewing shared estimates.")
     currents = [

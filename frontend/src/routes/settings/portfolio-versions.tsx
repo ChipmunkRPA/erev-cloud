@@ -152,6 +152,19 @@ export function PortfolioVersions({
               </li>
             ))}
           </ul>
+          {(selected.portfolio_application_basis.retired_members ?? []).length > 0 ? (
+            <>
+              <h4 className="text-heading-sm">{label("retiredBindings")}</h4>
+              <p className="text-body-sm text-fg-2">{label("retiredBindingsHelp")}</p>
+              <ul>
+                {selected.portfolio_application_basis.retired_members?.map((member) => (
+                  <li key={member.contract_id}>
+                    {member.contract_key}: {member.obligation_keys.join(", ")}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </section>
       ) : null}
       {selected === null ? null : (

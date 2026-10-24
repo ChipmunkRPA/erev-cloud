@@ -8058,6 +8058,8 @@
   "settings.portfolios.estimateCount.one": "{formatted} estimate definition",
   "settings.portfolios.estimateCount.other": "{formatted} estimate definitions",
   "settings.portfolios.versions": "Versions",
+  "settings.portfolioVersions.retiredBindings": "Members leaving this shared estimate",
+  "settings.portfolioVersions.retiredBindingsHelp": "On approval, the shared estimate stops applying to these members from this version's effective date. Earlier application history remains intact; any applicable local estimate resumes.",
   "settings.portfolioVersions.bindings": "Saved member scope",
   "settings.portfolioVersions.bindingsHelp": "Member targets captured when this draft was saved. Review and save again after membership changes. Submission freezes these bindings.",
   "settings.portfolioVersions.title": "Shared estimate versions",

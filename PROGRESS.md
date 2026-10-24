@@ -247,8 +247,9 @@ Current outstanding implementation and verification gaps remain in
 
 Shared overrides local; breakage totals use SSP allocation; combination changes require effective-date
 reassessment. Shared return-rate drafts now support frozen bindings, impact previews, independent
-approval, atomic member application/recomputation and withdrawal. Other shared kinds and scope
-reassessment remain open. See [checkpoint](docs/release/SHARED-RETURN-WORKFLOW-2026-10-23.md).
+approval, atomic application/recomputation and approved effective-date member exits (including
+the final member). Other shared kinds and combination reassessment remain open. See
+[checkpoint](docs/release/SHARED-RETURN-RETIREMENT-2026-10-23.md).
 
 ## Locked POB opening sources — October 23, 2026
 

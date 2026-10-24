@@ -18,6 +18,7 @@ from erev_api.domain.contracts import (
     estimates,
     portfolio_estimate_versions,
     portfolio_impact,
+    portfolio_binding,
     portfolios,
     repo,
 )
@@ -48,9 +49,9 @@ def _lock(
         portfolios.require_estimate_scope(session, uow.ctx, portfolio_id, "estimate.create")
     row = estimates._version_row(session, version_id, lock=True)
     basis = row.get("portfolio_application_basis")
-    if not basis or not basis["members"]:
+    if not basis or not portfolio_binding.recipients(basis):
         raise Problem("validation-failed", "Save explicit member targets before submission.")
-    ids = sorted(UUID(m["contract_id"]) for m in basis["members"])
+    ids = portfolio_binding.recipients(basis)
     heads = session.execute(
         select(contract.c.id, contract.c.combination_group_id).where(contract.c.id.in_(ids))
     ).all()

@@ -249,6 +249,7 @@ class SharedEstimateApplicationBasis(BaseModel):
     schema_version: Literal[1] = 1
     portfolio_id: uuid.UUID
     members: list[SharedEstimateMemberBinding]
+    retired_members: list[SharedEstimateMemberBinding] = Field(default_factory=list)
 
 
 class EstimateVersionOut(BaseModel):

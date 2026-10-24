@@ -13,7 +13,9 @@ from erev_engine.errors import EngineError
 P, A, B, OA, OB, E, V = (UUID(int=i) for i in range(1, 8))
 
 
-def load(*, quantity=None, kind="RETURN_RATE", targets=None, currency="USD", population=True):
+def load(
+    *, quantity=None, kind="RETURN_RATE", targets=None, currency="USD", population=True, basis=None
+):
     element = dict(
         id=E,
         contract_id=None,
@@ -45,6 +47,7 @@ def load(*, quantity=None, kind="RETURN_RATE", targets=None, currency="USD", pop
         currency="USD",
         supersedes_version_id=None,
         content_sha256="a" * 64,
+        portfolio_application_basis=basis,
     )
     session = Mock()
     response1, response2 = Mock(), Mock()
@@ -90,3 +93,22 @@ def test_loads_shared_source_and_event_reference():
 def test_incomplete_shared_application_does_not_disappear(kwargs, reason):
     with pytest.raises(EngineError, match=reason):
         load(**kwargs)
+
+
+@pytest.mark.parametrize("active", [("B",), ()])
+def test_retired_targets_reach_loader_without_reactivating_members(active):
+    bindings = [
+        dict(contract_id=str(c), contract_key=k, obligation_ids=[str(o)], obligation_keys=["GOODS"])
+        for c, k, o in [(A, "A", OA), (B, "B", OB)]
+    ]
+    inputs, _ = load(
+        population=False,
+        basis=dict(
+            schema_version=1,
+            portfolio_id=str(P),
+            members=[m for m in bindings if m["contract_key"] in active],
+            retired_members=[m for m in bindings if m["contract_key"] not in active],
+        ),
+    )
+    assert inputs[0].portfolio_member_contract_keys == active
+    assert inputs[0].target_obligation_keys == ("GOODS",)

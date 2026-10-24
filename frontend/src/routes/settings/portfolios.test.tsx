@@ -604,6 +604,19 @@ it("submits saved shared returns with an ETag and opens the resulting approval",
     scenarios: [],
     rationale: "Observed returns",
     approval_request_id: null as string | null,
+    portfolio_application_basis: {
+      schema_version: 1,
+      portfolio_id: "p1",
+      members: [],
+      retired_members: [
+        {
+          contract_id: "c1",
+          contract_key: "CONTRACT-1",
+          obligation_ids: ["o1"],
+          obligation_keys: ["GOODS"],
+        },
+      ],
+    },
   };
   let tag: string | null = null;
   server.use(
@@ -627,6 +640,10 @@ it("submits saved shared returns with an ETag and opens the resulting approval",
   renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
   fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
   fireEvent.click(await screen.findByRole("button", { name: "View version" }));
+  expect(
+    screen.getByRole("heading", { name: "Members leaving this shared estimate" }),
+  ).toBeTruthy();
+  expect(screen.getByText("CONTRACT-1: GOODS")).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Rate (0 to 1)"), { target: { value: "0.2" } });
   expect(
     screen.getByRole("button", { name: "Submit for approval" }).getAttribute("aria-disabled"),

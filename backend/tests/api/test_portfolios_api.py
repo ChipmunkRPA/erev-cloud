@@ -624,3 +624,67 @@ def test_portfolio_membership_workflow(
     assert withdrawn.json()["status"] == "WITHDRAWN"
     assert withdrawn.json()["applied_event_ids"] == []
     assert get(app, version_path, maya).json()["status"] == "APPROVED"
+
+    # Removing the final member does not silently alter its approved estimate. A new
+    # independently approved version explicitly ends the scope from its effective date.
+    clock.advance(timedelta(seconds=1))
+    removed = post(
+        app,
+        path + "/members/" + contract_id + "/remove",
+        maya,
+        {"rationale": "End this shared return population"},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert removed.status_code == 200, removed.text
+    retirement = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        {**values, "effective_date": "2026-10-01", "rationale": "Return to member estimates"},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert retirement.status_code == 201, retirement.text
+    retire_path = retirement.headers["location"]
+    basis = retirement.json()["portfolio_application_basis"]
+    assert basis["members"] == []
+    assert [m["contract_id"] for m in basis["retired_members"]] == [contract_id]
+    preview = get(app, retire_path + "/impact-preview", maya)
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["groups"][0]["members"][0]["contract_id"] == contract_id
+    assert get(app, version_path, maya).json()["status"] == "APPROVED"
+    attached = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": retirement.json()["id"],
+            "file_object_id": file_id,
+        },
+    )
+    assert attached.status_code == 201, attached.text
+    submitted = post(
+        app, retire_path + "/submit", maya, {}, if_match=get(app, retire_path, maya).headers["etag"]
+    )
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    retired = get(app, retire_path, maya).json()
+    assert retired["status"] == "APPROVED"
+    assert len(retired["applied_event_ids"]) == 1
+    assert get(app, version_path, maya).json()["status"] == "SUPERSEDED"
+    with tenant_session(context) as session:
+        bundle = bundles.build(session, source["combination_group_id"], clock.now(), [], "DRY_RUN")
+        ending = next(
+            v
+            for v in bundle.estimate_versions
+            if v.version_no == retired["version_no"] and v.element_code == "TARGETED-RETURNS"
+        )
+        original = next(
+            v
+            for v in bundle.estimate_versions
+            if v.version_no == 1 and v.element_code == "TARGETED-RETURNS"
+        )
+        assert ending.portfolio_member_contract_keys == ()
+        assert original.portfolio_member_contract_keys == (source["external_id"],)
+        assert ending.effective_date.isoformat() == "2026-10-01"

@@ -38826,6 +38826,13 @@
             "title": "Portfolio Id",
             "type": "string"
           },
+          "retired_members": {
+            "items": {
+              "$ref": "#/components/schemas/SharedEstimateMemberBinding"
+            },
+            "title": "Retired Members",
+            "type": "array"
+          },
           "schema_version": {
             "const": 1,
             "default": 1,
