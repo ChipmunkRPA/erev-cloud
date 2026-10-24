@@ -22,12 +22,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import date
+from fractions import Fraction
 from types import MappingProxyType
 from typing import Final
 
 from erev_engine.stages.s01_canonicalize import payload_fraction, payload_text
 from erev_engine.stages.s06_modifications.classify import ModificationView
-from erev_engine.stages.state import AllocatedState, EventView, SegmentCause
+from erev_engine.stages.state import AllocatedState, BookContext, EventView, SegmentCause
 
 __all__ = ["IN", "OUT", "before_posting"]
 
@@ -149,3 +150,45 @@ def book_basis(
             )
         )
     return replace(mod, lines=tuple(lines))
+
+
+def validate_outgoing(
+    ctx: BookContext,
+    st: AllocatedState,
+    mod: ModificationView,
+    ev: EventView,
+    treatments: Mapping[str, str],
+) -> None:
+    """A complete obligation move transfers only its current fixed remaining basis."""
+    if payload_text(ev.payload, "direction") != OUT:
+        return
+    from erev_engine.stages.s06_modifications import segments
+
+    own = {ob.obligation_key: ob for ob in st.obligations if ob.contract_key == mod.contract_key}
+    names = ev.payload.get("obligation_keys")
+    if (
+        not isinstance(names, (list, tuple))
+        or len(mod.lines) != len(set(names))
+        or {line.obligation_key for line in mod.lines} != set(names)
+    ):
+        raise ValueError("Outgoing regroup requires the complete moved obligation population")
+    for line in mod.lines:
+        if line.action != "REMOVE" or line.obligation_key not in own:
+            raise ValueError("Outgoing regroup must remove a resolved source obligation")
+        if treatments.get(line.obligation_key) != "PROSPECTIVE":
+            raise ValueError(
+                "Outgoing regroup must preserve prior income with prospective treatment"
+            )
+        ob = own[line.obligation_key]
+        segment = segments.in_force(st, ob, ev)
+        if segment is None or ob.scope_flag != "IN_SCOPE_606":
+            raise ValueError("Outgoing regroup requires a current in-scope fixed allocation")
+        current = segments.measure(ctx, st, ob, segment, ev)
+        remaining = segment.a_posted - current.posted
+        if remaining < 0 or current.remaining_quantity <= 0:
+            raise ValueError("Outgoing regroup has no transferable remaining service")
+        if (
+            line.quantity_delta != -current.remaining_quantity
+            or line.consideration_delta != -Fraction(remaining, 10 ** segments.minor_unit(ctx))
+        ):
+            raise ValueError("Outgoing regroup basis changed; rebuild the paired transfer")

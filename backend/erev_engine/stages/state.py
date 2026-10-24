@@ -265,6 +265,7 @@ class BookContext:
     combined_unit_term_reassessment: bool = False
     combined_time_term_reassessment: bool = False
     combined_input_term_reassessment: bool = False
+    regroup_source_conservation: bool = False
     regroup_book_basis: bool = False
     regroup_future_service: bool = False
     combined_unit_mixed_reassessment: bool = False

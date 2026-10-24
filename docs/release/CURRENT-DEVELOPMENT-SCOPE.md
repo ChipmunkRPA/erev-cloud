@@ -2092,3 +2092,17 @@ and source evidence per framework book in both modifications; public after-posti
 refused pending source conservation, non-fixed components, target compatibility, approval
 freshness and atomic apply. 44 focused book/transfer/line cases and scoped types/lint pass.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Outgoing source conservation and evidence correction
+
+Revision 37 remeasures each outgoing resolved obligation and requires the signed transfer to
+match current remaining units and fixed minor-unit allocation under PROSPECTIVE treatment.
+Changed bases require rebuilding the pair. Native time and partial-delivery cases reconcile
+source retained income plus target received remainder to the original allocation, with exact
+trace replay. Incoming fixtures now populate actual approved chosen_treatments.
+
+Correction to the October 24 future-service entry: earlier event-only treatment settings did
+not prove SEPARATE_CONTRACT processing; they exercised unpooled additions. The checkpoint and
+tests now state that limit. Public paired application and the other transfer gaps remain open.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.

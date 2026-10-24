@@ -1508,6 +1508,8 @@ def _regrouped(
         mod = regroup.book_basis(mod, ev, ctx.book_code, currency=ctx.txn_currency)
     if ctx.regroup_future_service:
         mod = regroup.future_service(mod, ev)
+    if ctx.regroup_source_conservation:
+        regroup.validate_outgoing(ctx, st, mod, ev, found.chosen_treatments)
     route = _Route(mod, _treatments(found.chosen_treatments, ev), _ssp_basis(found.ssp_basis, ev))
     return _native(ctx, st, ev, tb, identified, price_at, route)
 

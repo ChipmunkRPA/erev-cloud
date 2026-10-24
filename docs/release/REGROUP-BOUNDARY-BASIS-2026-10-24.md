@@ -33,9 +33,9 @@ use the effective date, and a term ending before the transfer is refused. Author
 modification inputs remain intact; the effective calculation view supplies the future-service
 term. Amount and quantity are not inferred or changed by this rule.
 
-This applies before native PROSPECTIVE and SEPARATE_CONTRACT processing. OUT events and
+This applies before native incoming addition processing. OUT events and
 before-posting booking moves retain their existing paths. Evidence revisions through 34 retain
-old behavior for replay. Seven focused cases cover both treatments, old revision, earlier/missing/
+old behavior for replay. The original test-treatment scope was corrected below. Cases cover old revision, earlier/missing/
 later starts, expired terms, trace replay and the existing before-posting move. Scoped types/lint
 pass. Public after-posting regroup remains refused: dated amounts and quantities, all relevant
 components/books, paired approval and atomic transfer still require integration. No deployment.
@@ -91,3 +91,28 @@ transfer now adds its consideration; before-posting moves are not double counted
 lint/types pass. Remaining work includes other consideration components, source-side transfer
 conservation, target book compatibility, approval-time basis validation and atomic paired apply.
 No deployment.
+
+
+## Revision 37: source conservation
+
+Outgoing native transfers now remeasure the resolved source obligations at the original event
+position and require each REMOVE amount and quantity to equal the current fixed remainder.
+Only PROSPECTIVE treatment is admitted for outgoing obligations so earlier income remains at
+the source. Changed amounts or quantities require rebuilding the paired transfer. This check
+uses the live original-input state for the calculation book; it does not trust a saved digest as
+proof of freshness. Before-posting moves and evidence revisions through 36 retain prior behavior.
+
+Focused native time-service and partial-unit-delivery cases now prove source revenue equals the
+pre-transfer recognized amount, source remaining allocation becomes zero, target allocation
+equals the removed remainder, and source retained allocation plus target received allocation
+reconciles to the original. Exact trace replay passes; changed amounts, changed quantities and
+catch-up treatment are refused. Incoming checks also now set the approved modification's actual
+chosen treatments for the PROSPECTIVE path.
+
+Evidence correction: earlier incoming fixtures changed only the event's treatments, while
+REGROUPED reads chosen_treatments from the approved modification. The earlier claim of
+SEPARATE_CONTRACT coverage was therefore unsupported. Those cases represented an unpooled
+addition; their names and setup are corrected. This native handler still refuses an explicit
+SEPARATE_CONTRACT chosen treatment, which uses a separate booking workflow and is not proven
+by these regroup checks. Public paired approval/application, other consideration components,
+other progress methods and target book compatibility remain outstanding. No deployment.

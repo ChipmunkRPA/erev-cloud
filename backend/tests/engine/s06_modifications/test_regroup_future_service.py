@@ -10,14 +10,18 @@ from erev_engine.trace import reevaluate
 from tests.engine.s06_modifications.test_s06_prospective import INCEPTION, MOD_DATE, ex_09_a
 
 
-def incoming(start=INCEPTION, end=None, revision=35, separate=False):
+def incoming(start=INCEPTION, end=None, revision=35, unpooled=False):
     value = ex_09_a()
     contract = value.contracts[0]
     mod = contract.modifications[0]
     line = {**mod.lines[0], "start_date": start.isoformat() if start else None}
     if end is not None:
         line["end_date"] = end.isoformat()
-    mod = replace(mod, lines=(line,))
+    mod = replace(
+        mod,
+        lines=(line,),
+        chosen_treatments={} if unpooled else {"POB-01": "PROSPECTIVE", "POB-02": "PROSPECTIVE"},
+    )
     event = next(e for e in value.events if e.event_type == "CONTRACT_AMENDED")
     event = replace(
         event,
@@ -25,7 +29,7 @@ def incoming(start=INCEPTION, end=None, revision=35, separate=False):
         payload={
             **event.payload,
             "lines": [line],
-            **({"treatments": {"POB-02": "SEPARATE_CONTRACT"}} if separate else {}),
+            **({"treatments": {}} if unpooled else {}),
             "direction": "IN",
             "regroup_id": "RG-1",
             "counterpart_contract_id": "SOURCE",
@@ -70,10 +74,10 @@ def test_regroup_keeps_old_evidence_behavior_and_refuses_expired_service():
         compute(incoming(end=date(2026, 9, 15)))
 
 
-def test_separate_contract_regroup_also_uses_only_future_service():
-    value = incoming(separate=True)
+def test_unpooled_regroup_also_uses_only_future_service():
+    value = incoming(unpooled=True)
     actual = compute(value).books[0]
-    expected = compute(incoming(MOD_DATE, separate=True)).books[0]
+    expected = compute(incoming(MOD_DATE, unpooled=True)).books[0]
     moved = next(o for o in actual.obligation_versions if o.columns["obligation_key"] == "POB-02")
     assert moved.columns["start_date"] == MOD_DATE
     assert actual.schedules == expected.schedules
@@ -81,7 +85,7 @@ def test_separate_contract_regroup_also_uses_only_future_service():
 
 
 def test_regroup_book_specific_amount_drives_both_price_and_native_allocation():
-    value = incoming(separate=True, revision=36)
+    value = incoming(unpooled=True, revision=36)
     contract = value.contracts[0]
     mod = contract.modifications[0]
     maps = {
@@ -153,7 +157,7 @@ def test_regroup_book_specific_amount_drives_both_price_and_native_allocation():
 def test_revision_36_counts_unmapped_transfer_and_does_not_double_booking_moves():
     from tests.engine.s06_modifications.test_s06_exercise import regroup_bundle
 
-    output = compute(incoming(revision=36, separate=True)).books[0]
+    output = compute(incoming(revision=36, unpooled=True)).books[0]
     moved = next(o for o in output.obligation_versions if o.columns["obligation_key"] == "POB-02")
     assert moved.columns["allocated_amount"] == 6000000
     assert output.contract_version.columns["transaction_price"] == 30000000

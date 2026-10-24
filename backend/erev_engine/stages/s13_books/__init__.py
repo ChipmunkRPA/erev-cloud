@@ -362,6 +362,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         combined_unit_term_reassessment=(cb.bundle.evidence_revision or 0) >= 30,
         combined_time_term_reassessment=(cb.bundle.evidence_revision or 0) >= 31,
         combined_input_term_reassessment=(cb.bundle.evidence_revision or 0) >= 32,
+        regroup_source_conservation=(cb.bundle.evidence_revision or 0) >= 37,
         regroup_book_basis=(cb.bundle.evidence_revision or 0) >= 36,
         regroup_future_service=(cb.bundle.evidence_revision or 0) >= 35,
         combined_unit_mixed_reassessment=(cb.bundle.evidence_revision or 0) >= 34,
