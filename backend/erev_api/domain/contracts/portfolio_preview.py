@@ -1,6 +1,7 @@
-"""Read-only current computed SSP preview; application must freeze an effective-date basis."""
+"""Verified effective-date SSP preview; approval must still freeze the shown basis."""
 
 from decimal import Decimal
+from fractions import Fraction
 from uuid import UUID
 
 from sqlalchemy import select
@@ -11,13 +12,17 @@ from erev_api.db.tables import combination_group, contract, material_right, obli
 from erev_api.domain.contracts import (
     bundles,
     portfolio_allocation,
+    portfolio_effective_basis,
     portfolio_estimate_versions,
     portfolio_ssp_fx,
     portfolios,
     queries,
 )
+from erev_api.domain.reports import computation_sources
 from erev_api.problems import Problem
 from erev_api.schemas.portfolios import PortfolioBreakagePreviewOut, PortfolioBreakageShareOut
+from erev_api.uow import UnitOfWork
+from erev_engine.errors import EngineError
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
 
@@ -28,6 +33,8 @@ def preview(
     estimate_id: UUID,
     version_id: UUID,
     book_code: str | None = None,
+    *,
+    uow: UnitOfWork,
 ) -> PortfolioBreakagePreviewOut:
     definition = portfolios.get_estimate_definition(session, ctx, portfolio_id, estimate_id)
     version = portfolio_estimate_versions.get(session, ctx, portfolio_id, estimate_id, version_id)
@@ -64,6 +71,8 @@ def preview(
     weights = []
     conversions = {}
     rate_sets = {}
+    verified = {}
+    provenance = {}
     for member in members:
         current = (
             session.execute(select(contract).where(contract.c.id == member["contract_id"]))
@@ -137,14 +146,39 @@ def preview(
                 "validation-failed",
                 "The saved breakage targets differ. Save the draft again before previewing.",
             )
+        computation_id = computed["contract_computation_id"]
+        if computation_id not in verified:
+            verified[computation_id] = computation_sources.read_for_report(
+                uow, computation_id, permission="contract.read"
+            )
+        original = verified[computation_id]
+        try:
+            historical = portfolio_effective_basis.from_bundle(
+                original.bundle,
+                book,
+                version.effective_date,
+                [
+                    obligation_subject_key(current["external_id"], row["obligation_key"])
+                    for row in eligible
+                ],
+            )
+        except EngineError as error:
+            raise Problem(
+                "validation-failed",
+                f"The retained contract cannot supply the dated allocation basis ({error.code}).",
+            ) from error
         for row in eligible:
             key = obligation_subject_key(current["external_id"], row["obligation_key"])
-            ssp = Decimal(
-                row["original_ssp_selected"]
-                if row["modification_boundary_no"] == 0
-                else row["remaining_ssp"]
-            )
-            currency = str(row["txn_currency"]).strip()
+            dated = historical[key]
+            if not dated.redemption_eligible:
+                raise Problem(
+                    "validation-failed",
+                    "A target was not a redemption or loyalty obligation "
+                    "on the estimate effective date.",
+                )
+            ssp = dated.ssp
+            currency = dated.currency
+            provenance[key] = original
             if currency != version.currency:
                 if currency not in rate_sets:
                     rate_sets[currency] = bundles.fx_rate_inputs(
@@ -154,8 +188,15 @@ def preview(
                     ssp, currency, version.currency, version.effective_date, rate_sets[currency]
                 )
                 conversions[key] = conversion
-                ssp = Decimal(conversion.converted_ssp)
-            quantity = Decimal(row["quantity"])
+                ssp = Fraction(conversion.converted_ssp)
+            try:
+                quantity = Decimal(
+                    portfolio_allocation.text_of_units(
+                        portfolio_allocation.units(dated.entitlement)
+                    )
+                )
+            except ValueError as error:
+                raise Problem("validation-failed", str(error)) from error
             weights.append(portfolio_allocation.Basis(key, ssp, quantity))
             sources.append((key, current, row, ssp, quantity))
     try:
@@ -163,6 +204,7 @@ def preview(
     except ValueError as error:
         raise Problem("validation-failed", str(error)) from error
     return PortfolioBreakagePreviewOut(
+        effective_date=version.effective_date,
         portfolio_id=portfolio_id,
         version_id=version_id,
         book_code=book,
@@ -179,6 +221,8 @@ def preview(
                 obligation_id=row["obligation_id"],
                 obligation_key=row["obligation_key"],
                 ssp=str(ssp),
+                computation_id=provenance[key].computation_id,
+                computation_output_sha256=provenance[key].output_sha256,
                 ssp_conversion=conversions.get(key),
                 entitlement_quantity=str(quantity),
                 breakage_quantity=shares[key],

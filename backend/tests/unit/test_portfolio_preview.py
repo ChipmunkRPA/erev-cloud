@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from fractions import Fraction
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
@@ -11,6 +12,10 @@ import pytest
 from erev_api.domain.contracts import portfolio_preview as service
 from erev_api.problems import Problem
 from erev_engine.bundle import FxRateInput
+
+
+def _preview(*args, **kwargs):
+    return service.preview(*args, uow=Mock(), **kwargs)
 
 
 def setup_preview(
@@ -119,13 +124,42 @@ def setup_preview(
     )
     monkeypatch.setattr(service.queries, "primary_book", Mock(return_value="PRIMARY"))
     monkeypatch.setattr(service.queries, "version_at", Mock(side_effect=computed))
+    sources = {}
+    for index in range(len(members)):
+        current, _, rows = results[index * 3 : index * 3 + 3]
+        for row in rows:
+            key = service.obligation_subject_key(current["external_id"], row["obligation_key"])
+            sources[key] = service.portfolio_effective_basis.Basis(
+                key,
+                current["external_id"],
+                row["obligation_key"],
+                row["txn_currency"],
+                Fraction(row["original_ssp_selected"]),
+                Fraction(row["quantity"]),
+                date(2026, 10, 1),
+                True,
+            )
+    monkeypatch.setattr(
+        service.computation_sources,
+        "read_for_report",
+        Mock(
+            side_effect=lambda uow, cid, **kw: SimpleNamespace(
+                bundle=object(), computation_id=cid, output_sha256="a" * 64
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        service.portfolio_effective_basis,
+        "from_bundle",
+        Mock(side_effect=lambda bundle, book, day, keys: {key: sources[key] for key in keys}),
+    )
     return session, Mock(), portfolio, estimate, version
 
 
 def test_retained_ssp_source_and_total(monkeypatch):
     args = setup_preview(monkeypatch)
-    value = service.preview(*args)
-    assert value.basis == "CURRENT_COMPUTED_SSP_PREVIEW"
+    value = _preview(*args)
+    assert value.basis == "EFFECTIVE_DATE_SSP_PREVIEW"
     assert value.allocated_total == value.total_breakage_quantity == "9"
     assert [(row.contract_external_id, row.ssp, row.breakage_quantity) for row in value.shares] == [
         ("A", "100", "3"),
@@ -138,7 +172,7 @@ def test_retained_ssp_source_and_total(monkeypatch):
 
 def test_refuses_dirty_population(monkeypatch):
     with pytest.raises(Problem, match="Recompute"):
-        service.preview(*setup_preview(monkeypatch, dirty=True))
+        _preview(*setup_preview(monkeypatch, dirty=True))
 
 
 def rate(**changes):
@@ -175,7 +209,7 @@ def test_foreign_weights_change_allocation_and_expose_original_source(monkeypatc
             ]
         ),
     )
-    value = service.preview(*args)
+    value = _preview(*args)
     assert [row.breakage_quantity for row in value.shares] == ["4.5", "4.5"]
     assert value.allocated_total == "9"
     a, b = value.shares
@@ -199,7 +233,7 @@ def test_missing_inverse_or_future_rates_refuse_complete_preview(monkeypatch, ra
     args = setup_preview(monkeypatch, currency="GBP")
     monkeypatch.setattr(service.bundles, "fx_rate_inputs", Mock(return_value=rates))
     with pytest.raises(Problem, match="Publish a direct GBP/USD"):
-        service.preview(*args)
+        _preview(*args)
 
 
 def test_ssp_conversion_does_not_round_small_weights():
@@ -221,7 +255,7 @@ def test_ssp_conversion_does_not_round_small_weights():
     ],
 )
 def test_delimiters_preserve_independent_original_allocation_sources(monkeypatch, identities):
-    value = service.preview(*setup_preview(monkeypatch, identities=identities))
+    value = _preview(*setup_preview(monkeypatch, identities=identities))
     assert value.allocated_total == "9"
     assert {
         (row.contract_external_id, row.obligation_key): row.breakage_quantity
@@ -234,7 +268,7 @@ def test_delimiters_preserve_independent_original_allocation_sources(monkeypatch
 
 
 def test_selected_targets_exclude_other_eligible_obligations(monkeypatch):
-    value = service.preview(*setup_preview(monkeypatch, targets=("POINTS",), extra=True))
+    value = _preview(*setup_preview(monkeypatch, targets=("POINTS",), extra=True))
     assert [
         (s.contract_external_id, s.obligation_key, s.breakage_quantity) for s in value.shares
     ] == [("A", "POINTS", "3"), ("B", "POINTS", "6")]
@@ -246,7 +280,7 @@ def test_selected_target_missing_from_one_member_refuses_preview(monkeypatch):
         monkeypatch, targets=("POINTS",), identities=(("A", "POINTS"), ("B", "OTHER"))
     )
     with pytest.raises(Problem, match="Every member must retain every selected"):
-        service.preview(*args)
+        _preview(*args)
 
 
 def test_breakage_definition_resolves_common_targets_for_each_member():
@@ -273,7 +307,7 @@ def test_breakage_definition_resolves_common_targets_for_each_member():
 
 def test_version_breakage_targets_override_definition(monkeypatch):
     args = setup_preview(monkeypatch, targets=("POINTS",), extra=True, version_targets=("OTHER",))
-    value = service.preview(*args)
+    value = _preview(*args)
     assert {row.obligation_key for row in value.shares} == {"OTHER"}
     assert [row.breakage_quantity for row in value.shares] == ["4.5", "4.5"]
 
@@ -282,4 +316,41 @@ def test_version_breakage_targets_override_definition(monkeypatch):
 def test_version_breakage_targets_reject_changed_original_identities(monkeypatch, changed):
     args = setup_preview(monkeypatch, version_targets=("POINTS",), **{changed: True})
     with pytest.raises(Problem, match="Save the draft again"):
-        service.preview(*args)
+        _preview(*args)
+
+
+def test_effective_basis_replaces_latest_weights_and_retains_original_sources(monkeypatch):
+    from dataclasses import replace
+
+    args = setup_preview(monkeypatch)
+    original = service.portfolio_effective_basis.from_bundle.side_effect
+
+    def earlier(bundle, book, day, keys):
+        assert day == date(2026, 10, 1)
+        return {
+            key: replace(value, ssp=Fraction(1 if value.contract_key == "A" else 8))
+            for key, value in original(bundle, book, day, keys).items()
+        }
+
+    service.portfolio_effective_basis.from_bundle.side_effect = earlier
+    value = _preview(*args)
+    assert [s.breakage_quantity for s in value.shares] == ["1", "8"]
+    assert value.effective_date == date(2026, 10, 1)
+    assert all(s.computation_output_sha256 == "a" * 64 for s in value.shares)
+    assert len({s.computation_id for s in value.shares}) == 2
+    assert all(
+        call.kwargs == {"permission": "contract.read"}
+        for call in service.computation_sources.read_for_report.call_args_list
+    )
+
+
+def test_fractional_foreign_ssp_remains_exact():
+    value = service.portfolio_ssp_fx.convert(
+        Fraction(1, 3),
+        "GBP",
+        "USD",
+        date(2026, 10, 1),
+        [rate(rate=Decimal("1.25"))],
+    )
+    assert value.original_ssp == "1/3"
+    assert value.converted_ssp == "5/12"

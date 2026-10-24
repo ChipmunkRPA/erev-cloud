@@ -109,3 +109,26 @@ Fourteen focused cases pass with scoped lint/types. Public preview and approval/
 not yet been connected to this reader; their existing current-computation preview remains unchanged.
 FX conversion and frozen approval capture must preserve the exact rational weights during integration.
 No deployment.
+
+
+## October 24: effective-date preview available through API and UI
+
+The public allocation preview now opens a read-only repeatable-read transaction, verifies each
+retained computation with `contract.read`, and uses the dated native allocation reader. Current
+computed versions identify and validate the saved target population; they no longer supply the
+SSP weights or entitlement quantities. A target must also be redemption/loyalty eligible at the
+estimate date. Native replay refusals become validation responses rather than substitute amounts.
+
+The response uses EFFECTIVE_DATE_SSP_PREVIEW and includes the effective date, original computation
+ID and verified output digest per share. The UI shows those sources and the effective date.
+Foreign SSP conversion preserves exact rational amounts through multiplication and allocation;
+fraction strings are intentional, not monetary posting amounts. The selector offers ASC606 and
+IFRS15; a LEGACY primary book requires an explicit supported book selection.
+
+Validation: 29 focused allocation/preview/native-reader cases, one UI interaction (book changes,
+refresh and refusal), the public portfolio membership workflow (including unauthorized and
+ineligible preview refusals), frontend types, scoped backend types/lint. The public workflow has
+no eligible redemption contract and therefore does not prove an end-to-end positive computation
+source read; native replay and positive preview assembly are covered separately. Approval input
+freezing, shared breakage application and the expected-redemption rule remain outstanding.
+No deployment.

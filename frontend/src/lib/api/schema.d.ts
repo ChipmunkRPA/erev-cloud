@@ -20212,14 +20212,19 @@ export interface components {
       allocated_total: string;
       /**
        * Basis
-       * @default CURRENT_COMPUTED_SSP_PREVIEW
+       * @default EFFECTIVE_DATE_SSP_PREVIEW
        * @constant
        */
-      basis: "CURRENT_COMPUTED_SSP_PREVIEW";
+      basis: "EFFECTIVE_DATE_SSP_PREVIEW";
       /** Book Code */
       book_code: string;
       /** Currency */
       currency: string;
+      /**
+       * Effective Date
+       * Format: date
+       */
+      effective_date: string;
       /**
        * Portfolio Id
        * Format: uuid
@@ -20239,6 +20244,13 @@ export interface components {
     PortfolioBreakageShareOut: {
       /** Breakage Quantity */
       breakage_quantity: string;
+      /**
+       * Computation Id
+       * Format: uuid
+       */
+      computation_id: string;
+      /** Computation Output Sha256 */
+      computation_output_sha256: string;
       /** Contract External Id */
       contract_external_id: string;
       /**

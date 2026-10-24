@@ -8126,7 +8126,7 @@
   "settings.portfolioImpact.sourceVersion": "Baseline contract version",
   "settings.portfolioImpact.inputHash": "Input hash",
   "settings.portfolioAllocation.title": "Shared breakage SSP allocation",
-  "settings.portfolioAllocation.help": "Preview uses current computed SSP in the selected book (the primary book by default). Foreign SSP weights use published direct spot rates on or before the estimate effective date, without rounding the weights. It does not apply the estimate or freeze the effective-date basis. Recompute members after changes and refresh this preview.",
+  "settings.portfolioAllocation.help": "Preview replays verified contract events through the estimate effective date in the selected ASC606 or IFRS15 book (the primary book by default). SSP ratios remain exact, including fractions. Foreign weights use published direct spot rates on or before that date. This preview does not apply the estimate or freeze approval inputs. Recompute members after changes and refresh.",
   "settings.portfolioAllocation.book": "Allocation book",
   "settings.portfolioAllocation.primaryBook": "Primary book",
   "settings.portfolioAllocation.preview": "Preview SSP allocation",

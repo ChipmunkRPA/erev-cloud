@@ -83,6 +83,8 @@ class PortfolioSspConversionOut(BaseModel):
 
 
 class PortfolioBreakageShareOut(BaseModel):
+    computation_id: UUID
+    computation_output_sha256: str
     contract_id: UUID
     contract_external_id: str
     contract_version_id: UUID
@@ -95,7 +97,8 @@ class PortfolioBreakageShareOut(BaseModel):
 
 
 class PortfolioBreakagePreviewOut(BaseModel):
-    basis: Literal["CURRENT_COMPUTED_SSP_PREVIEW"] = "CURRENT_COMPUTED_SSP_PREVIEW"
+    basis: Literal["EFFECTIVE_DATE_SSP_PREVIEW"] = "EFFECTIVE_DATE_SSP_PREVIEW"
+    effective_date: date
     portfolio_id: UUID
     version_id: UUID
     book_code: str

@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal, localcontext
+from fractions import Fraction
 
 from erev_api.problems import Problem
 from erev_api.schemas.portfolios import PortfolioSspConversionOut
@@ -11,13 +12,13 @@ from erev_engine.stages.s12_fx_entities.rates import RateMissing, Rates
 
 
 def convert(
-    amount: Decimal,
+    amount: Decimal | Fraction,
     source: str,
     target: str,
     effective_date: date,
     rates: Sequence[FxRateInput],
 ) -> PortfolioSspConversionOut:
-    if not amount.is_finite() or amount < 0:
+    if (isinstance(amount, Decimal) and not amount.is_finite()) or amount < 0:
         raise Problem("validation-failed", "SSP weights must be finite and nonnegative.")
     try:
         selected = Rates(rates, source, target).spot(effective_date)
@@ -40,11 +41,16 @@ def convert(
         raise Problem(
             "validation-failed", "An original published SSP conversion source is required."
         )
-    with localcontext() as context:
-        context.prec = max(60, len(amount.as_tuple().digits) + len(rate.as_tuple().digits) + 2)
-        converted = format(amount * rate, "f")
+    if isinstance(amount, Fraction):
+        original_text = str(amount)
+        converted = str(amount * Fraction(rate))
+    else:
+        original_text = format(amount, "f")
+        with localcontext() as context:
+            context.prec = max(60, len(amount.as_tuple().digits) + len(rate.as_tuple().digits) + 2)
+            converted = format(amount * rate, "f")
     return PortfolioSspConversionOut(
-        original_ssp=format(amount, "f"),
+        original_ssp=original_text,
         source_currency=source,
         target_currency=target,
         converted_ssp=converted,

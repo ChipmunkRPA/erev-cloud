@@ -34,19 +34,19 @@ from erev_api.db.tables import contract, estimate, estimate_version, portfolio, 
 from erev_api.domain.contracts import (
     estimates,
     portfolio_estimate_versions,
+    portfolio_impact,
+    portfolio_preview,
+    portfolio_workflow,
     portfolios,
     queries,
-    portfolio_preview,
-    portfolio_impact,
-    portfolio_workflow,
 )
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.estimates import EstimateOut, EstimateVersionOut, EstimateVersionSubmitIn
 from erev_api.schemas.portfolios import (
     PortfolioBreakagePreviewOut,
-    PortfolioImpactOut,
     PortfolioEstimateIn,
     PortfolioEstimateVersionIn,
+    PortfolioImpactOut,
     PortfolioIn,
     PortfolioMemberCloseIn,
     PortfolioMemberIn,
@@ -477,19 +477,18 @@ def allocation_preview(
     estimate_id: UUID,
     version_id: UUID,
     ctx: ReadContext,
+    deps: Deps,
     book_code: str | None = None,
 ) -> PortfolioBreakagePreviewOut:
-    return queries.read(
-        ctx,
-        lambda session: portfolio_preview.preview(
-            session,
-            ctx,
-            portfolio_id,
-            estimate_id,
-            version_id,
-            book_code,
-        ),
-    )
+    with tenant_session(
+        ctx.principal.db_context, read_only=True, isolation_level="REPEATABLE READ"
+    ) as session:
+        uow = UnitOfWork(
+            ctx=ctx, session=session, clock=deps.clock, keyring=deps.keyring, files=deps.files
+        )
+        return portfolio_preview.preview(
+            session, ctx, portfolio_id, estimate_id, version_id, book_code, uow=uow
+        )
 
 
 @router.get(

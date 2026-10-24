@@ -32011,8 +32011,8 @@
             "type": "string"
           },
           "basis": {
-            "const": "CURRENT_COMPUTED_SSP_PREVIEW",
-            "default": "CURRENT_COMPUTED_SSP_PREVIEW",
+            "const": "EFFECTIVE_DATE_SSP_PREVIEW",
+            "default": "EFFECTIVE_DATE_SSP_PREVIEW",
             "title": "Basis",
             "type": "string"
           },
@@ -32022,6 +32022,11 @@
           },
           "currency": {
             "title": "Currency",
+            "type": "string"
+          },
+          "effective_date": {
+            "format": "date",
+            "title": "Effective Date",
             "type": "string"
           },
           "portfolio_id": {
@@ -32047,6 +32052,7 @@
           }
         },
         "required": [
+          "effective_date",
           "portfolio_id",
           "version_id",
           "book_code",
@@ -32062,6 +32068,15 @@
         "properties": {
           "breakage_quantity": {
             "title": "Breakage Quantity",
+            "type": "string"
+          },
+          "computation_id": {
+            "format": "uuid",
+            "title": "Computation Id",
+            "type": "string"
+          },
+          "computation_output_sha256": {
+            "title": "Computation Output Sha256",
             "type": "string"
           },
           "contract_external_id": {
@@ -32107,6 +32122,8 @@
           }
         },
         "required": [
+          "computation_id",
+          "computation_output_sha256",
           "contract_id",
           "contract_external_id",
           "contract_version_id",

@@ -26,6 +26,7 @@ class Basis:
     ssp: Fraction
     entitlement: Fraction
     effective_date: date
+    redemption_eligible: bool = False
 
 
 def from_bundle(
@@ -108,6 +109,11 @@ def from_bundle(
             ssp,
             ob.quantity,
             effective_date,
+            ob.recognition_method == "REDEMPTION_PATTERN"
+            or (
+                ob.material_right is not None
+                and ob.material_right.terms.option_type == "LOYALTY_POINTS"
+            ),
         )
     if set(result) != requested:
         raise Problem(

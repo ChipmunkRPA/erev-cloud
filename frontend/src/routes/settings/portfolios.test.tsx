@@ -477,7 +477,8 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
         requestedBooks.push(book);
         if (refuse) return problemResponse("validation-failed", 422, "Recompute every member");
         return HttpResponse.json({
-          basis: "CURRENT_COMPUTED_SSP_PREVIEW",
+          basis: "EFFECTIVE_DATE_SSP_PREVIEW",
+          effective_date: "2026-10-01",
           portfolio_id: "p1",
           version_id: "v1",
           book_code: book ?? "PRIMARY",
@@ -488,6 +489,8 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
             {
               contract_id: "c1",
               contract_external_id: "LOYALTY-A",
+              computation_id: "original-computation",
+              computation_output_sha256: "a".repeat(64),
               contract_version_id: book ? "ifrs-source" : "retained-source-1",
               obligation_id: "o1",
               obligation_key: "POINTS",

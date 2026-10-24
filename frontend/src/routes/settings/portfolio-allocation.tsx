@@ -45,7 +45,7 @@ export function PortfolioAllocation({
             onChange={setBook}
             options={[
               { value: "", label: label("primaryBook") },
-              ...(["ASC606", "IFRS15", "LEGACY"] as const).map((value) => ({
+              ...(["ASC606", "IFRS15"] as const).map((value) => ({
                 value,
                 label: value,
               })),
@@ -70,6 +70,8 @@ export function PortfolioAllocation({
             {preview.data.book_code}
             {" · "}
             {preview.data.currency}
+            {" · "}
+            {label("effectiveDate")}: {preview.data.effective_date}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-body-sm">
@@ -118,7 +120,13 @@ export function PortfolioAllocation({
                     </td>
                     <td className="p-2">{share.entitlement_quantity}</td>
                     <td className="p-2">{share.breakage_quantity}</td>
-                    <td className="p-2">{share.contract_version_id}</td>
+                    <td className="p-2">
+                      <details>
+                        <summary>{share.contract_version_id}</summary>
+                        <p>{share.computation_id}</p>
+                        <p className="break-all">{share.computation_output_sha256}</p>
+                      </details>
+                    </td>
                   </tr>
                 ))}
               </tbody>
