@@ -1,7 +1,9 @@
 """Verified effective-date SSP preview; approval must still freeze the shown basis."""
 
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from fractions import Fraction
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -111,25 +113,18 @@ def preview(
                 select(obligation_version).where(
                     obligation_version.c.contract_version_id == computed["id"],
                     obligation_version.c.contract_id == current["id"],
-                    obligation_version.c.scope_flag == "IN_SCOPE_606",
                 )
             )
             .mappings()
             .all()
         )
-        eligible = [
-            row
-            for row in rows
-            if str(row["recognition_method"]) == "REDEMPTION_PATTERN"
-            or row["obligation_id"] in loyalty
-        ]
+        eligible = _target_candidates([dict(row) for row in rows], target_keys, loyalty)
         if target_keys:
-            eligible = [row for row in eligible if row["obligation_key"] in target_keys]
             if {row["obligation_key"] for row in eligible} != target_keys:
                 raise Problem(
                     "validation-failed",
-                    "Every member must retain every selected breakage target as an "
-                    "in-scope redemption or loyalty obligation. Recompute or revise the targets.",
+                    "Every member must retain every selected breakage target identity. "
+                    "Recompute or revise the targets.",
                 )
         if not eligible:
             raise Problem(
@@ -230,3 +225,21 @@ def preview(
             for key, current, row, ssp, quantity in sorted(sources, key=lambda item: item[0])
         ],
     )
+
+
+def _target_candidates(
+    rows: Sequence[Mapping[str, Any]], target_keys: set[str], loyalty: set[UUID]
+) -> list[Mapping[str, Any]]:
+    # Explicit keys select original identities only. Historical eligibility is decided
+    # by the verified dated fold, even when the latest scope or recognition method differs.
+    if target_keys:
+        return [row for row in rows if row["obligation_key"] in target_keys]
+    return [
+        row
+        for row in rows
+        if row["scope_flag"] == "IN_SCOPE_606"
+        and (
+            str(row["recognition_method"]) == "REDEMPTION_PATTERN"
+            or row["obligation_id"] in loyalty
+        )
+    ]

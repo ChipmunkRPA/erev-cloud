@@ -164,3 +164,18 @@ This is a workflow primitive, not an enabled submission/application path: the ca
 authorize/capture the preview under the source locks, persist the snapshot on submission, recheck
 it at approval and apply the member pins atomically. The expected-redemption denominator decision
 remains pending. No approval, financial application, API schema change or deployment in this step.
+
+
+## Explicit breakage targets use dated eligibility — October 24, 2026
+
+Shared breakage allocation preview no longer discards explicitly selected original target keys
+because the latest obligation projection has a different recognition method or scope. Current
+rows supply identities; verified native folding at the estimate effective date still determines
+scope, redemption eligibility, SSP and entitlement. Missing identities remain a refusal.
+Unspecified target populations retain their existing current-eligibility selection policy.
+
+Three focused selection regressions and three native dated-basis cases pass, together with the
+existing populated public preview workflow and scoped lint/types. The selection regressions
+exercise differing current classifications; they do not claim a new full reclassification workflow.
+Shared breakage application still requires the unresolved expected-redemption denominator and
+frozen member application integration. No approval, posting or deployment was enabled.
