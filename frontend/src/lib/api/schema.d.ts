@@ -22994,6 +22994,8 @@ export interface components {
     };
     /** SharedEstimateApplicationBasis */
     SharedEstimateApplicationBasis: {
+      /** Cost Conversions */
+      cost_conversions?: components["schemas"]["SharedEstimateCostConversion"][];
       /** Members */
       members: components["schemas"]["SharedEstimateMemberBinding"][];
       /**
@@ -23009,6 +23011,32 @@ export interface components {
        * @constant
        */
       schema_version: 1;
+    };
+    /** SharedEstimateCostConversion */
+    SharedEstimateCostConversion: {
+      /** Converted Costs */
+      converted_costs: {
+        [key: string]: string;
+      };
+      /** Original Costs */
+      original_costs: {
+        [key: string]: string;
+      };
+      /** Rate */
+      rate: string;
+      /**
+       * Rate Date
+       * Format: date
+       */
+      rate_date: string;
+      /** Rate Key */
+      rate_key: string;
+      /** Rate Version Key */
+      rate_version_key: string;
+      /** Source Currency */
+      source_currency: string;
+      /** Target Currency */
+      target_currency: string;
     };
     /** SharedEstimateMemberBinding */
     SharedEstimateMemberBinding: {

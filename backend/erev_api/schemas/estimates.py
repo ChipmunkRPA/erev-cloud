@@ -245,11 +245,23 @@ class SharedEstimateMemberBinding(BaseModel):
     obligation_keys: list[str]
 
 
+class SharedEstimateCostConversion(BaseModel):
+    source_currency: str
+    target_currency: str
+    rate_key: str
+    rate_version_key: str
+    rate_date: date
+    rate: str
+    original_costs: dict[str, str]
+    converted_costs: dict[str, str]
+
+
 class SharedEstimateApplicationBasis(BaseModel):
     schema_version: Literal[1] = 1
     portfolio_id: uuid.UUID
     members: list[SharedEstimateMemberBinding]
     retired_members: list[SharedEstimateMemberBinding] = Field(default_factory=list)
+    cost_conversions: list[SharedEstimateCostConversion] = Field(default_factory=list)
 
 
 class EstimateVersionOut(BaseModel):

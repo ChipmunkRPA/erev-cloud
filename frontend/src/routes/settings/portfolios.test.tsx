@@ -608,6 +608,18 @@ it("submits saved shared returns with an ETag and opens the resulting approval",
       schema_version: 1,
       portfolio_id: "p1",
       members: [],
+      cost_conversions: [
+        {
+          source_currency: "GBP",
+          target_currency: "USD",
+          rate: "1.25",
+          rate_date: "2026-10-01",
+          rate_key: "COST-SPOT@v1/GBP/USD/2026-10-01",
+          rate_version_key: "COST-SPOT@v1",
+          original_costs: { carrying_cost_per_unit: "12.50", recovery_cost_per_unit: "0.01" },
+          converted_costs: { carrying_cost_per_unit: "15.625", recovery_cost_per_unit: "0.0125" },
+        },
+      ],
       retired_members: [
         {
           contract_id: "c1",
@@ -644,6 +656,11 @@ it("submits saved shared returns with an ETag and opens the resulting approval",
     screen.getByRole("heading", { name: "Members leaving this shared estimate" }),
   ).toBeTruthy();
   expect(screen.getByText("CONTRACT-1: GOODS")).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Saved unit-cost currency conversions" }),
+  ).toBeTruthy();
+  expect(screen.getByText("Carrying cost per unit: 12.50 GBP → 15.625 USD")).toBeTruthy();
+  expect(screen.getByText(/COST-SPOT@v1 · COST-SPOT@v1\/GBP\/USD/)).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Rate (0 to 1)"), { target: { value: "0.2" } });
   expect(
     screen.getByRole("button", { name: "Submit for approval" }).getAttribute("aria-disabled"),

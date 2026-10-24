@@ -38814,6 +38814,13 @@
       },
       "SharedEstimateApplicationBasis": {
         "properties": {
+          "cost_conversions": {
+            "items": {
+              "$ref": "#/components/schemas/SharedEstimateCostConversion"
+            },
+            "title": "Cost Conversions",
+            "type": "array"
+          },
           "members": {
             "items": {
               "$ref": "#/components/schemas/SharedEstimateMemberBinding"
@@ -38845,6 +38852,61 @@
           "members"
         ],
         "title": "SharedEstimateApplicationBasis",
+        "type": "object"
+      },
+      "SharedEstimateCostConversion": {
+        "properties": {
+          "converted_costs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Converted Costs",
+            "type": "object"
+          },
+          "original_costs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Original Costs",
+            "type": "object"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": "string"
+          },
+          "rate_date": {
+            "format": "date",
+            "title": "Rate Date",
+            "type": "string"
+          },
+          "rate_key": {
+            "title": "Rate Key",
+            "type": "string"
+          },
+          "rate_version_key": {
+            "title": "Rate Version Key",
+            "type": "string"
+          },
+          "source_currency": {
+            "title": "Source Currency",
+            "type": "string"
+          },
+          "target_currency": {
+            "title": "Target Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_currency",
+          "target_currency",
+          "rate_key",
+          "rate_version_key",
+          "rate_date",
+          "rate",
+          "original_costs",
+          "converted_costs"
+        ],
+        "title": "SharedEstimateCostConversion",
         "type": "object"
       },
       "SharedEstimateMemberBinding": {

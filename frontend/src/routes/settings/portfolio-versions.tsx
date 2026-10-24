@@ -167,6 +167,31 @@ export function PortfolioVersions({
           ) : null}
         </section>
       ) : null}
+      {selected &&
+      selected !== "new" &&
+      (selected.portfolio_application_basis?.cost_conversions ?? []).length > 0 ? (
+        <section aria-label={label("costFx")} className="flex flex-col gap-2">
+          <h4 className="text-heading-sm">{label("costFx")}</h4>
+          <p className="text-body-sm text-fg-2">{label("costFxHelp")}</p>
+          {selected.portfolio_application_basis?.cost_conversions?.map((conversion) => (
+            <div key={conversion.target_currency} className="flex flex-col gap-1">
+              <p>
+                {conversion.source_currency} → {conversion.target_currency}: {conversion.rate} (
+                {conversion.rate_date})
+              </p>
+              <p>
+                {conversion.rate_version_key} · {conversion.rate_key}
+              </p>
+              {(["carrying_cost_per_unit", "recovery_cost_per_unit"] as const).map((key) => (
+                <p key={key}>
+                  {label(key)}: {conversion.original_costs[key]} {conversion.source_currency} →{" "}
+                  {conversion.converted_costs[key]} {conversion.target_currency}
+                </p>
+              ))}
+            </div>
+          ))}
+        </section>
+      ) : null}
       {selected === null ? null : (
         <VersionForm
           key={selected === "new" ? "new" : `${selected.id}:${selected.row_version}`}

@@ -67,10 +67,12 @@ def preview(
         if SharedEstimateApplicationBasis.model_validate(
             row["portfolio_application_basis"]
         ) != SharedEstimateApplicationBasis.model_validate(
-            portfolio_binding.capture(session, portfolio_id, element)
+            portfolio_binding.capture(session, portfolio_id, element, values=row)
         ):
             raise Problem(
-                "validation-failed", "Member bindings changed. Save the draft again before preview."
+                "validation-failed",
+                "Member bindings or cost-conversion rates changed. "
+                "Save the draft again before preview.",
             )
     member_ids = (
         portfolio_binding.recipients(row["portfolio_application_basis"])

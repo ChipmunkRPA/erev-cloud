@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id, transitions
+from erev_api.db.locking import hold_fx_publication
 from erev_api.db.tables import estimate, estimate_version
 from erev_api.domain.contracts import estimates, portfolios, portfolio_allocation, portfolio_binding
 from erev_api.problems import Problem
@@ -63,7 +64,8 @@ def save(
     version_id: UUID | None = None,
     discard: bool = False,
 ) -> EstimateVersionOut:
-    # All shared draft commands take the population lock first, matching membership edits.
+    # Match submission/approval lock order before freezing rate and population sources.
+    hold_fx_publication(uow.session, uow.principal.tenant_id)
     parent = portfolios.get(uow.session, portfolio_id, lock=True)
     portfolios.require_estimate_scope(uow.session, uow.ctx, portfolio_id, "estimate.create")
     element = _element(uow.session, uow.ctx, portfolio_id, estimate_id)
@@ -132,7 +134,7 @@ def save(
                     "or expected redemption quantity.",
                 )
         values["portfolio_application_basis"] = portfolio_binding.capture(
-            uow.session, portfolio_id, element
+            uow.session, portfolio_id, element, values=values
         )
         if body.rate is not None and not 0 <= values["rate"] <= 1:
             raise Problem(

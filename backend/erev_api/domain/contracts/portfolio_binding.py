@@ -14,7 +14,7 @@ from erev_api.schemas.estimates import SharedEstimateApplicationBasis, SharedEst
 
 
 def capture(
-    session: Session, portfolio_id: UUID, element: Mapping[str, Any]
+    session: Session, portfolio_id: UUID, element: Mapping[str, Any], *, values: Mapping[str, Any]
 ) -> dict[str, Any] | None:
     if str(element["estimate_kind"]) != "RETURN_RATE" or not element["target_obligation_ids"]:
         return None
@@ -73,8 +73,16 @@ def capture(
         )
     if members and len({tuple(member.obligation_keys) for member in members}) != 1:
         raise Problem("validation-failed", "Shared return member targets must have matching keys.")
+    from erev_api.domain.contracts import portfolio_cost_fx
+
+    conversion = portfolio_cost_fx.capture(
+        session, values, sorted({m.contract_id for m in (*members, *retired)})
+    )
     return SharedEstimateApplicationBasis(
-        portfolio_id=portfolio_id, members=members, retired_members=retired
+        portfolio_id=portfolio_id,
+        members=members,
+        retired_members=retired,
+        cost_conversions=conversion,
     ).model_dump(mode="json")
 
 

@@ -1,6 +1,7 @@
 """Public portfolio membership commands retain history and require current parent ETags."""
 
 from datetime import timedelta
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -793,3 +794,114 @@ def test_portfolio_membership_workflow(
     approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
     assert approved.status_code == 200, approved.text
     assert get(app, rate_path, maya).json()["status"] == "APPROVED"
+
+    # Foreign unit costs require published direct FX and retain it after application.
+    cost_values = {**values, "currency": "GBP", "effective_date": "2026-10-01"}
+    missing_fx = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        cost_values,
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert missing_fx.status_code == 422, missing_fx.text
+    rate_set = post(
+        app,
+        "/api/v1/fx-rate-sets",
+        maya,
+        {"code": "SHARED-COST-SPOT", "name": "Shared cost spot", "rate_type": "spot"},
+    )
+    assert rate_set.status_code == 201, rate_set.text
+
+    def publish_cost_rate(value):
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{rate_set.json()['id']}/versions",
+            maya,
+            {
+                "coverage_from": "2026-10-01",
+                "coverage_to": "2026-10-31",
+                "rates": [
+                    {
+                        "base_currency": "GBP",
+                        "quote_currency": "USD",
+                        "effective_date": "2026-10-01",
+                        "rate": value,
+                    }
+                ],
+            },
+        )
+        assert draft.status_code == 201, draft.text
+        submitted_rate = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            maya,
+            {"comment": "Shared cost conversion"},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert submitted_rate.status_code == 200, submitted_rate.text
+        clock.advance(timedelta(minutes=1))
+        result = approve(app, submitted_rate.json()["pending_approval_request_id"], world.marcus)
+        assert result.status_code == 200, result.text
+
+    publish_cost_rate("1.25")
+    cost_draft = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        cost_values,
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert cost_draft.status_code == 201, cost_draft.text
+    cost_path = cost_draft.headers["location"]
+    fx = cost_draft.json()["portfolio_application_basis"]["cost_conversions"][0]
+    assert fx["source_currency"] == "GBP" and fx["target_currency"] == "USD"
+    assert Decimal(fx["converted_costs"]["carrying_cost_per_unit"]) == Decimal("15.625")
+    assert get(app, cost_path + "/impact-preview", maya).status_code == 200
+    publish_cost_rate("1.50")
+    assert get(app, cost_path + "/impact-preview", maya).status_code == 422
+    refreshed = call(
+        app,
+        "PUT",
+        cost_path,
+        json=cost_values,
+        headers={
+            **cookie_headers(maya.token, maya.csrf_token, key=True),
+            "If-Match": get(app, cost_path, maya).headers["etag"],
+        },
+    )
+    assert refreshed.status_code == 200, refreshed.text
+    fx = refreshed.json()["portfolio_application_basis"]["cost_conversions"][0]
+    assert Decimal(fx["converted_costs"]["carrying_cost_per_unit"]) == Decimal("18.75")
+    attached = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": cost_draft.json()["id"],
+            "file_object_id": file_id,
+        },
+    )
+    assert attached.status_code == 201, attached.text
+    submitted = post(
+        app, cost_path + "/submit", maya, {}, if_match=get(app, cost_path, maya).headers["etag"]
+    )
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    publish_cost_rate("1.75")
+    with tenant_session(context) as session:
+        bundle = bundles.build(session, clone.combination_group["id"], clock.now(), [], "DRY_RUN")
+        converted = next(
+            v
+            for v in bundle.estimate_versions
+            if v.version_no == cost_draft.json()["version_no"]
+            and v.element_code == "TARGETED-RETURNS"
+        )
+        assert converted.currency == "USD"
+        assert Decimal(converted.parameters["carrying_cost_per_unit"]) == Decimal("18.75")
+        assert converted.parameters["shared_unit_cost_fx"]["rate_key"] == fx["rate_key"]
+    assert (
+        get(app, cost_path, maya).json()["portfolio_application_basis"]["cost_conversions"][0] == fx
+    )

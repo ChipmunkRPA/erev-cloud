@@ -1356,6 +1356,7 @@ def _estimate_versions(
         if contract_id is None:
             from .portfolio_engine import shared_return_contract
             from .portfolio_binding import for_group
+            from .portfolio_cost_fx import apply as apply_cost_fx
 
             source_portfolios = portfolios
             if row.get("portfolio_application_basis") is not None:
@@ -1367,6 +1368,16 @@ def _estimate_versions(
                     obligation_owners=obligation_owners or {},
                 )
                 source_portfolios = (PortfolioInput(str(element["portfolio_id"]), recipients),)
+                row = dict(
+                    apply_cost_fx(
+                        row,
+                        {
+                            str(c["transaction_currency"]).strip()
+                            for c in contracts.values()
+                            if str(c["external_id"]) in recipients
+                        },
+                    )
+                )
             external_id = shared_return_contract(
                 row,
                 element,
