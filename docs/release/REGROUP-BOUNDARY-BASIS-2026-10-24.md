@@ -116,3 +116,26 @@ addition; their names and setup are corrected. This native handler still refuses
 SEPARATE_CONTRACT chosen treatment, which uses a separate booking workflow and is not proven
 by these regroup checks. Public paired approval/application, other consideration components,
 other progress methods and target book compatibility remain outstanding. No deployment.
+
+
+## Paired submission and approval consistency
+
+New retained transfer pairs are validated both at submission and, under the existing protecting
+locks, immediately before final approval/application. The pair must contain one REMOVE and one
+ADD for distinct contracts, the same regroup ID, effective date and currency. Every book must
+have the same obligation population and opposite signed amounts/quantities, matching products
+and service terms. Primary-book rows must agree with their retained map. Both modifications
+must carry identical source evidence; amounts/quantities reconcile to that evidence, including
+integral minor units and source allocation less recognized income. Source service dates are now
+retained and determine the permitted future service term.
+
+Ordinary modifications bypass these pair checks. Historical pairs without the new book/evidence
+fields retain the existing workflow; partially populated new evidence is refused. Existing apply
+code appends OUT then IN and recomputes both groups in one unit of work, rolling back on engine
+failure. This change establishes pre-write consistency, not proof that the currently disabled
+public after-posting workflow is complete or that all source freshness cases are covered.
+
+Twelve focused pair checks pass (valid/reordered/read-only, missing side, changed contract/date/
+book/amount/quantity/term, edited primary line, differing source evidence, both sides changed
+against the same source). One ordinary populated public modification workflow still passes
+submission, approval, application and saved reports. Scoped lint/types pass. No deployment.

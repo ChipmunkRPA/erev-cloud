@@ -2106,3 +2106,14 @@ Correction to the October 24 future-service entry: earlier event-only treatment 
 not prove SEPARATE_CONTRACT processing; they exercised unpooled additions. The checkpoint and
 tests now state that limit. Public paired application and the other transfer gaps remain open.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Paired transfer consistency before writes
+
+Added matching-book/population/amount/quantity/term/source-basis validation at submission and
+locked final approval. Primary authored lines must match their book map; retained source dates
+now constrain future service terms. Ordinary modifications retain their path. Twelve focused
+pair cases and one ordinary public approval/application/report workflow pass; scoped types/lint
+pass. Existing OUT/IN transaction handling remains; public after-posting regroup is still gated
+while source freshness, other components/methods and target compatibility are completed.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.

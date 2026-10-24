@@ -50,18 +50,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from erev_engine.bundle import FxRateInput, InputBundle, OutputBundle
-from erev_engine.canonical import canonical_bytes, sha256_hex
-from erev_engine.currencies import ISO_4217
-from erev_engine.errors import EngineError
-from erev_engine.money import cumulative_posted, minor_to_decimal
-from erev_engine.stages.s01_canonicalize import (
-    contract_subject_key,
-    encode_key,
-    obligation_subject_key,
-)
-from erev_engine.stages.s12_fx_entities.rates import SPOT, RateMissing, Rates
-from erev_engine.trace import TraceNode
 from sqlalchemy import and_, func, insert, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
@@ -152,6 +140,18 @@ from erev_api.schemas.modifications import (
     ModificationWithdrawIn,
 )
 from erev_api.uow import UnitOfWork
+from erev_engine.bundle import FxRateInput, InputBundle, OutputBundle
+from erev_engine.canonical import canonical_bytes, sha256_hex
+from erev_engine.currencies import ISO_4217
+from erev_engine.errors import EngineError
+from erev_engine.money import cumulative_posted, minor_to_decimal
+from erev_engine.stages.s01_canonicalize import (
+    contract_subject_key,
+    encode_key,
+    obligation_subject_key,
+)
+from erev_engine.stages.s12_fx_entities.rates import SPOT, RateMissing, Rates
+from erev_engine.trace import TraceNode
 
 if TYPE_CHECKING:
     from erev_api.jobs.context import JobContext
@@ -2439,6 +2439,10 @@ def submit(
     approvals.require_preparer_scope(uow, ApprovalSubjectType.MODIFICATION, modification_id)
     if any(_text(item["status"]) != DRAFT for item in pair):
         raise _invalid(NOT_SUBMITTABLE)
+    from . import regroup_pair
+
+    if any(item.get("regroup_id") is not None for item in pair):
+        regroup_pair.require_consistent(pair, primary_book=queries.primary_book(session))
     # Item MOD-LINKED-ESTIMATES-1 (04 §16.10, §16.14 rev 1.210; PRD ERR-87): the estimate
     # versions created inside the modification are approved FIRST. It is the only order the
     # kernel admits — a version's approval appends ESTIMATE_CHANGED, which moves the head this
@@ -3300,6 +3304,10 @@ def _approved(uow: UnitOfWork, modification_id: UUID, approval_request_id: UUID)
     locked = [_row(session, _uuid(row["id"]), lock=True) for row in rows]
     if any(_text(row["status"]) != SUBMITTED for row in locked):
         raise LookupError(f"modification {modification_id} is not submitted")
+    from . import regroup_pair
+
+    if any(item.get("regroup_id") is not None for item in locked):
+        regroup_pair.require_consistent(locked, primary_book=queries.primary_book(session))
     approvals.assert_fresh_basis(uow, approval_request_id)
     # The backstop of PRD ERR-87, not the rule: the submission refuses while a linked estimate
     # version is not approved, nothing links to a modification once it is submitted, and an

@@ -536,6 +536,12 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
                         "recognized_minor": item.recognized_minor,
                         "remaining_minor": item.remaining_minor,
                         "remaining_quantity": str(item.remaining_quantity),
+                        "service_start_date": None
+                        if item.service_start_date is None
+                        else item.service_start_date.isoformat(),
+                        "service_end_date": None
+                        if item.service_end_date is None
+                        else item.service_end_date.isoformat(),
                     }
                     for item in measured
                 },
