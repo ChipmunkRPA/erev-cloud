@@ -165,3 +165,63 @@ def enter(
     for role, amount in ((receivable, receivable_part), (contract_asset, debit - receivable_part)):
         asset[role] += amount
         lines[role][caption] += amount
+
+
+def functional_sources(
+    records: "BalanceInputs",
+    own: Sequence[ObligationState],
+    entity: str,
+    end: date,
+) -> frozenset[tuple[str, str]]:
+    """Identify complete acquired control sources; never split a net FX movement by guesswork."""
+    from .rollforward import _entered
+
+    dates = cutovers(own)
+    subjects = {ob.subject_key for ob in own}
+    assert records.fx is not None
+    used = {
+        move.source_key
+        for move in records.fx.layer_movements
+        if move.entity == entity and move.effective_date <= end
+    }
+    classifications: dict[tuple[str, str], set[bool]] = {}
+    for flow in records.flows:
+        when = _entered(flow)
+        if flow.entity != entity or flow.source_key not in used or when is None or when > end:
+            continue
+        if flow.kind in {"BILLING", "CREDIT_MEMO"}:
+            shares = records.attribution.get(flow.source_key, {})
+            sign = 1 if flow.kind == "BILLING" else -1
+            if shares:
+                if set(shares) - subjects or sum(shares.values()) != sign * flow.amount:
+                    raise EngineError(
+                        "ENGINE_INVARIANT_VIOLATED",
+                        "Mixed functional billing attribution is incomplete.",
+                    )
+                targets = {subject for subject, amount in shares.items() if amount}
+            else:
+                targets = {ob.subject_key for ob in own if ob.contract_key == flow.contract_key}
+        elif flow.subject_key in subjects:
+            targets = {flow.subject_key}
+        else:
+            targets = {ob.subject_key for ob in own if ob.contract_key == flow.contract_key}
+        if not targets:
+            raise EngineError("ENGINE_INVARIANT_VIOLATED", "Functional flow owner is unavailable.")
+        flags = set()
+        for subject in targets:
+            cutoff = dates.get(subject)
+            if cutoff is not None and when < cutoff:
+                raise EngineError(
+                    "ENGINE_INVARIANT_VIOLATED",
+                    "Earlier acquired FX history needs original cutover attribution.",
+                )
+            flags.add(cutoff is not None and when == cutoff)
+        if len(flags) != 1:
+            raise EngineError(
+                "ENGINE_INVARIANT_VIOLATED",
+                "A mixed functional source needs separate acquisition attribution.",
+            )
+        classifications.setdefault((flow.source_key, flow.side), set()).update(flags)
+    if any(len(flags) != 1 for flags in classifications.values()):
+        raise EngineError("ENGINE_INVARIANT_VIOLATED", "Functional source ownership is ambiguous.")
+    return frozenset(key for key, flags in classifications.items() if flags == {True})

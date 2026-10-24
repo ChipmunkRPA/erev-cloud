@@ -216,6 +216,7 @@ class BalanceInputs:
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
     acquisition_intercompany_sources: bool = False  # Revision 20: contracting control sources
+    mixed_acquisition_functional: bool = False  # Revision 26: original acquired FX sources
     mixed_acquisition_rollforward: bool = False  # Revision 25: dated mixed transaction flows
     mixed_acquisition_closing: bool = False  # Revision 24: per-obligation transaction cutovers
     opening_billing_sources: bool = False  # Revision 16: original cutover FX attribution
@@ -397,12 +398,27 @@ def rollforward_balances(
     lines = {balance: dict.fromkeys(BALANCE_LINES[balance], 0) for balance in BALANCES}
     memo = dict.fromkeys(MEMO_CAUSES, 0)
     functional = view == FUNCTIONAL and calendar.functional_currency != ctx.txn_currency
-    if mixed and not functional:
+    if mixed and (not functional or records.mixed_acquisition_functional):
         cutover = None
     relief = 0
     if cutover is None or period.end_date >= cutover:
         if functional:
-            relief = _functional(ctx, records, entity, unit, period, previous, cutover, lines)
+            acquired_sources = (
+                mixed_acquisition.functional_sources(records, own, entity, period.end_date)
+                if mixed and records.mixed_acquisition_functional
+                else frozenset()
+            )
+            relief = _functional(
+                ctx,
+                records,
+                entity,
+                unit,
+                period,
+                previous,
+                cutover,
+                lines,
+                acquired_sources=acquired_sources,
+            )
             consumption = ctx.policies.value(_POL_126, entity=entity, period=period.period_key)
             if consumption == _WITHIN_POB:
                 from .functional_pob import classify
@@ -624,6 +640,8 @@ def _functional(
     previous: PeriodInput | None,
     cutover: date | None,
     lines: dict[str, dict[str, int]],
+    *,
+    acquired_sources: frozenset[tuple[str, str]] = frozenset(),
 ) -> int:
     """The lines from the stage 12 layer movements in the functional currency (REQ-FX-007)."""
     fx = records.fx
@@ -688,11 +706,15 @@ def _functional(
         if kind == "LIABILITY_LAYER_CREATED":
             flow = _flow_of(by_source, move, _CREDIT)
             if flow is not None:
-                lines[CONTRACT_LIABILITY][f"INCREASES_{_KINDS[flow.kind]}"] += amount
-                relief -= amount if flow.kind == _NEGATIVE_REVENUE else 0
+                acquired_flow = (flow.source_key, flow.side) in acquired_sources
+                code = _COMBINATIONS if acquired_flow else f"INCREASES_{_KINDS[flow.kind]}"
+                lines[CONTRACT_LIABILITY][code] += amount
+                relief -= amount if not acquired_flow and flow.kind == _NEGATIVE_REVENUE else 0
         elif kind == "LIABILITY_LAYER_CONSUMED":
             flow = _flow_of(by_source, move, _DEBIT)
-            if flow is not None and flow.kind == _REVENUE:
+            if flow is not None and (flow.source_key, flow.side) in acquired_sources:
+                lines[CONTRACT_LIABILITY][_COMBINATIONS] -= amount
+            elif flow is not None and flow.kind == _REVENUE:
                 code = _FROM_OPENING if move.layer_key in opening_layers else _FROM_OTHER
                 lines[CONTRACT_LIABILITY][code] -= amount
                 relief += amount
@@ -707,14 +729,28 @@ def _functional(
                 lines[role][_FX] += amount
             elif kind == "ASSET_LAYER_SETTLED":
                 asset[role] -= amount
-                lines[role][_TRANSFERRED] -= amount
                 flow = _flow_of(by_source, move, _CREDIT)
-                relief -= amount if flow is not None and flow.kind == _NEGATIVE_REVENUE else 0
+                acquired_flow = (
+                    flow is not None and (flow.source_key, flow.side) in acquired_sources
+                )
+                lines[role][_COMBINATIONS if acquired_flow else _TRANSFERRED] -= amount
+                relief -= (
+                    amount
+                    if not acquired_flow and flow is not None and flow.kind == _NEGATIVE_REVENUE
+                    else 0
+                )
             else:
                 flow = creators.get(move.layer_key)
                 if flow is not None:
-                    revenue = flow.kind == _REVENUE
-                    code = _IN_EXCESS if revenue else f"INCREASES_{_KINDS[flow.kind]}"
+                    acquired_flow = (flow.source_key, flow.side) in acquired_sources
+                    revenue = not acquired_flow and flow.kind == _REVENUE
+                    code = (
+                        _COMBINATIONS
+                        if acquired_flow
+                        else _IN_EXCESS
+                        if revenue
+                        else f"INCREASES_{_KINDS[flow.kind]}"
+                    )
                     asset[role] += amount
                     lines[role][code] += amount
                     relief += amount if revenue else 0

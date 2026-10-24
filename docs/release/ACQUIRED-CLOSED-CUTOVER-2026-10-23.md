@@ -306,3 +306,25 @@ Foreign functional mixed rollforwards still use their prior path and require fur
 The public report builder also still needs explicit retained group/member acquisition-change sources;
 its population guard has not been removed. No claim of a complete mixed-acquisition report path,
 and no deployment.
+
+
+## October 24: mixed functional rollforward uses original FX sources
+
+Evidence revision 26 classifies acquired cutover control sources from their original obligation
+owners and billing attribution. Functional rollforwards retain ordinary activity and put acquired
+layer creation, consumption and settlement in BUSINESS_COMBINATIONS; remeasurement remains in FX.
+Classification follows the triggering source, including when acquisition settles an ordinary
+member's asset, rather than mistaking the original layer owner for the acquisition owner.
+
+Eight native foreign-currency cases cover ordinary invoices before/on cutover, acquired net
+assets/liabilities, both FIFO policies, different average/spot rates and subsequent-period opening
+consumption. They reconcile closing balances with no unexplained OTHER and prove unchanged posting
+intents and FX layer movements. All 52 focused mixed/acquired/rollforward checks pass; scoped lint
+and types pass. Earlier revisions retain their prior disclosure behavior.
+
+This path requires complete original cutover source ownership. Earlier acquired FX history and
+a single net source mixing acquired and ordinary owners remain explicitly unavailable rather than
+receiving fabricated allocations. Closed mixed foreign cutovers may still lack supplementary FX
+evidence. Public report integration still requires retained group/member acquisition-change sources;
+its population guard remains in place. The full mixed-acquisition reporting path is unfinished.
+No deployment.
