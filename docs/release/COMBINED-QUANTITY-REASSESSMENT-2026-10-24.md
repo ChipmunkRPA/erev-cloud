@@ -70,8 +70,21 @@ New modification-register runs in source/spot-equivalent currency bases include 
 “Combination reassessment (authored JSON)” column with the complete retained modification-level
 assessment. It is authored evidence, not a new eligibility determination or member allocation.
 The column is retained-input-version gated: older report runs keep their previous shape.
-Causal-analysis output and locked snapshot datasets do not gain this column in this change.
+Locked snapshot datasets do not gain this column in this change.
 
 Verification: one populated public workflow including both report replays, 23 register unit
 cases (including old-output compatibility and unchanged money totals), scoped lint and types.
 No deployment. The term/removal/split and other measure paths listed above remain open.
+
+## Causal-analysis context
+
+New causal-analysis runs also retain the selected modification's owner contract, effective
+date and complete authored reassessment. The affected contract remains a separate column:
+a causal effect on another member is not presented as that member's own modification.
+Baseline/final rows and other events receive no inferred assessment. The optional columns
+are gated in retained evidence, so older causal report output remains unchanged.
+
+Ten focused cases cover context presentation, old-output stability and native causal amounts
+in transaction, functional and reporting currencies. The populated public workflow also
+generates and replays the causal report with equal output hashes. Scoped lint/types pass.
+No recognition or monetary reconciliation rules changed; no deployment.

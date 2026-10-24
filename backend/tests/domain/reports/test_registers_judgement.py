@@ -1707,3 +1707,29 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     replay = run_now(world, UUID(rerun.json()["id"]))
     assert replay["state"] == "SUCCEEDED", replay
     assert replay["result"]["output_sha256_equal"] is True
+
+    causal_run, causal_rows = report_run(
+        world,
+        "modification_register",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "from_date": "2026-09-01",
+            "to_date": "2026-09-30",
+            "contract_external_id": BR06_EXTERNAL_ID,
+            "currency_basis": "causal_analysis",
+            "currency_view": "transaction",
+        },
+    )
+    assert causal_run["status"] == "SUCCEEDED", causal_run
+    selected = [row for row in causal_rows if row["contribution"] == "Selected modification"]
+    assert selected
+    for row in selected:
+        assert row["modification_contract"] == BR06_EXTERNAL_ID
+        assert row["modification_effective_date"] == "2026-09-10"
+        assert json.loads(row["combined_reassessment"]) == {"L2-SERVICE": assessment}
+    rerun = post(app, f"/api/v1/report-runs/{causal_run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    replay = run_now(world, UUID(rerun.json()["id"]))
+    assert replay["state"] == "SUCCEEDED", replay
+    assert replay["result"]["output_sha256_equal"] is True

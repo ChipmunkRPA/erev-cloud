@@ -10,9 +10,6 @@ from fractions import Fraction
 from typing import Any, cast
 from uuid import UUID
 
-from erev_engine.bundle import InputBundle, OutputBundle
-from erev_engine.canonical import canonical_bytes, sha256_hex
-from erev_engine.stages.s01_canonicalize import contract_subject_key
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +23,9 @@ from erev_api.db.tables import (
 from erev_api.domain.migration.reconciliation import exact_decimal_text
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
+from erev_engine.bundle import InputBundle, OutputBundle
+from erev_engine.canonical import canonical_bytes, sha256_hex
+from erev_engine.stages.s01_canonicalize import contract_subject_key
 
 from . import computation_sources, modification_causal, reporting_currency, tie_outs
 from .book_bridge_replay import reader
@@ -161,8 +161,14 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
                 "modification_no",
                 "contract_id",
                 "contract_external_id",
+                "effective_date",
             )
         }
+        assessment = record["questionnaire"].get("combined_reassessment")
+        if assessment:
+            modifications[key]["combined_reassessment"] = canonical_bytes(assessment).decode(
+                "utf-8"
+            )
     sources = {}
     tasks = []
     for (group, entity_code, period_key), keys in sorted(selected.items(), key=lambda x: str(x[0])):
@@ -230,6 +236,7 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
         "entity_ids": sorted(str(e) for e in params.entity_ids),
         "selection": selection(params),
         "book": original["book"],
+        "modification_context_columns": True,
         "currency_view": params.parameters.get("currency_view") or "transaction",
     }
     return Prepared(collector, tuple(tasks), identity, modifications, tuple(unavailable))
@@ -404,6 +411,21 @@ def dataset(evidence: Mapping[str, Any]) -> ReportData:
                 "causal_amount": None,
             }
         )
+    context_columns: tuple[Column, ...] = ()
+    if evidence.get("modification_context_columns"):
+        context_columns = (
+            Column("modification_contract", "Modification owner contract", "text"),
+            Column("modification_effective_date", "Modification effective date", "date"),
+            Column("combined_reassessment", "Combination reassessment (authored JSON)", "text"),
+        )
+        for row in rows:
+            modification = evidence["modifications"].get(row["event_key"], {})
+            row["modification_contract"] = modification.get("contract_external_id")
+            effective = modification.get("effective_date")
+            row["modification_effective_date"] = (
+                date.fromisoformat(effective) if effective is not None else None
+            )
+            row["combined_reassessment"] = modification.get("combined_reassessment")
     return ReportData(
         columns=(
             Column("contract_external_id", "Affected contract", "text"),
@@ -415,7 +437,8 @@ def dataset(evidence: Mapping[str, Any]) -> ReportData:
             Column("basis", "Amount basis", "text"),
             Column("currency", "Currency", "code"),
             Column("causal_amount", "Causal analysis amount", "money"),
-        ),
+        )
+        + context_columns,
         rows=tuple(rows),
         control_totals={
             "basis": LABEL,
