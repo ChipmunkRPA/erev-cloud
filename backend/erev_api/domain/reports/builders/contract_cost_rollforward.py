@@ -26,7 +26,9 @@ locked-dataset reader (CLO-8); until then the subledger balance is the only open
 ``TO_COST_ROLLFORWARD_BALANCES``: every kind's ``OPENING`` + Σ movements equals its ``CLOSING`` and
 Σ ``CLOSING`` per currency equals Σ T-CON-09 ``cost_asset_carrying`` at the range end.
 
-Currency: the entity's functional currency by default (``currency_view`` ``functional``); the
+Currency: functional/reporting sources use posted functional line amounts and dated native
+cost carrying, under a retained evidence marker; legacy bindings retain their prior reader.
+The entity's functional currency is the default (``currency_view`` ``functional``); the
 ``transaction`` view only when the entity's cost assets carry one currency, else the run refuses
 (RPT-07 pattern). Money cells are typed API-S-Money values (``tie_outs.money``), never bare
 decimals (Codex C6-RPT-R1); the pure core works in minor units. A row whose ``cost_kind`` or
@@ -47,7 +49,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract, legal_entity, subledger_line
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import functional_balances, locked_ends, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY, ranges
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -57,6 +59,7 @@ from erev_api.uow import UnitOfWork
 CODE: Final = "contract_cost_rollforward"
 TO_COST_ROLLFORWARD_BALANCES: Final = tie_outs.TO_COST_ROLLFORWARD_BALANCES
 CARRYING_MEASURE: Final = "cost_asset_carrying"
+FUNCTIONAL_EVIDENCE: Final = "cost_functional_sources_v1"
 DEFAULT_CURRENCY_VIEW: Final = "functional"  # SCREENS_B RPT-32 "Currency view: default functional"
 KEY_COLUMNS: Final = ("cost_kind", "line_code")  # S15-R-20a / F-CLO KeySpec COST_ROLLFORWARD
 COST_KINDS: Final = ("OBTAIN", "FULFILL")  # E-83
@@ -315,6 +318,8 @@ def _movements(
             subledger_line.c.reason_code,
             subledger_line.c.amount_txn,
             subledger_line.c.txn_currency,
+            subledger_line.c.amount_functional,
+            subledger_line.c.functional_currency,
             subledger_line.c.period_end_date,
             contract.c.external_id,
             legal_entity.c.code.label("entity_code"),
@@ -350,6 +355,7 @@ def _movements(
             subledger_line.c.id,
         )
     )
+    functional = _functional_sources(params)
     found: list[CostMovement] = []
     consumed: list[UUID] = []  # frps3c-2: the lines the movements actually consumed
     for row in session.execute(statement).mappings():
@@ -357,8 +363,9 @@ def _movements(
         if entity_id not in range_end or row["period_end_date"] > range_end[entity_id]:
             continue
         consumed.append(UUID(str(row["id"])))
-        currency = str(row["txn_currency"]).strip()
-        minor = int(Decimal(row["amount_txn"]).scaleb(tie_outs.minor_unit(currency)))
+        currency = str(row["functional_currency" if functional else "txn_currency"]).strip()
+        amount = Decimal(row["amount_functional" if functional else "amount_txn"])
+        minor = int(amount.scaleb(tie_outs.minor_unit(currency)))
         cost_kind, line_code, signed = classify(
             str(row["account_role"]),
             str(row["entry_kind"]),
@@ -384,6 +391,14 @@ def _movements(
     return found
 
 
+def _functional_sources(params: ReportParams) -> bool:
+    return str(
+        params.parameters.get("currency_view") or DEFAULT_CURRENCY_VIEW
+    ) != "transaction" and (
+        params.binding is None or params.binding.evidence.get(FUNCTIONAL_EVIDENCE) is True
+    )
+
+
 def _check_view(
     params: ReportParams, found: Sequence[EntityRef], items: Sequence[CostMovement]
 ) -> None:
@@ -402,6 +417,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     found, periods, before = ranges(session, params)
+    functional = _functional_sources(params)
+    if functional:
+        tie_outs.record_evidence(params, FUNCTIONAL_EVIDENCE, True)
     movements = _movements(
         session,
         entity_ids=params.entity_ids,
@@ -415,14 +433,39 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     rows = dataset_rows(lines, currencies)
     check_key_columns(rows)
     cutoff = tie_outs.cutoff_for(session, params)
+    at = {key: (value[-1] if value else None) for key, value in periods.items()}
+    ends = (
+        locked_ends.Reader(
+            uow,
+            params,
+            book_code=book_code,
+            cutoff=cutoff,
+            entity_codes={item.id: item.code for item in found},
+        )
+        if functional
+        else None
+    )
     closing_balances = tie_outs.balances_at(
         session,
         entity_ids=params.entity_ids,
         book_code=book_code,
-        period_keys={key: (value[-1] if value else None) for key, value in periods.items()},
+        period_keys=at,
         cutoff=cutoff,
         params=params,
+        uow=uow if functional else None,
+        locked_ends=ends,
     )
+    if functional:
+        closing_balances = functional_balances.read(
+            session,
+            params,
+            closing_balances,
+            entities=found,
+            periods=at,
+            book_code=book_code,
+            locked=ends,
+            measures=(CARRYING_MEASURE,),
+        )
     from erev_api.domain.reports import cost_reporting
 
     if params.parameters.get("currency_view") == "reporting" and (

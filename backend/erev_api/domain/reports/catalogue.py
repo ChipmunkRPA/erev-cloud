@@ -2373,6 +2373,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "schedule_line.subject_id = contract_cost_asset.id",
         ),
         filters=(
+            "New functional/reporting runs read posted functional cost amounts and compare with "
+            "dated native functional carrying; retained bindings preserve the source basis",
             "Reporting currency translates original functional cost movements monthly at average "
             "rates and endpoints at closing rates; FX and rounding are separate; source carrying "
             "tie-outs remain mandatory; original rate identities are retained for reruns and "

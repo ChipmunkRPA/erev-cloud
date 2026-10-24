@@ -403,7 +403,9 @@ Create `disclosure_pack` through `POST /api/v1/report-runs` with one `entity_cod
 `book` (`ASC606` or `IFRS15`), an explicit `period_key`, and optionally `quarter: true`.
 For a live draft, choose `currency_view: functional` for original functional amounts or
 `currency_view: reporting` for the tenant’s reporting currency across all nine child reports;
-`transaction` remains the default. Reporting-currency cost rows use monthly average rates for
+`transaction` remains the default. Cost rollforwards read posted functional cost amounts and reconcile closing carrying to native
+functional cost evidence. Older saved runs preserve their original source basis.
+Reporting-currency cost rows use monthly average rates for
 movements and closing rates for endpoints, with separate Currency translation and Translation
 rounding rows. The original functional carrying check remains visible in the control totals. The saved pack and
 its reruns retain the selected basis. New ASC606/IFRS15 locks retain a complete pack for each

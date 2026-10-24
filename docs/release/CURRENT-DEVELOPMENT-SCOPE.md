@@ -2832,3 +2832,11 @@ Revision 56 adds original historical carrying for termination acceleration, incl
 final rounding residue and JET-09e/report reconciliation. See [cost termination currency](COST-TERMINATION-CURRENCY-2026-10-24.md).
 This supersedes the acceleration limitation in the revision 55 checkpoint; impairment,
 reversal, clawback and delayed capitalisation remain open.
+
+
+## 2026-10-24 — cost rollforward functional sources
+
+Functional/reporting cost rollforwards now consume posted functional amounts and native
+functional closing carrying, retaining their source choice for reruns. See [cost report sources](COST-REPORT-FUNCTIONAL-SOURCES-2026-10-24.md).
+Transaction views and older bound reports preserve their earlier basis. Remaining specialist
+engine currency limits are unchanged.
