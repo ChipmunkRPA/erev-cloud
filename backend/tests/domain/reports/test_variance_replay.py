@@ -7,6 +7,8 @@ from fractions import Fraction
 from typing import cast
 
 import pytest
+from support import bundles, golden_streams
+
 from erev_api.domain.reports.variance_measures import MeasureKey
 from erev_api.domain.reports.variance_projection import Projection
 from erev_api.domain.reports.variance_replay import replay_events, replay_period_money
@@ -20,7 +22,6 @@ from erev_engine.bundle import (
     PostingIntent,
 )
 from erev_engine.canonical import sha256_hex
-from support import bundles, golden_streams
 
 KEY = MeasureKey("Contract 2", "USD", "CONTRACT_LIABILITY")
 RPO = MeasureKey("Contract 2", "USD", "RPO")
@@ -691,9 +692,10 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     from types import SimpleNamespace
     from typing import Any
 
+    from sqlalchemy.orm import Session
+
     from erev_api.domain.reports import variance_cells
     from erev_api.domain.reports.builders import ADAPTER, ReportParams, SourceBinding
-    from sqlalchemy.orm import Session
 
     def identities(value: Pair) -> list[dict[str, Any]]:
         sides: list[dict[str, Any]] = []
@@ -1530,11 +1532,12 @@ def test_fx_change_replays_real_engine_functional_revenue() -> None:
 def test_membership_replay_separates_real_functional_fx() -> None:
     from uuid import uuid4
 
+    from support import step1_worlds
+
     from erev_api.domain.reports import variance_membership
     from erev_api.domain.reports.computation_sources import VerifiedComputation
     from erev_engine import upgrade
     from erev_engine.canonical import canonical_bytes
-    from support import step1_worlds
 
     first = step1_worlds.eur_mixed_rates()
     second = upgrade.decode_input(upgrade.encode_input(first).replace(b"C-STEP1", b"C-SECOND"))
@@ -1930,3 +1933,63 @@ def test_same_period_modifications_have_signed_per_event_functional_replay(forei
         if foreign
         else [Fraction(10000), Fraction(-10000 if net_zero else -5000)]
     )
+
+
+@pytest.mark.parametrize("kind", ["FULL", "PARTIAL"])
+@pytest.mark.parametrize("view", ["transaction", "functional", "reporting"])
+def test_termination_between_close_cutoffs_reconciles_revenue_and_rpo(kind, view):
+    from erev_api.domain.reports.variance_replay import driver
+    from erev_api.domain.reports.variance_reporting import Basis
+    from tests.engine.s03_pob_builder.test_lessor_termination import termination
+
+    source = termination(kind)
+    cutoff = datetime(2026, 1, 31, 23, tzinfo=UTC)
+    terminal = replace(source.events[-1], recorded_at=cutoff + timedelta(hours=1))
+    before = replace(source, known_at=cutoff, events=source.events[:-1])
+    after = replace(source, known_at=cutoff + timedelta(days=1), events=(*before.events, terminal))
+    assert driver(terminal, date(2026, 1, 31)) == "LATE_EVENT"
+    assert driver(terminal, date(2026, 1, 1)) == "MODIFICATION"
+    reporting = (
+        Basis(
+            "USD",
+            "GBP",
+            "FY2026-P01",
+            date(2026, 1, 31),
+            Fraction("0.8"),
+            Fraction("0.8"),
+            "a" * 64,
+        )
+        if view == "reporting"
+        else None
+    )
+    old_projection = Projection(before, "US01", "ASC606", "FY2026-P01", view, reporting)
+    new_projection = replace(old_projection, basis=after)
+    earlier, later = old_projection(compute(before)), new_projection(compute(after))
+    for detailed in (False, True):
+        result = replay_period_money(
+            before,
+            after,
+            entity_code="US01",
+            book_code="ASC606",
+            period_key="FY2026-P01",
+            currency_view=view,
+            earlier_metrics=earlier,
+            later_metrics=later,
+            earlier_reporting_basis=reporting,
+            later_reporting_basis=reporting,
+            event_details=detailed,
+        )
+        currency = "GBP" if view == "reporting" else "USD"
+        assert result.measures[MeasureKey("K-01", currency, "RPO")].metric_after == 0
+        changed = []
+        for key, measured in result.measures.items():
+            assert measured.sums_exactly
+            assert measured.metric_before == earlier.get(key, Fraction(0))
+            assert measured.metric_after == later.get(key, Fraction(0))
+            effects = [
+                effect for effect in measured.effects if terminal.event_key in effect.event_keys
+            ]
+            assert len(effects) == 1
+            assert effects[0].driver == "LATE_EVENT"
+            changed.append(effects[0].amount)
+        assert any(changed)

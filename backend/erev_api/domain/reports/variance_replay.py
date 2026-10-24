@@ -16,6 +16,7 @@ from fractions import Fraction
 from itertools import groupby
 from typing import Final, Literal
 
+from erev_api.problems import Problem
 from erev_engine import ENGINE_VERSION, compute
 from erev_engine.bundle import ContractInput, EventInput, InputBundle, OutputBundle
 from erev_engine.stages.s15_disclosures.variance import (
@@ -24,8 +25,6 @@ from erev_engine.stages.s15_disclosures.variance import (
     Evaluation,
     decompose,
 )
-
-from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
 from .variance_projection import MEASURES, Projection
@@ -58,6 +57,7 @@ _DRIVERS: Final = {
     "CONTRACT_CRITERIA_MET": "NEW_CONTRACT",
     "OPENING_BALANCE_ESTABLISHED": "NEW_CONTRACT",
     "CONTRACT_AMENDED": "MODIFICATION",
+    "CONTRACT_TERMINATED": "MODIFICATION",
     "ESTIMATE_CHANGED": "ESTIMATE_CHANGE",
     "MEMO_UPDATED": "OTHER",
 }

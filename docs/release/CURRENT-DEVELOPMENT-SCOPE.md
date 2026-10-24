@@ -2239,3 +2239,20 @@ pass in transaction/functional/reporting views and all saved reruns preserve out
 Transfer rows retain the same pair identity and correct owner/direction; termination rows have
 no fabricated pair. A focused retained-dataset case preserves amounts/control totals and old
 output shape. Scoped lint/types pass. No deployment.
+
+
+## Close-variance termination event attribution — October 24, 2026
+
+The shared close-variance replay driver now classifies CONTRACT_TERMINATED as MODIFICATION.
+Late-event precedence remains unchanged: a newly recorded termination effective on/before the
+comparison period end is LATE_EVENT. Causal modification reports reuse this classification
+instead of maintaining a separate termination-only branch. No termination calculation or ledger
+writer changes; regroup and other unclassified close-replay events are not implicitly enabled.
+
+Necessary verification: six real-engine cases cover FULL/PARTIAL original-component combined
+termination in transaction, functional and translated GBP reporting views, each in grouped and
+per-event detail modes. Revenue/balance/dated-RPO measures reconcile exactly to both calculated
+endpoints; final RPO is zero and the nonzero termination contribution retains its event identity.
+These are consistent retained-input close-cutoff replays, not a new public close/lock round trip.
+Twelve modification causal cases also pass after sharing the classifier; scoped lint/types pass.
+No deployment.
