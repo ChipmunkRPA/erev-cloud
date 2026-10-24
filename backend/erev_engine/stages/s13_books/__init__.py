@@ -251,9 +251,10 @@ def fold(
     *,
     identified: IdentifiedState,
     pob: PobState,
+    boundary_cutoff: date | None = None,
 ) -> AllocatedState:
     """The boundary fold of Table 0.3-A over the stage 05 state (ENGINE_SPEC §0.3; CV-11)."""
-    return _fold(ctx, cb, state, tb, identified, pob)
+    return _fold(ctx, cb, state, tb, identified, pob, boundary_cutoff=boundary_cutoff)
 
 
 def _allocated(state: object) -> AllocatedState | None:
@@ -581,7 +582,10 @@ def _stage_call(
             source = _bind_deposit_flows(ctx, source, identified)  # L6-5, FX-CHK-084-B
         if spec.entry is s12_fx_entities.run:
             return lambda: spec.entry(
-                ctx, source, tb, rates=cb.fx,
+                ctx,
+                source,
+                tb,
+                rates=cb.fx,
                 capture_opening_attribution=(cb.bundle.evidence_revision or 0) >= 16,
                 capture_cutover_evidence=(cb.bundle.evidence_revision or 0) >= 18,
                 retain_cutover_sources=(cb.bundle.evidence_revision or 0) >= 19,
@@ -634,6 +638,8 @@ def _fold(
     tb: TraceBuilder,
     identified: object,
     pob: object,
+    *,
+    boundary_cutoff: date | None = None,
 ) -> AllocatedState:
     """The boundary fold of Table 0.3-A over the stage 05 state in ENG-06 order (CV-11)."""
     if not isinstance(state, AllocatedState):
@@ -644,6 +650,8 @@ def _fold(
     st = state
     proposals: list[ProposalOut] = []
     for ev in cb.boundary_events:
+        if boundary_cutoff is not None and ev.effective_date > boundary_cutoff:
+            break
         priced = len(st.tp_history)
         handler = BOUNDARY_HANDLERS[ev.event_type]
         before = st
@@ -671,6 +679,10 @@ def _fold(
                 total=st.tp_history[-1].total,
                 price_node=f"transaction_price@{ev.event_key}:{encode_key(pob.group_key)}:-",
             )
+    if boundary_cutoff is not None:
+        # A boundary-state query must not apply the final version's price, unconstrained
+        # estimates or pending proposals after the requested date. It is not a posting run.
+        return st
     st = _version_price(ctx, pob, st, tb, price)
     st = _unconstrained_history(ctx, pob, st)
     proposals.extend(_pending_proposals(ctx, st, tb, identified))

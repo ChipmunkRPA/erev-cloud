@@ -1,8 +1,10 @@
 """Owner-selected SSP distribution conserves the shared total at database precision."""
 
 from decimal import Decimal as D
+from fractions import Fraction
 
 import pytest
+
 from erev_api.domain.contracts.portfolio_allocation import Basis, allocate
 
 
@@ -36,3 +38,15 @@ def test_ssp_total_and_stable_tail():
 def test_invalid_population_is_not_silently_redistributed(total, basis):
     with pytest.raises(ValueError):
         allocate(total, basis)
+
+
+def test_native_rational_weights_are_not_rounded_before_distribution():
+    # These weights round to the same decimal at 18 places but B owns the larger tail.
+    tiny = D("0.000000000000000001")
+    weights = [
+        Basis("A", Fraction(1, 3), Fraction(10)),
+        Basis("B", Fraction(1, 3) + Fraction(1, 10**30), Fraction(10)),
+    ]
+    assert allocate(tiny, weights) == {"A": "0", "B": "0.000000000000000001"}
+    with pytest.raises(ValueError, match="18 decimal places"):
+        allocate(D(1), [Basis("A", Fraction(1), Fraction(1, 3))])

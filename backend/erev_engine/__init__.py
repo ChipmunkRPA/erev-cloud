@@ -247,8 +247,20 @@ def compute(bundle: InputBundle) -> OutputBundle:
     return output
 
 
-def fold_book(ctx: BookContext, cb: CanonicalBundle, tb: TraceBuilder) -> AllocatedState:
-    """Stages 02 to 05 at the group inception, then the boundary fold (ENGINE_SPEC §0.3)."""
+def fold_book(
+    ctx: BookContext,
+    cb: CanonicalBundle,
+    tb: TraceBuilder,
+    *,
+    boundary_cutoff: date | None = None,
+) -> AllocatedState:
+    """Stages 02 to 05 at the group inception, then the boundary fold (ENGINE_SPEC §0.3).
+
+    ``boundary_cutoff`` returns the state after all accepted boundaries through that date,
+    before final-version pricing/proposals. It supports allocation-input queries, not posting
+    or a historical knowledge snapshot. Callers must validate the admitted population and
+    inception/cutover coverage; the original canonical input itself is never rewritten.
+    """
     from erev_engine.stages import (
         s02_contract_identification,
         s03_pob_builder,
@@ -263,7 +275,9 @@ def fold_book(ctx: BookContext, cb: CanonicalBundle, tb: TraceBuilder) -> Alloca
     pob = dataclasses.replace(pob, identified=identified)
     priced = s04_transaction_price.run(ctx, pob, tb)
     allocated = s05_allocation.run(ctx, priced, tb)
-    return s13_books.fold(ctx, cb, allocated, tb, identified=identified, pob=pob)
+    return s13_books.fold(
+        ctx, cb, allocated, tb, identified=identified, pob=pob, boundary_cutoff=boundary_cutoff
+    )
 
 
 class _Blocking:

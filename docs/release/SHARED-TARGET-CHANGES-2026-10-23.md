@@ -86,3 +86,26 @@ prospective-modification checks pass (9 cases). This is a prerequisite for effec
 breakage allocation; it does not freeze or apply a shared estimate. Inception, non-modification
 SSP changes, combined-member identity and approved allocation capture still need integration.
 The existing preview remains explicitly current-computation based. No deployment.
+
+
+## October 24: effective-date allocation reconstruction
+
+`portfolio_effective_basis.from_bundle` now obtains exact SSP and total entitlement from the
+native boundary fold through an estimate date, including accepted events on that date. It uses
+the retained admitted event history, not a reconstruction of what was known historically. The
+caller must first verify the retained computation and current read authorization. The original
+bundle is not rewritten, and ordinary posting folds still run without a cutoff.
+
+The reconstruction refuses a population containing later-inception contracts, absent original
+targets, pre-cutover obligations, terminated/out-of-scope targets and merged hosts whose quantities
+would substitute for member entitlements. ASC606/IFRS15 are supported; LEGACY is not silently run
+through a different framework's allocation rules. The conserving allocator accepts exact rational
+SSP and entitlement inputs; it still refuses quantities outside the database's 18-place precision.
+
+A native historical witness compares a later event stream at the earlier cutoff with the actual
+earlier stream, then verifies the dated quantity increase and exact SSP. A fractional-tail witness
+proves that pre-rounding nearly equal SSP weights cannot award the final unit to the wrong member.
+Fourteen focused cases pass with scoped lint/types. Public preview and approval/application have
+not yet been connected to this reader; their existing current-computation preview remains unchanged.
+FX conversion and frozen approval capture must preserve the exact rational weights during integration.
+No deployment.

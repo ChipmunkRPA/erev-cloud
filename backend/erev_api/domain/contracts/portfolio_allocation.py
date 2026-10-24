@@ -1,9 +1,9 @@
 """Conserving shared breakage allocation against explicit, retained SSP inputs."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
-from collections.abc import Sequence
 
 from erev_engine.money import largest_remainder
 
@@ -13,13 +13,13 @@ SCALE = 10**18
 @dataclass(frozen=True)
 class Basis:
     key: str
-    ssp: Decimal
-    quantity: Decimal
+    ssp: Decimal | Fraction
+    quantity: Decimal | Fraction
 
 
-def units(value: Decimal) -> int:
+def units(value: Decimal | Fraction) -> int:
     """Database quantities use erev.exact's 18 decimal places, without float rounding."""
-    if not value.is_finite() or value < 0:
+    if (isinstance(value, Decimal) and not value.is_finite()) or value < 0:
         raise ValueError("Quantities must be finite and nonnegative")
     exact = Fraction(value) * SCALE
     if exact.denominator != 1:
@@ -44,7 +44,7 @@ def allocate(total: Decimal, basis: Sequence[Basis]) -> dict[str, str]:
         raise ValueError("A complete, unique allocation population is required")
     for item in ordered:
         units(item.quantity)
-        if not item.ssp.is_finite() or item.ssp < 0:
+        if (isinstance(item.ssp, Decimal) and not item.ssp.is_finite()) or item.ssp < 0:
             raise ValueError("SSP weights must be finite and nonnegative")
     weights = [Fraction(item.ssp) for item in ordered]
     if sum(weights) <= 0:
