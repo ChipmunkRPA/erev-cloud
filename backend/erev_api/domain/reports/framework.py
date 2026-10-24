@@ -1418,6 +1418,7 @@ def _calendar_errors(
             contract_balance_rollforward_builder.CODE,
             revenue_from_opening_liability_builder.CODE,
             rpo_rollforward_builder.CODE,
+            contract_cost_rollforward_builder.CODE,
         }
         and parameters.get("from_period_key")
         and parameters.get("to_period_key")

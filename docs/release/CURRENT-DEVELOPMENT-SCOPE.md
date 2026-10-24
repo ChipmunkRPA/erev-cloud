@@ -4,6 +4,13 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Contract costs across aligned calendars — October 24, 2026
+
+Contract cost rollforward now accepts separate calendar records with explicit from/to keys when
+all selected periods and the preceding period match exactly. Each entity keeps its original
+cost movements, carrying-balance checks and currency sources. Incompatible or incomplete
+ranges still refuse. See [checkpoint](COST-CALENDAR-ALIGNMENT-2026-10-24.md).
+
 ## Multi-currency locked disclosure packs — October 24, 2026
 
 New ASC606/IFRS15 close approvals retain all three currency packs atomically at one cutoff.
@@ -16,7 +23,7 @@ This supersedes the currency-lock gap in the earlier disclosure checkpoints belo
 Live packs now admit reporting currency across all nine children. Contract costs translate
 monthly with explicit FX/rounding, conserved category endpoints, retained rates and independent
 original carrying checks. See [checkpoint](REPORTING-DISCLOSURE-2026-10-24.md). This supersedes
-the live reporting-pack gap below; additional currency lock snapshots remain unfinished.
+the live reporting-pack gap below; currency lock snapshots are covered by the later checkpoint.
 
 ## Functional disclosure packs — October 23, 2026
 

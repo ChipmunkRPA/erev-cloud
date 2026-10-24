@@ -22,9 +22,8 @@ review and publish changes without PR accumulation, and do not deploy.
 
 ## Multi-currency disclosure packs — October 24, 2026
 
-Live and newly locked packs support all three currencies, retained rates and same-source reruns.
-Lock publication is atomic; older locks cannot invent missing views. See
-[checkpoint](docs/release/LOCKED-DISCLOSURE-CURRENCIES-2026-10-24.md).
+Three-currency packs retain original sources: [locks](docs/release/LOCKED-DISCLOSURE-CURRENCIES-2026-10-24.md).
+Cost rollforward now admits aligned calendar records: [costs](docs/release/COST-CALENDAR-ALIGNMENT-2026-10-24.md).
 
 ## Combined actual hours and termination — October 23, 2026
 

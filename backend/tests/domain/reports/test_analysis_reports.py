@@ -1220,3 +1220,118 @@ def test_cost_reporting_currency_uses_retained_monthly_rates(app, keyring, clock
     assert saved["output_sha256"] == world.place.scalar(
         select(runs.c.output_sha256).where(runs.c.id == UUID(run["id"]))
     )
+
+
+def test_cost_rollforward_aligns_separate_calendars(app, keyring, clock, files):
+    from support.factories import appended, booked_contract, computed, k02_body, open_periods
+    from support.reference import CALENDARS, entity, post
+    from support.worlds import K02, commission, resigned, run_now
+    from erev_api.db.tables import report_run as runs
+
+    world = k02_marrowby_commission(app, keyring, clock, files)
+    created = post(
+        app,
+        CALENDARS,
+        world.maya,
+        {
+            "code": "COST-JAN",
+            "name": "Independent January calendar",
+            "fiscal_year_start_month": 1,
+        },
+    )
+    assert created.status_code == 201, created.text
+    calendar_id = created.json()["id"]
+    for year in (2026, 2027):
+        generated = post(
+            app, f"{CALENDARS}/{calendar_id}/generate-year", world.maya, {"fiscal_year": year}
+        )
+        assert generated.status_code == 200, generated.text
+    entity(app, world.maya, code="COST-ALT", calendar_id=calendar_id)
+    open_periods(
+        app, world.maya, entity_code="COST-ALT", keys=[f"FY2026-P{m:02d}" for m in range(1, 10)]
+    )
+    buyer = UUID(str(world.contracts[K02].contract["customer_id"]))
+    booked = booked_contract(
+        world.place,
+        {
+            **k02_body(buyer),
+            "external_id": "COST-ALT-ORDER",
+            "contracting_entity_code": "COST-ALT",
+        },
+        activate=True,
+    )
+    appended(
+        world.place,
+        UUID(str(booked.contract["id"])),
+        2,
+        [commission("COST-ALT-COM", "24000.00", date(2026, 1, 1))],
+    )
+    computed(world.place, UUID(str(booked.combination_group["id"])))
+    with world.place.uow() as uow:
+        cutoff = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
+    clock.set(cutoff)
+    world = resigned(world)
+    base = {"book": "ASC606", "from_period_key": "FY2026-P08", "to_period_key": "FY2026-P09"}
+    for view in ("transaction", "functional", "reporting"):
+        params = {**base, "currency_view": view}
+        combined, rows = report_run(
+            world, "contract_cost_rollforward", {**params, "entity_codes": [AVM_US, "COST-ALT"]}
+        )
+        expected = {}
+        for code in (AVM_US, "COST-ALT"):
+            single, own = report_run(
+                world, "contract_cost_rollforward", {**params, "entity_codes": [code]}
+            )
+            assert tie_of(single, "TO_COST_ROLLFORWARD_BALANCES")["result"] == "PASS"
+            for row in own:
+                expected[(row["entity_code"], row["cost_kind"], row["line_code"])] = {
+                    k: v for k, v in row.items() if k != "row_key"
+                }
+        assert {
+            (r["entity_code"], r["cost_kind"], r["line_code"]): {
+                k: v for k, v in r.items() if k != "row_key"
+            }
+            for r in rows
+        } == expected
+        assert {r["entity_code"] for r in rows} == {AVM_US, "COST-ALT"}
+        assert all(D(r["amount"]["amount"]) > 0 for r in rows if r["line_code"] == "CLOSING")
+        assert tie_of(combined, "TO_COST_ROLLFORWARD_BALANCES")["result"] == "PASS"
+        again = post(app, f"/api/v1/report-runs/{combined['id']}/rerun", world.maya, {})
+        assert again.status_code == 202, again.text
+        assert run_now(world, UUID(again.json()["id"]))["state"] == "SUCCEEDED"
+        saved = world.place.rows(
+            select(runs).where(runs.c.id == UUID(again.headers["X-Erev-Report-Run-Id"]))
+        )[0]
+        assert saved["output_sha256"] == world.place.scalar(
+            select(runs.c.output_sha256).where(runs.c.id == UUID(combined["id"]))
+        )
+
+    shifted = post(
+        app,
+        CALENDARS,
+        world.maya,
+        {
+            "code": "COST-APR",
+            "name": "April year",
+            "fiscal_year_start_month": 4,
+        },
+    )
+    assert shifted.status_code == 201, shifted.text
+    shifted_id = shifted.json()["id"]
+    generated = post(
+        app, f"{CALENDARS}/{shifted_id}/generate-year", world.maya, {"fiscal_year": 2026}
+    )
+    assert generated.status_code == 200, generated.text
+    entity(app, world.maya, code="COST-SHIFT", calendar_id=shifted_id)
+    refused = post(
+        app,
+        "/api/v1/report-runs",
+        world.maya,
+        {
+            "report_code": "contract_cost_rollforward",
+            "output_format": "JSON",
+            "parameters": {**base, "entity_codes": [AVM_US, "COST-SHIFT"]},
+        },
+    )
+    assert refused.status_code == 422, refused.text
+    assert any(item["rule_id"] == "CALENDARS_DIFFER" for item in refused.json()["errors"])
