@@ -406,6 +406,21 @@ def assert_bundle_order(bundle: InputBundle) -> None:
     _sorted(bundle.events, lambda e: (e.effective_date, e.record_seq, e.event_key), "events")
     _assert_reference_order(bundle)
     _sorted(bundle.estimate_versions, lambda v: (v.estimate_key, v.version_no), "estimates")
+    for version in bundle.estimate_versions:
+        members = version.portfolio_member_contract_keys
+        if members is not None:
+            if (bundle.evidence_revision or 0) < 12:
+                raise ValueError("Frozen shared member scope requires input revision 12")
+            if (
+                not version.estimate_key.startswith("PORTFOLIO:")
+                or version.estimate_kind != "RETURN_RATE"
+            ):
+                raise ValueError(
+                    "Frozen shared member scope currently applies to portfolio return estimates"
+                )
+            if any(not key for key in members):
+                raise ValueError("Frozen shared member keys must be nonempty")
+            _sorted(members, _itself, f"{version.version_key} frozen members")
     _sorted(
         bundle.fx_rates,
         lambda r: (r.rate_type, r.base_currency, r.quote_currency, r.effective_date, r.version_key),

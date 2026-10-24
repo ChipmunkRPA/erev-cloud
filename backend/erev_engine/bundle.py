@@ -570,6 +570,8 @@ class EstimateVersionInput:
     judgement_key: str | None
     content_sha256: str
     direction: str | None = None  # T-CON-12 INCREASE | DECREASE; None: resolved_direction derives
+    # Frozen member scope of an applied shared version. None is the historical bundle behavior.
+    portfolio_member_contract_keys: tuple[str, ...] | None = None
 
     def resolved_direction(self) -> str:
         """The element's direction (B3-D16), or the B3-DG-17 default when the producer carried
@@ -612,6 +614,8 @@ class EstimateVersionInput:
         rewriting or reposting of history; historical-integrity replay (RCP-28/29) and
         candidate-upgrade validation (REL-06) remain mandatory; new computations use 0.3.0."""
         view: dict[str, object] = {item.name: getattr(self, item.name) for item in fields(self)}
+        if self.portfolio_member_contract_keys is None:
+            del view["portfolio_member_contract_keys"]
         if (
             self.direction is None
             or self.direction == replace(self, direction=None).resolved_direction()

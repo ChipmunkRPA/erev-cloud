@@ -245,20 +245,27 @@ def pin_at(path: ReturnPath, d: date, position: Position | None = None) -> Retur
 
     Legacy internal pins without order metadata retain their date-only behavior.
     """
-    found: ReturnPin | None = None
-    for pin in path.pins:
-        if pin.effective_date <= d and (
+    admitted = [
+        pin
+        for pin in path.pins
+        if pin.effective_date <= d
+        and (
             position is None or pin.event_order_key is None or position.admits(pin.event_order_key)
-        ):
-            if found is not None and found.shared_precedence and pin.shared_precedence:
-                if found.version_key.rsplit("@v", 1)[0] != pin.version_key.rsplit("@v", 1)[0]:
-                    raise EngineError(
-                        "ENGINE_INVARIANT_VIOLATED",
-                        "Multiple shared return estimates target one obligation",
-                    )
-            if found is None or pin.shared_precedence or not found.shared_precedence:
-                found = pin
-    return found
+        )
+    ]
+    # Select the latest version of each source before applying member scope. A later
+    # excluded-member version ends the old shared pin; it must not revive an older one.
+    latest = {pin.version_key.rsplit("@v", 1)[0]: pin for pin in admitted}
+    active = [pin for pin in latest.values() if pin.applies_to_member]
+    shared = [pin for pin in active if pin.shared_precedence]
+    if len(shared) > 1:
+        raise EngineError(
+            "ENGINE_INVARIANT_VIOLATED",
+            "Multiple shared return estimates target one obligation",
+        )
+    if shared:
+        return shared[0]
+    return next((pin for pin in reversed(admitted) if pin in active), None)
 
 
 def unit_rate(

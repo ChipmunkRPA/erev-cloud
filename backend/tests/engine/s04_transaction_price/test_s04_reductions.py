@@ -974,3 +974,79 @@ def test_shared_returns_override_local_only_after_effective_date(revision):
     assert targets_by_period(recognized, O_RET)["FY2026-P01"] == (
         920_000 if revision == 11 else 960_000
     )
+
+
+@pytest.mark.parametrize(
+    "first_scope,second_scope,jan,feb",
+    [
+        ((C_RET,), (), 920_000, 960_000),
+        ((), (C_RET,), 960_000, 900_000),
+    ],
+)
+def test_frozen_shared_membership_changes_only_from_version_effective_date(
+    first_scope, second_scope, jan, feb
+):
+    from erev_engine.bundle import PortfolioInput
+    from erev_engine.stages.s09_recognition import run
+    from erev_engine.stages.s09_recognition.progress_events import Position
+    from erev_engine.stages.s09_recognition.returns import pin_at
+    from support.recognition import targets_by_period
+
+    base = chk_029(ssp=True, revised=True)
+    local = base.estimate_versions[0]
+    first = dataclasses.replace(
+        local,
+        estimate_key="PORTFOLIO:RETURNS/SHARED",
+        element_code="SHARED",
+        version_key="PORTFOLIO:RETURNS/SHARED@v1",
+        effective_date=date(2026, 1, 20),
+        expected_quantity=Decimal(8),
+        portfolio_member_contract_keys=first_scope,
+    )
+    second = dataclasses.replace(
+        first,
+        version_key="PORTFOLIO:RETURNS/SHARED@v2",
+        version_no=2,
+        effective_date=date(2026, 2, 1),
+        expected_quantity=Decimal(10),
+        supersedes_version_key=first.version_key,
+        portfolio_member_contract_keys=second_scope,
+    )
+    value = dataclasses.replace(
+        base,
+        evidence_revision=12,
+        group=dataclasses.replace(base.group, portfolios=(PortfolioInput("RETURNS", (C_RET,)),)),
+        estimate_versions=tuple(
+            sorted(
+                (*base.estimate_versions, first, second),
+                key=lambda v: (v.estimate_key, v.version_no),
+            )
+        ),
+        events=tuple(
+            sorted(
+                (
+                    *base.events,
+                    changed(C_RET, 7, first, first.effective_date),
+                    changed(C_RET, 8, second, second.effective_date),
+                ),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    ctx, _, allocated, _ = fold(value)
+    assert allocated is not None
+    recognized = run(ctx, allocated, TraceBuilder(engine_version=ENGINE_VERSION))
+    totals = targets_by_period(recognized, O_RET)
+    assert totals["FY2026-P01"] == jan
+    assert totals["FY2026-P02"] == feb
+    path = allocated.return_paths[O_RET]
+    transition = next(pin for pin in path.pins if pin.version_key == second.version_key)
+    before = pin_at(path, second.effective_date, Position(transition.event_order_key, False))
+    after = pin_at(path, second.effective_date, Position(transition.event_order_key, True))
+    assert before.expected_quantity == (8 if first_scope else 4)
+    assert after.expected_quantity == (10 if second_scope else 4)
+    assert "portfolio_member_contract_keys" not in local.hash_view()
+    assert (
+        first.hash_view()
+        != dataclasses.replace(first, portfolio_member_contract_keys=None).hash_view()
+    )

@@ -800,6 +800,7 @@ class ReturnPin:
     rate: Fraction | None = None
     event_order_key: OrderKey | None = None
     shared_precedence: bool = False
+    applies_to_member: bool = True
 
 
 @dataclass(frozen=True, slots=True)

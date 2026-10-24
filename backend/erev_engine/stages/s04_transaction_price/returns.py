@@ -136,6 +136,11 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
                 _pin(applied.version, applied.event_order_key),
                 shared_precedence=shared_precedence
                 and applied.version.estimate_key.startswith(_PORTFOLIO_PREFIX),
+                applies_to_member=(
+                    (st.identified.canonical.bundle.evidence_revision or 0) < 12
+                    or applied.version.portfolio_member_contract_keys is None
+                    or ob.contract_key in applied.version.portfolio_member_contract_keys
+                ),
             )
             for applied in ordered
         ),
@@ -159,7 +164,20 @@ def findings(ctx: BookContext, st: PobState, items: Sequence[Returnable]) -> tup
         first = next((ev.effective_date for ev, _ in _events(st, ob, "DELIVERY_RECORDED")), None)
         if first is None:
             continue
-        if any(pins.pin(key, first) is not None for key in item.estimate_keys):
+        if (st.identified.canonical.bundle.evidence_revision or 0) >= 12:
+            if (
+                _latest_pin(
+                    pins,
+                    item.estimate_keys,
+                    first,
+                    None,
+                    shared_precedence=True,
+                    contract_key=ob.contract_key,
+                )
+                is not None
+            ):
+                continue
+        elif any(pins.pin(key, first) is not None for key in item.estimate_keys):
             continue
         if _immaterial(ctx, st, ob):
             continue
@@ -208,6 +226,9 @@ def measure(
             at,
             before,
             shared_precedence=(st.identified.canonical.bundle.evidence_revision or 0) >= 11,
+            contract_key=ob.contract_key
+            if (st.identified.canonical.bundle.evidence_revision or 0) >= 12
+            else None,
         )
         expected = Fraction(0)
         if item.model != ACTUAL_RETURNS_ONLY and pin is not None:
@@ -369,8 +390,16 @@ def _latest_pin(
     before: EventView | None,
     *,
     shared_precedence: bool = False,
+    contract_key: str | None = None,
 ) -> EstimateVersionInput | None:
     candidates = [version for key in keys if (version := pins.pin(key, at, before)) is not None]
+    candidates = [
+        v
+        for v in candidates
+        if contract_key is None
+        or v.portfolio_member_contract_keys is None
+        or contract_key in v.portfolio_member_contract_keys
+    ]
     shared = [v for v in candidates if v.estimate_key.startswith(_PORTFOLIO_PREFIX)]
     if shared_precedence and len(shared) > 1:
         raise EngineError(
