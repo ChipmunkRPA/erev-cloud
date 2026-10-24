@@ -64,9 +64,6 @@ PENDING_ENUM_TYPES: Final[Mapping[str, ReconciledEnumType]] = {
     "amortization_pattern": ReconciledEnumType(
         "E-84", "T-CON-15 contract_cost_asset.amortization_pattern", *_CTR_14
     ),
-    "scenario_status": ReconciledEnumType(
-        "E-100", "T-FC-01 scenario.status", "FCS-1", "NNNN_forecast_tables.py"
-    ),
 }
 TEXT_CHECK_ENUM_TYPES: Final[Mapping[str, ReconciledEnumType]] = {
     "period_state": ReconciledEnumType(

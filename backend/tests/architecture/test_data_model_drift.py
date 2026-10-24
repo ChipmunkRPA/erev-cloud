@@ -291,7 +291,8 @@ def test_dg_arc_09_problems_equal_15_2() -> None:
     # + sync-objects-not-applied / connection-test-failed (SYNC-PROBLEM-SHAPE-1; 04 1.90; PRD
     # ERR-56 / ERR-57) + earlier-period-open (supervisor ruling R-6; 04 1.106; PRD ERR-65) = 52;
     # + statement-timeout (04 1.144; PRD ERR-66; ruling R-97 (6)) = 53.
-    assert len(catalogue) == 53
+    # + historical-evidence-unavailable (EREV-HIS-001) = 54.
+    assert len(catalogue) == 54
     assert PROBLEMS["statement-timeout"].status == 503
     assert [(spec.slug, spec.status, spec.db_codes) for spec in PROBLEMS.values()] == catalogue
     assert all(slug == spec.slug for slug, spec in PROBLEMS.items())

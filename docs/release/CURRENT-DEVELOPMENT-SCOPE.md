@@ -1837,3 +1837,21 @@ the database. Two codec/identity cases cover absent legacy revision and revision
 old hashes, changed CV-25/attribution identities, typed roundtrip, and equal accounting views.
 The populated case and both codec cases pass; scoped lint passes. Temporary database only,
 no deployment or schema migration. Special-source and contract-reassessment gaps remain open.
+
+
+## Privacy and schema catalogue alignment — October 24, 2026
+
+The earlier 11-column privacy gap and revision-0166 interpreter failure are resolved.
+A fresh targeted run found and repaired the remaining catalogue drift: the shared-estimate
+`portfolio_application_basis` now has confidential financial-data classification and its
+migration-0343 data-model row; balance-aging snapshot kind, historical-evidence error copy
+and invariant, and computation-evidence/modification column order now match code. The
+scenario-status enum is no longer listed as awaiting a migration that already exists.
+The error catalogue count now includes the historical-evidence error; all equality and
+coverage assertions remain in place.
+
+Validation: the ORM/migration/type agreement, data-model drift, and privacy-classification
+modules pass together (29 tests); scoped Python lint passes. No database migration or
+accounting calculation changed. This is not a full-suite or production-readiness claim.
+Shared-breakage application, combined-member royalty treatment and effective-date
+combination reassessment remain separate unfinished functionality. No deployment.

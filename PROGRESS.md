@@ -247,8 +247,8 @@ Current outstanding implementation and verification gaps remain in
   next close repairs them through FX_REPUBLISH, including approval/computation races.
 - Two native races, the refused-post ordering and ordinary close/rerun pass; scoped lint/types
   and economic-input/privacy checks pass. No deployment. See CURRENT-DEVELOPMENT-SCOPE for bounds.
-- Existing audit gaps surfaced: 11 unclassified older columns and the schema interpreter's
-  revision-0166 parse error. These remain open; this is not a full-suite pass.
+- October 24: privacy/schema audit gaps repaired; 29 targeted checks pass.
+  See CURRENT-DEVELOPMENT-SCOPE for bounds; this is not a full-suite pass.
 - Forecast re-export and close-assessment checkpoints moved to REPORTING-CHECKPOINTS-2026-10-22.
 
 ## Owner-selected shared estimates — October 23, 2026

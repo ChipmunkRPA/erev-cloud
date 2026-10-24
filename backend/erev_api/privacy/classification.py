@@ -2244,7 +2244,8 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "row_version"
             ),
             SPEC_C2_LEDGER: _cols(
-                "effective_date scenarios parameters unconstrained_amount "
+                "effective_date scenarios parameters portfolio_application_basis "
+                "unconstrained_amount "
                 "most_conservative_amount constrained_amount rate expected_total_amount "
                 "expected_quantity amortization_months currency constraint_checklist rationale"
             ),
