@@ -57,3 +57,16 @@ calculation choice remain open; no breakage posting was enabled by this change.
 Necessary checks: 33 focused preview/engine cases, 12 portfolio UI cases, scoped Python lint/types
 and frontend TypeScript pass. Public API verification covers selecting targets, rejecting a missing
 key, retaining targets when an edit omits keys, and the existing membership/access workflow; passed.
+
+## Book-specific breakage preview — October 24, 2026
+
+The allocation workbench now exposes the existing backend book selection: primary by default,
+or ASC606, IFRS15 and LEGACY. Requests and cached results are scoped to the selected book.
+Switching books does not carry another book's allocation into the new view; the user explicitly
+requests the new preview. Unavailable member/book computations continue to be refused by the
+backend. This requires no additional configuration-read permission.
+
+Necessary verification covers selecting IFRS15, the actual query parameter, clearing the primary
+book's source rows, and hiding stale IFRS15 sources after a refused refresh. The focused UI case,
+frontend TypeScript and scoped ESLint pass. This exposes existing per-book calculation; it does
+not enable shared-breakage approval/application or freeze the effective-date allocation.

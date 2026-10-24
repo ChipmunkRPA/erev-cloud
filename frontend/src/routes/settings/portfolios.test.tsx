@@ -447,6 +447,7 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   serve();
   let refuse = false;
   let reads = 0;
+  const requestedBooks: (string | null)[] = [];
   const version = {
     id: "v1",
     version_no: 1,
@@ -468,42 +469,47 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
     http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
       HttpResponse.json({ items: [version], next_cursor: null }),
     ),
-    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/allocation-preview"), () => {
-      reads++;
-      if (refuse) return problemResponse("validation-failed", 422, "Recompute every member");
-      return HttpResponse.json({
-        basis: "CURRENT_COMPUTED_SSP_PREVIEW",
-        portfolio_id: "p1",
-        version_id: "v1",
-        book_code: "PRIMARY",
-        currency: "USD",
-        total_breakage_quantity: "9",
-        allocated_total: "9",
-        shares: [
-          {
-            contract_id: "c1",
-            contract_external_id: "LOYALTY-A",
-            contract_version_id: "retained-source-1",
-            obligation_id: "o1",
-            obligation_key: "POINTS",
-            ssp: "100",
-            ssp_conversion: {
-              original_ssp: "80",
-              source_currency: "GBP",
-              target_currency: "USD",
-              converted_ssp: "100",
-              rate: "1.25",
-              effective_date: "2026-10-01",
-              rate_key: "GBP-USD-SPOT",
-              rate_version_key: "fx-v1",
-              rate_date: "2026-09-30",
+    http.get(
+      apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/allocation-preview"),
+      ({ request }) => {
+        reads++;
+        const book = new URL(request.url).searchParams.get("book_code");
+        requestedBooks.push(book);
+        if (refuse) return problemResponse("validation-failed", 422, "Recompute every member");
+        return HttpResponse.json({
+          basis: "CURRENT_COMPUTED_SSP_PREVIEW",
+          portfolio_id: "p1",
+          version_id: "v1",
+          book_code: book ?? "PRIMARY",
+          currency: "USD",
+          total_breakage_quantity: "9",
+          allocated_total: "9",
+          shares: [
+            {
+              contract_id: "c1",
+              contract_external_id: "LOYALTY-A",
+              contract_version_id: book ? "ifrs-source" : "retained-source-1",
+              obligation_id: "o1",
+              obligation_key: "POINTS",
+              ssp: "100",
+              ssp_conversion: {
+                original_ssp: "80",
+                source_currency: "GBP",
+                target_currency: "USD",
+                converted_ssp: "100",
+                rate: "1.25",
+                effective_date: "2026-10-01",
+                rate_key: "GBP-USD-SPOT",
+                rate_version_key: "fx-v1",
+                rate_date: "2026-09-30",
+              },
+              entitlement_quantity: "10",
+              breakage_quantity: "3",
             },
-            entitlement_quantity: "10",
-            breakage_quantity: "3",
-          },
-        ],
-      });
-    }),
+          ],
+        });
+      },
+    ),
   );
   renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
   fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
@@ -516,10 +522,17 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   expect(screen.getByText(/80 GBP.*1.25.*100.*USD/)).toBeTruthy();
   expect(screen.getByText(/GBP-USD-SPOT.*fx-v1.*2026-09-30/)).toBeTruthy();
   expect(screen.getByText(/Allocated \/ shared total: 9 \/ 9/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("combobox", { name: "Allocation book" }));
+  fireEvent.mouseDown(screen.getByRole("option", { name: "IFRS15" }));
+  await waitFor(() => expect(screen.queryByText("retained-source-1")).toBeNull());
+  expect(reads).toBe(1);
+  fireEvent.click(button);
+  await screen.findByText("ifrs-source");
+  expect(requestedBooks).toEqual([null, "IFRS15"]);
   refuse = true;
   fireEvent.click(button);
-  await waitFor(() => expect(reads).toBe(2));
-  await waitFor(() => expect(screen.queryByText("retained-source-1")).toBeNull());
+  await waitFor(() => expect(reads).toBe(3));
+  await waitFor(() => expect(screen.queryByText("ifrs-source")).toBeNull());
 });
 
 it("calculates shared return impact on demand and shows period changes without posting", async () => {

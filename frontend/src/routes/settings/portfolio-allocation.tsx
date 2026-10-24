@@ -1,5 +1,9 @@
+import { useState } from "react";
+
 import { useQuery } from "@tanstack/react-query";
 
+import { Field } from "../../components/form/Field";
+import { Select } from "../../components/form/Select";
 import { Banner } from "../../components/feedback/Banner";
 import { RefusalBanner } from "../../components/feedback/RefusalBanner";
 import { Button } from "../../components/ui/Button";
@@ -19,9 +23,13 @@ export function PortfolioAllocation({
   readonly path: string;
   readonly revision: string;
 }) {
+  const [book, setBook] = useState("");
+  const previewPath = book ? `${path}?${new URLSearchParams({ book_code: book })}` : path;
   const preview = useQuery({
-    queryKey: queryKey("portfolios", "tenant", { path, revision, view: "allocation" }),
-    queryFn: async () => (await readJson<Preview>(path)).data,
+    queryKey: queryKey("portfolios", "tenant", { path, revision, book, view: "allocation" }),
+    queryFn: async () => (await readJson<Preview>(previewPath)).data,
+    // A different book must never display the previous book's allocation.
+    placeholderData: () => undefined,
     enabled: false,
     retry: false,
   });
@@ -29,6 +37,22 @@ export function PortfolioAllocation({
     <section className="flex flex-col gap-3" aria-label={label("title")}>
       <h4 className="text-heading-sm">{label("title")}</h4>
       <p className="text-body-sm text-fg-2">{label("help")}</p>
+      <Field name="portfolio-allocation-book" label={label("book")}>
+        {(control) => (
+          <Select
+            control={control}
+            value={book}
+            onChange={setBook}
+            options={[
+              { value: "", label: label("primaryBook") },
+              ...(["ASC606", "IFRS15", "LEGACY"] as const).map((value) => ({
+                value,
+                label: value,
+              })),
+            ]}
+          />
+        )}
+      </Field>
       <Button loading={preview.isFetching} onClick={() => void preview.refetch()}>
         {label(preview.isFetching ? "loading" : "preview")}
       </Button>
