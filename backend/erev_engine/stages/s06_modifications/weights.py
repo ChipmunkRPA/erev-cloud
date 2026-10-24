@@ -50,6 +50,7 @@ from erev_engine.stages.s06_modifications import segments
 from erev_engine.stages.s06_modifications.classify import ModificationLine
 from erev_engine.stages.s06_modifications.segments import Measured
 from erev_engine.stages.state import (
+    AllocatedState,
     BookContext,
     EventView,
     Finding,
@@ -233,6 +234,8 @@ def existing(
     ev: EventView,
     basis: Mapping[str, object] | None,
     findings: list[Finding],
+    *,
+    state: AllocatedState | None = None,
 ) -> Weight | None:
     """w_p of a class D existing obligation (``D18_DEFAULT``); ``None`` when a finding blocks.
 
@@ -278,6 +281,36 @@ def existing(
             for key in ob.combined_component_keys:
                 original = originals[key]
                 fraction = remaining / ob.original_quantity
+                if state is not None and before.segment.progress_measure in segments.UNIT_MEASURES:
+                    from erev_engine.stages.s01_canonicalize import obligation_subject_key
+                    from erev_engine.stages.s09_recognition import progress_events
+
+                    if gone:
+                        raise ValueError(
+                            "Combined removals require original member quantity changes"
+                        )
+                    original_component = dataclasses.replace(
+                        ob,
+                        obligation_key=key,
+                        subject_key=obligation_subject_key(ob.contract_key, key),
+                        combined_component_keys=(),
+                    )
+                    contract = next(
+                        c for c in state.contracts if c.header.external_id == ob.contract_key
+                    )
+                    counts = progress_events.tally(
+                        ctx,
+                        state,
+                        contract,
+                        original_component,
+                        d,
+                        progress_events.Position(ev.order_key, False),
+                    )
+                    total = payload_fraction(original, "quantity") or Fraction(0)
+                    left = total - counts.counted + counts.returned
+                    if left < 0 or (total == 0 and left != 0):
+                        raise ValueError("Combined member delivery exceeds its original quantity")
+                    fraction = left / total if total else Fraction(0)
                 line = _raw(
                     ob,
                     d,

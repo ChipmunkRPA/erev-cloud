@@ -1928,3 +1928,20 @@ seven targeted event-position/effective-date cases and scoped lint/types pass. T
 exact query point needed for effective-date reassessment. Splitting/continuing the combination,
 carrying recognized revenue into its new scope and public approval/application are still unfinished;
 the historical DATA_CORRECTION and withdrawn posted-regroup guards remain. No deployment.
+
+
+## October 24: original-member remaining SSP at combined unit boundaries
+
+Evidence revision 28 corrects D18_DEFAULT class-D remaining SSP for combined obligations measured
+by units. The native modification path supplies its pre-boundary state to the SSP calculation,
+which tallies each original component's admitted deliveries/returns strictly before the event.
+Each original product is resolved with its own remaining quantity and proportional stated price.
+It no longer distributes total remaining units uniformly across the original component weights.
+For a half-delivered lease at 7,500 per unit and an undelivered service at 2,500, remaining SSP
+is 6,250; if only the service was half delivered it is 8,750, rather than 7,500 in both cases.
+
+The 22 combined modification/termination cases pass, including per-member delivery and full
+delivery of one member, preserved recognized revenue, trace reevaluation and revision-27 historical
+results. Scoped lint/types pass. Other recognition measures and INCEPTION_ALL behavior remain
+unchanged. Quantity/term continuation, partial removal and split application still require their
+reassessment implementation; this correction does not relax those guards. No deployment.

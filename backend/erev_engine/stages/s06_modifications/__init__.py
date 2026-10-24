@@ -1575,7 +1575,14 @@ def _native(
             if inception_all
             else weights.existing
         )
-        found = weigh(ctx, identified, ob, before, lines, ev, basis.get(key), findings)
+        found = (
+            weights.existing(
+                ctx, identified, ob, before, lines, ev, basis.get(key), findings, state=st
+            )
+            if weigh is weights.existing
+            and (identified.canonical.bundle.evidence_revision or 0) >= 28
+            else weigh(ctx, identified, ob, before, lines, ev, basis.get(key), findings)
+        )
         if found is not None:
             weighted[ob.subject_key] = found
     for draft in drafts:

@@ -266,3 +266,61 @@ def test_original_member_delivery_is_retained_at_prospective_price_boundary():
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
     legacy = compute(replace(value, evidence_revision=9)).books[0]
     assert legacy.contract_version.columns["revenue_cum"] == 275_000
+
+
+@pytest.mark.parametrize(
+    "member, delivered, expected, old_expected, revenue",
+    [
+        ("LEASE", "0.5", "6250", "7500", 250_000),
+        ("SERVICE", "0.5", "8750", "7500", 250_000),
+        ("LEASE", "1", "2500", "5000", 500_000),
+    ],
+)
+def test_remaining_combined_ssp_uses_each_original_members_undelivered_units(
+    member, delivered, expected, old_expected, revenue
+):
+    value = replace(price_change(), evidence_revision=28)
+    amendment = value.events[-1]
+    value = replace(
+        value,
+        ssp_versions=tuple(
+            replace(
+                v,
+                entries=tuple(
+                    replace(e, value_basis="PER_INCREMENT", quantity_unit="SERVICE_UNITS")
+                    for e in v.entries
+                ),
+            )
+            for v in value.ssp_versions
+        ),
+        pob_template_versions=tuple(
+            replace(t, recognition_method="UNITS_DELIVERED") for t in value.pob_template_versions
+        ),
+        events=(
+            *value.events[:-1],
+            bundles.event(
+                CONTRACT,
+                3,
+                "DELIVERY_RECORDED",
+                date(2026, 1, 5),
+                {"obligation_key": member, "quantity": delivered, "trigger": "DELIVERY"},
+                obligation_keys=[member],
+            ),
+            bundles.event(
+                CONTRACT,
+                4,
+                "CONTRACT_AMENDED",
+                amendment.effective_date,
+                amendment.payload,
+                obligation_keys=["LEASE"],
+            ),
+        ),
+    )
+    result = compute(value).books[0]
+    weight = next(n for n in result.trace.nodes if n.measure.startswith("mod_weight@"))
+    assert Decimal(weight.value) == Decimal(expected)
+    assert result.contract_version.columns["revenue_cum"] == revenue
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    previous = compute(replace(value, evidence_revision=27)).books[0]
+    old_weight = next(n for n in previous.trace.nodes if n.measure.startswith("mod_weight@"))
+    assert Decimal(old_weight.value) == Decimal(old_expected)
