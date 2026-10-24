@@ -905,3 +905,76 @@ def test_portfolio_membership_workflow(
     assert (
         get(app, cost_path, maya).json()["portfolio_application_basis"]["cost_conversions"][0] == fx
     )
+
+    # Change the common target keys on a new version; retain former targets for exit.
+    other_key = world.place.scalar(
+        select(obligation.c.obligation_key)
+        .where(
+            obligation.c.contract_id == clone.contract["id"],
+            obligation.c.obligation_key != target_key,
+        )
+        .limit(1)
+    )
+    assert other_key is not None
+    changed_values = {
+        **values,
+        "effective_date": "2026-10-01",
+        "target_obligation_keys": [other_key],
+    }
+    invalid = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        {**changed_values, "target_obligation_keys": ["MISSING"]},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert invalid.status_code == 422, invalid.text
+    changed = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        changed_values,
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert changed.status_code == 201, changed.text
+    change_path = changed.headers["location"]
+    changed_basis = changed.json()["portfolio_application_basis"]
+    assert changed_basis["target_obligation_keys"] == [other_key]
+    assert changed_basis["members"][0]["obligation_keys"] == [other_key]
+    assert changed_basis["retired_targets"][0]["obligation_keys"] == [target_key]
+    assert changed_basis["retired_members"] == []
+    preview = get(app, change_path + "/impact-preview", maya)
+    assert preview.status_code == 200, preview.text
+    evidence = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": changed.json()["id"],
+            "file_object_id": file_id,
+        },
+    )
+    assert evidence.status_code == 201, evidence.text
+    submitted = post(
+        app, change_path + "/submit", maya, {}, if_match=get(app, change_path, maya).headers["etag"]
+    )
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    assert get(app, cost_path, maya).json()["portfolio_application_basis"][
+        "target_obligation_keys"
+    ] == [target_key]
+    with tenant_session(context) as session:
+        bundle = bundles.build(session, clone.combination_group["id"], clock.now(), [], "DRY_RUN")
+        current_input = next(
+            v
+            for v in bundle.estimate_versions
+            if v.version_no == changed.json()["version_no"] and v.element_code == "TARGETED-RETURNS"
+        )
+        assert set(current_input.target_obligation_keys) == {target_key, other_key}
+        from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
+        assert current_input.portfolio_target_subject_keys == (
+            obligation_subject_key("NEW-SHARED-MEMBER", other_key),
+        )

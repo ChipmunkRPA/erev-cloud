@@ -29,6 +29,7 @@ from erev_engine.stages.s01_canonicalize import (
 from erev_engine.stages.s03_pob_builder import PobDraft, PobState
 from erev_engine.stages.state import (
     BookContext,
+    EstimatePin,
     EstimatePins,
     EventView,
     Finding,
@@ -116,7 +117,7 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
     key = item.estimate_keys[0] if item.estimate_keys else ""
     shared_precedence = (st.identified.canonical.bundle.evidence_revision or 0) >= 11
     keys = item.estimate_keys if shared_precedence else (key,)
-    versions = {}
+    versions: dict[str, EstimatePin] = {}
     for source in keys:
         for applied in st.identified.canonical.estimates.pins.get(source, ()):
             # Shared applications are recorded in each member stream. The first event
@@ -144,6 +145,11 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
                     (st.identified.canonical.bundle.evidence_revision or 0) < 12
                     or applied.version.portfolio_member_contract_keys is None
                     or ob.contract_key in applied.version.portfolio_member_contract_keys
+                )
+                and (
+                    (st.identified.canonical.bundle.evidence_revision or 0) < 13
+                    or applied.version.portfolio_target_subject_keys is None
+                    or ob.subject_key in applied.version.portfolio_target_subject_keys
                 ),
             )
             for applied in ordered
@@ -177,6 +183,10 @@ def findings(ctx: BookContext, st: PobState, items: Sequence[Returnable]) -> tup
                     None,
                     shared_precedence=True,
                     contract_key=ob.contract_key,
+                    subject_key=ob.subject_key
+                    if (st.identified.canonical.bundle.evidence_revision or 0) >= 13
+                    else None,
+                    strict_scope=(st.identified.canonical.bundle.evidence_revision or 0) >= 13,
                 )
                 is not None
             ):
@@ -233,6 +243,10 @@ def measure(
             contract_key=ob.contract_key
             if (st.identified.canonical.bundle.evidence_revision or 0) >= 12
             else None,
+            subject_key=ob.subject_key
+            if (st.identified.canonical.bundle.evidence_revision or 0) >= 13
+            else None,
+            strict_scope=(st.identified.canonical.bundle.evidence_revision or 0) >= 13,
         )
         expected = Fraction(0)
         if item.model != ACTUAL_RETURNS_ONLY and pin is not None:
@@ -395,6 +409,8 @@ def _latest_pin(
     *,
     shared_precedence: bool = False,
     contract_key: str | None = None,
+    subject_key: str | None = None,
+    strict_scope: bool = False,
 ) -> EstimateVersionInput | None:
     candidates = [version for key in keys if (version := pins.pin(key, at, before)) is not None]
     candidates = [
@@ -404,6 +420,13 @@ def _latest_pin(
         or v.portfolio_member_contract_keys is None
         or contract_key in v.portfolio_member_contract_keys
     ]
+    if subject_key is not None:
+        candidates = [
+            v
+            for v in candidates
+            if v.portfolio_target_subject_keys is None
+            or subject_key in v.portfolio_target_subject_keys
+        ]
     shared = [v for v in candidates if v.estimate_key.startswith(_PORTFOLIO_PREFIX)]
     if shared_precedence and len(shared) > 1:
         raise EngineError(
@@ -414,7 +437,7 @@ def _latest_pin(
     found: EstimateVersionInput | None = None
     for key in keys:
         version = pins.pin(key, at, before)
-        if version is None:
+        if version is None or (strict_scope and version not in candidates):
             continue
         if found is None or (version.effective_date, version.version_no) > (
             found.effective_date,

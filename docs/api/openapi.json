@@ -32278,6 +32278,24 @@
             "title": "Scenarios",
             "type": "array"
           },
+          "target_obligation_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 1000,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Obligation Keys"
+          },
           "unconstrained_amount": {
             "anyOf": [
               {
@@ -38840,11 +38858,32 @@
             "title": "Retired Members",
             "type": "array"
           },
+          "retired_targets": {
+            "items": {
+              "$ref": "#/components/schemas/SharedEstimateMemberBinding"
+            },
+            "title": "Retired Targets",
+            "type": "array"
+          },
           "schema_version": {
             "const": 1,
             "default": 1,
             "title": "Schema Version",
             "type": "integer"
+          },
+          "target_obligation_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Obligation Keys"
           }
         },
         "required": [

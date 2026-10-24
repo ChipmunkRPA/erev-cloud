@@ -82,6 +82,9 @@ def shared_return_contract(
                 refuse("A shared estimate target has no retained obligation key")
             grouped[owner].add(obligation_keys[target])
     sets = {frozenset(keys) for keys in grouped.values()}
-    if len(sets) != 1 or not next(iter(sets), frozenset()):
+    scoped_targets = (version.get("portfolio_application_basis") or {}).get(
+        "target_obligation_keys"
+    ) is not None
+    if (not scoped_targets and len(sets) != 1) or any(not keys for keys in grouped.values()):
         refuse("Shared return estimates require explicit matching targets for every member")
     return min(selected.member_contract_keys)

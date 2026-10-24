@@ -407,6 +407,20 @@ def assert_bundle_order(bundle: InputBundle) -> None:
     _assert_reference_order(bundle)
     _sorted(bundle.estimate_versions, lambda v: (v.estimate_key, v.version_no), "estimates")
     for version in bundle.estimate_versions:
+        targets = version.portfolio_target_subject_keys
+        if targets is not None:
+            if (
+                bundle.evidence_revision or 0
+            ) < 13 or version.portfolio_member_contract_keys is None:
+                raise ValueError("Frozen shared target scope requires revision 13 and member scope")
+            if (
+                not version.estimate_key.startswith("PORTFOLIO:")
+                or version.estimate_kind != "RETURN_RATE"
+            ):
+                raise ValueError("Frozen target scope applies to shared return estimates")
+            if any(not key for key in targets):
+                raise ValueError("Frozen shared targets must be nonempty keys")
+            _sorted(targets, _itself, f"{version.version_key} frozen targets")
         members = version.portfolio_member_contract_keys
         if members is not None:
             if (bundle.evidence_revision or 0) < 12:

@@ -115,6 +115,11 @@ def save(
         values = estimates.validated_version_values(
             uow.session, element, body, default_currency=body.currency
         )
+        if (
+            body.target_obligation_keys is not None
+            and str(element["estimate_kind"]) != "RETURN_RATE"
+        ):
+            raise Problem("validation-failed", "Version target keys apply only to shared returns.")
         if str(element["estimate_kind"]) == "BREAKAGE":
             if values["parameters"].get("portfolio_total_breakage_quantity") is None:
                 raise Problem(
@@ -134,7 +139,14 @@ def save(
                     "or expected redemption quantity.",
                 )
         values["portfolio_application_basis"] = portfolio_binding.capture(
-            uow.session, portfolio_id, element, values=values
+            uow.session,
+            portfolio_id,
+            element,
+            values={
+                **values,
+                "portfolio_application_basis": (before or {}).get("portfolio_application_basis"),
+            },
+            target_keys=body.target_obligation_keys,
         )
         if body.rate is not None and not 0 <= values["rate"] <= 1:
             raise Problem(

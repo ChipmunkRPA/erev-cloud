@@ -983,9 +983,10 @@ def test_shared_returns_override_local_only_after_effective_date(revision):
         ((), (C_RET,), 960_000, 900_000),
     ],
 )
+@pytest.mark.parametrize("scope_kind", ["members", "targets"])
 @pytest.mark.parametrize("duplicate_application", [False, True])
 def test_frozen_shared_membership_changes_only_from_version_effective_date(
-    first_scope, second_scope, jan, feb, duplicate_application
+    first_scope, second_scope, jan, feb, duplicate_application, scope_kind
 ):
     from erev_engine.bundle import PortfolioInput
     from erev_engine.stages.s09_recognition import run
@@ -1002,7 +1003,10 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
         version_key="PORTFOLIO:RETURNS/SHARED@v1",
         effective_date=date(2026, 1, 20),
         expected_quantity=Decimal(8),
-        portfolio_member_contract_keys=first_scope,
+        portfolio_member_contract_keys=first_scope if scope_kind == "members" else (C_RET,),
+        portfolio_target_subject_keys=None
+        if scope_kind == "members"
+        else ((O_RET,) if first_scope else ()),
     )
     second = dataclasses.replace(
         first,
@@ -1011,11 +1015,14 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
         effective_date=date(2026, 2, 1),
         expected_quantity=Decimal(10),
         supersedes_version_key=first.version_key,
-        portfolio_member_contract_keys=second_scope,
+        portfolio_member_contract_keys=second_scope if scope_kind == "members" else (C_RET,),
+        portfolio_target_subject_keys=None
+        if scope_kind == "members"
+        else ((O_RET,) if second_scope else ()),
     )
     value = dataclasses.replace(
         base,
-        evidence_revision=12,
+        evidence_revision=12 if scope_kind == "members" else 13,
         group=dataclasses.replace(base.group, portfolios=(PortfolioInput("RETURNS", (C_RET,)),)),
         estimate_versions=tuple(
             sorted(
@@ -1041,6 +1048,21 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
     )
     ctx, _, allocated, _ = fold(value)
     assert allocated is not None
+    if scope_kind == "targets":
+        from erev_engine.stages.s04_transaction_price.returns import _latest_pin
+
+        selected = _latest_pin(
+            allocated.estimates,
+            (local.estimate_key, first.estimate_key),
+            second.effective_date,
+            None,
+            shared_precedence=True,
+            contract_key=C_RET,
+            subject_key=O_RET,
+            strict_scope=True,
+        )
+        assert selected is not None
+        assert selected.expected_quantity == (10 if second_scope else 4)
     recognized = run(ctx, allocated, TraceBuilder(engine_version=ENGINE_VERSION))
     totals = targets_by_period(recognized, O_RET)
     assert totals["FY2026-P01"] == jan
@@ -1057,6 +1079,18 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
     assert before.expected_quantity == (8 if first_scope else 4)
     assert after.expected_quantity == (10 if second_scope else 4)
     assert "portfolio_member_contract_keys" not in local.hash_view()
+    assert "portfolio_target_subject_keys" not in local.hash_view()
+    from erev_engine.canonical import sha256_hex
+    from erev_engine.upgrade import decode_input, encode_input
+
+    assert sha256_hex(local) == sha256_hex(
+        {
+            f.name: getattr(local, f.name)
+            for f in dataclasses.fields(local)
+            if f.name != "portfolio_target_subject_keys"
+        }
+    )
+    assert decode_input(encode_input(value)) == value
     assert (
         first.hash_view()
         != dataclasses.replace(first, portfolio_member_contract_keys=None).hash_view()

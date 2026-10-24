@@ -262,6 +262,8 @@ class SharedEstimateApplicationBasis(BaseModel):
     members: list[SharedEstimateMemberBinding]
     retired_members: list[SharedEstimateMemberBinding] = Field(default_factory=list)
     cost_conversions: list[SharedEstimateCostConversion] = Field(default_factory=list)
+    target_obligation_keys: list[str] | None = None
+    retired_targets: list[SharedEstimateMemberBinding] = Field(default_factory=list)
 
 
 class EstimateVersionOut(BaseModel):

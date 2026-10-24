@@ -20318,6 +20318,8 @@ export interface components {
       rationale: string;
       /** Scenarios */
       scenarios?: components["schemas"]["ScenarioIn"][];
+      /** Target Obligation Keys */
+      target_obligation_keys?: string[] | null;
       /** Unconstrained Amount */
       unconstrained_amount?: string | null;
     };
@@ -23005,12 +23007,16 @@ export interface components {
       portfolio_id: string;
       /** Retired Members */
       retired_members?: components["schemas"]["SharedEstimateMemberBinding"][];
+      /** Retired Targets */
+      retired_targets?: components["schemas"]["SharedEstimateMemberBinding"][];
       /**
        * Schema Version
        * @default 1
        * @constant
        */
       schema_version: 1;
+      /** Target Obligation Keys */
+      target_obligation_keys?: string[] | null;
     };
     /** SharedEstimateCostConversion */
     SharedEstimateCostConversion: {

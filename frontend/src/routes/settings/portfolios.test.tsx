@@ -259,12 +259,16 @@ it("creates and edits draft values, retains a refused edit, and discards without
   ] as const) {
     fireEvent.change(screen.getByLabelText(name), { target: { value } });
   }
+  fireEvent.change(screen.getByLabelText("Target obligation keys for this version"), {
+    target: { value: "GOODS" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Save draft version" }));
   await waitFor(() =>
     expect(screen.queryByRole("button", { name: "Save draft version" })).toBeNull(),
   );
   expect(sent[0]?.tag).toBe('"r3"');
   expect(sent[0]?.body.rate).toBe("0.10000001");
+  expect(sent[0]?.body.target_obligation_keys).toEqual(["GOODS"]);
   expect(sent[0]?.body.parameters).toEqual({
     carrying_cost_per_unit: "12.50",
     recovery_cost_per_unit: "1.00",
@@ -606,6 +610,15 @@ it("submits saved shared returns with an ETag and opens the resulting approval",
     approval_request_id: null as string | null,
     portfolio_application_basis: {
       schema_version: 1,
+      target_obligation_keys: ["NEW-GOODS"],
+      retired_targets: [
+        {
+          contract_id: "c1",
+          contract_key: "CONTRACT-1",
+          obligation_ids: ["old"],
+          obligation_keys: ["OLD-GOODS"],
+        },
+      ],
       portfolio_id: "p1",
       members: [],
       cost_conversions: [
@@ -656,6 +669,13 @@ it("submits saved shared returns with an ETag and opens the resulting approval",
     screen.getByRole("heading", { name: "Members leaving this shared estimate" }),
   ).toBeTruthy();
   expect(screen.getByText("CONTRACT-1: GOODS")).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Obligations leaving this shared estimate" }),
+  ).toBeTruthy();
+  expect(screen.getByText("CONTRACT-1: OLD-GOODS")).toBeTruthy();
+  expect(
+    (screen.getByLabelText("Target obligation keys for this version") as HTMLTextAreaElement).value,
+  ).toBe("NEW-GOODS");
   expect(
     screen.getByRole("heading", { name: "Saved unit-cost currency conversions" }),
   ).toBeTruthy();

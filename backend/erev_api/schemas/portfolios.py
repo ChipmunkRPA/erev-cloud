@@ -65,6 +65,7 @@ class PortfolioEstimateVersionIn(EstimateVersionCreateIn):
     """Full draft values with an explicit currency; no member-specific links."""
 
     currency: CurrencyCode
+    target_obligation_keys: list[Key] | None = Field(default=None, min_length=1, max_length=1000)
     modification_id: None = None
     judgement_record_id: None = None
 

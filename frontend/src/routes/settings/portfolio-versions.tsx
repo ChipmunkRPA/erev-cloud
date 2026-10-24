@@ -26,6 +26,7 @@ const label = (key: string) => t(`settings.portfolioVersions.${key}`);
 const KEY = queryKey("portfolios", "tenant");
 const valuesOf = (v: Version | null): Values => ({
   effective_date: v?.effective_date ?? "",
+  target_obligation_keys: v?.portfolio_application_basis?.target_obligation_keys ?? null,
   currency: v?.currency ?? "",
   rationale: v?.rationale ?? "",
   rate: v?.rate ?? null,
@@ -152,6 +153,18 @@ export function PortfolioVersions({
               </li>
             ))}
           </ul>
+          {(selected.portfolio_application_basis.retired_targets ?? []).length > 0 ? (
+            <>
+              <h4 className="text-heading-sm">{label("retiredTargets")}</h4>
+              <ul>
+                {selected.portfolio_application_basis.retired_targets?.map((member) => (
+                  <li key={member.contract_id}>
+                    {member.contract_key}: {member.obligation_keys.join(", ")}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
           {(selected.portfolio_application_basis.retired_members ?? []).length > 0 ? (
             <>
               <h4 className="text-heading-sm">{label("retiredBindings")}</h4>
@@ -292,6 +305,34 @@ function VersionForm({
         <Link to={`/approvals/requests/${version.approval_request_id}`}>{label("approval")}</Link>
       ) : null}
       {networkError ? <Banner tone="negative" title={label("networkError")} /> : null}
+      {estimate.estimate_kind === "RETURN_RATE" ? (
+        <Field
+          name="portfolio-version-targets"
+          label={label("targetKeys")}
+          help={label("targetKeysHelp")}
+        >
+          {(control) => (
+            <textarea
+              {...control}
+              className={controlClass(false)}
+              readOnly={!editable}
+              disabled={pending}
+              value={(values.target_obligation_keys ?? []).join("\n")}
+              onChange={(event) =>
+                setValues((previous) => ({
+                  ...previous,
+                  target_obligation_keys: event.target.value.trim()
+                    ? event.target.value
+                        .split(/\n/)
+                        .map((key) => key.trim())
+                        .filter(Boolean)
+                    : null,
+                }))
+              }
+            />
+          )}
+        </Field>
+      ) : null}
       {shownFields.map((key) => (
         <Field
           key={key}
