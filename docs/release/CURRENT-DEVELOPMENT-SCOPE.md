@@ -2874,3 +2874,11 @@ existing transaction FIFO/carrying cap, with functional JET-09f and subsequent a
 reconciliation. Ten native cases pass; see [checkpoint](COST-CLAWBACK-CURRENCY-2026-10-24.md).
 Foreign impairment/reversal remain open. ERP settlement is outside this asset-release path.
 No deployment; publish directly to main.
+
+
+### 2026-10-24 — Multi-asset clawback source verification
+
+Verified a single recovery spanning two cost assets at distinct historical rates; FIFO, per-asset
+functional amounts, ledger totals and retained rate identities agree. Foreign impairment requires
+owner clarification of independent functional recoverability versus simplified transaction-result
+translation; this does not block independent remaining development. No deployment.

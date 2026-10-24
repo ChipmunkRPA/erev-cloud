@@ -332,3 +332,77 @@ def test_foreign_clawback_releases_historical_cost_and_retains_remaining_amortis
     assert result == compute(value).books[0]
     with pytest.raises(EngineError, match="no functional amount"):
         compute(replace(value, evidence_revision=57))
+
+
+def test_clawback_spanning_assets_preserves_each_capitalization_rate():
+    value = replace(source(), evidence_revision=58)
+    first = next(e for e in value.events if e.payload.get("is_incremental") is True)
+
+    def event(number, on, amount, *, recovery=False):
+        payload = {**first.payload, "amount": Decimal(amount)}
+        if recovery:
+            payload["cost_adjustment"] = "CLAWBACK"
+        return replace(
+            first,
+            event_key=f"{first.contract_key}/EV-{number:06d}",
+            stream_version=number,
+            record_seq=number,
+            effective_date=on,
+            payload=payload,
+            payload_sha256=sha256_hex(payload),
+        )
+
+    second = event(8, date(2026, 3, 1), "5000")
+    recovery = event(9, date(2026, 7, 1), "10000", recovery=True)
+    value = replace(
+        value,
+        events=(*value.events, second, recovery),
+        fx_rates=tuple(
+            sorted(
+                (
+                    *value.fx_rates,
+                    FxRateInput(
+                        "second-spot",
+                        "1",
+                        "spot",
+                        "USD",
+                        "EUR",
+                        date(2026, 3, 1),
+                        None,
+                        Decimal(".8"),
+                    ),
+                ),
+                key=lambda r: (
+                    r.rate_type,
+                    r.base_currency,
+                    r.quote_currency,
+                    r.effective_date,
+                    r.version_key,
+                ),
+            )
+        ),
+    )
+    result = compute(value).books[0]
+    by_id = {n.id: n for n in result.trace.nodes}
+    expected_total = Decimal(0)
+    for asset, spot in ((first.event_key, Decimal(".9")), (second.event_key, Decimal(".8"))):
+        txn = by_id[f"cost_clawback_cum:{asset}:FY2026-P07"]
+        functional = by_id[f"cost_clawback_cum_functional:{asset}:FY2026-P07"]
+        assert Decimal(txn.value) > 0
+        assert Decimal(functional.value) == (Decimal(txn.value) * spot).quantize(Decimal(".01"))
+        expected_total += Decimal(functional.value)
+    assert Decimal(by_id[f"carrying_amount:{first.event_key}:FY2026-P07"].value) == 0
+    assert Decimal(by_id[f"carrying_amount:{second.event_key}:FY2026-P07"].value) > 0
+    lines = [
+        line
+        for entry in result.posting_intents
+        for line in entry.lines
+        if line.account_role == "COST_TO_OBTAIN_ASSET" and entry.reason_code == "CLAWBACK"
+    ]
+    assert lines
+    assert sum(Decimal(line.amount_functional) / 100 for line in lines) == expected_total
+    assert {dict(result.line_rates)[line.line_key] for line in lines} == {
+        (("cost-spot", "1"),),
+        (("second-spot", "1"),),
+    }
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
