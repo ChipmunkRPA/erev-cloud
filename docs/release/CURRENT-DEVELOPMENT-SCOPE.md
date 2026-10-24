@@ -2824,3 +2824,11 @@ Revision 55 adds historical functional capitalisation, amortisation, dated membe
 and JET-09 rate references for ordinary cost assets. See [cost currency](COST-ASSET-CURRENCY-2026-10-24.md).
 Impairment/reversal/clawback/acceleration, delayed capitalisation, return assets and loss provisions
 remain outside this addition. Foreign split layer distribution awaits the owner’s choice.
+
+
+## 2026-10-24 — foreign cost termination acceleration
+
+Revision 56 adds original historical carrying for termination acceleration, including the
+final rounding residue and JET-09e/report reconciliation. See [cost termination currency](COST-TERMINATION-CURRENCY-2026-10-24.md).
+This supersedes the acceleration limitation in the revision 55 checkpoint; impairment,
+reversal, clawback and delayed capitalisation remain open.
