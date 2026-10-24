@@ -1851,6 +1851,8 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         assert row["modification_contract"] == BR06_EXTERNAL_ID
         assert row["modification_effective_date"] == "2026-09-10"
         assert json.loads(row["combined_reassessment"]) == {"L2-SERVICE": assessment}
+        assert json.loads(row["modification_proposed_treatments"]) == expected_treatments
+        assert json.loads(row["modification_chosen_treatments"]) == expected_treatments
     rerun = post(app, f"/api/v1/report-runs/{causal_run['id']}/rerun", world.maya, {})
     assert rerun.status_code == 202, rerun.text
     replay = run_now(world, UUID(rerun.json()["id"]))

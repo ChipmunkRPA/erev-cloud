@@ -2038,3 +2038,13 @@ functional-equivalent and reporting views retain the context.
 CUMULATIVE_CATCH_UP) pass, including equal-hash report replay; scoped types/lint pass.
 See `MODIFICATION-TREATMENT-CONTEXT-2026-10-24.md`. Remaining shared-breakage application,
 mixed acquired/ordinary reporting and contract-group splitting gaps remain open. No deployment.
+
+
+### 2026-10-24 — Causal-analysis treatment decisions
+
+Extended the modification treatment context to causal-analysis rows. Each selected event
+retains its actual proposed/chosen obligation-key maps; baseline, final and unrelated-event
+rows remain unassigned. The new retained flag leaves earlier saved outputs unchanged.
+Amounts, currency calculation and period reconciliation are unchanged. Focused context and
+public PROSPECTIVE/CUMULATIVE_CATCH_UP workflow checks cover exact report replay.
+See `MODIFICATION-TREATMENT-CONTEXT-2026-10-24.md`. No deployment.

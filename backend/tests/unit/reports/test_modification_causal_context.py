@@ -36,6 +36,8 @@ def test_event_context_is_retained_without_assigning_baselines_or_other_events()
                 "contract_external_id": "OWNER",
                 "effective_date": "2026-09-10",
                 "combined_reassessment": json.dumps(assessment),
+                "proposed_treatments": json.dumps({"HOST": "PROSPECTIVE"}),
+                "chosen_treatments": json.dumps({"HOST": "CUMULATIVE_CATCH_UP"}),
             }
         },
         "unavailable": [],
@@ -56,3 +58,20 @@ def test_event_context_is_retained_without_assigning_baselines_or_other_events()
     assert current.control_totals == old.control_totals
     assert "combined_reassessment" not in old.rows[1]
     assert dataset(original) == old
+
+    evidence["modification_treatment_maps"] = True
+    decisions = dataset(evidence)
+    assert json.loads(decisions.rows[1]["modification_proposed_treatments"]) == {
+        "HOST": "PROSPECTIVE"
+    }
+    assert json.loads(decisions.rows[1]["modification_chosen_treatments"]) == {
+        "HOST": "CUMULATIVE_CATCH_UP"
+    }
+    for row in (decisions.rows[0], decisions.rows[2], decisions.rows[3]):
+        assert row["modification_proposed_treatments"] is None
+        assert row["modification_chosen_treatments"] is None
+    assert decisions.control_totals == current.control_totals
+    for before, row in zip(current.rows, decisions.rows, strict=True):
+        assert {key: row[key] for key in before} == before
+        assert "modification_chosen_treatments" not in before
+    assert dataset(evidence) == decisions

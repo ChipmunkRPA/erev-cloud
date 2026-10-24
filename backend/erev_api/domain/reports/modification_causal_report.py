@@ -164,6 +164,11 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
                 "effective_date",
             )
         }
+        for field in ("proposed_treatments", "chosen_treatments"):
+            treatments = record.get(field)
+            modifications[key][field] = (
+                canonical_bytes(treatments).decode("utf-8") if treatments else None
+            )
         assessment = record["questionnaire"].get("combined_reassessment")
         if assessment:
             modifications[key]["combined_reassessment"] = canonical_bytes(assessment).decode(
@@ -237,6 +242,7 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
         "selection": selection(params),
         "book": original["book"],
         "modification_context_columns": True,
+        "modification_treatment_maps": True,
         "currency_view": params.parameters.get("currency_view") or "transaction",
     }
     return Prepared(collector, tuple(tasks), identity, modifications, tuple(unavailable))
@@ -426,6 +432,23 @@ def dataset(evidence: Mapping[str, Any]) -> ReportData:
                 date.fromisoformat(effective) if effective is not None else None
             )
             row["combined_reassessment"] = modification.get("combined_reassessment")
+    if evidence.get("modification_treatment_maps"):
+        context_columns += (
+            Column(
+                "modification_proposed_treatments",
+                "Modification proposed treatments (by obligation, JSON)",
+                "text",
+            ),
+            Column(
+                "modification_chosen_treatments",
+                "Modification chosen treatments (by obligation, JSON)",
+                "text",
+            ),
+        )
+        for row in rows:
+            modification = evidence["modifications"].get(row["event_key"], {})
+            for field in ("proposed_treatments", "chosen_treatments"):
+                row[f"modification_{field}"] = modification.get(field)
     return ReportData(
         columns=(
             Column("contract_external_id", "Affected contract", "text"),
