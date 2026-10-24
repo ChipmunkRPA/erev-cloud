@@ -204,6 +204,16 @@ def _details(source: dict[str, Any]) -> list[str]:
         if not detail:
             continue
         result.append(f"Source member: {member}; computation: {detail.get('version', '')}")
+        if detail.get("basis") == "ZERO_GROUP_OPENING":
+            result.append(
+                "No opening contract liability for this group; "
+                "no revenue is attributed to opening liability."
+            )
+        elif detail.get("basis") == "ZERO_CONSUMPTION":
+            result.append(
+                "No positive liability consumption in the selected range; "
+                "no revenue is attributed to opening liability."
+            )
         for name in ("opening_cap", "consumption_cap"):
             if name in detail:
                 result.append(f"{cap_labels[name]}: {detail[name]} {currency}")

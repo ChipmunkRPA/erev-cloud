@@ -1336,7 +1336,7 @@ def test_combined_invoice_settles_another_members_asset(fx: FxWorld) -> None:  #
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
 
 
-@pytest.mark.parametrize("pob_policy", [False, True, "other_member"])
+@pytest.mark.parametrize("pob_policy", [False, True, "other_member", "split_member"])
 def test_intercompany_due_to_sources_support_progress_reversal(
     monkeypatch,
     pob_policy: bool | str,
@@ -1378,7 +1378,7 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         )
         members.append(UUID(str(booked.contract["id"])))
     source, recognizer = members
-    _grouped(app, report.maya, report.marcus, members)
+    original_group = _grouped(app, report.maya, report.marcus, members)
     invoice_owner = recognizer if pob_policy is True else source
     head = report.place.scalar(
         select(contract.c.head_stream_version).where(contract.c.id == invoice_owner)
@@ -1403,6 +1403,20 @@ def test_intercompany_due_to_sources_support_progress_reversal(
             },
             evidence_file_ids=[evidence],
         )
+    if pob_policy == "split_member":
+        requested = post(
+            app,
+            f"{GROUPS}/{original_group}/submit",
+            report.maya,
+            {
+                "leave_contract_ids": [str(source)],
+                "reason_code": "DATA_CORRECTION",
+                "comment": "Correct the original combination and retain original paid source history.",
+            },
+        )
+        assert requested.status_code == 200, requested.text
+        approved = approve(app, requested.json()["approval_request_id"], report.marcus)
+        assert approved.status_code == 200, approved.text
     with report.place.uow() as uow:
         controls = (
             uow.session.execute(
@@ -1458,7 +1472,12 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         income = next(
             row
             for row in rows
-            if (pob_policy and str(row["row_key"]).startswith("combined:"))
+            if (pob_policy == "split_member" and row.get("contract_external_id") == "IC-SERVICE")
+            or (
+                pob_policy != "split_member"
+                and pob_policy
+                and str(row["row_key"]).startswith("combined:")
+            )
             or (not pob_policy and row.get("contract_external_id") == "IC-SERVICE")
         )
         if view in {"transaction", "functional"}:
@@ -1483,8 +1502,15 @@ def test_intercompany_due_to_sources_support_progress_reversal(
                 for item in explained.json()["contributors"]["items"]
                 for text in item.get("details", [])
             ]
-            assert any("counterpart is intercompany due-to" in text for text in details)
-            assert any("due-to line:" in text and "original sources:" in text for text in details)
+            if pob_policy == "split_member":
+                assert any(
+                    "No opening contract liability for this group" in text for text in details
+                )
+            else:
+                assert any("counterpart is intercompany due-to" in text for text in details)
+                assert any(
+                    "due-to line:" in text and "original sources:" in text for text in details
+                )
         restarted = post(app, f"/api/v1/report-runs/{run['id']}/rerun", report.maya, {})
         assert restarted.status_code == 202, restarted.text
         complete = worlds.run_now(report, UUID(restarted.json()["id"]))

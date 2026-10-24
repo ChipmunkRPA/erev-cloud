@@ -44,3 +44,17 @@ Necessary verification: 44 focused cases cover group-cap conservation, verified/
 legacy refusal and retained replay. Scoped lint and Python types pass. Two populated intercompany
 progress/reversal scenarios pass original due-to proofs, contract/POB consumption, three
 currency views and retained reruns. No posting changes or deployment.
+
+## Approved combination correction and zero-relief explanations
+
+The public combination LEAVE submission and approval path is now exercised after
+cross-entity progress and reversal postings. A DATA_CORRECTION recomputes the original
+combination from inception: the separated service contract has no opening liability.
+This is distinct from prospective effective-date combination reassessment, which remains open.
+
+Opening-liability cell explanations now render retained ZERO_GROUP_OPENING and
+ZERO_CONSUMPTION reasons explicitly, without inferring missing sources or changing amounts.
+The populated correction scenario checks both reporting ranges in transaction, functional
+and reporting views, cell explanations and exact retained reruns. Nine existing focused
+cell tests also pass. Production-file lint passes; the integration test module has existing
+lint findings outside the changed scenario. No deployment.
