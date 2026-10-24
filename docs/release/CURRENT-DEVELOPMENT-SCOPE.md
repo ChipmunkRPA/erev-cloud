@@ -1973,3 +1973,12 @@ confirmation and prospective treatment preserve prior income. Public approval/ap
 and status/register/causal report replay pass for quantity and term continuations.
 See [scope and validation](COMBINED-UNIT-TERMS-2026-10-24.md). Other term and split paths remain
 open; no deployment.
+
+## October 24: time-elapsed combined term continuation
+
+Revision 31 extends complete common-end-date continuation to TIME_ELAPSED combinations.
+The wizard permits the term assessment while retaining the unit-only quantity restriction.
+Daily native and monthly-series public workflows preserve prior service, apply the remaining
+term prospectively and retain report replay. See the
+[updated term checkpoint](COMBINED-UNIT-TERMS-2026-10-24.md). Cost/hour/progress measures,
+divergent terms, changed starts and removal/split work remain open; no deployment.

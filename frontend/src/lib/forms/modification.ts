@@ -75,8 +75,9 @@ export interface ChangeContext {
   readonly obligations: readonly ObligationFacts[];
   /** Retained originals; general scope edits require a complete termination group. */
   readonly priceOnlyObligationKeys?: readonly string[];
-  readonly combinedUnitHosts?: readonly {
+  readonly combinedContinuationHosts?: readonly {
     readonly host: string;
+    readonly quantityChanges?: boolean;
     readonly members: readonly string[];
   }[];
   readonly combinedObligationMembers?: readonly (readonly string[])[];
@@ -265,8 +266,9 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
   const known = new Set(context.obligations.map((item) => item.key));
   const priceOnly = new Set(context.priceOnlyObligationKeys ?? []);
   for (const key of priceOnly) known.add(key);
-  const continuations = (context.combinedUnitHosts ?? []).filter((group) => {
+  const continuations = (context.combinedContinuationHosts ?? []).filter((group) => {
     if (!form.continuedHosts?.includes(group.host)) return false;
+    if (form.kind === "QUANTITY_CHANGE" && group.quantityChanges === false) return false;
     const selected = form.lines.filter((line) => group.members.includes(line.obligationKey.trim()));
     if (!selected.every((line) => line.action === "CHANGE" && line.startDate.trim() === ""))
       return false;
@@ -379,7 +381,7 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
         !continuedKeys.has(key) &&
         (priceOnly.has(key) ||
           ((form.kind === "QUANTITY_CHANGE" || form.kind === "TERM_CHANGE") &&
-            context.combinedUnitHosts?.some((group) => group.members.includes(key))) ||
+            context.combinedContinuationHosts?.some((group) => group.members.includes(key))) ||
           (form.kind === "TERMINATION" &&
             context.combinedObligationMembers?.some((members) => members.includes(key))))
       ) {

@@ -289,15 +289,18 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
         currency: contract.data.transaction_currency,
         obligations: facts,
         priceOnlyObligationKeys: [...originals.keys()],
-        combinedUnitHosts: obligations.data
+        combinedContinuationHosts: obligations.data
           .filter(
             (item) =>
               item.scope_flag === "IN_SCOPE_606" &&
-              ["UNITS_DELIVERED", "POINT_IN_TIME"].includes(item.recognition_method) &&
+              ["UNITS_DELIVERED", "POINT_IN_TIME", "TIME_ELAPSED"].includes(
+                item.recognition_method,
+              ) &&
               (item.combined_component_keys?.length ?? 0) > 0,
           )
           .map((item) => ({
             host: item.obligation_key,
+            quantityChanges: item.recognition_method !== "TIME_ELAPSED",
             members: item.combined_component_keys ?? [],
           })),
         combinedObligationMembers: obligations.data

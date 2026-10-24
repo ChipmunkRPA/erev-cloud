@@ -35,7 +35,9 @@ it.each(["QUANTITY_CHANGE", "TERM_CHANGE"] as const)(
           currency: "USD",
           obligations: [{ key: "O1", productCode: "SERVICE", endDate: null }],
           priceOnlyObligationKeys: ["LEASE"],
-          combinedUnitHosts: [{ host: "O1", members: ["O1", "LEASE"] }],
+          combinedContinuationHosts: [
+            { host: "O1", members: ["O1", "LEASE"], quantityChanges: kind !== "TERM_CHANGE" },
+          ],
         }}
         obligationChoices={[]}
         products={[]}

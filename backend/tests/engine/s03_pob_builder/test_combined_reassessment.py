@@ -188,7 +188,7 @@ def term_continuation():
             "obligation_key": key,
             "quantity_delta": Decimal(0),
             "consideration_delta": Decimal(0),
-            "end_date": "2026-12-31",
+            "end_date": "2026-06-30",
         }
         for key in ("LEASE", "SERVICE")
     )
@@ -206,7 +206,7 @@ def test_complete_unit_term_continuation_preserves_prior_income():
     value = term_continuation()
     result = compute(value).books[0]
     assert result.contract_version.columns["revenue_cum"] == 250_000
-    assert result.obligation_versions[0].columns["end_date"] == date(2026, 12, 31)
+    assert result.obligation_versions[0].columns["end_date"] == date(2026, 6, 30)
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
     with pytest.raises(ValueError, match="require reassessment"):
         compute(replace(value, evidence_revision=29))
@@ -238,3 +238,49 @@ def test_combined_unit_term_rejects_incomplete_or_incompatible_changes(invalid):
                 events=(*value.events[:-1], event),
             )
         )
+
+
+def test_time_term_continuation_preserves_prior_period_and_reprices_remaining_service():
+    value = term_continuation()
+    contract = value.contracts[0]
+    mod = contract.modifications[0]
+    effective = date(2026, 2, 15)
+    assessment = {
+        **mod.questionnaire["combined_reassessment"]["SERVICE"],
+        "effective_date": effective.isoformat(),
+    }
+    mod = replace(
+        mod,
+        effective_date=effective,
+        questionnaire={"combined_reassessment": {"SERVICE": assessment}},
+    )
+    event = replace(value.events[-1], effective_date=effective)
+    value = replace(
+        value,
+        evidence_revision=31,
+        pob_template_versions=price_change().pob_template_versions,
+        contracts=(replace(contract, modifications=(mod,)),),
+        events=tuple(e for e in value.events[:-1] if e.event_type != "DELIVERY_RECORDED")
+        + (event,),
+    )
+    original = replace(
+        value, contracts=(replace(contract, modifications=()),), events=value.events[:-1]
+    )
+    before = compute(original).books[0]
+    after = compute(value).books[0]
+
+    def period(book, key):
+        return [
+            (s.schedule_kind, s.line_type, s.amount, s.cumulative_amount)
+            for s in book.schedules
+            if s.period_key == key
+        ]
+
+    assert period(before, "FY2026-P01")
+    assert period(before, "FY2026-P01") == period(after, "FY2026-P01")
+    assert period(before, "FY2026-P03") != period(after, "FY2026-P03")
+    assert after.contract_version.columns["transaction_price"] == 1_000_000
+    assert after.obligation_versions[0].columns["end_date"] == date(2026, 6, 30)
+    assert reevaluate(after.trace) == {n.id: n.value for n in after.trace.nodes}
+    with pytest.raises(ValueError, match="original unit measure"):
+        compute(replace(value, evidence_revision=30))

@@ -701,7 +701,7 @@ it("requires explicit continuation and sends the complete dated original populat
   const context = {
     ...CONTEXT,
     priceOnlyObligationKeys: ["LEASE"],
-    combinedUnitHosts: [{ host: "O1", members: ["O1", "LEASE"] }],
+    combinedContinuationHosts: [{ host: "O1", members: ["O1", "LEASE"] }],
   };
   const form = {
     ...emptyChange("l1", "QUANTITY_CHANGE"),
@@ -750,7 +750,7 @@ it("requires a complete common-end-date continuation for combined unit terms", (
   const context = {
     ...CONTEXT,
     priceOnlyObligationKeys: ["LEASE"],
-    combinedUnitHosts: [{ host: "O1", members: ["O1", "LEASE"] }],
+    combinedContinuationHosts: [{ host: "O1", members: ["O1", "LEASE"], quantityChanges: false }],
   };
   const form = {
     ...emptyChange("l1", "TERM_CHANGE"),

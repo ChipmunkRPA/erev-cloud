@@ -1576,8 +1576,10 @@ def test_combined_original_termination_public_workflow(
     assert replay["result"]["output_sha256_equal"] is True
 
 
-@pytest.mark.parametrize("term_change", [False, True])
-def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files, term_change):
+@pytest.mark.parametrize("mode", ["quantity", "unit_term", "time_term"])
+def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files, mode):
+    term_change = mode != "quantity"
+    time_terms = mode == "time_term"
     from support.modifications import confirm_answers
     from support.worlds import run_now
 
@@ -1590,35 +1592,36 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         files,
         lessor_combination=True,
         nonlease_predominates=True,
-        delivered_units=True,
+        delivered_units=not time_terms,
     )
     world = lease.report
-    head = world.place.scalar(
-        select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
-    )
-    delivered = post(
-        app,
-        f"/api/v1/contracts/{lease.contract_id}/events",
-        world.maya,
-        {
-            "events": [
-                {
-                    "event_type": "DELIVERY_RECORDED",
-                    "effective_date": "2026-09-05",
-                    "obligation_key": "L1-LEASE",
-                    "payload": {
+    if not time_terms:
+        head = world.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+        )
+        delivered = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/events",
+            world.maya,
+            {
+                "events": [
+                    {
+                        "event_type": "DELIVERY_RECORDED",
+                        "effective_date": "2026-09-05",
                         "obligation_key": "L1-LEASE",
-                        "quantity": "0.5",
-                        "trigger": "DELIVERY",
-                    },
-                }
-            ]
-        },
-        if_match=f'"s{head}"',
-    )
-    assert delivered.status_code == 201, delivered.text
-    accepted = approve(app, delivered.json()["approval_request_id"], world.priya)
-    assert accepted.status_code == 200, accepted.text
+                        "payload": {
+                            "obligation_key": "L1-LEASE",
+                            "quantity": "0.5",
+                            "trigger": "DELIVERY",
+                        },
+                    }
+                ]
+            },
+            if_match=f'"s{head}"',
+        )
+        assert delivered.status_code == 201, delivered.text
+        accepted = approve(app, delivered.json()["approval_request_id"], world.priya)
+        assert accepted.status_code == 200, accepted.text
     assessment = {
         "decision": "CONTINUE",
         "effective_date": "2026-09-10",
@@ -1683,7 +1686,9 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     assert run["status"] == "SUCCEEDED", run
     assert len(rows) == 1
     assert rows[0]["allocated_amount"] == usd("108000.00" if term_change else "109000.00")
-    assert rows[0]["revenue_cum"] == usd("27000.00")
+    # MONTHLY_EVEN counts eight completed original months before September 10.
+    # Remaining 84,000 spreads over 21.7 months; September earns 0.7 / 21.7.
+    assert rows[0]["revenue_cum"] == usd("26709.68" if time_terms else "27000.00")
     assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
     rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
     assert rerun.status_code == 202, rerun.text
