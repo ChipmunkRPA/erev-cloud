@@ -2934,3 +2934,14 @@ no missing tables or reduced row counts, only two verification security events a
 project/container/volume cleanup is verified. See [checkpoint](LOCAL-CHECKS-2026-10-24.md).
 This refreshes the local restore evidence and does not complete outstanding accounting features.
 No deployment or actual business data.
+
+
+### 2026-10-24 — Acquired member current liability
+
+Revision 59 extends carrying-proportional current liability allocation to principal acquisition
+cutover baselines, including mixed ordinary/acquired groups, in transaction and functional
+currency. Original layer totals remain reconciled and journal amounts are unchanged. Thirty-two
+focused cases pass; eight projection cases also pass. See
+[checkpoint](ACQUIRED-MEMBER-CURRENT-LIABILITY-2026-10-24.md) for scope and remaining exclusions.
+This supersedes the blanket acquired-member exclusion in the revision 54 checkpoint only for
+the admitted cutover method. No deployment; pending owner decisions remain unchanged.

@@ -184,9 +184,9 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
     current = current_split.measure(
         ctx, st, presentation, tb, destination_currents=destination_currents
     )
-    if ctx.member_current_liability and all(ob.opening is None for ob in allocated.obligations):
-        from .current_members import allocate
+    from .current_members import allocate, supported
 
+    if ctx.member_current_liability and supported(ctx, allocated):
         members = (
             *members,
             *allocate(ctx, allocated, presentation, current, destination_currents, tb),

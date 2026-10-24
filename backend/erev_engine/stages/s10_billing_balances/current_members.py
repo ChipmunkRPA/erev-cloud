@@ -12,6 +12,25 @@ if TYPE_CHECKING:
     from .reclass import Presentation
 
 
+def supported(ctx: BookContext, state: AllocatedState) -> bool:
+    """Opening balances must retain an admitted principal acquisition baseline."""
+    from erev_engine.stages.s07_onboarding import baseline_of
+
+    for ob in state.obligations:
+        if ob.opening is None:
+            continue
+        baseline = baseline_of(ob)
+        if (
+            not ctx.acquired_member_current_liability
+            or ob.opening.get("reason") != "BUSINESS_COMBINATION"
+            or ob.principal_agent.value != "PRINCIPAL"
+            or baseline is None
+            or baseline.method != "OPENING_BALANCES_AT_CUTOVER"
+        ):
+            return False
+    return True
+
+
 def singleton(
     ctx: BookContext, state: AllocatedState, current: tuple[Target, ...], trace: TraceBuilder
 ) -> tuple[Target, ...]:

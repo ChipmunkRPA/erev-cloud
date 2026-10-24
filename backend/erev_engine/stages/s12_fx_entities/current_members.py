@@ -20,9 +20,9 @@ def singleton(
     *,
     grouped: bool = False,
 ) -> tuple[Target, ...]:
-    if (len(fx.allocated.contracts) != 1 and not grouped) or any(
-        ob.opening is not None for ob in fx.allocated.obligations
-    ):
+    from erev_engine.stages.s10_billing_balances.current_members import supported
+
+    if (len(fx.allocated.contracts) != 1 and not grouped) or not supported(ctx, fx.allocated):
         return ()
     contract = fx.allocated.contracts[0].header.external_id
     result: list[Target] = []
@@ -155,9 +155,9 @@ def combined(
     from dataclasses import replace
 
     from erev_engine.stages.s01_canonicalize import group_entity_subject_key
-    from erev_engine.stages.s10_billing_balances.current_members import apportion
+    from erev_engine.stages.s10_billing_balances.current_members import apportion, supported
 
-    if any(ob.opening is not None for ob in fx.allocated.obligations):
+    if not supported(ctx, fx.allocated):
         return ()
     groups = tuple(
         replace(

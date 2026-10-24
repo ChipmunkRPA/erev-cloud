@@ -108,13 +108,9 @@ def test_mixed_acquisition_keeps_activity_and_dates_netting(invoice_day, billed,
         assert liability["OTHER"] == 0
 
 
-@pytest.mark.parametrize("invoice_day", [date(2025, 12, 30), w.CUTOVER])
-@pytest.mark.parametrize("billed", ["240000", "0"])
-@pytest.mark.parametrize("consumption", ["FIFO_WITHIN_CONTRACT", "FIFO_WITHIN_POB"])
-def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consumption):
+def foreign_value(value):
     from erev_engine.bundle import FxRateInput, MappingRuleInput
 
-    value = mixed_value(invoice_day, billed, consumption)
     rates = tuple(
         FxRateInput(
             f"{kind}-{p.period_key}",
@@ -171,6 +167,14 @@ def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consum
             for b in value.books
         ),
     )
+    return value
+
+
+@pytest.mark.parametrize("invoice_day", [date(2025, 12, 30), w.CUTOVER])
+@pytest.mark.parametrize("billed", ["240000", "0"])
+@pytest.mark.parametrize("consumption", ["FIFO_WITHIN_CONTRACT", "FIFO_WITHIN_POB"])
+def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consumption):
+    value = foreign_value(mixed_value(invoice_day, billed, consumption))
     prior = compute(replace(value, evidence_revision=25)).books[0]
     current = compute(replace(value, evidence_revision=26)).books[0]
     retained_bundle = replace(value, evidence_revision=27)
@@ -311,3 +315,126 @@ def test_mixed_functional_uses_original_fx_movements(invoice_day, billed, consum
         assert liability["REVENUE_FROM_OPENING_BALANCE"] == -1800000
         assert liability["CLOSING"] == 19809000
         assert liability["OTHER"] == 0
+
+
+@pytest.mark.parametrize("mixed", [False, True])
+@pytest.mark.parametrize("foreign", [False, True])
+@pytest.mark.parametrize("layer_policy", ["FIFO", "PRO_RATA"])
+def test_acquired_member_current_liability_uses_carrying_weights(mixed, foreign, layer_policy):
+    from uuid import UUID
+
+    from erev_api.domain.reports.functional_balances import project
+    from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
+    from erev_engine.trace import reevaluate
+
+    value = (
+        mixed_value(w.CUTOVER, "240000", "FIFO_WITHIN_CONTRACT")
+        if mixed
+        else w.two_contracts(as_of=date(2026, 1, 31))
+    )
+    value = replace(
+        value,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(policy, value="OPENING_BALANCES_AT_CUTOVER")
+                    if policy.code == "onboarding.method"
+                    else replace(policy, value=layer_policy)
+                    if policy.code == "fx.cl_layer_consumption"
+                    else policy
+                    for policy in book.policies
+                ),
+            )
+            for book in value.books
+        ),
+    )
+    value = replace(
+        value,
+        events=tuple(
+            replace(
+                event,
+                payload={
+                    **event.payload,
+                    "lines": [
+                        {**line, "end_date": "2028-12-31"} for line in event.payload["lines"]
+                    ],
+                },
+            )
+            if event.event_type == "CONTRACT_BOOKED"
+            else replace(event, payload=w.opening_payload(billed_cum="180000"))
+            if event.event_type == "OPENING_BALANCE_ESTABLISHED"
+            and event.contract_key == w.COLLIDING[1]
+            else event
+            for event in value.events
+        ),
+    )
+    calendar = bundles.entity(start=w.INCEPTION, months=48, books=("ASC606",))
+    value = replace(
+        value,
+        entities=tuple(
+            replace(
+                entity,
+                periods=(
+                    *entity.periods,
+                    *(
+                        replace(period, states=(("ASC606", "future"),))
+                        for period in calendar.periods
+                        if period.start_date > entity.periods[-1].end_date
+                    ),
+                ),
+            )
+            for entity in value.entities
+        ),
+    )
+    if foreign:
+        value = foreign_value(value)
+    prior = compute(replace(value, evidence_revision=58)).books[0]
+    current = compute(replace(value, evidence_revision=59)).books[0]
+    assert current.posting_intents == prior.posting_intents
+    assert current.schedules == prior.schedules
+    assert current.fx_layer_movements == prior.fx_layer_movements
+    assert reevaluate(current.trace) == {n.id: n.value for n in current.trace.nodes}
+    nodes = {n.id: n for n in current.trace.nodes}
+    rows = [r for r in current.balances if r.period_key == "FY2026-P01"]
+    assert len(rows) == 2
+    for suffix in ("txn", "functional") if foreign else ("txn",):
+        totals = [r.columns[f"contract_liability_{suffix}"] for r in rows]
+        amounts = []
+        for row, total in zip(rows, totals, strict=True):
+            measure = "contract_liability_current" + (
+                "_functional" if suffix == "functional" else ""
+            )
+            node = nodes[f"{measure}:{row.subject_key}:{row.period_key}"]
+            amount = int(Decimal(node.value) * 100)
+            assert 0 <= amount <= total
+            assert node.params["basis"] == "MEMBER_LIABILITY_CARRYING"
+            amounts.append(amount)
+            if suffix == "txn":
+                assert row.columns["contract_liability_current_txn"] == amount
+            if suffix == "functional":
+                member = next(
+                    c.external_id
+                    for c in value.contracts
+                    if contract_entity_subject_key(c.external_id, w.ENTITY) == row.subject_key
+                )
+                projected = project(
+                    current.trace,
+                    external_id=member,
+                    entity_code=w.ENTITY,
+                    period_key=row.period_key,
+                    version_id=UUID(int=1),
+                    stored={
+                        key: Decimal(v) / 100 if isinstance(v, int) else v
+                        for key, v in row.columns.items()
+                    },
+                    measures=("contract_liability", "contract_liability_current"),
+                )
+                assert projected["contract_liability_current"] == Decimal(amount) / 100
+                assert projected["contract_liability"] == Decimal(total) / 100
+
+        assert 0 < sum(amounts) < sum(totals)
+        group = nodes[nodes[f"{measure}:{rows[0].subject_key}:{rows[0].period_key}"].inputs[0]]
+        assert sum(amounts) == int(Decimal(group.value) * 100)
+        for amount, total in zip(amounts, totals, strict=True):
+            assert abs(amount * sum(totals) - sum(amounts) * total) <= sum(totals)

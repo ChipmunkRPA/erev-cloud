@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [current-schema restore](docs/release/LOCAL-CHECKS-2026-10-24.md) passes all 12 stages across 8 tenants and 722 tables; cleanup verified.
+Oct 24: acquired member current liabilities now allocate by carrying in both currencies; 32 focused cases pass. See CURRENT-DEVELOPMENT-SCOPE. No deployment.
