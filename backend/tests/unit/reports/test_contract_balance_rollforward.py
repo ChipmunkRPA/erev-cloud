@@ -462,3 +462,99 @@ def test_acquired_balances_are_separate_increases_and_never_range_opening_relief
     assert lines["REVENUE_FROM_OPENING"] == NONE
     assert lines["REVENUE_FROM_PERIOD_BILLINGS"][LIABILITY] == D(-40)
     assert ties(lines)
+
+
+def signed_acquisition(**amounts):
+    return cbr.Flow(
+        D(0), False, "ACQUISITION", acquisition_changes=tuple({**NONE, **amounts}.items())
+    )
+
+
+def test_signed_acquisition_settles_existing_asset_before_new_billing():
+    lines = cbr.path(
+        NONE,
+        [
+            cbr.Flow(D(120), True, cbr.REVENUE),
+            signed_acquisition(contract_asset=D(-120)),
+            cbr.document_flow(D(240)),
+        ],
+        {**NONE, LIABILITY: D(240)},
+    )
+    assert lines["BUSINESS_COMBINATIONS"][ASSET] == -120
+    assert lines["BILLINGS"][LIABILITY] == 240
+    assert lines["REVENUE_FROM_PERIOD_BILLINGS"][ASSET] == 120
+    assert ties(lines)
+
+
+def test_signed_acquisition_consumes_opening_before_later_revenue():
+    relief = {}
+    lines = cbr.path(
+        {**NONE, LIABILITY: D(100)},
+        [signed_acquisition(contract_liability=D(-60)), cbr.Flow(D(50), True, cbr.REVENUE)],
+        {**NONE, ASSET: D(10)},
+        opening_relief=relief,
+    )
+    assert relief == {1: D(40)}
+    assert lines["BUSINESS_COMBINATIONS"][LIABILITY] == -60
+    assert lines["REVENUE_FROM_OPENING"][LIABILITY] == -40
+    assert ties(lines)
+
+
+def test_signed_acquisition_uses_named_layer_without_consuming_opening():
+    from dataclasses import replace
+
+    reduction = replace(signed_acquisition(contract_liability=D(-60)), layer_key="acquired")
+    increase = replace(signed_acquisition(contract_liability=D(60)), layer_key="acquired")
+    relief = {}
+    lines = cbr.path(
+        {**NONE, LIABILITY: D(100)},
+        [increase, reduction, cbr.Flow(D(50), True, cbr.REVENUE)],
+        {**NONE, LIABILITY: D(50)},
+        opening_relief=relief,
+    )
+    assert relief == {2: D(50)}
+    assert lines["BUSINESS_COMBINATIONS"] == NONE
+    assert ties(lines)
+
+
+@pytest.mark.parametrize(
+    "case", ["asset", "liability", "missing_layer", "duplicate_role", "nonfinite", "mixed"]
+)
+def test_signed_acquisition_rejects_incomplete_or_overdrawn_original_sources(case):
+    from dataclasses import replace
+
+    from erev_api.problems import Problem
+
+    flow = signed_acquisition(contract_liability=D(-1))
+    opening = NONE
+    if case == "asset":
+        flow = signed_acquisition(contract_asset=D(-1))
+    elif case == "missing_layer":
+        opening = {**NONE, LIABILITY: D(10)}
+        flow = replace(flow, layer_key="absent")
+    elif case == "duplicate_role":
+        flow = replace(flow, acquisition_changes=(*flow.acquisition_changes, (LIABILITY, D(0))))
+    elif case == "nonfinite":
+        flow = signed_acquisition(contract_liability=D("NaN"))
+    elif case == "mixed":
+        flow = replace(flow, acquisition_balances=tuple(NONE.items()))
+    with pytest.raises(Problem):
+        cbr.path(opening, [flow], NONE)
+
+
+def test_monthly_signed_acquisition_keeps_original_opening_relief_identity():
+    entries = [
+        cbr.Entry(
+            (AUGUST.end, 1), signed_acquisition(contract_liability=D(-60)), period_id=AUGUST.id
+        ),
+        cbr.Entry((SEPTEMBER.end, 1), cbr.Flow(D(50), True, cbr.REVENUE), period_id=SEPTEMBER.id),
+    ]
+    months = cbr.period_paths(
+        {**NONE, LIABILITY: D(100)},
+        entries,
+        [(AUGUST, {**NONE, LIABILITY: D(40)}), (SEPTEMBER, {**NONE, ASSET: D(10)})],
+    )
+    assert months[AUGUST.id]["BUSINESS_COMBINATIONS"][LIABILITY] == -60
+    assert months[SEPTEMBER.id]["BUSINESS_COMBINATIONS"] == NONE
+    assert months[SEPTEMBER.id]["REVENUE_FROM_OPENING"][LIABILITY] == -40
+    assert all(ties(month) for month in months.values())

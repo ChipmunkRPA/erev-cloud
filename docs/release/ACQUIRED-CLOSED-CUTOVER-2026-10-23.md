@@ -349,3 +349,21 @@ Public report integration remains open: its existing acquisition path admits onl
 balances, and member reporting needs explicit signed contributions consistent with group netting.
 This change retains the original group evidence needed for that integration; it does not remove the
 public guard or claim that member allocation is complete. No deployment.
+
+
+## October 24: signed acquisition changes in the report path
+
+The report path now accepts explicit acquisition_changes separately from legacy positive
+acquisition_balances. Signed changes adjust the exact asset caption or consume liability layers
+without recording revenue relief. Unnamed transaction changes consume FIFO; a named functional
+liability reduction requires its exact existing layer. New acquired liabilities enter the NEW
+bucket, preserving range-opening provenance. Missing/ambiguous layers, overdrawn assets or
+liabilities, duplicate roles, nonfinite amounts and mixed legacy/signed payloads are rejected.
+Monthly reporting paths preserve these changes and subsequent original-opening revenue relief.
+
+All 42 contract-rollforward unit cases pass, including asset settlement, opening consumption,
+named acquired layers, cross-month provenance and invalid inputs. Scoped lint/types pass. This
+is the signed path consumer needed by revision 27 native acquisition evidence. The public source
+reader still uses its existing guarded legacy path: member ownership and group-to-member transfer
+evidence must be connected before admitting mixed-group sources. No public completeness claim,
+no deployment.

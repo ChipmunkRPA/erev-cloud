@@ -211,6 +211,8 @@ class Flow:
     liability_fx: tuple[tuple[str | None, Decimal], ...] = ()
     asset_fx: bool = False
     acquisition_balances: tuple[tuple[str, Decimal], ...] = ()
+    # Explicit original signed changes; distinct from legacy positive carrying balances.
+    acquisition_changes: tuple[tuple[str, Decimal], ...] = ()
 
 
 def family_of(flow: Flow) -> str:
@@ -267,6 +269,11 @@ def path(
         family = family_of(flow)
         label = FAMILY_LINES[family]
         if family == "ACQUISITION":
+            if flow.acquisition_changes:
+                from ..acquisition_path import apply
+
+                apply(flow, layers, asset, lines[label])
+                continue
             amounts = dict(flow.acquisition_balances)
             if set(amounts) != set(ROLLFORWARD_BALANCES) or any(v < 0 for v in amounts.values()):
                 raise tie_outs.invalid("currency_view", "Invalid original acquisition balances.")
