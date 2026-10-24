@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [patched Linux build](docs/release/PDF-DEPENDENCY-2026-10-24.md) passes three images, PDF isolation/resource probes and local configuration validation.
+Oct 24: [local integration](docs/release/LOCAL-CHECKS-2026-10-24.md) passes service readiness and cleanup; baseline has no high/medium alerts.

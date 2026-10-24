@@ -2916,3 +2916,12 @@ All three images build on 907557117c18. New worker probes verify real isolated P
 and Linux address-space/CPU limits. Local Terraform validation passes without plan/apply.
 See [evidence](PDF-DEPENDENCY-2026-10-24.md); this supersedes the pending Linux-probe note in
 the preceding dependency checkpoint, not the outstanding functional gaps. No deployment.
+
+
+### 2026-10-24 — Disposable local integration and baseline
+
+On ad2dea166b54, Compose build/start/migrations/readiness/CSP/worker checks pass. The local
+unauthenticated ZAP baseline reports no high/medium alerts, one low COEP-header alert and three
+informational classes. Project teardown and empty container/volume inspections pass.
+See [checkpoint](LOCAL-CHECKS-2026-10-24.md). Restore evidence remains dated October 22;
+functional gaps and pending decisions are unchanged. No deployment.
