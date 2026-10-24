@@ -1911,3 +1911,20 @@ Effective-date combination reassessment remains a separate authorized feature: q
 or partial-removal changes must preserve earlier grouping and recognized revenue. The existing
 DATA_CORRECTION LEAVE path recomputes from inception and cannot substitute for that feature.
 No deployment, posting change or additional accounting-policy choice was made in this inspection.
+
+
+## October 24: exact pre-event state for combination reassessment
+
+The native boundary query now accepts `before_boundary_event`, returning the allocation state
+strictly before one retained allocation boundary in original ENG-06 order. Unlike a date cutoff,
+it preserves earlier same-day changes and excludes the selected event and later boundaries. It
+also skips final-version pricing and pending proposals, as the existing dated query does. Unknown
+or nonboundary event keys and simultaneous date/event cutoffs are rejected. Ordinary computation
+and end-of-day query defaults are unchanged; this is not a historical known-at snapshot.
+
+A native two-modification same-day witness proves that the second boundary sees the first one's
+quantity and allocation segments, and that the pre-first state equals the prior day's state. The
+seven targeted event-position/effective-date cases and scoped lint/types pass. This supplies an
+exact query point needed for effective-date reassessment. Splitting/continuing the combination,
+carrying recognized revenue into its new scope and public approval/application are still unfinished;
+the historical DATA_CORRECTION and withdrawn posted-regroup guards remain. No deployment.

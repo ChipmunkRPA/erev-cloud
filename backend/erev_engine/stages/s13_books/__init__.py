@@ -252,9 +252,19 @@ def fold(
     identified: IdentifiedState,
     pob: PobState,
     boundary_cutoff: date | None = None,
+    before_boundary_event: str | None = None,
 ) -> AllocatedState:
     """The boundary fold of Table 0.3-A over the stage 05 state (ENGINE_SPEC §0.3; CV-11)."""
-    return _fold(ctx, cb, state, tb, identified, pob, boundary_cutoff=boundary_cutoff)
+    return _fold(
+        ctx,
+        cb,
+        state,
+        tb,
+        identified,
+        pob,
+        boundary_cutoff=boundary_cutoff,
+        before_boundary_event=before_boundary_event,
+    )
 
 
 def _allocated(state: object) -> AllocatedState | None:
@@ -644,16 +654,25 @@ def _fold(
     pob: object,
     *,
     boundary_cutoff: date | None = None,
+    before_boundary_event: str | None = None,
 ) -> AllocatedState:
     """The boundary fold of Table 0.3-A over the stage 05 state in ENG-06 order (CV-11)."""
     if not isinstance(state, AllocatedState):
         raise ValueError("the boundary fold consumes the stage 05 AllocatedState")
     if not isinstance(identified, IdentifiedState) or not isinstance(pob, PobState):
         raise ValueError("the boundary fold needs the stage 02 and stage 03 states")
+    if boundary_cutoff is not None and before_boundary_event is not None:
+        raise ValueError("Choose a date cutoff or a boundary event, not both")
+    if before_boundary_event is not None and not any(
+        event.event_key == before_boundary_event for event in cb.boundary_events
+    ):
+        raise ValueError("The requested boundary event is not in the retained computation")
     price = price_binding(pob)
     st = state
     proposals: list[ProposalOut] = []
     for ev in cb.boundary_events:
+        if ev.event_key == before_boundary_event:
+            break
         if boundary_cutoff is not None and ev.effective_date > boundary_cutoff:
             break
         priced = len(st.tp_history)
@@ -683,7 +702,7 @@ def _fold(
                 total=st.tp_history[-1].total,
                 price_node=f"transaction_price@{ev.event_key}:{encode_key(pob.group_key)}:-",
             )
-    if boundary_cutoff is not None:
+    if boundary_cutoff is not None or before_boundary_event is not None:
         # A boundary-state query must not apply the final version's price, unconstrained
         # estimates or pending proposals after the requested date. It is not a posting run.
         return st

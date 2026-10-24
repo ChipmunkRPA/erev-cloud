@@ -253,11 +253,14 @@ def fold_book(
     tb: TraceBuilder,
     *,
     boundary_cutoff: date | None = None,
+    before_boundary_event: str | None = None,
 ) -> AllocatedState:
     """Stages 02 to 05 at the group inception, then the boundary fold (ENGINE_SPEC §0.3).
 
     ``boundary_cutoff`` returns the state after all accepted boundaries through that date,
-    before final-version pricing/proposals. It supports allocation-input queries, not posting
+    before final-version pricing/proposals. Alternatively, ``before_boundary_event`` stops
+    strictly before a retained boundary in original event order, including within a date.
+    It supports allocation-input queries, not posting
     or a historical knowledge snapshot. Callers must validate the admitted population and
     inception/cutover coverage; the original canonical input itself is never rewritten.
     """
@@ -276,7 +279,14 @@ def fold_book(
     priced = s04_transaction_price.run(ctx, pob, tb)
     allocated = s05_allocation.run(ctx, priced, tb)
     return s13_books.fold(
-        ctx, cb, allocated, tb, identified=identified, pob=pob, boundary_cutoff=boundary_cutoff
+        ctx,
+        cb,
+        allocated,
+        tb,
+        identified=identified,
+        pob=pob,
+        boundary_cutoff=boundary_cutoff,
+        before_boundary_event=before_boundary_event,
     )
 
 
