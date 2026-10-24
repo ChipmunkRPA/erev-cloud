@@ -312,3 +312,52 @@ def test_portfolio_membership_workflow(
     assert update_event["object_version"] == str(edited.json()["row_version"])
     assert update_event["detail"]["contract_id"] == contract_id
     assert by_action["estimate_version.discard"]["after"]["status"] == "VOIDED"
+
+    # The owner-selected total-by-SSP basis is explicit and cannot mix with a member rate.
+    current_tag = get(app, path, maya).headers["etag"]
+    breakage = post(
+        app,
+        path + "/estimates",
+        maya,
+        {"element_code": "BREAKAGE", "estimate_kind": "BREAKAGE", "method": "RATE"},
+        if_match=current_tag,
+    )
+    assert breakage.status_code == 201, breakage.text
+    breakage_path = breakage.headers["location"] + "/versions"
+    current_tag = get(app, path, maya).headers["etag"]
+    total_values = {
+        "effective_date": "2026-10-23",
+        "currency": "USD",
+        "rationale": "Shared total by SSP",
+        "parameters": {},
+    }
+    assert post(app, breakage_path, maya, total_values, if_match=current_tag).status_code == 422
+    total_values["parameters"] = {"portfolio_total_breakage_quantity": "12.000000000000000001"}
+    assert (
+        post(
+            app, breakage_path, maya, {**total_values, "rate": "0.1"}, if_match=current_tag
+        ).status_code
+        == 422
+    )
+    saved_total = post(app, breakage_path, maya, total_values, if_match=current_tag)
+    assert saved_total.status_code == 201, saved_total.text
+    assert saved_total.json()["parameters"] == total_values["parameters"]
+
+    from erev_api.approvals import subjects
+    from erev_api.db.session import DbContext, tenant_session
+
+    context = DbContext(tenant_id=world.place.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(context) as session:
+        before_basis = subjects.estimate_version_content(session, UUID(saved_total.json()["id"]))
+    basis = before_basis["portfolio_basis"]
+    assert basis["precedence"] == "SHARED_OVERRIDES_LOCAL"
+    assert basis["breakage_allocation"] == "TOTAL_BY_SSP"
+    assert {m["contract_id"] for m in basis["members"]} == {contract_id}
+    assert basis["members"][0]["latest_computation_id"] == str(before_computation)
+    current_tag = get(app, path, maya).headers["etag"]
+    rejoined = post(app, path + "/members", maya, payload, if_match=current_tag)
+    assert rejoined.status_code == 201, rejoined.text
+    with tenant_session(context) as session:
+        after_basis = subjects.estimate_version_content(session, UUID(saved_total.json()["id"]))
+    assert after_basis != before_basis
+    assert len(after_basis["portfolio_basis"]["memberships"]) == len(basis["memberships"]) + 1

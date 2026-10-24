@@ -648,6 +648,15 @@ def _version_errors(
     normalized = dict(values)
     normalized["parameters"], found = _parameter_errors(kind, values["parameters"])
     errors.extend(found)
+    total_breakage = normalized["parameters"].get("portfolio_total_breakage_quantity")
+    if total_breakage is not None and element.get("portfolio_id") is None:
+        errors.append(
+            _error(
+                "parameters.portfolio_total_breakage_quantity",
+                RULE_VERSION,
+                "A portfolio breakage total belongs to a shared estimate, not a contract estimate.",
+            )
+        )
     currency = str(values["currency"] or default_currency).strip()
     normalized["currency"] = currency
     known = currency in ISO_4217

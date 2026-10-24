@@ -192,6 +192,8 @@ from erev_api.db.tables import (
     pob_template,
     pob_template_version,
     policy_override,
+    portfolio,
+    portfolio_member,
     product,
     registry_version,
     release_validation,
@@ -3616,6 +3618,74 @@ def _decimal_text(value: Any) -> str | None:
     return None if value is None else format(Decimal(value).normalize(), "f")
 
 
+def _portfolio_estimate_basis(session: Session, portfolio_id: UUID) -> dict[str, Any]:
+    """Pin the full historical population and all currently affected combination heads.
+
+    Removing a member cannot hide its evidence. An affected group's other contracts can
+    change allocation even when they are not themselves portfolio members.
+    """
+    parent = session.execute(
+        select(portfolio.c.row_version).where(portfolio.c.id == portfolio_id)
+    ).one_or_none()
+    if parent is None:
+        raise SubjectNotVisible("Portfolio is not visible")
+    memberships = (
+        session.execute(
+            select(portfolio_member)
+            .where(portfolio_member.c.portfolio_id == portfolio_id)
+            .order_by(portfolio_member.c.id)
+        )
+        .mappings()
+        .all()
+    )
+    retained = []
+    current: set[UUID] = set()
+    historical: set[UUID] = set()
+    for member in memberships:
+        contract_id = UUID(str(member["contract_id"]))
+        historical.add(contract_id)
+        if member["valid_to_known_at"] is None:
+            current.add(contract_id)
+        retained.append(
+            {
+                "id": str(member["id"]),
+                "contract_id": str(contract_id),
+                "valid_from_known_at": member["valid_from_known_at"].isoformat(),
+                "valid_to_known_at": None
+                if member["valid_to_known_at"] is None
+                else member["valid_to_known_at"].isoformat(),
+            }
+        )
+    affected = set(historical)
+    for contract_id in sorted(current):
+        affected.update(_group_member_ids(session, contract_id))
+    states = _member_states(session, sorted(affected))
+    if any(state["head_stream_version"] is None for state in states):
+        raise SubjectNotVisible("Portfolio member population is not fully visible")
+    computations = {
+        UUID(str(row.id)): row.latest_computation_id
+        for row in session.execute(
+            select(contract.c.id, contract.c.latest_computation_id).where(
+                contract.c.id.in_(sorted(affected))
+            )
+        )
+    }
+    if set(computations) != affected:
+        raise SubjectNotVisible("Portfolio member population is not fully visible")
+    for state in states:
+        identity = computations[UUID(state["contract_id"])]
+        state["latest_computation_id"] = None if identity is None else str(identity)
+    return {
+        "portfolio_basis": {
+            "row_version": int(parent.row_version),
+            "memberships": retained,
+            "members": states,
+            "precedence": "SHARED_OVERRIDES_LOCAL",
+            "breakage_allocation": "TOTAL_BY_SSP",
+        }
+    }
+
+
 def estimate_version_content(session: Session, version_id: UUID) -> dict[str, Any]:
     """What an ``ESTIMATE_VERSION`` approval certifies: the version and its element (04 T-CON-12,
     T-CON-13; BUILD_SPEC CTR-12) and — item EST-PREVIEW-HEAD-PIN-1 (04 §16.10 rev 1.233) — for
@@ -3626,8 +3696,8 @@ def estimate_version_content(session: Session, version_id: UUID) -> dict[str, An
     the decision left the approver deciding on figures the approval no longer posted (measured:
     two versions of one contract pending together, the second approved on a preview of
     120,000.00 while it posted 102,439.03). Now such a decision is stale (STALE_SUBJECT) and the
-    version is submitted again with a fresh preview. A portfolio element names no contract and
-    pins none."""
+    version is submitted again with a fresh preview. A portfolio element pins its membership
+    history, affected group heads and latest computations."""
     row = (
         session.execute(
             select(estimate_version, estimate.c.contract_id, estimate.c.portfolio_id)
@@ -3672,6 +3742,8 @@ def estimate_version_content(session: Session, version_id: UUID) -> dict[str, An
             },
             "members": _member_states(session, _group_member_ids(session, contract_id)),
         }
+    elif row["portfolio_id"] is not None:
+        pinned = _portfolio_estimate_basis(session, UUID(str(row["portfolio_id"])))
     return {
         "object_type": ESTIMATE_VERSION_OBJECT,
         "estimate_id": str(row["estimate_id"]),

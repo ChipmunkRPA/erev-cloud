@@ -178,6 +178,10 @@ function VersionForm({
     "expected_total_amount",
     "rationale",
   ] as const;
+  const shownFields =
+    estimate.estimate_kind === "BREAKAGE" && editable
+      ? fields.filter((key) => key !== "rate" && key !== "expected_quantity")
+      : fields;
   const parameters = [
     "carrying_cost_per_unit",
     "recovery_cost_per_unit",
@@ -199,7 +203,7 @@ function VersionForm({
       <RefusalBanner problem={command.problem} conflict={command.banner} />
       <RefusalBanner problem={discard.problem} conflict={discard.banner} />
       {networkError ? <Banner tone="negative" title={label("networkError")} /> : null}
-      {fields.map((key) => (
+      {shownFields.map((key) => (
         <Field
           key={key}
           name={`portfolio-version-${key}`}
@@ -225,6 +229,31 @@ function VersionForm({
           )}
         </Field>
       ))}
+      {estimate.estimate_kind === "BREAKAGE" ? (
+        <Field name="portfolio-total-breakage" label={label("totalBreakage")} required>
+          {(control) => (
+            <input
+              {...control}
+              className={controlClass(false)}
+              readOnly={!editable}
+              disabled={pending}
+              inputMode="decimal"
+              value={String(values.parameters?.portfolio_total_breakage_quantity ?? "")}
+              onChange={(e) =>
+                setValues((previous) => ({
+                  ...previous,
+                  rate: null,
+                  expected_quantity: null,
+                  parameters: {
+                    ...previous.parameters,
+                    portfolio_total_breakage_quantity: e.target.value,
+                  },
+                }))
+              }
+            />
+          )}
+        </Field>
+      ) : null}
       {estimate.estimate_kind === "RETURN_RATE"
         ? parameters.map((key) => (
             <Field key={key} name={`portfolio-version-${key}`} label={label(key)} required>

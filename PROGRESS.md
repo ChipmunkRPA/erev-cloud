@@ -243,14 +243,13 @@ Current outstanding implementation and verification gaps remain in
   revision-0166 parse error. These remain open; this is not a full-suite pass.
 - Forecast re-export and close-assessment checkpoints moved to REPORTING-CHECKPOINTS-2026-10-22.
 
-## Current-source audit — October 23, 2026
+## Owner-selected shared estimates — October 23, 2026
 
-- Source-bound dependency audit passes on 53eb3d9b: 86/86 Python runtime packages, zero Python
-  vulnerabilities and zero npm runtime advisories. See CURRENT-DEVELOPMENT-SCOPE for digest.
-- Confirmed a real remaining feature: POL-142 commensurate-renewal-commission comparison is
-  not evaluated by the cost engine. Approved estimates currently supply only amortization
-  months. Input, computation and trace integration remain; release checks alone are insufficient.
-- Privacy checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md.
+Shared estimates override local estimates; shared breakage uses a total quantity allocated by
+SSP. Combined scope changes are reassessed from their effective date, preserving earlier groups
+and revenue. These choices supersede earlier pending-choice notes. Explicit total authoring and
+approval population/computation pinning are implemented; allocation/application/recomputation
+and reassessment still require development. See [checkpoint](docs/release/SHARED-ESTIMATE-BASIS-2026-10-23.md).
 
 ## Locked POB opening sources — October 23, 2026
 

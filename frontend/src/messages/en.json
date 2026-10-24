@@ -8084,6 +8084,7 @@
   "settings.portfolioVersions.probability": "Probability (0 to 1)",
   "settings.portfolioVersions.removeScenario": "Remove scenario",
   "settings.portfolioVersions.addScenario": "Add scenario",
+  "settings.portfolioVersions.totalBreakage": "Portfolio total breakage quantity (allocated by SSP)",
   "settings.portfolioVersions.save": "Save draft version",
   "settings.portfolioVersions.discard": "Discard draft",
   "settings.portfolioVersions.closeEditor": "Close version editor",

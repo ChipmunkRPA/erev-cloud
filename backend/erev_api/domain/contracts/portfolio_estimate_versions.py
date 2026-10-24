@@ -112,6 +112,18 @@ def save(
         values = estimates.validated_version_values(
             uow.session, element, body, default_currency=body.currency
         )
+        if str(element["estimate_kind"]) == "BREAKAGE":
+            if values["parameters"].get("portfolio_total_breakage_quantity") is None:
+                raise Problem(
+                    "validation-failed",
+                    "Enter the portfolio total breakage quantity for SSP allocation.",
+                )
+            if values["rate"] is not None or values["expected_quantity"] is not None:
+                raise Problem(
+                    "validation-failed",
+                    "Shared breakage uses a total quantity; do not also enter a rate "
+                    "or expected redemption quantity.",
+                )
         if body.rate is not None and not 0 <= values["rate"] <= 1:
             raise Problem(
                 "validation-failed", "A shared estimate rate must be between zero and one."

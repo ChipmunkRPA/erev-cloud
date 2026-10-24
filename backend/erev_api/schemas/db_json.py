@@ -336,6 +336,11 @@ class RoyaltyAccrualParameters(_Parameters):
         return self
 
 
+class BreakageParameters(_Parameters):
+    # Shared populations use an explicit total, never a copied per-contract rate.
+    portfolio_total_breakage_quantity: NonNegativeDecimal | None = None
+
+
 class EacParameters(_Parameters):
     eac_scope: Literal["COMBINATION", "MEMBERS"] | None = None
     uninstalled_materials_cost: NonNegativeDecimal | None = None
@@ -365,7 +370,7 @@ ESTIMATE_PARAMETERS: Final[Mapping[EstimateKind, type[_Parameters]]] = MappingPr
     {
         EstimateKind.VARIABLE_CONSIDERATION: VariableConsiderationParameters,
         EstimateKind.RETURN_RATE: ReturnRateParameters,
-        EstimateKind.BREAKAGE: NoParameters,
+        EstimateKind.BREAKAGE: BreakageParameters,
         EstimateKind.EAC: EacParameters,
         EstimateKind.EXERCISE_LIKELIHOOD: NoParameters,
         EstimateKind.IMPLICIT_PRICE_CONCESSION: NoParameters,

@@ -379,3 +379,45 @@ it("attaches evidence with retry-safe upload reuse and voids the uploader's atta
   await waitFor(() => expect(screen.queryByRole("link", { name: "returns.pdf" })).toBeNull());
   expect(voidReason).toEqual({ reason: "Replace outdated support" });
 });
+
+it("authors the shared breakage total without a member rate", async () => {
+  serve();
+  let body: Record<string, unknown> | null = null;
+  server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({
+        items: [{ id: "e1", element_code: "BREAKAGE", estimate_kind: "BREAKAGE", method: "RATE" }],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+    http.post(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json(
+        { ...body, id: "v1", version_no: 1, row_version: 1, status: "DRAFT" },
+        { status: 201 },
+      );
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
+  fireEvent.click(await screen.findByRole("button", { name: "New draft version" }));
+  expect(screen.queryByLabelText("Rate (0 to 1)")).toBeNull();
+  for (const [name, value] of [
+    ["Effective date (YYYY-MM-DD)", "2026-10-23"],
+    ["Currency", "USD"],
+    ["Rationale", "Portfolio experience"],
+    ["Portfolio total breakage quantity (allocated by SSP)", "12.000000000000000001"],
+  ] as const)
+    fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft version" }));
+  await waitFor(() =>
+    expect(body).toMatchObject({
+      rate: null,
+      expected_quantity: null,
+      parameters: { portfolio_total_breakage_quantity: "12.000000000000000001" },
+    }),
+  );
+});
