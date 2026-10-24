@@ -180,9 +180,17 @@ it("creates a shared definition with the portfolio version and leaves applicatio
   fireEvent.change(await screen.findByLabelText(/^Estimate code/), {
     target: { value: "RETURNS" },
   });
+  fireEvent.change(screen.getByLabelText("Target obligation keys"), {
+    target: { value: "GOODS\nSUPPORT" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Create estimate definition" }));
   await waitFor(() =>
-    expect(body).toEqual({ element_code: "RETURNS", estimate_kind: "RETURN_RATE", method: "RATE" }),
+    expect(body).toEqual({
+      element_code: "RETURNS",
+      estimate_kind: "RETURN_RATE",
+      method: "RATE",
+      target_obligation_keys: ["GOODS", "SUPPORT"],
+    }),
   );
   expect(tag).toBe('"r3"');
   await waitFor(() =>

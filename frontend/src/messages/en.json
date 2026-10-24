@@ -8044,6 +8044,8 @@
   "settings.portfolios.estimateMethod": "Estimation method",
   "settings.portfolios.estimateCode": "Estimate code",
   "settings.portfolios.estimateCodeRequired": "Enter an estimate code.",
+  "settings.portfolios.targets": "Target obligation keys",
+  "settings.portfolios.targetsHelp": "Enter one obligation key per line. Each current member must contain every key. Targets are retained in this definition; leave blank only for an unconfigured draft. Approval and application are not yet available.",
   "settings.portfolios.createEstimate": "Create estimate definition",
   "settings.portfolios.estimateDefinitionHelp": "Define shared estimates and prepare their draft values. Approval and calculation application are not yet available. Access requires permission for all current and former members.",
   "settings.portfolios.kind.RETURN_RATE": "Return rate",

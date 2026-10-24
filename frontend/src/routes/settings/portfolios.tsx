@@ -465,6 +465,7 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
   >(null);
   const access = useAccess();
   const [code, setCode] = useState("");
+  const [targets, setTargets] = useState("");
   const [kind, setKind] = useState<"RETURN_RATE" | "BREAKAGE">("RETURN_RATE");
   const [method, setMethod] = useState<components["schemas"]["EstimateMethod"]>("RATE");
   const [networkError, setNetworkError] = useState(false);
@@ -495,6 +496,12 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
       header: label("estimateKind"),
       kind: "text",
       value: (e) => label(`kind.${e.estimate_kind}`),
+    },
+    {
+      id: "targets",
+      header: label("targets"),
+      kind: "text",
+      value: (e) => [...new Set(e.target_obligation_keys ?? [])].join(", "),
     },
     {
       id: "method",
@@ -537,9 +544,24 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
             if (!code.trim() || command.pending) return;
             setNetworkError(false);
             void command
-              .submit({ element_code: code.trim(), estimate_kind: kind, method })
+              .submit({
+                element_code: code.trim(),
+                estimate_kind: kind,
+                method,
+                ...(kind === "RETURN_RATE" && targets.trim()
+                  ? {
+                      target_obligation_keys: targets
+                        .split("\n")
+                        .map((key) => key.trim())
+                        .filter(Boolean),
+                    }
+                  : {}),
+              })
               .then((outcome) => {
-                if (outcome.kind === "succeeded") setCode("");
+                if (outcome.kind === "succeeded") {
+                  setCode("");
+                  setTargets("");
+                }
                 if (outcome.kind === "network-error") setNetworkError(true);
               });
           }}
@@ -571,6 +593,22 @@ function EstimateDefinitions({ portfolio }: { readonly portfolio: Portfolio }) {
               />
             )}
           </Field>
+          {kind === "RETURN_RATE" ? (
+            <>
+              <Field name="portfolio-estimate-targets" label={label("targets")}>
+                {(control) => (
+                  <textarea
+                    {...control}
+                    className={controlClass(false, true)}
+                    value={targets}
+                    disabled={command.pending}
+                    onChange={(e) => setTargets(e.target.value)}
+                  />
+                )}
+              </Field>
+              <p className="text-body-sm text-fg-2">{label("targetsHelp")}</p>
+            </>
+          ) : null}
           <Field name="portfolio-estimate-method" label={label("estimateMethod")} required>
             {(control) => (
               <Select

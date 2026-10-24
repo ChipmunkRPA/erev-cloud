@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from erev_api.enums import EstimateMethod
 from erev_api.money import CurrencyCode
-from erev_api.schemas.estimates import Code, EstimateVersionCreateIn
+from erev_api.schemas.estimates import Code, EstimateVersionCreateIn, Key
 from erev_api.schemas.roles import CODE_LENGTH
 from erev_api.schemas.users import LABEL_LENGTH, MEMO_LENGTH
 
@@ -51,12 +51,13 @@ class PortfolioMemberOut(BaseModel):
 
 
 class PortfolioEstimateIn(BaseModel):
-    """A shared-estimate definition, without contract-specific allocation targets."""
+    """A shared definition with optional common target keys resolved across its members."""
 
     model_config = ConfigDict(extra="forbid")
     element_code: Code
     estimate_kind: Literal["RETURN_RATE", "BREAKAGE"]
     method: EstimateMethod
+    target_obligation_keys: list[Key] = Field(default_factory=list, max_length=1000)
 
 
 class PortfolioEstimateVersionIn(EstimateVersionCreateIn):

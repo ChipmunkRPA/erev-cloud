@@ -32101,7 +32101,7 @@
       },
       "PortfolioEstimateIn": {
         "additionalProperties": false,
-        "description": "A shared-estimate definition, without contract-specific allocation targets.",
+        "description": "A shared definition with optional common target keys resolved across its members.",
         "properties": {
           "element_code": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\-]{0,63}$",
@@ -32118,6 +32118,16 @@
           },
           "method": {
             "$ref": "#/components/schemas/EstimateMethod"
+          },
+          "target_obligation_keys": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Target Obligation Keys",
+            "type": "array"
           }
         },
         "required": [

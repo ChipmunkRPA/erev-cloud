@@ -15,7 +15,7 @@ from support.reference import assign, entity, get, holding, post
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import audit_event, contract, legal_entity
+from erev_api.db.tables import audit_event, contract, legal_entity, obligation
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 
@@ -408,3 +408,37 @@ def test_portfolio_membership_workflow(
         assert bundles.portfolio_inputs(session, population, latest_join) == first_snapshot
         built = bundles.build(session, source["combination_group_id"], latest_join, [], "DRY_RUN")
         assert built.group.portfolios == first_snapshot
+
+    # Shared targets bind the original obligations of every current member.
+    target_key = world.place.scalar(
+        select(obligation.c.obligation_key)
+        .where(obligation.c.contract_id == UUID(contract_id))
+        .limit(1)
+    )
+    current_tag = get(app, path, maya).headers["etag"]
+    target_body = {
+        "element_code": "TARGETED-RETURNS",
+        "estimate_kind": "RETURN_RATE",
+        "method": "RATE",
+    }
+    for invalid in [["MISSING-OBLIGATION"], [target_key, target_key]]:
+        refused = post(
+            app,
+            path + "/estimates",
+            maya,
+            {**target_body, "target_obligation_keys": invalid},
+            if_match=current_tag,
+        )
+        assert refused.status_code == 422, refused.text
+        assert get(app, path, maya).headers["etag"] == current_tag
+    targeted = post(
+        app,
+        path + "/estimates",
+        maya,
+        {**target_body, "target_obligation_keys": [target_key]},
+        if_match=current_tag,
+    )
+    assert targeted.status_code == 201, targeted.text
+    assert targeted.json()["target_obligation_keys"] == [target_key]
+    assert targeted.json()["allocation_target"] == "OBLIGATIONS"
+    assert get(app, targeted.headers["location"], maya).json() == targeted.json()

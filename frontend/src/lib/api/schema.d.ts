@@ -20213,7 +20213,7 @@ export interface components {
     };
     /**
      * PortfolioEstimateIn
-     * @description A shared-estimate definition, without contract-specific allocation targets.
+     * @description A shared definition with optional common target keys resolved across its members.
      */
     PortfolioEstimateIn: {
       /** Element Code */
@@ -20224,6 +20224,8 @@ export interface components {
        */
       estimate_kind: "RETURN_RATE" | "BREAKAGE";
       method: components["schemas"]["EstimateMethod"];
+      /** Target Obligation Keys */
+      target_obligation_keys?: string[];
     };
     /**
      * PortfolioEstimateVersionIn

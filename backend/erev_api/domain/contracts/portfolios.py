@@ -11,7 +11,7 @@ from erev_api.audit.writer import record_facts
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id
-from erev_api.db.tables import contract, estimate, portfolio, portfolio_member
+from erev_api.db.tables import contract, estimate, obligation, portfolio, portfolio_member
 from erev_api.domain.contracts import estimates, repo
 from erev_api.problems import Problem
 from erev_api.schemas.estimates import EstimateOut
@@ -270,6 +270,35 @@ def get_estimate_definition(
     return estimates.estimate_outs(session, [dict(row)])[0]
 
 
+def _shared_targets(session: Session, portfolio_id: UUID, body: PortfolioEstimateIn) -> list[UUID]:
+    keys = body.target_obligation_keys
+    if not keys:
+        return []
+    if body.estimate_kind != "RETURN_RATE":
+        raise Problem(
+            "validation-failed", "Explicit shared targets currently apply to return estimates."
+        )
+    if len(set(keys)) != len(keys):
+        raise Problem("validation-failed", "Enter each target obligation key once.")
+    population = session.execute(members(portfolio_id)).mappings().all()
+    if not population:
+        raise Problem("validation-failed", "Add portfolio members before selecting shared targets.")
+    ids = {row["contract_id"] for row in population}
+    rows = session.execute(
+        select(obligation.c.id, obligation.c.contract_id, obligation.c.obligation_key).where(
+            obligation.c.contract_id.in_(sorted(ids)), obligation.c.obligation_key.in_(keys)
+        )
+    ).all()
+    found = {(row.contract_id, row.obligation_key) for row in rows}
+    if found != {(cid, key) for cid in ids for key in keys}:
+        raise Problem(
+            "validation-failed",
+            "Every current member must contain every selected obligation key. "
+            "No targets were saved.",
+        )
+    return sorted(row.id for row in rows)
+
+
 def create_estimate_definition(
     uow: UnitOfWork,
     portfolio_id: UUID,
@@ -292,6 +321,7 @@ def create_estimate_definition(
         is not None
     ):
         raise Problem("validation-failed", "This portfolio already has that estimate code.")
+    targets = _shared_targets(uow.session, portfolio_id, body)
     estimate_id = new_id()
     uow.session.execute(
         insert(estimate).values(
@@ -304,8 +334,8 @@ def create_estimate_definition(
             element_code=body.element_code,
             method=body.method.value,
             direction="INCREASE",
-            allocation_target="CONTRACT",
-            target_obligation_ids=[],
+            allocation_target="OBLIGATIONS" if targets else "CONTRACT",
+            target_obligation_ids=targets,
             created_at=uow.now,
             created_by=uow.principal.id,
             created_by_kind=uow.principal.kind.value,
