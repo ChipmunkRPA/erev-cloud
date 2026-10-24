@@ -38,8 +38,9 @@ New source revision 3 preserves prior report behavior through explicit revision 
 A related refund/FX fix preserves zero-balance original opening sources without permitting
 overdraw or unknown layers. 88 focused cases and two populated API scenarios pass.
 See [checkpoint](docs/release/AGENT-POB-GROUP-SOURCES-2026-10-23.md).
-Remaining: positive-consumption mixed source sets, cross-entity/acquired sources and owners
-outside the selected historical group. No posting changes or deployment.
+Mixed opening/current sources now retain net totals and full sources with explicitly unavailable
+opening amounts and incomplete currency totals; see [mixed-source checkpoint](docs/release/AGENT-MIXED-SOURCES-2026-10-23.md).
+Remaining: cross-entity/acquired sources and owners outside the selected historical group. No posting changes or deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

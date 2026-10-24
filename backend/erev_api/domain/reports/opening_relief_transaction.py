@@ -14,6 +14,7 @@ from erev_api.domain.reports import (
     opening_relief_pob,
     opening_relief_frozen,
     opening_agent_sources,
+    opening_relief_availability as availability,
     tie_outs,
 )
 from erev_api.domain.reports.builders import ReportParams
@@ -249,6 +250,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     periods[entity][0].start,
                     first["contract_liability"],
                     net_entries=all_net.get(member, []) if all_net is not None else None,
+                    allow_unresolved=availability.enabled(params),
                     allowed_source_contracts={member[0] for member in members}
                     if agent_key == opening_agent_sources.KEY
                     else None,
@@ -292,6 +294,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     + path["REVENUE_FROM_PERIOD_BILLINGS"]["contract_liability"]
                 ),
                 view="transaction",
+                allow_unresolved=availability.enabled(params),
             )
             if contract_result is not None:
                 contract_evidence[group_identity] = contract_result.evidence
@@ -345,6 +348,9 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     agent_eligible=agent_results[member].eligible
                     if member in agent_results
                     else None,
+                    agent_unresolved=agent_results[member].unresolved
+                    if member in agent_results
+                    else None,
                     agent_evidence=agent_results[member].evidence
                     if member in agent_results
                     else None,
@@ -372,6 +378,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     "consumption_cap": str(consumed),
                     "relief": str(amount),
                 }
+                availability.mask_facts(pob_evidence[group_identity])
                 names = sorted(selected[member].external_id for member in members)
                 recognized_total = sum((recognized[member] for member in members), ZERO)
                 contracts.append(
@@ -381,6 +388,15 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                             "contracts": sorted(str(member[0]) for member in members),
                             "group_key": group_identity,
                         },
+                        **(
+                            {
+                                "_opening_unavailable": availability.unresolved(
+                                    pob_evidence[group_identity]
+                                )
+                            }
+                            if availability.unresolved(pob_evidence[group_identity])
+                            else {}
+                        ),
                         "row_key": f"combined:{group_identity}",
                         "section": 2,
                         "summary": "Combined contracts (group total): "
@@ -417,6 +433,15 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                         "contracts": [str(row.contract_id)],
                         "group_key": group_identity,
                     },
+                    **(
+                        {
+                            "_opening_unavailable": availability.unresolved(
+                                pob_evidence.get(group_identity, {})
+                            )
+                        }
+                        if availability.unresolved(pob_evidence.get(group_identity, {}))
+                        else {}
+                    ),
                     "row_key": f"contract:{row.external_id}:{row.entity_code}",
                     "section": 2,
                     "contract_external_id": row.external_id,

@@ -8169,6 +8169,7 @@
   "contracts.lessor.nonleaseConclusion": "The nonlease components predominate in the combined component.",
   "contracts.lessor.leaseConclusion": "The nonlease components do not predominate in the combined component.",
   "contracts.lessor.empty": "No lease combination assessments have been recorded.",
+  "reports.openingAttribution.incomplete": "Net revenue and source details are complete. Original postings do not determine the portion from opening receipts. Blank opening amounts are unavailable, not zero; opening totals for affected currencies are incomplete.",
   "reports.openingAttribution.title": "Opening attribution explanation",
   "reports.openingAttribution.ZERO_GROUP_OPENING": "No positive group opening liability; opening relief is zero.",
   "reports.openingAttribution.ZERO_CONSUMPTION": "No positive liability consumption; opening relief is zero.",

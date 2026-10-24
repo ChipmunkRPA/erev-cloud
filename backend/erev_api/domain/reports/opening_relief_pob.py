@@ -93,6 +93,7 @@ def calculate(
     allow_zero_consumption: bool = True,
     agent_eligible: Mapping[str, Decimal] | None = None,
     agent_evidence: Mapping[str, Any] | None = None,
+    agent_unresolved: set[str] | None = None,
 ) -> tuple[Decimal, dict[str, Any]]:
     """Eligibility for one member, using the selected version and selected posting range.
 
@@ -236,6 +237,7 @@ def calculate(
     opening_subjects = opening_subjects - set(new)
     facts: dict[str, Any] = {}
     formula = ZERO
+    unresolved_subjects: list[str] = []
     for subject in sorted(subjects | opening_subjects):
         billed = revenue = ZERO
         inputs: list[str] = []
@@ -277,13 +279,20 @@ def calculate(
         contribution = min(liability, max(ZERO, recognized[subject]))
         if agent_eligible is not None and subject in agent_eligible:
             contribution = min(contribution, max(ZERO, agent_eligible[subject]))
+        uncertain = (
+            subject in (agent_unresolved or set())
+            and liability > ZERO
+            and (recognized[subject] > ZERO or not allow_zero_consumption)
+        )
+        if uncertain:
+            unresolved_subjects.append(subject)
         formula += contribution
         facts[subject] = {
             "opening_nodes": inputs,
             "opening_billing": str(billed),
             "opening_revenue": str(revenue),
             "posted_revenue": str(recognized[subject]),
-            "eligible_relief": str(contribution),
+            "eligible_relief": None if uncertain else str(contribution),
             **({"opening_absence": new[subject]} if subject in new else {}),
             **(
                 {"agent_net_sources": agent_evidence[subject]}
@@ -299,7 +308,8 @@ def calculate(
         "obligations": facts,
         "opening_cap": str(opening),
         "consumption_cap": str(consumed),
-        "relief": str(result),
+        "relief": None if unresolved_subjects else str(result),
+        **({"unresolved_subjects": unresolved_subjects} if unresolved_subjects else {}),
     }
 
 

@@ -20,7 +20,7 @@ function isDetail(value: unknown): value is Detail {
     ) && BASES.some((basis) => basis === item.basis)
   );
 }
-export function OpeningAttributionDetails({ run }: { readonly run: ReportRun }) {
+function OpeningSourceDetails({ run }: { readonly run: ReportRun }) {
   const raw = run.control_totals?.opening_attribution_explanation;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const items = (raw as Record<string, unknown>).items;
@@ -54,5 +54,24 @@ export function OpeningAttributionDetails({ run }: { readonly run: ReportRun }) 
         ))}
       </ul>
     </details>
+  );
+}
+
+export function OpeningAttributionDetails({ run }: { readonly run: ReportRun }) {
+  const availability = run.control_totals?.opening_attribution_availability;
+  const incomplete =
+    typeof availability === "object" &&
+    availability !== null &&
+    "status" in availability &&
+    availability.status === "INCOMPLETE";
+  return (
+    <>
+      {incomplete ? (
+        <p role="status" className="rounded-md border border-hairline p-3">
+          {t("reports.openingAttribution.incomplete")}
+        </p>
+      ) : null}
+      <OpeningSourceDetails run={run} />
+    </>
   );
 }

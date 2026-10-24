@@ -265,3 +265,15 @@ def test_source_revision_selection_preserves_bound_report_behavior():
     assert agent.key_for({agent.PREVIOUS_KEY: {}}) == agent.PREVIOUS_KEY
     assert agent.key_for({agent.LEGACY_KEY: {}}) == agent.LEGACY_KEY
     assert agent.key_for({}) == agent.LEGACY_KEY
+
+
+def test_mixed_sources_keep_net_total_and_mark_unknown_opening(monkeypatch):
+    uow, row, entry, _ = setup(monkeypatch, proof(date(2026, 3, 31), START))
+    result = agent.read(uow, row, [entry], START, D(100), allow_unresolved=True)
+    assert result.entries[0].flow.amount == D(20)
+    assert result.unresolved == {"C/S"}
+    assert result.evidence["C/S"]["basis"] == "MIXED_NET_SOURCE_SET"
+    sources = result.evidence["C/S"]["lines"][0]["source_sets"][0]
+    assert sources["bucket"] == "UNRESOLVED"
+    assert len(sources["sources"]) == 2
+    assert all("amount" not in source for source in sources["sources"])

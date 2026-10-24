@@ -208,16 +208,22 @@ def finish(
     )
     from .opening_relief_cells import retain
 
+    from . import opening_relief_availability as availability
+
+    unavailable_currencies, availability_controls = availability.apply(params, contracts)
     retain(session, params, contracts, view=view, rates=rates)
     rows = [
         {
             "row_key": f"summary:{currency}",
             "section": 1,
             "currency": currency,
-            "summary": disclosure.SUMMARY.format(range=", ".join(labels)),
+            "summary": disclosure.SUMMARY.format(range=", ".join(labels))
+            + (" " + availability.NOTE if currency in unavailable_currencies else ""),
             "opening_contract_liability": tie_outs.money(values["opening"], currency),
             "revenue_recognized": tie_outs.money(values["revenue"], currency),
-            "revenue_from_opening": tie_outs.money(values["relief"], currency),
+            "revenue_from_opening": None
+            if currency in unavailable_currencies
+            else tie_outs.money(values["relief"], currency),
         }
         for currency, values in sorted(totals.items())
     ]
@@ -322,12 +328,17 @@ def finish(
         rows=tuple(rows),
         control_totals={
             "revenue_from_opening_total": tie_outs.by_currency(
-                {code: values["relief"] for code, values in totals.items()}
+                {
+                    code: values["relief"]
+                    for code, values in totals.items()
+                    if code not in unavailable_currencies
+                }
             ),
             "currency_view": view,
             "footnote": footnote,
             "resolved_consumption_policies": policies,
             "translation_rates": rates,
             **explanation_controls(params),
+            **availability_controls,
         },
     )

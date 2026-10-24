@@ -215,3 +215,32 @@ def test_cell_explanation_identifies_contract_cap_and_original_principal_sources
     assert "no per-obligation cap or member allocation" in text
     assert "Principal control line: control; net line: net" in text
     assert "original opening-source income: 20 GBP; sources: original-layer" in text
+
+
+def test_mixed_net_income_has_no_retained_numeric_opening_or_period_attribution(monkeypatch):
+    income = entry(A, "26.67", 1)
+    found = agent.Result((income,), {str(A): D(0)}, {}, set(), (), {str(A)})
+    monkeypatch.setattr(agent, "read", lambda *a, **k: found)
+    result = contract.calculate(
+        None,
+        [row(A)],
+        {(A, ENTITY): [income]},
+        {},
+        start=START,
+        opening=D(80),
+        consumed=D(80),
+        view="functional",
+        allow_unresolved=True,
+    )
+    assert result.recognized == D("26.67")
+    assert result.evidence["eligible"] is None
+    assert result.evidence["relief"] is None
+    _, net = contract.period_slices(
+        result,
+        periods=[NS(id=PERIOD, key="2026-04")],
+        opening=D(80),
+        consumption={PERIOD: D(80)},
+    )
+    assert net == {PERIOD: D("26.67")}
+    assert result.evidence["period_relief"] == {"2026-04": None}
+    assert contract.row([row(A)], "group", "GBP", D(80), result)["_opening_unavailable"] == [str(A)]

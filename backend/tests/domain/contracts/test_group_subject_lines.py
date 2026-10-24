@@ -1468,6 +1468,7 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         ("18000.00", 2, True, False),
         ("18000.00", 2, False, True),
         ("18000.00", 2, True, True),
+        ("18000.00", 2, False, "mixed"),
     ],
 )
 def test_agent_supplier_sources_retain_original_paid_history(
@@ -1476,7 +1477,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
     net_fee: str,
     deposits: int,
     combined: bool,
-    opening_deposit: bool,
+    opening_deposit: bool | str,
 ) -> None:  # noqa: F811
     from erev_api.jobs import registry
 
@@ -1574,7 +1575,9 @@ def test_agent_supplier_sources_retain_original_paid_history(
             int(head),
             _invoice(
                 f"AGENT-ADV-{index}",
-                "2026-07-20" if opening_deposit else "2026-08-20",
+                "2026-07-20"
+                if opening_deposit and (opening_deposit != "mixed" or index == 0)
+                else "2026-08-20",
                 str(Decimal("90000") / deposits),
             ),
         )
@@ -1749,13 +1752,24 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     == "PASS"
                 )
             else:
+                if opening_deposit == "mixed":
+                    assert detail["revenue_from_opening"] is None, detail
+                    summary = next(
+                        row for row in data if row["row_key"] == f"summary:{detail['currency']}"
+                    )
+                    assert summary["revenue_from_opening"] is None
+                    assert (
+                        run["control_totals"]["opening_attribution_availability"]["status"]
+                        == "INCOMPLETE"
+                    )
                 if not opening_deposit:
                     assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
                 if view == "transaction":
                     assert Decimal(detail["revenue_recognized"]["amount"]) == expected_net, detail
-                    assert Decimal(detail["revenue_from_opening"]["amount"]) == (
-                        expected_net if opening_deposit else Decimal(0)
-                    ), detail
+                    if opening_deposit != "mixed":
+                        assert Decimal(detail["revenue_from_opening"]["amount"]) == (
+                            expected_net if opening_deposit else Decimal(0)
+                        ), detail
                 assert "Contract FIFO agent disclosure" in run["control_totals"]["footnote"]
             restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
             assert restarted.status_code == 202, restarted.text
@@ -1812,9 +1826,16 @@ def test_agent_supplier_sources_retain_original_paid_history(
                         reporting.entity_id, expected
                     )
                 assert Decimal(detail["revenue_recognized"]["amount"]) == expected, detail
-                assert Decimal(detail["revenue_from_opening"]["amount"]) == (
-                    expected if opening_deposit else Decimal(0)
-                ), detail
+                if opening_deposit == "mixed":
+                    assert detail["revenue_from_opening"] is None, detail
+                    assert (
+                        run["control_totals"]["opening_attribution_availability"]["status"]
+                        == "INCOMPLETE"
+                    )
+                else:
+                    assert Decimal(detail["revenue_from_opening"]["amount"]) == (
+                        expected if opening_deposit else Decimal(0)
+                    ), detail
                 assert (
                     "Agent revenue is the verified net posting" in run["control_totals"]["footnote"]
                 )
@@ -1831,6 +1852,9 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     for text in item.get("details", [])
                 ]
                 assert any("Agent net income:" in text for text in details), details
+                if opening_deposit == "mixed":
+                    assert any("Revenue from opening: unavailable" in text for text in details)
+                    assert any("bucket: UNRESOLVED" in text for text in details)
                 restarted = post(
                     fx.app, f"/api/v1/report-runs/{run['id']}/rerun", reporting.maya, {}
                 )
@@ -1919,10 +1943,11 @@ def test_agent_supplier_sources_retain_original_paid_history(
         assert all(row["transaction"] == 0 for row in totals), totals
         if combined or opening_deposit:
             # Original funding/prepayment was at .80; the restored own layer is at .84.
-            # The 90,000 x .04 historical-rate difference is not a supplier balance.
+            # Only the original prepayment uses .80; mixed receipts have 45,000 at that rate.
+            difference = Decimal("1800" if opening_deposit == "mixed" else "3600")
             assert {row["account_role"]: row["functional"] for row in totals} == {
-                "REVENUE": Decimal("3600"),
-                "CONTRACT_LIABILITY": Decimal("-3600"),
+                "REVENUE": difference,
+                "CONTRACT_LIABILITY": -difference,
                 "BILLING_CLEARING": Decimal(0),
             }
         else:

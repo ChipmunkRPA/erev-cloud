@@ -7,7 +7,13 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from . import opening_agent_sources, opening_relief_periods, revenue_attribution, tie_outs
+from . import (
+    opening_agent_sources,
+    opening_relief_periods,
+    opening_relief_availability as availability,
+    revenue_attribution,
+    tie_outs,
+)
 from .builders import ReportParams
 from .builders.contract_balance_rollforward import Entry
 from erev_api.uow import UnitOfWork
@@ -41,6 +47,7 @@ def calculate(
     consumed: Decimal,
     view: str,
     allow_zero_consumption: bool = True,
+    allow_unresolved: bool = False,
 ) -> Result | None:
     owners = {row.contract_id for row in rows}
     agents = {}
@@ -56,6 +63,7 @@ def calculate(
             net_entries=net.get(key, []),
             allowed_source_contracts=owners,
             classify_opening=not (allow_zero_consumption and consumed <= 0),
+            allow_unresolved=allow_unresolved,
         )
         if found is not None:
             agents[key] = found
@@ -133,6 +141,7 @@ def calculate(
             "posted_lines": sorted(str(e.line_id) for e in current if e.flow.is_revenue),
             "principal_sources": principal,
         }
+    uncertain = sorted({subject for found in agents.values() for subject in found.unresolved})
     recognized = sum((e.flow.amount for e in entries), ZERO)
     eligible = sum((e.flow.amount for e in eligible_entries), ZERO)
     relief = min(
@@ -147,8 +156,9 @@ def calculate(
             "opening_cap": str(opening),
             "consumption_cap": str(consumed),
             "recognized": str(recognized),
-            "eligible": str(eligible),
-            "relief": str(relief),
+            "eligible": None if uncertain else str(eligible),
+            "relief": None if uncertain else str(relief),
+            **({"unresolved_subjects": uncertain} if uncertain else {}),
         },
         entries,
         eligible_entries,
@@ -166,6 +176,11 @@ def row(
     first = members[0]
     combined = len(members) > 1
     return {
+        **(
+            {"_opening_unavailable": availability.unresolved(result.evidence)}
+            if availability.unresolved(result.evidence)
+            else {}
+        ),
         "_opening_source": {
             "entity_id": str(first.entity_id),
             "contracts": sorted(str(member.contract_id) for member in members),
@@ -200,20 +215,27 @@ def period_slices(
     def group(entries: Sequence[Entry]) -> list[Entry]:
         return [replace(entry, subject_key="group") for entry in entries]
 
-    relief = opening_relief_periods.deltas(
-        periods=[p.id for p in periods],
-        opening=opening,
-        obligations={"group": opening},
-        entries=group(result.entries),
-        source_eligibility={"group": group(result.eligible_entries)},
-        consumption=consumption,
-        expected=result.relief,
+    uncertain = availability.unresolved(result.evidence)
+    relief = (
+        {p.id: ZERO for p in periods}
+        if uncertain
+        else opening_relief_periods.deltas(
+            periods=[p.id for p in periods],
+            opening=opening,
+            obligations={"group": opening},
+            entries=group(result.entries),
+            source_eligibility={"group": group(result.eligible_entries)},
+            consumption=consumption,
+            expected=result.relief,
+        )
     )
     net = {
         p.id: sum((e.flow.amount for e in result.entries if e.period_id == p.id), ZERO)
         for p in periods
     }
-    result.evidence["period_relief"] = {p.key: str(relief[p.id]) for p in periods}
+    result.evidence["period_relief"] = {
+        p.key: None if uncertain else str(relief[p.id]) for p in periods
+    }
     result.evidence["period_net_revenue"] = {p.key: str(net[p.id]) for p in periods}
     return relief, net
 

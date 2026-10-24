@@ -8,6 +8,7 @@ from uuid import UUID
 
 from erev_api.domain.reports import (
     opening_agent_sources,
+    opening_relief_availability as availability,
     opening_relief_frozen,
     opening_relief_pob,
     tie_outs,
@@ -151,6 +152,7 @@ def rows(
                     opening,
                     view="functional",
                     net_entries=all_net.get(key, []),
+                    allow_unresolved=availability.enabled(params),
                     allowed_source_contracts={member.contract_id for member in members}
                     if agent_key == opening_agent_sources.KEY
                     else None,
@@ -196,6 +198,7 @@ def rows(
                 allow_zero_consumption=zero_consumption_safe,
                 agent_eligible=agent_result.eligible if agent_result is not None else None,
                 agent_evidence=agent_result.evidence if agent_result is not None else None,
+                agent_unresolved=agent_result.unresolved if agent_result is not None else None,
             )
             if frozen_facts is not None:
                 detail["frozen_opening"] = frozen_facts
@@ -215,35 +218,41 @@ def rows(
             "consumed": str(consumed),
             "relief": str(amount),
         }
+        availability.mask_facts(evidence[group_key])
+        uncertain = availability.unresolved(evidence[group_key])
         if reporting_slices is not None:
             from .opening_relief_periods import deltas
 
-            period_amounts = deltas(
-                periods=[p.id for p in periods[entity]],
-                opening=opening,
-                obligations={
-                    subject: Decimal(detail.get("opening_billing", "0"))
-                    - Decimal(detail.get("opening_revenue", "0"))
-                    for member in facts.values()
-                    for subject, detail in member["obligations"].items()
-                },
-                entries=group_entries,
-                source_eligibility=source_eligibility,
-                consumption={
-                    p.id: -sum(
-                        (
-                            item.period_lines[p.id][line][rollforward.LIABILITY]
-                            for item in members
-                            for line in ("REVENUE_FROM_OPENING", "REVENUE_FROM_PERIOD_BILLINGS")
-                        ),
-                        ZERO,
-                    )
-                    for p in periods[entity]
-                },
-                expected=amount,
+            period_amounts = (
+                {p.id: ZERO for p in periods[entity]}
+                if uncertain
+                else deltas(
+                    periods=[p.id for p in periods[entity]],
+                    opening=opening,
+                    obligations={
+                        subject: Decimal(detail.get("opening_billing", "0"))
+                        - Decimal(detail.get("opening_revenue", "0"))
+                        for member in facts.values()
+                        for subject, detail in member["obligations"].items()
+                    },
+                    entries=group_entries,
+                    source_eligibility=source_eligibility,
+                    consumption={
+                        p.id: -sum(
+                            (
+                                item.period_lines[p.id][line][rollforward.LIABILITY]
+                                for item in members
+                                for line in ("REVENUE_FROM_OPENING", "REVENUE_FROM_PERIOD_BILLINGS")
+                            ),
+                            ZERO,
+                        )
+                        for p in periods[entity]
+                    },
+                    expected=amount,
+                )
             )
             evidence[group_key]["period_relief"] = {
-                p.key: str(period_amounts[p.id]) for p in periods[entity]
+                p.key: None if uncertain else str(period_amounts[p.id]) for p in periods[entity]
             }
             reporting_slices[group_key] = {
                 "members": [(item.contract_id, entity) for item in members],
@@ -278,6 +287,7 @@ def rows(
         first = members[0]
         result.append(
             {
+                **({"_opening_unavailable": uncertain} if uncertain else {}),
                 "_opening_source": {
                     "entity_id": str(entity),
                     "contracts": sorted(str(item.contract_id) for item in members),

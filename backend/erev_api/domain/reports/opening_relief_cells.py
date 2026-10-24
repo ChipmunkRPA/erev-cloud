@@ -167,7 +167,11 @@ def _details(source: dict[str, Any]) -> list[str]:
     )
     for column in COLUMNS:
         value = source["values"][column]
-        result.append(f"{labels[column]}: {value['amount']} {value['currency']}")
+        result.append(
+            f"{labels[column]}: unavailable (mixed original sources)"
+            if value is None
+            else f"{labels[column]}: {value['amount']} {value['currency']}"
+        )
     facts = source["pob"]
     if not facts:
         result.append(
@@ -223,7 +227,11 @@ def _details(source: dict[str, Any]) -> list[str]:
                 if field in obligation:
                     if field == "opening_revenue" and "agent_net_sources" in obligation:
                         label = "Opening gross control relief (includes supplier payable)"
-                    result.append(f"{subject} · {label}: {obligation[field]} {currency}")
+                    result.append(
+                        f"{subject} · {label}: unavailable (mixed original sources)"
+                        if obligation[field] is None
+                        else f"{subject} · {label}: {obligation[field]} {currency}"
+                    )
             for line in obligation.get("agent_net_sources", {}).get("lines", []):
                 result.append(
                     f"{subject} · Agent net income: {line['net_income']} {currency}; "
@@ -247,7 +255,11 @@ def _details(source: dict[str, Any]) -> list[str]:
             "Reporting relief uses signed period changes at each period's retained average rate."
         )
         for period, amount in sorted(facts["period_relief"].items()):
-            result.append(f"{period} · Relief before reporting translation: {amount} {currency}")
+            result.append(
+                f"{period} · Relief before reporting translation: unavailable"
+                if amount is None
+                else f"{period} · Relief before reporting translation: {amount} {currency}"
+            )
     for period, amount in sorted(facts.get("period_net_revenue", {}).items()):
         result.append(f"{period} · Net revenue before reporting translation: {amount} {currency}")
     result.extend(_ownership_details(source.get("ownership_alignment", [])))
@@ -313,6 +325,12 @@ def cell(
     ]
     if not selected:
         raise Problem("not-found", "No such opening-liability contribution.")
+    if any(source["values"][column_key] is None for _, source in selected):
+        raise Problem(
+            "not-found",
+            "Opening attribution is unavailable: original postings do not determine "
+            "the opening-source portion of net income. View revenue recognized for full sources.",
+        )
     versions = {UUID(version) for _, source in selected for version, _, _ in opening_nodes(source)}
     traces = (
         {

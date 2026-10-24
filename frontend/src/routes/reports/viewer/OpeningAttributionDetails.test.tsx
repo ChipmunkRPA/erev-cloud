@@ -50,3 +50,10 @@ it("keeps legacy and empty reports unchanged and rejects unknown reasons", () =>
       .textContent,
   ).toBe("");
 });
+it("explains unavailable opening amounts without hiding complete net revenue", () => {
+  mount({ opening_attribution_availability: { status: "INCOMPLETE" } });
+  expect(screen.getByRole("status").textContent).toContain("unavailable, not zero");
+  expect(screen.getByRole("status").textContent).toContain(
+    "totals for affected currencies are incomplete",
+  );
+});

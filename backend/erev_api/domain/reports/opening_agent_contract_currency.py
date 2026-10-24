@@ -6,7 +6,12 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from . import opening_agent_contract as agent, opening_agent_postings, tie_outs
+from . import (
+    opening_agent_contract as agent,
+    opening_agent_postings,
+    opening_relief_availability as availability,
+    tie_outs,
+)
 from .builders import ReportParams
 from .builders import contract_balance_rollforward as rollforward
 from erev_api.uow import UnitOfWork
@@ -92,6 +97,7 @@ def rows(
             opening=opening,
             consumed=consumed,
             view="functional",
+            allow_unresolved=availability.enabled(params),
             allow_zero_consumption=reporting_slices is None
             or all(
                 sum(

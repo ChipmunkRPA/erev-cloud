@@ -1,7 +1,7 @@
 """Net agent opening income only where the complete original source set proves its bucket."""
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 from fractions import Fraction
@@ -29,6 +29,10 @@ def key_for(evidence: Mapping[str, Any] | None) -> str:
     return next((key for key in SUPPORTED_KEYS if key in evidence), LEGACY_KEY)
 
 
+class MixedSources(ValueError):
+    pass
+
+
 def bucket(proof: revenue_attribution.AmountProof, start: date) -> str:
     """Classify a whole verified net amount, never assign a fraction to an individual source."""
     if proof.amount == 0:
@@ -44,7 +48,7 @@ def bucket(proof: revenue_attribution.AmountProof, start: date) -> str:
         for s in proof.sources
     }
     if len(kinds) != 1:
-        raise ValueError(
+        raise MixedSources(
             "Agent net income mixes opening and non-opening sources; "
             "no per-source net allocation is retained."
         )
@@ -58,6 +62,7 @@ class Result:
     evidence: dict[str, Any]
     paid_lines: set[UUID]
     opening_entries: tuple[Entry, ...]
+    unresolved: set[str] = field(default_factory=set)
 
 
 def read(
@@ -71,6 +76,7 @@ def read(
     net_entries: list[Entry] | None = None,
     allowed_source_contracts: set[UUID] | None = None,
     classify_opening: bool = True,
+    allow_unresolved: bool = False,
 ) -> Result | None:
     if view not in {"transaction", "functional"}:
         raise ValueError("Agent source view must be transaction or functional.")
@@ -97,6 +103,22 @@ def read(
     opening_entries = []
     paid: set[UUID] = set()
     seen_net: set[UUID] = set()
+    unresolved: set[str] = set()
+
+    def category_for(proof: revenue_attribution.AmountProof, subject: str) -> str:
+        if opening <= 0:
+            return "NO_OPENING"
+        if not classify_opening:
+            return "NO_CONSUMPTION"
+        try:
+            return bucket(proof, start)
+        except MixedSources:
+            if not allow_unresolved:
+                raise
+            unresolved.add(subject)
+            facts[subject]["basis"] = "MIXED_NET_SOURCE_SET"
+            return "UNRESOLVED"
+
     for entry in entries:
         if not entry.flow.is_revenue or entry.subject_key not in subjects:
             converted.append(entry)
@@ -127,13 +149,7 @@ def read(
                         "Agent opening attribution across original member owners "
                         "remains unsupported."
                     )
-                category = (
-                    "NO_OPENING"
-                    if opening <= 0
-                    else "NO_CONSUMPTION"
-                    if not classify_opening
-                    else bucket(proof, start)
-                )
+                category = category_for(proof, entry.subject_key)
                 amount = -Decimal(posted_amount)
                 net += amount
                 if category == "OPENING":
@@ -197,13 +213,7 @@ def read(
                 raise ValueError("Agent net-only amount differs from the original posting.")
             if any(source.contract_id not in allowed_owners for source in proof.sources):
                 raise ValueError("Agent net-only sources cross original member owners.")
-            category = (
-                "NO_OPENING"
-                if opening <= 0
-                else "NO_CONSUMPTION"
-                if not classify_opening
-                else bucket(proof, start)
-            )
+            category = category_for(proof, entry.subject_key)
             amount = entry.flow.amount if category == "OPENING" else ZERO
             eligible[entry.subject_key] += amount
             converted.append(entry)
@@ -252,4 +262,4 @@ def read(
             )
         except ValueError as error:
             raise tie_outs.invalid("currency_view", str(error)) from error
-    return Result(tuple(converted), eligible, facts, paid, tuple(opening_entries))
+    return Result(tuple(converted), eligible, facts, paid, tuple(opening_entries), unresolved)

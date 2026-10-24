@@ -242,3 +242,19 @@ def test_alignment_refuses_an_owner_outside_the_retained_source_group():
     sources.evidence.update(evidence)
     with pytest.raises(Problem, match="validation-failed"):
         retain(Session(), NS(binding=None, sources=sources), output, view="functional", rates=[])
+
+
+def test_unknown_opening_preserves_net_drill_and_refuses_numeric_opening_drill():
+    sources = SourceCollector()
+    params = NS(binding=None, sources=sources)
+    output = rows()
+    output[0]["revenue_from_opening"] = None
+    retain(Session(), params, output, view="functional", rates=[])
+    params = NS(binding=NS(evidence=sources.evidence), sources=None)
+    value, items = cell(None, params, "summary:GBP", "revenue_recognized")
+    assert value == {"amount": "26.67", "currency": "GBP"}
+    assert any(
+        "Revenue from opening: unavailable" in text for text in items[0]["_source_set_details"]
+    )
+    with pytest.raises(Problem, match="Opening attribution is unavailable"):
+        cell(None, params, "summary:GBP", "revenue_from_opening")
