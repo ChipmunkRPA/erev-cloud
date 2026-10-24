@@ -17,6 +17,8 @@ from typing import Any, Final
 from uuid import uuid4
 
 import pytest
+from support.architecture import read
+
 from erev_api.domain.close import relock_diff
 from erev_api.domain.reports import framework
 from erev_api.domain.reports.builders import modification_register as register
@@ -40,7 +42,6 @@ from erev_api.domain.reports.builders.modification_register import (
 )
 from erev_api.domain.reports.catalogue import DEFINITIONS_BY_CODE
 from erev_api.problems import Problem
-from support.architecture import read
 
 RPT_14: Final = "##### RPT-14 `modification_register` Modification register"
 _GRID_ROW: Final = re.compile(r"^\| ([A-Z][^|`]*?) \| `([a-z_0-9.]+)` \|")
@@ -756,3 +757,40 @@ def test_original_functional_calculation_columns_keep_bound_values_and_old_shape
     old = register.data_from_inputs(retained)
     assert old.columns == COLUMNS
     assert "catch_up_functional_calculation" not in old.rows[0]
+
+
+def test_reassessment_evidence_is_authored_complete_and_old_runs_keep_their_shape():
+    import json
+    from dataclasses import asdict
+
+    from erev_engine.canonical import canonical_bytes
+
+    assessment = {
+        "HOST": {
+            "decision": "CONTINUE",
+            "effective_date": "2026-09-16",
+            "component_keys": ["HOST", "O2"],
+            "same_transfer_pattern": True,
+            "operating_lease": True,
+            "nonlease_predominates": True,
+        }
+    }
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(_source(questionnaire={"combined_reassessment": assessment}))],
+                "currency_view": "transaction",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+            }
+        )
+    )
+    old = register.data_from_inputs(retained)
+    retained["combined_reassessment_column"] = True
+    current = register.data_from_inputs(retained)
+    assert json.loads(current.rows[0]["combined_reassessment"]) == assessment
+    assert current.control_totals == old.control_totals
+    assert "combined_reassessment" not in old.rows[0]
+    assert "combined_reassessment" not in {column.key for column in old.columns}
+    retained["sources"][0]["questionnaire"] = {}
+    assert register.data_from_inputs(retained).rows[0]["combined_reassessment"] is None

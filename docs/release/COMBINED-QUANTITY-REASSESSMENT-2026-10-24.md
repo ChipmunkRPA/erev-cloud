@@ -41,8 +41,7 @@ pass, plus scoped lint/types. Cases cover increases/reductions, dated complete a
 refusal of transferred-unit removal or retrospective treatment, later price changes, original
 SSP stratification, preserved prior income and trace reevaluation.
 
-Remaining work: populated API approval/application acceptance; term
-changes; complete member removal/splitting; non-unit measures; lease-predominant combinations;
+Remaining work: term changes; complete member removal/splitting; non-unit measures; lease-predominant combinations;
 combined-contract group reassessment outside this component path. No claim that the entire
 reassessment feature is finished. No deployment.
 
@@ -56,5 +55,23 @@ preserve unrelated questionnaire answers and remove stale reassessment entries.
 
 Nineteen focused form/component cases pass, including actual checkbox submission, clearing
 on date change, refusal without confirmation, unchanged price-change payloads and refusal
-of term edits/removals. Frontend types and scoped lint pass. This does not replace populated
-API approval/application acceptance or enable the remaining reassessment paths above.
+of term edits/removals. Frontend types and scoped lint pass. This UI checkpoint does not enable the remaining reassessment paths above.
+
+## Public workflow and Reporting checkpoint
+
+The populated API path now passes creation, classification, preview, submission, independent
+actor approval and application for a combined original-member quantity increase. A prior
+half-unit delivery keeps its 27,000.00 recognized revenue when one equipment unit and
+1,000.00 consideration are added; the resulting pool is 109,000.00. Original member keys and
+the complete dated assessment survive approval. Saved status and modification-register
+reports replay with equal output hashes.
+
+New modification-register runs in source/spot-equivalent currency bases include a
+“Combination reassessment (authored JSON)” column with the complete retained modification-level
+assessment. It is authored evidence, not a new eligibility determination or member allocation.
+The column is retained-input-version gated: older report runs keep their previous shape.
+Causal-analysis output and locked snapshot datasets do not gain this column in this change.
+
+Verification: one populated public workflow including both report replays, 23 register unit
+cases (including old-output compatibility and unchanged money totals), scoped lint and types.
+No deployment. The term/removal/split and other measure paths listed above remain open.

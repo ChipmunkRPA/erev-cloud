@@ -1953,5 +1953,14 @@ Revision 29 now applies explicitly reassessed unit-quantity changes prospectivel
 original members and prior revenue. Member quantities and original product SSP selection carry
 forward into later modifications. Thirty-six focused cases and scoped lint/types pass. See
 [the implementation checkpoint](COMBINED-QUANTITY-REASSESSMENT-2026-10-24.md) for the retained
-assessment shape and boundaries. Public UI/approval acceptance, term changes, member removal/split
-and other recognition measures remain unfinished. No deployment.
+assessment shape and boundaries. Public UI and quantity-continuation approval/application acceptance
+are now complete; term changes, member removal/split and other recognition measures remain unfinished. No deployment.
+
+## October 24: combined reassessment evidence in Reporting
+
+The modification register now displays complete authored combination-reassessment evidence
+for new source/spot-equivalent runs, retaining original identities and date without inferring
+member amounts. Previous retained reports keep their original shape. The public quantity
+continuation workflow passes classification, preview, approval, application and saved-report
+replay with prior income preserved. See the
+[updated checkpoint](COMBINED-QUANTITY-REASSESSMENT-2026-10-24.md). No deployment.

@@ -22,16 +22,6 @@ from typing import Any, Final
 from uuid import UUID
 
 import pytest
-from erev_api.auth.keyring import KeyRing
-from erev_api.clock import FrozenClock
-from erev_api.config import Settings
-from erev_api.db.tables import contract_version, legal_entity
-from erev_api.domain.reports import framework
-from erev_api.domain.reports.builders import ReportParams
-from erev_api.files.store import LocalFileStore
-from erev_api.jobs.context import JobRuntime
-from erev_api.main import create_app
-from erev_api.problems import Problem
 from fastapi import FastAPI
 from sqlalchemy import select
 from support.db import TestDatabase
@@ -55,6 +45,17 @@ from support.worlds import (
     k03_september,
     report_run,
 )
+
+from erev_api.auth.keyring import KeyRing
+from erev_api.clock import FrozenClock
+from erev_api.config import Settings
+from erev_api.db.tables import contract_version, legal_entity
+from erev_api.domain.reports import framework
+from erev_api.domain.reports.builders import ReportParams
+from erev_api.files.store import LocalFileStore
+from erev_api.jobs.context import JobRuntime
+from erev_api.main import create_app
+from erev_api.problems import Problem
 from tests.domain.contracts.test_estimates import (
     ESTIMATES,
     K06_CONTRACT,
@@ -761,6 +762,7 @@ def test_loss_tests_persist_periods_and_eac_lineage(k03: K03World, clock: Frozen
 
 def test_loss_register_rerun_and_exports(k03: K03World, clock: FrozenClock) -> None:
     from support.worlds import REPORT_RUN_ID_HEADER, REPORT_RUNS, run_now
+
     from tests.domain.reports.test_analysis_reports import file_outputs
 
     world = k03.report
@@ -1155,8 +1157,9 @@ def test_combined_original_component_price_change_approval_and_reporting(
 def test_combined_original_deliveries_and_return_approval_and_reporting(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
 ) -> None:
-    from erev_api.db.tables import contract, contract_event
     from support.worlds import run_now
+
+    from erev_api.db.tables import contract, contract_event
 
     lease = br06_lease(
         app,
@@ -1232,8 +1235,9 @@ def test_combined_original_deliveries_and_return_approval_and_reporting(
 
 
 def test_combined_original_cost_approval_and_reporting(app, keyring, clock, files):
-    from erev_api.db.tables import contract, contract_event
     from support.worlds import evidence_file, run_now
+
+    from erev_api.db.tables import contract, contract_event
 
     lease = br06_lease(
         app,
@@ -1400,8 +1404,9 @@ def test_combined_original_cost_approval_and_reporting(app, keyring, clock, file
 
 
 def test_combined_member_hours_approval_and_saved_reporting(app, keyring, clock, files):
-    from erev_api.db.tables import contract, contract_event
     from support.worlds import estimate_version_approved, evidence_file, run_now
+
+    from erev_api.db.tables import contract, contract_event
 
     lease = br06_lease(
         app,
@@ -1565,6 +1570,139 @@ def test_combined_original_termination_public_workflow(
     assert rows[0]["revenue_cum"] == usd("18000.00")
     assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
     rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    replay = run_now(world, UUID(rerun.json()["id"]))
+    assert replay["state"] == "SUCCEEDED", replay
+    assert replay["result"]["output_sha256_equal"] is True
+
+
+def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files):
+    from support.modifications import confirm_answers
+    from support.worlds import run_now
+
+    from erev_api.db.tables import contract
+
+    lease = br06_lease(
+        app,
+        keyring,
+        clock,
+        files,
+        lessor_combination=True,
+        nonlease_predominates=True,
+        delivered_units=True,
+    )
+    world = lease.report
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+    )
+    delivered = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/events",
+        world.maya,
+        {
+            "events": [
+                {
+                    "event_type": "DELIVERY_RECORDED",
+                    "effective_date": "2026-09-05",
+                    "obligation_key": "L1-LEASE",
+                    "payload": {
+                        "obligation_key": "L1-LEASE",
+                        "quantity": "0.5",
+                        "trigger": "DELIVERY",
+                    },
+                }
+            ]
+        },
+        if_match=f'"s{head}"',
+    )
+    assert delivered.status_code == 201, delivered.text
+    accepted = approve(app, delivered.json()["approval_request_id"], world.priya)
+    assert accepted.status_code == 200, accepted.text
+    assessment = {
+        "decision": "CONTINUE",
+        "effective_date": "2026-09-10",
+        "component_keys": ["L1-LEASE", "L2-SERVICE"],
+        "same_transfer_pattern": True,
+        "operating_lease": True,
+        "nonlease_predominates": True,
+    }
+    created = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/modifications",
+        world.maya,
+        {
+            "effective_date": "2026-09-10",
+            "kind": "QUANTITY_CHANGE",
+            "rationale": "Continue the complete combination with one additional equipment unit.",
+            "questionnaire": {"combined_reassessment": {"L2-SERVICE": assessment}},
+            "lines": [
+                {
+                    "obligation_key": "L1-LEASE",
+                    "action": "CHANGE",
+                    "quantity_delta": "1",
+                    "consideration_delta": {"amount": "1000.00", "currency": "USD"},
+                }
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    path = f"/api/v1/modifications/{created.json()['id']}"
+    classified = confirm_answers(app, created.json()["id"], world.maya)
+    assert classified["proposed_treatments"] == {"L2-SERVICE": "PROSPECTIVE"}
+    assert classified["questionnaire"]["combined_reassessment"]["L2-SERVICE"] == assessment
+    queued = post(app, path + "/preview", world.maya, {})
+    assert queued.status_code == 202, queued.text
+    finished = run_now(world, UUID(queued.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    submitted = post(app, path + "/submit", world.maya, {"comment": "Review dated continuation."})
+    assert submitted.status_code == 200, submitted.text
+    clock.advance(STEP)
+    approved = approve(app, submitted.json()["approval_request_id"], world.priya)
+    assert approved.status_code == 200, approved.text
+    detail = get(app, path, world.maya).json()
+    assert detail["status"] == "APPLIED", detail
+    assert detail["lines"][0]["obligation_key"] == "L1-LEASE"
+    assert detail["questionnaire"]["combined_reassessment"]["L2-SERVICE"] == assessment
+    clock.advance(STEP)
+    run, rows = report_run(
+        world,
+        "latest_contract_status",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "as_of": "2026-09-30",
+            "contract_external_id": BR06_EXTERNAL_ID,
+        },
+    )
+    assert run["status"] == "SUCCEEDED", run
+    assert len(rows) == 1
+    assert rows[0]["allocated_amount"] == usd("109000.00")
+    assert rows[0]["revenue_cum"] == usd("27000.00")
+    assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
+    rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    replay = run_now(world, UUID(rerun.json()["id"]))
+    assert replay["state"] == "SUCCEEDED", replay
+    assert replay["result"]["output_sha256_equal"] is True
+
+    register_run, register_rows = report_run(
+        world,
+        "modification_register",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "from_date": "2026-09-01",
+            "to_date": "2026-09-30",
+            "contract_external_id": BR06_EXTERNAL_ID,
+        },
+    )
+    assert register_run["status"] == "SUCCEEDED", register_run
+    assert len(register_rows) == 1
+    import json
+
+    assert json.loads(register_rows[0]["combined_reassessment"]) == {"L2-SERVICE": assessment}
+    assert register_rows[0]["obligation_key"] == "L1-LEASE"
+    rerun = post(app, f"/api/v1/report-runs/{register_run['id']}/rerun", world.maya, {})
     assert rerun.status_code == 202, rerun.text
     replay = run_now(world, UUID(rerun.json()["id"]))
     assert replay["state"] == "SUCCEEDED", replay

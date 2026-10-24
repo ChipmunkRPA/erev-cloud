@@ -54,9 +54,6 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from erev_engine.canonical import canonical_bytes
-from erev_engine.errors import EngineError
-from erev_engine.stages.s01_canonicalize import contract_subject_key
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -89,6 +86,9 @@ from erev_api.enums import ApprovalDecisionKind, ModificationStatus
 from erev_api.explain.store import load_trace
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import canonical_bytes
+from erev_engine.errors import EngineError
+from erev_engine.stages.s01_canonicalize import contract_subject_key
 
 CODE: Final = "modification_register"
 EVIDENCE: Final = "modification_inputs_v1"
@@ -1314,6 +1314,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "sources": [asdict(item) for item in found],
                 "tp_component_breakdown": True,
                 "functional_calculation_columns": True,
+                "combined_reassessment_column": True,
                 "currency_basis": basis,
                 "spot_equivalents": spot_facts,
                 "reporting_currency": target,
@@ -1461,6 +1462,21 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
                     "Original functional layers; exclusive event-period calculation, "
                     "not journal delta"
                 )
+            )
+    if retained.get("combined_reassessment_column"):
+        columns += (
+            Column("combined_reassessment", "Combination reassessment (authored JSON)", "text"),
+        )
+        by_modification = {item.modification_no: item for item in found}
+        for row in rows:
+            # Retain the entire modification-level assessment, including the original
+            # host/member identities. Do not infer eligibility or allocate its conclusions
+            # to an individual row from a synthetic combined obligation.
+            assessment = by_modification[str(row["modification_no"])].questionnaire.get(
+                "combined_reassessment"
+            )
+            row["combined_reassessment"] = (
+                canonical_bytes(assessment).decode("utf-8") if assessment else None
             )
     check_key_columns(rows)
     totals["from_date"] = retained["from_date"]
