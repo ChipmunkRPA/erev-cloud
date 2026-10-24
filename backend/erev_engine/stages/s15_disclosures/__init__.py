@@ -167,6 +167,7 @@ def run(
     fx: object = None,
     capture_obligation_closing: bool = False,
     capture_agent_control: bool = False,
+    acquired_pob_opening: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
     """RPO, exemptions, time bands, the narrative dataset, the waterfall, the RPO rollforward, the
@@ -213,7 +214,10 @@ def run(
     )
     balance_rows: list[BalanceRollforward] = []
     if isinstance(balances, BalanceState) and isinstance(fx, FxState):
-        records = balances_rollforward.balance_inputs(ctx, balances, fx, intents, posted)
+        records = replace(
+            balances_rollforward.balance_inputs(ctx, balances, fx, intents, posted),
+            acquired_pob_opening=acquired_pob_opening,
+        )
         for entity in entities:
             key = rpo.period_of(ctx, entity, found.as_of)
             balance_rows.append(

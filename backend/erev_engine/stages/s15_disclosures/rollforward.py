@@ -208,6 +208,7 @@ class BalanceInputs:
         default_factory=lambda: MappingProxyType({})
     )
     fx: FxState | None = None  # stage 12 state, for the functional view
+    acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
 
 
 @dataclass(frozen=True, slots=True)
@@ -662,6 +663,28 @@ def _within_obligations(
     billed: dict[str, int] = {}
     before: dict[str, int] = {}
     during: dict[str, int] = {}
+    if (
+        records.acquired_pob_opening
+        and opening_obligations is None
+        and cutover is not None
+        and cutover < start
+    ):
+        for ob in own:
+            baseline = baseline_of(ob)
+            if (
+                baseline is None
+                or baseline.cutover_date != cutover
+                or baseline.method != "OPENING_BALANCES_AT_CUTOVER"
+                or ob.performing_entity != entity
+                or ob.principal_agent.value != "PRINCIPAL"
+            ):
+                raise EngineError(
+                    "ENGINE_INVARIANT_VIOLATED",
+                    "Acquired POB opening requires complete original cutover baselines.",
+                    detail={"rule": "POL-126", "stage": "15", "entity": entity},
+                )
+            billed[ob.subject_key] = baseline.billed_cum
+            before[ob.subject_key] = baseline.revenue_cum
     for flow in records.flows:
         when = _entered(flow)
         if flow.entity != entity or when is None or when > end:

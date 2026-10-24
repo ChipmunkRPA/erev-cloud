@@ -4,6 +4,7 @@ from typing import Any
 
 from erev_engine.bundle import PeriodInput
 from erev_engine.stages.state import AllocatedState, BookContext
+from erev_engine.stages.s07_onboarding import baseline_of
 
 from .rollforward import BalanceInputs, _entered
 
@@ -23,7 +24,33 @@ def capture(
 
     own = [ob for ob in st.obligations if ob.contracting_entity == entity]
     agents = {ob.subject_key for ob in own if ob.principal_agent.value == "AGENT"}
-    if any(ob.performing_entity != entity or ob.opening is not None for ob in own) or (
+    acquired = [ob for ob in own if ob.opening is not None]
+    cutover = None
+    baselines = {}
+    if acquired:
+        if not getattr(records, "acquired_pob_opening", False):
+            return unavailable("Original principal, same-entity sources are required.")
+        if functional:
+            return unavailable("Original acquisition closing sources are unavailable in this view.")
+        if agents:
+            return unavailable("Acquired agents require original gross/net baseline attribution.")
+        for ob in own:
+            baseline = baseline_of(ob)
+            if (
+                ob.opening is None
+                or ob.opening.get("reason") != "BUSINESS_COMBINATION"
+                or baseline is None
+                or baseline.method != "OPENING_BALANCES_AT_CUTOVER"
+            ):
+                return unavailable("Complete original acquisition baselines are required.")
+            baselines[ob.subject_key] = baseline
+        dates = {baseline.cutover_date for baseline in baselines.values()}
+        if len(dates) != 1:
+            return unavailable("Acquisition baselines have different cutover dates.")
+        cutover = next(iter(dates))
+        if period.end_date < cutover:
+            return unavailable("The acquisition has not entered the reporting entity.")
+    if any(ob.performing_entity != entity for ob in own) or (
         agents
         and (
             not capture_agent_control
@@ -36,9 +63,18 @@ def capture(
     revenue = dict.fromkeys(subjects, 0)
     sources: dict[str, set[str]] = {subject: set() for subject in subjects}
     documents: dict[tuple[str, str], int] = {}
+    for subject, baseline in baselines.items():
+        billed[subject] = baseline.billed_cum
+        revenue[subject] = baseline.revenue_cum
+        sources[subject].add(baseline.node_id)
     for flow in records.flows:
         when = _entered(flow)
-        if flow.entity != entity or when is None or when > period.end_date:
+        if (
+            flow.entity != entity
+            or when is None
+            or when > period.end_date
+            or (cutover is not None and when <= cutover)
+        ):
             continue
         if flow.kind in {"BILLING", "CREDIT_MEMO"}:
             shares = records.attribution.get(flow.source_key, {})

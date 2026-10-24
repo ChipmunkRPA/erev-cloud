@@ -4,6 +4,15 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Acquired POB baseline — October 23, 2026
+
+Native transaction POB eligibility and closing snapshots now retain original acquisition
+baselines under evidence revision 14; journals remain unchanged. See
+[checkpoint](ACQUIRED-POB-BASELINE-2026-10-23.md) for validated cases and remaining foreign,
+recomputed-baseline, public-report and acquired-lock boundaries. Historical acquired-source
+limitations below are partially superseded; the overall acquired feature remains incomplete.
+
+
 ## Cross-entity principal POB opening — October 23, 2026
 
 Public POB reports now verify contracting-entity liability relief against original intercompany

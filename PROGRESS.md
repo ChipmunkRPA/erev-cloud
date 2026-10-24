@@ -29,20 +29,21 @@ approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](doc
 entry and saved-report replay; partial-member removal remains open;
 [local build/startup](docs/release/LOCAL-BUILD-2026-10-23.md) passes on 13ad937c; security/restore refresh remains. No deployment.
 
-## Agent POB group sources — October 23, 2026
+## Agent and cross-entity POB sources — October 23, 2026
 
-Contract and POB FIFO now accept original agent sources from any member of the selected
-computation group across all three currency views. POB opening caps remain tied to original
-attributed billing/control relief; the final group amount is not allocated to members.
-New source revision 3 preserves prior report behavior through explicit revision selection.
-A related refund/FX fix preserves zero-balance original opening sources without permitting
-overdraw or unknown layers. 88 focused cases and two populated API scenarios pass.
-See [checkpoint](docs/release/AGENT-POB-GROUP-SOURCES-2026-10-23.md).
-Mixed opening/current sources now retain net totals and full sources with explicitly unavailable
-opening amounts and incomplete currency totals; see [mixed-source checkpoint](docs/release/AGENT-MIXED-SOURCES-2026-10-23.md).
-Cross-entity principal POB now verifies original due-to sources; see
-[checkpoint](docs/release/INTERCOMPANY-POB-OPENING-2026-10-23.md).
-Cross-entity agents, acquired sources and historical-group outsiders remain open. No deployment.
+Agent contract/POB FIFO retains selected-group source owners, original POB caps and a single
+combination total across three currency views. See [group sources](docs/release/AGENT-POB-GROUP-SOURCES-2026-10-23.md).
+[Mixed sources](docs/release/AGENT-MIXED-SOURCES-2026-10-23.md) retain net totals and full sources,
+with unavailable opening amounts explicitly marked. Cross-entity principal POB verifies original
+[due-to sources](docs/release/INTERCOMPANY-POB-OPENING-2026-10-23.md).
+Cross-entity agents and historical-group outsiders remain open. No deployment.
+
+## Acquired POB baseline — October 23, 2026
+
+Revision 14 restores original cutover baselines to native transaction POB eligibility and closing
+source snapshots without changing journals. 37 focused cases pass; see
+[checkpoint](docs/release/ACQUIRED-POB-BASELINE-2026-10-23.md). Foreign-functional, recomputed and
+public acquired-report/locked-history paths remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 

@@ -193,7 +193,7 @@ FORMAT_VERSION: Final = 1
 # Revision 6 requires explicit combined EAC scope; old retained bundles keep legacy selection.
 # Revision 7 retains original actual/expected hour sources without changing progress amounts.
 # Revision 8 retains agent gross-control closing evidence separately from net revenue attribution.
-EVIDENCE_REVISION: Final = 13
+EVIDENCE_REVISION: Final = 14
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).

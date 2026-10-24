@@ -8,6 +8,15 @@ live-business migration and independent accounting sign-off are outside the owne
 development scope; historical production-use requirements below are not development blockers.
 
 
+## Acquired POB baseline — October 23, 2026
+
+Native transaction POB eligibility and closing snapshots now retain original acquisition
+baselines under evidence revision 14; journals remain unchanged. See
+[checkpoint](ACQUIRED-POB-BASELINE-2026-10-23.md) for validated cases and remaining foreign,
+recomputed-baseline, public-report and acquired-lock boundaries. Historical acquired-source
+limitations below are partially superseded; the overall acquired feature remains incomplete.
+
+
 ## Agent opening-income disclosure — October 23, 2026
 
 Both FIFO policies now admit selected-group original agent sources across all three currency
