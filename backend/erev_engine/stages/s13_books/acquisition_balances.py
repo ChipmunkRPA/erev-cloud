@@ -51,7 +51,7 @@ def capture(
     own = original.allocated.obligations
     if (
         not own
-        or len({ob.contract_key for ob in own}) != 1
+        or (len({ob.contract_key for ob in own}) != 1 and (cb.bundle.evidence_revision or 0) < 62)
         or any(
             ob.principal_agent.value != "PRINCIPAL"
             or ob.performing_entity != ob.contracting_entity
@@ -101,6 +101,10 @@ def capture(
         f.severity == "ERROR" for state in measured.values() for f in getattr(state, "findings", ())
     ):
         return ()
+    if len({ob.contract_key for ob in own}) > 1:
+        from .acquisition_group_balances import capture_members
+
+        return capture_members(ctx, cb, measured, evidence, tb, entity, period, cutover)
     member = own[0].contract_key
     subject = contract_entity_subject_key(member, entity)
     group = group_entity_subject_key(original.allocated.group_code, entity)

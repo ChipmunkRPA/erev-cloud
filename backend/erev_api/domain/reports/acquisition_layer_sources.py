@@ -20,6 +20,77 @@ def verify(
     if (bundle.evidence_revision or 0) < 46:
         return
     functional = snapshot["functional"]
+    shared = functional.get("shared_liability_members")
+    if shared is not None:
+        from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
+
+        expected_members = sorted(bundle.group.member_contract_keys)
+        if (
+            (bundle.evidence_revision or 0) < 62
+            or not isinstance(shared, list)
+            or [item.get("member") for item in shared] != expected_members
+            or snapshot.get("members") != expected_members
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Shared acquisition liability population differs."
+            )
+        totals = {"contract_liability": 0, "contract_liability_current": 0}
+        fn_totals = dict(totals)
+        for item in shared:
+            subject = contract_entity_subject_key(item["member"], snapshot["entity"])
+            for prefix, amounts_key, nodes_key, currency, unit in (
+                ("", "amounts", "nodes", snapshot["currency"], snapshot["minor_unit"]),
+                (
+                    "_functional",
+                    "functional_amounts",
+                    "functional_nodes",
+                    functional["currency"],
+                    functional["minor_unit"],
+                ),
+            ):
+                if set(item[amounts_key]) != set(totals) or set(item[nodes_key]) != set(totals):
+                    raise tie_outs.invalid("currency_view", "Shared liability measures differ.")
+                for role, amount in item[amounts_key].items():
+                    identity = (
+                        f"{role}{prefix}:acquisition-cutover/{snapshot['period_key']}/"
+                        f"{subject}:{snapshot['period_key']}"
+                    )
+                    node = nodes.get(identity)
+                    if (
+                        type(amount) is not int
+                        or amount < 0
+                        or item[nodes_key][role] != identity
+                        or node is None
+                        or node["currency"] != currency
+                        or Decimal(node["value"]) != Decimal(amount) * Decimal(10) ** -unit
+                    ):
+                        raise tie_outs.invalid(
+                            "currency_view", "Shared liability member source differs."
+                        )
+                    (fn_totals if prefix else totals)[role] += amount
+                    if item["member"] == snapshot["member"]:
+                        selected = functional if prefix else snapshot
+                        if (
+                            selected["amounts"][role] != amount
+                            or selected["nodes"][role] != identity
+                        ):
+                            raise tie_outs.invalid(
+                                "currency_view", "Selected liability member differs."
+                            )
+        verify(
+            bundle,
+            {
+                **snapshot,
+                "amounts": {**snapshot["amounts"], **totals},
+                "functional": {
+                    **{k: v for k, v in functional.items() if k != "shared_liability_members"},
+                    "amounts": {**functional["amounts"], **fn_totals},
+                },
+            },
+            nodes,
+            book=book,
+        )
+        return
     layers = functional.get("liability_layers")
     if not isinstance(layers, list):
         raise tie_outs.invalid(

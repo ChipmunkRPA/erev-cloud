@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: acquired member current assets now follow original obligation maturity and FX attribution; 56 focused cases pass. See CURRENT-DEVELOPMENT-SCOPE.
+Oct 24: multi-member closed acquisitions now retain report balances with shared FX evidence; targeted checks pass. See CURRENT-DEVELOPMENT-SCOPE. No deployment.

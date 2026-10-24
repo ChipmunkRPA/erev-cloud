@@ -546,3 +546,183 @@ def test_recomputed_cutover_current_liability_keeps_original_carrying(foreign, l
     assert selected[1]["amounts"] == snapshot["amounts"]
     if foreign:
         assert selected[1]["functional"] == snapshot["functional"]
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+@pytest.mark.parametrize("asset_balance", [False, True])
+def test_combined_closed_cutover_retains_each_member_and_shared_layers(
+    foreign, asset_balance, monkeypatch
+):
+    from erev_api.domain.reports.acquisition_complete import read as read_complete
+    from erev_engine.trace import reevaluate
+
+    value = foreign_cutover_value(billed="100000" if asset_balance else "300000")
+    member = "ACQUIRED-B"
+    second = replace(value.contracts[0], external_id=member)
+    events = [*value.events]
+    for event in value.events:
+        payload = dict(event.payload)
+        if event.event_type == "BILLING_RECORDED":
+            payload.update(
+                amount=Decimal("0" if asset_balance else "200000"),
+                invoice_number="SECOND",
+                line_external_id="SECOND",
+            )
+        events.append(
+            replace(
+                event,
+                event_key=event.event_key.replace(w.CONTRACT, member),
+                contract_key=member,
+                payload=payload,
+                record_seq=event.record_seq + 10,
+            )
+        )
+    value = replace(
+        value,
+        evidence_revision=62,
+        contracts=tuple(sorted((*value.contracts, second), key=lambda c: c.external_id)),
+        group=replace(
+            value.group,
+            member_contract_keys=tuple(sorted((w.CONTRACT, member))),
+            criterion="25_9_A",
+        ),
+        events=tuple(sorted(events, key=lambda e: (e.effective_date, e.record_seq, e.event_key))),
+    )
+    if not foreign:
+        value = replace(
+            value, entities=tuple(replace(e, functional_currency="USD") for e in value.entities)
+        )
+    prior = compute(replace(value, evidence_revision=61)).books[0]
+    result = compute(value)
+    output = result.books[0]
+    assert output.balances == prior.balances == ()
+    assert output.posting_intents == prior.posting_intents
+    assert output.schedules == prior.schedules
+    assert prior.acquisition_balance_observations == ()
+    snapshots = output.acquisition_balance_observations
+    assert len(snapshots) == 2
+    replay = reevaluate(output.trace)
+    role = "contract_asset" if asset_balance else "contract_liability"
+    expected_total = 14000000 if asset_balance else 26000000
+    expected_current = 14000000 if asset_balance else 24000000
+    functional_total = 12600000 if asset_balance else 20800000
+    functional_current = 12600000 if asset_balance else 19200000
+    assert sum(s["amounts"][role] for s in snapshots) == expected_total
+    assert sum(s["amounts"][role + "_current"] for s in snapshots) == expected_current
+    if foreign:
+        assert sum(s["functional"]["amounts"][role] for s in snapshots) == functional_total
+        assert (
+            sum(s["functional"]["amounts"][role + "_current"] for s in snapshots)
+            == functional_current
+        )
+    document = json.loads(canonical_bytes(result))
+    # Exercise the actual rollforward acquisition reader with original native output;
+    # only the database candidate lookup and authenticated file loader are substituted.
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from erev_api.domain.reports import acquisition_flows
+    from erev_api.domain.reports.builders import ReportParams
+
+    rows = {
+        (UUID(int=i + 10), UUID(int=1)): tie_outs.BalanceRow(
+            UUID(int=i + 10), c.external_id, None, UUID(int=1), w.ENTITY, "USD", UUID(int=99)
+        )
+        for i, c in enumerate(value.contracts)
+    }
+    session = Mock()
+    session.execute.return_value.scalars.return_value = [key[0] for key in rows]
+    decoded = replace(
+        value,
+        events=tuple(
+            replace(e, payload={**e.payload, "cutover_date": str(e.payload["cutover_date"])})
+            if "cutover_date" in e.payload
+            else e
+            for e in value.events
+        ),
+    )
+    monkeypatch.setattr(
+        acquisition_flows.acquisition_evidence,
+        "load",
+        lambda *_: (
+            decoded,
+            document,
+            {"input_sha256": value.sha256(), "output_sha256": "verified-by-loader"},
+        ),
+    )
+    params = ReportParams(
+        "contract_balance_rollforward", 1, {}, (UUID(int=1),), datetime(2026, 1, 1, tzinfo=UTC)
+    )
+    for functional_view in (False, True):
+        flows = acquisition_flows.read(
+            SimpleNamespace(session=session),
+            params,
+            rows,
+            {UUID(int=1): (PERIOD,)},
+            "ASC606",
+            functional=functional_view,
+        )
+        assert len(flows) == 2
+        liability = sum(
+            dict(entries[0].flow.acquisition_balances)[role] for entries in flows.values()
+        )
+        assert (
+            liability
+            == Decimal(functional_total if foreign and functional_view else expected_total) / 100
+        )
+    for snapshot in snapshots:
+        own = snapshot["member"]
+        opening = next(
+            e
+            for e in value.events
+            if e.contract_key == own and e.event_type == "OPENING_BALANCE_ESTABLISHED"
+        )
+        selected = read_complete(
+            value,
+            document,
+            member=own,
+            entity=w.ENTITY,
+            book="ASC606",
+            period=PERIOD,
+            event_key=opening.event_key,
+        )
+        assert selected is not None
+        assert selected[1]["amounts"] == snapshot["amounts"]
+        for role, node in snapshot["nodes"].items():
+            assert Decimal(replay[node]) == Decimal(snapshot["amounts"][role]) / 100
+        corrupt = deepcopy(document)
+        corrupt["books"][0]["acquisition_balance_observations"].pop()
+        with pytest.raises(Problem) as rejected:
+            read_complete(
+                value,
+                corrupt,
+                member=corrupt["books"][0]["acquisition_balance_observations"][0]["member"],
+                entity=w.ENTITY,
+                book="ASC606",
+                period=PERIOD,
+                event_key=opening.event_key,
+            )
+
+        assert "population differs" in rejected.value.errors[0].message
+        if foreign:
+            corrupt = deepcopy(document)
+            changed = next(
+                s
+                for s in corrupt["books"][0]["acquisition_balance_observations"]
+                if s["member"] == own
+            )
+            changed["functional"]["shared_liability_members"][0]["functional_amounts"][
+                "contract_liability"
+            ] += 1
+            with pytest.raises(Problem) as rejected_source:
+                read_complete(
+                    value,
+                    corrupt,
+                    member=own,
+                    entity=w.ENTITY,
+                    book="ASC606",
+                    period=PERIOD,
+                    event_key=opening.event_key,
+                )
+            assert "member source differs" in rejected_source.value.errors[0].message

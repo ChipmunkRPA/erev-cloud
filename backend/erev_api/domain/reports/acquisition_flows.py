@@ -150,7 +150,6 @@ def read(
         if (
             native is None
             and allow_native
-            and foreign
             and not any(identity in nodes for identity in identities)
             and method.value == "RECOMPUTE_FROM_INCEPTION"
         ):
@@ -167,7 +166,23 @@ def read(
             )
             if complete is not None:
                 _, observation = complete
-                fn = observation["functional"]
+                fn = (
+                    observation["functional"]
+                    if foreign
+                    else {
+                        "minor_unit": observation["minor_unit"],
+                        "currency": observation["currency"],
+                        "amounts": observation["amounts"],
+                        "nodes": {
+                            role: next(
+                                identity
+                                for identity in observation["nodes"]
+                                if identity.startswith(f"{role}:")
+                            )
+                            for role in tie_outs.ROLLFORWARD_BALANCES
+                        },
+                    }
+                )
                 scale = Decimal(10) ** -fn["minor_unit"]
                 values = {
                     role: Decimal(fn["amounts"][role]) * scale

@@ -2966,3 +2966,14 @@ focused cases pass; see [checkpoint](ACQUIRED-MEMBER-CURRENT-ASSET-2026-10-24.md
 recomputed onboarding-posting refusal and acquired-agent exclusion remain. This supersedes the
 ordinary-only restriction of the revision 51 current-asset path for admitted acquisitions.
 No deployment; no new accounting policy assumptions.
+
+
+### 2026-10-24 — Multi-member closed acquisition balances
+
+Revision 62 retains complete original observations for all-recomputed, same-entity principal
+acquisition groups at one closed cutover. Member current classifications and shared original
+FX layers feed the existing report population and acquisition-rollforward readers. Fifty-nine
+focused checks and four expanded net-position/reader cases pass. See
+[scope and evidence](ACQUIRED-GROUP-CUTOVER-BALANCES-2026-10-24.md). Mixed ordinary/acquired
+change presentation awaits owner selection; agent/cross-entity cutover observations remain open.
+No deployment or new policy inference.
