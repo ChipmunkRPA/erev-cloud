@@ -23,7 +23,7 @@ from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
 
 from erev_engine import guards, money
 from erev_engine.bundle import (
@@ -554,6 +554,10 @@ def _framework_output(bundle: InputBundle, result: BookResult, ctx: BookContext)
                 acquisition_sources=row.acquisition_sources,
             )
             for row in (() if disclosure is None else disclosure.balance_rollforwards)
+        ),
+        acquisition_balance_observations=cast(
+            tuple[Mapping[str, object], ...] | None,
+            result.states.get("acquisition_balance_observations"),
         ),
         trace=result.trace,
         # D-88 L7-6-Q-1: the pinned rates of each foreign-currency posting line (REQ-FX-006).

@@ -97,11 +97,17 @@ def cell(
         f"{original['requested_period_key']}. "
         "Later periods carry this observation until a new measurement.",
         f"Original opening event: {snapshot['event_key']}",
+        f"Measurement basis: {snapshot.get('basis', 'Original cutover observation')}",
         f"Input SHA-256: {original['input_sha256']}",
         f"Output SHA-256: {original['output_sha256']}",
     ]
     for name, amount in sorted(original["amounts"].items()):
         details.append(f"Original {name}: {amount} {snapshot['currency']}")
+    if snapshot.get("unmeasured", {}).get("accounts_receivable") == "ERP_MODE_EXTERNAL_BALANCE":
+        details.append(
+            "Accounts receivable is ERP-managed: zero is the engine reporting default, "
+            "not a confirmed ERP balance."
+        )
     maturity = snapshot.get("maturity", {})
     details.append(f"Current/noncurrent policy: {maturity.get('policy', 'unavailable')}")
     attribution = maturity.get("asset_attribution")

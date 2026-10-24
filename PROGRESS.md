@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [acquisition balance drill](docs/release/ACQUISITION-BALANCE-EXPLAIN-2026-10-24.md) added; absent balance rows and breakage application remain open.
+Oct 24: [complete acquisition balances](docs/release/ACQUISITION-COMPLETE-BALANCES-2026-10-24.md) added for new singleton same-currency computations.

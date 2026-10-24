@@ -288,3 +288,72 @@ def test_mixed_maturity_reads_original_asset_attribution(policy, current):
             include_current=True,
         )
     assert "does not reconcile" in refused.value.errors[0].message
+
+
+def test_complete_nonposting_observation_retains_all_balances_without_posting():
+    from erev_engine.trace import reevaluate
+
+    value, _ = original("100000")
+    inception = w.CUTOVER.replace(day=1)
+    events = tuple(
+        replace(event, effective_date=inception, payload={**event.payload, "issue_date": inception})
+        if event.event_type == "BILLING_RECORDED"
+        else event
+        for event in value.events
+    )
+    value = replace(
+        value,
+        evidence_revision=44,
+        events=events,
+        group=replace(value.group, inception_date=inception),
+        contracts=tuple(replace(c, inception_date=inception) for c in value.contracts),
+    )
+    output = compute(value).books[0]
+    prior = compute(replace(value, evidence_revision=43)).books[0]
+    assert output.balances == prior.balances == ()
+    assert output.posting_intents == prior.posting_intents
+    assert output.schedules == prior.schedules
+    assert output.obligation_versions == prior.obligation_versions
+    (snapshot,) = output.acquisition_balance_observations
+    assert set(snapshot["amounts"]) == set(tie_outs.BALANCE_MEASURES)
+    assert snapshot["amounts"]["accounts_receivable"] == 10000000
+    assert snapshot["amounts"]["contract_asset"] == 2000000
+    replayed = reevaluate(output.trace)
+    for measure, node in snapshot["nodes"].items():
+        assert Decimal(replayed[node]) == Decimal(snapshot["amounts"][measure]) / 100
+    original_nodes = {node.id: node for node in prior.trace.nodes}
+    assert all(
+        node == original_nodes[node.id] for node in output.trace.nodes if node.id in original_nodes
+    )
+
+    from erev_api.domain.reports.acquisition_complete import read as read_complete
+
+    document = json.loads(canonical_bytes(compute(value)))
+    opening = next(
+        event for event in value.events if event.event_type == "OPENING_BALANCE_ESTABLISHED"
+    )
+    readback = read_complete(
+        value,
+        document,
+        member=w.CONTRACT,
+        entity=w.ENTITY,
+        book="ASC606",
+        period=PERIOD,
+        event_key=opening.event_key,
+    )
+    assert readback is not None
+    assert readback[0]["accounts_receivable"] == Decimal("100000")
+    document["books"][0]["acquisition_balance_observations"][0]["amounts"][
+        "accounts_receivable"
+    ] += 1
+    with pytest.raises(Problem) as refused:
+        read_complete(
+            value,
+            document,
+            member=w.CONTRACT,
+            entity=w.ENTITY,
+            book="ASC606",
+            period=PERIOD,
+            event_key=opening.event_key,
+        )
+    assert "source differs" in refused.value.errors[0].message

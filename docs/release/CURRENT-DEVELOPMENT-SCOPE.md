@@ -2651,3 +2651,12 @@ and invalidation after an edit. A focused UI case verifies sending the selected
 book's displayed preview and displaying the returned saved basis. Backend Ruff/mypy
 and frontend TypeScript checks pass; OpenAPI and generated types are updated.
 No deployment or overall readiness claim.
+
+## October 24: complete balances without ordinary member rows
+
+Revision 44 now retains and reads original nonposting cutover balances for a newly
+computed singleton principal acquisition in its functional currency, even when no
+ordinary balance row exists. This supersedes the no-ordinary-subject restriction
+above for that population. See [implementation and validation](ACQUISITION-COMPLETE-BALANCES-2026-10-24.md).
+Multi-member, agent and foreign-functional acquisition paths remain incomplete;
+old outputs without original observations are not retrospectively filled in.

@@ -1304,10 +1304,11 @@ def balances_at(
     if contract_id is not None:
         statement = statement.where(contract_version_balance.c.contract_id == contract_id)
     rows = [dict(row) for row in session.execute(statement).mappings()]
+    projected: tuple[BalanceRow, ...] = ()
     if uow is not None and params is not None:
         from .acquisition_population import require_rows
 
-        require_rows(
+        projected = require_rows(
             uow,
             params,
             entity_ids=entity_ids,
@@ -1319,7 +1320,10 @@ def balances_at(
         )
     if traces is None:
         traces = {}
-    found: list[BalanceRow] = []
+    for projected_row in projected:
+        if projected_row.version_id not in traces:
+            traces[projected_row.version_id] = _balance_nodes(session, projected_row.version_id)
+    found: list[BalanceRow] = list(projected)
     unreadable: list[ProblemError] = []
     stated: dict[UUID, set[str]] = {}  # per entity, the contracts read from its lock's dataset
     for row in rows:

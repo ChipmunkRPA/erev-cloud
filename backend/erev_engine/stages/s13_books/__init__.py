@@ -237,6 +237,13 @@ def run_books(
             measures, output = _output_step_result(step)
             if output is not None:
                 published = MappingProxyType({**published, output_measures.OUTPUT_KEY: output})
+        if (cb.bundle.evidence_revision or 0) >= 44:
+            from .acquisition_balances import capture
+
+            observations = capture(ctx, cb, stages, published, tb)
+            published = MappingProxyType(
+                {**published, "acquisition_balance_observations": observations}
+            )
         found[code] = BookResult(code, state, tb.build(root_measures={}), measures, published)
     if legacy is not None and with_legacy:
         found[_LEGACY] = _run_legacy(cb, legacy, stages, found, check)

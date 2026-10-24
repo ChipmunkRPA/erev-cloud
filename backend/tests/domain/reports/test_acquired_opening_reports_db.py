@@ -37,6 +37,7 @@ def app(committed_db, app_settings, clock):
         (True, False, True, False, False),
         (False, False, True, True, False),
         (False, False, True, True, True),
+        (False, False, True, True, "complete"),
     ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
@@ -199,6 +200,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             value = build(*args, **kwargs)
             return replace(
                 value,
+                evidence_revision=43 if untraced is True else value.evidence_revision,
                 entities=tuple(
                     replace(
                         entity,
@@ -236,8 +238,25 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                 (node.id, node.value) for node in output.books[0].trace.nodes
             )
             assert "ACQUIRED-EUR@AVM-US" not in trace.latest
+        if untraced == "complete":
+            assert output.books[0].acquisition_balance_observations
         world = worlds.on_record_clock(world, clock)
-        if untraced:
+        if untraced == "complete":
+            _, before_acquisition = worlds.report_run(
+                world,
+                "contract_balances",
+                {
+                    "entity_codes": [worlds.AVM_US],
+                    "book": "ASC606",
+                    "period_key": "FY2026-P07",
+                    "currency_view": "transaction",
+                    "include_zero": True,
+                },
+            )
+            assert not any(
+                row.get("contract_external_id") == "ACQUIRED-EUR" for row in before_acquisition
+            )
+        if untraced is True:
             for code, period_params in (
                 ("contract_balances", {"period_key": "FY2026-P08"}),
                 (
@@ -267,7 +286,12 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                 assert "ACQUIRED-EUR" in str(finished), finished
                 assert "FY2026-P08" in str(finished), finished
             return
-        _closed_source_reports(world)
+        _closed_source_reports(
+            world,
+            complete=output.books[0].acquisition_balance_observations
+            if untraced == "complete"
+            else None,
+        )
         return
     computed(world.place, UUID(str(acquired.combination_group["id"])))
     if locked:
@@ -415,7 +439,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         assert rebuilt.json()["items"] == rows
 
 
-def _closed_source_reports(world):
+def _closed_source_reports(world, complete=None):
     for view, currency, expected in (
         ("transaction", "USD", "20000.00"),
         ("functional", "USD", "20000.00"),
@@ -448,7 +472,18 @@ def _closed_source_reports(world):
         assert body["value"] == own["contract_liability_current"]
         contribution = body["contributors"]["items"][0]
         assert any("/trace/" in link["href"] for link in contribution["source_links"])
-        assert "maturity horizon" in str(contribution)
+        if complete is None:
+            assert "maturity horizon" in str(contribution)
+        else:
+            assert "ORIGINAL_NONPOSTING_CUTOVER_EVALUATION" in str(contribution)
+            assert "ERP-managed" in str(contribution)
+            if view == "transaction":
+                from decimal import Decimal
+
+                (snapshot,) = complete
+                for measure, amount in snapshot["amounts"].items():
+                    assert Decimal(own[measure]["amount"]) == Decimal(amount) / 100
+
         if view == "reporting":
             assert "Retained closing FX rate" in str(contribution)
             repeated = post(

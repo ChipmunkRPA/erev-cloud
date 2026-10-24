@@ -926,6 +926,9 @@ class BookOutput:
     # line key: PostingState.line_rates (REQ-FX-006; D-88 L7-6-Q-1), including foreign LEGACY lines
     line_rates: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = ()
     # None means historical output without this evidence; () means captured, empty population.
+    acquisition_balance_observations: tuple[Mapping[str, object], ...] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
     disclosure_rollforwards: tuple[DisclosureRollforwardOut, ...] | None = field(
         default=None, metadata={"canonical_omit_none": True}
     )
