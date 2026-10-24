@@ -637,6 +637,11 @@ def _transaction(
         # authoritative. Do not extrapolate it to a later reporting date.
         for ob in own:
             baseline = baseline_of(ob)
+            actual = (
+                records.recomputed_acquisition_closings.get((ob.subject_key, cutover))
+                if records.recomputed_acquisition_cutover
+                else None
+            )
             if (
                 not _acquired(ob)
                 or baseline is None
@@ -644,7 +649,11 @@ def _transaction(
                 or (ob.performing_entity != entity and not intercompany_enabled(records, ob))
                 or ob.principal_agent.value != "PRINCIPAL"
                 or (
-                    baseline.revenue_cum > baseline.billed_cum
+                    (
+                        actual.revenue > actual.billed
+                        if actual is not None
+                        else baseline.revenue_cum > baseline.billed_cum
+                    )
                     and (ob.subject_key, period.period_key) not in records.right_classes
                 )
             ):

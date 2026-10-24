@@ -304,6 +304,7 @@ class RecognitionState:
     # S14-R-25 (D-91): ``deposit_revenue_share`` and ``deposit_revenue_time_share`` per obligation
     # and period end, the contract's 606-10-25-7 revenue attributed to its in-scope obligations.
     deposit_revenue_shares: tuple[Target, ...] = ()
+    disclosure_revenue_targets: tuple[Target, ...] = ()
 
 
 def expedient_guard(ctx: BookContext, st: AllocatedState) -> tuple[Finding, ...]:
@@ -364,6 +365,7 @@ def run(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> RecognitionSt
     return RecognitionState(
         allocated=st,
         revenue_targets=result.revenue_targets,
+        disclosure_revenue_targets=result.disclosure_revenue_targets,
         revenue_by_cause=result.revenue_by_cause,
         return_states=result.return_states,
         findings=tuple(sorted((*guard, *result.findings), key=Finding.sort_key)),

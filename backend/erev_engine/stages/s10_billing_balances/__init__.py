@@ -146,6 +146,7 @@ class BalanceState:
     # share_based_reduction_element_cum, share_based_reduction_cum and incentive_release_cum rows
     # (§10.1; S10-R-26; D-91), read by stages 12, 13, 14 and the engine root.
     customer_consideration: tuple[Target, ...] = ()
+    disclosure_billing: tuple[Target, ...] = ()
 
 
 def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceState:
@@ -183,6 +184,7 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
         allocated=allocated,
         recognition=st,
         billing=billed.targets,
+        disclosure_billing=billed.disclosure_targets,
         documents=billed.documents,
         receipts=classified.receipts,
         paid_cum=billed.paid_cum,

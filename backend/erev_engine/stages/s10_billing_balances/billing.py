@@ -149,6 +149,7 @@ class Billed:
     paid_cum: Mapping[tuple[str, str], int]  # (contract@entity, period key) -> minor units
     measures: Mapping[str, BalanceMeasures]
     attributions: tuple[Attribution, ...] = ()  # per document, ENG-06 order (B_p of S10-R-20)
+    disclosure_targets: tuple[Target, ...] = ()
 
 
 def _invariant(message: str, subject_key: str | None, **detail: str) -> EngineError:
@@ -1049,6 +1050,7 @@ def measure(
     scale: int = 10**mu
     v = version_date(st)
     targets: list[Target] = []
+    disclosure_targets: list[Target] = []
     measures: dict[str, BalanceMeasures] = {}
     entities = {ob.subject_key: ob.contracting_entity for ob in st.obligations}
     for ob in sorted(st.obligations, key=lambda item: item.subject_key):
@@ -1089,14 +1091,36 @@ def measure(
         if (
             st.acquisition_cutover_billing_trace
             and baseline is not None
-            and baseline.method == "OPENING_BALANCES_AT_CUTOVER"
+            and (
+                baseline.method == "OPENING_BALANCES_AT_CUTOVER"
+                or (
+                    st.acquisition_recomputed_cutover_evidence
+                    and baseline.method == "RECOMPUTE_FROM_INCEPTION"
+                    and ob.principal_agent.value == "PRINCIPAL"
+                    and ob.performing_entity == ob.contracting_entity
+                )
+            )
             and ob.opening is not None
             and ob.opening.get("reason") == "BUSINESS_COMBINATION"
         ):
             measured = {p.period_key for p in _periods(ctx, st, ob.contracting_entity)}
             for period in ctx.entities[ob.contracting_entity].periods:
                 if period.end_date == baseline.cutover_date and period.period_key not in measured:
-                    emitter.billed(ob, period.end_date, period.period_key)
+                    node, amount, _, _ = emitter.billed(ob, period.end_date, period.period_key)
+                    if baseline.method == "RECOMPUTE_FROM_INCEPTION":
+                        disclosure_targets.append(
+                            Target(
+                                ctx.book_code,
+                                ob.contracting_entity,
+                                ob.subject_key,
+                                "billed_cum",
+                                period.period_key,
+                                None,
+                                amount,
+                                None,
+                                node,
+                            )
+                        )
         if ob.contract_key in engine_billed:
             # JET-03 invoice inputs per obligation under ENGINE billing (Table 14-A; L4-3-Q-19;
             # lanes L5-3 and L5-5 at the L5 merge, the tax rule of L5-5-Q-9).
@@ -1225,6 +1249,7 @@ def measure(
             )
     return Billed(
         targets=tuple(targets),
+        disclosure_targets=tuple(disclosure_targets),
         documents=tuple(documents),
         paid_cum=MappingProxyType(paid_cum),
         measures=MappingProxyType(measures),

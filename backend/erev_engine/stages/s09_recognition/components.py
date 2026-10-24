@@ -1264,6 +1264,7 @@ class StageTargets:
     escheat_components: tuple[breakage.EscheatComponent, ...] = ()
     close_gate_facts: tuple[royalty.CoverageGap, ...] = ()
     deposit_revenue_shares: tuple[Target, ...] = ()
+    disclosure_revenue_targets: tuple[Target, ...] = ()
 
 
 def _component_causes(
@@ -1311,6 +1312,7 @@ def _component_causes(
 def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> StageTargets:
     """Targets per obligation and period end, causes, return states and findings (§9.1)."""
     targets: list[Target] = []
+    disclosure_targets: list[Target] = []
     by_cause: list[Target] = []
     return_states: dict[tuple[str, str], returns.ReturnState] = {}
     findings: dict[tuple[int, str, str, str, bytes], Finding] = {}
@@ -1335,7 +1337,29 @@ def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> S
         previous_value = 0
         previous_nodes: dict[str, str] = {}
         previous_evaluation: Evaluation | None = None
-        for period in evaluation_periods(ctx, st, ob):
+        periods = evaluation_periods(ctx, st, ob)
+        ordinary_keys = {period.period_key for period in periods}
+        if st.acquisition_recomputed_cutover_evidence:
+            from erev_engine.stages.s07_onboarding import baseline_of
+
+            baseline = baseline_of(ob)
+            if (
+                baseline is not None
+                and baseline.method == "RECOMPUTE_FROM_INCEPTION"
+                and ob.opening is not None
+                and ob.opening.get("reason") == "BUSINESS_COMBINATION"
+                and ob.principal_agent.value == "PRINCIPAL"
+                and ob.performing_entity == ob.contracting_entity
+                and attribution is None
+            ):
+                extra = tuple(
+                    p
+                    for p in ctx.entities[ob.contracting_entity].periods
+                    if p.end_date == baseline.cutover_date and p.period_key not in ordinary_keys
+                )
+                periods = tuple(sorted((*periods, *extra), key=lambda p: p.end_date))
+        for period in periods:
+            disclosure_only = period.period_key not in ordinary_keys
             if attribution is not None:  # the share nodes the revenue chain and stage 14 cite
                 shares.extend(
                     step1.emit(tb, ctx, attribution, ob, period.period_key, period.end_date)
@@ -1357,14 +1381,14 @@ def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> S
                 st=st,
                 component_nodes=component_nodes,
             )
-            if return_state is not None:
+            if return_state is not None and not disclosure_only:
                 if _traces_returns(evaluation):  # S09-R-23a nodes emitted by returns.emit
                     return_state = replace(
                         return_state,
                         e_b_node_id=returns.refundable_units_node_id(ob, period.period_key),
                     )
                 return_states[(ob.subject_key, period.period_key)] = return_state
-            targets.append(
+            (disclosure_targets if disclosure_only else targets).append(
                 Target(
                     book_code=ctx.book_code,
                     entity=revenue_calendar_entity(ctx, ob),
@@ -1377,6 +1401,10 @@ def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> S
                     node_id=node_id,
                 )
             )
+            if disclosure_only:
+                for finding in evaluation.findings:
+                    findings.setdefault(finding.sort_key(), finding)
+                continue  # Evidence only: no posting target, schedule or revenue-by-cause delta.
             found = decompose.points(
                 st,
                 ob,
@@ -1447,6 +1475,7 @@ def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> S
         )
     return StageTargets(
         revenue_targets=tuple(targets),
+        disclosure_revenue_targets=tuple(disclosure_targets),
         revenue_by_cause=tuple(by_cause),
         return_states=MappingProxyType(dict(sorted(return_states.items()))),
         findings=tuple(findings[key] for key in sorted(findings)),

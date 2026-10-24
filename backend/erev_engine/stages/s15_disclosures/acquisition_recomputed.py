@@ -18,13 +18,20 @@ class Closing:
 def capture(ctx: BookContext, balances: BalanceState) -> dict[tuple[str, date], Closing]:
     """Use actual cumulative targets, including native billing and onboarding differences.
 
-    Imported ERP balances are not substitutes for missing recomputed targets. Older closed
-    periods outside the computation horizon therefore remain unavailable.
+    Imported ERP balances are not substitutes for missing recomputed targets. Separate
+    disclosure-only observations may cover a closed cutover without extending posting targets;
+    periods missing both ordinary and disclosure observations remain unavailable.
     """
     indexes: list[dict[tuple[str, str, str], list[Target]]] = []
     for targets, measure in (
-        (balances.billing, "billed_cum"),
-        (balances.recognition.revenue_targets, "revenue_cum"),
+        ((*balances.billing, *balances.disclosure_billing), "billed_cum"),
+        (
+            (
+                *balances.recognition.revenue_targets,
+                *balances.recognition.disclosure_revenue_targets,
+            ),
+            "revenue_cum",
+        ),
     ):
         index: dict[tuple[str, str, str], list[Target]] = {}
         for target in targets:

@@ -2507,3 +2507,27 @@ Foreign-functional RECOMPUTE_FROM_INCEPTION posting itself remains explicitly re
 the existing onboarding engine. Mixed acquired/ordinary groups, acquired-agent ownership,
 and missing original historical targets remain separate gaps. No deployment or overall
 readiness claim.
+
+
+## October 24: closed-cutover observations without posting targets
+
+Evidence revision 40 retains separate billing/revenue observations at an acquired recomputed
+contract's closed cutover when the ordinary calculation horizon omits that period. Stage 09
+uses its original evaluator and trace chain; stage 10 uses its original cumulative billing
+reader, including ENGINE invoices. These observations are read by the revision-38 POB source
+capture and revision-39 acquisition caption; they are not appended to posting targets,
+revenue-by-cause deltas or schedules. The historical input revision keeps its earlier behavior.
+
+Four native scenarios cover time-elapsed and units-delivered recognition with ERP/ENGINE
+billing, an imported revenue amount differing from the actual target, ASC606/IFRS15, and a
+closed cutover outside the normal posting horizon. Billed/revenue source IDs resolve to
+original trace nodes, acquisition and closing liability reconcile with no OTHER, and posting
+intents, balances, obligation versions and schedules equal revision 39. The focused existing
+acquisition/onboarding set passes (47 cases); a separate negative case also verifies that an
+actual asset cannot be mislabeled when the original right classification is missing. Scoped
+Ruff and mypy pass.
+
+This retains new native computation evidence, not a reconstruction or replacement of an
+older lock's missing historical input. Original right classification for closed asset cases,
+foreign-functional recomputation, and public per-contract balance-source fallbacks where
+ordinary cutover nodes are absent remain open. No deployment or overall readiness claim.
