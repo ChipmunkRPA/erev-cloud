@@ -2734,3 +2734,17 @@ cases cover distinct-date and same-date successive splits, conservation and trac
 scoped Ruff/mypy pass. Database membership, durable command/approval, destination-scoped
 later amendments and destination balance/posting/report integration remain open.
 See COMBINATION-SPLIT-PREVIEW-2026-10-24.md. No deployment.
+
+
+### October 24 — independently calculated destination balances
+
+The native split balance query now computes transaction-currency period-end presentation,
+member balances and current classification separately for each effective destination using
+original allocation segments and billing/receipt ownership. Original cross-member boundary
+events are retained as segment sources. A billed exited member's liability and remaining
+members' assets no longer offset in the query; net amounts reconcile to the original group.
+September/October population changes and billing cutoffs, repeatability, input preservation
+and full trace replay pass with the existing split tests (18 cases); scoped lint/types pass.
+This is not yet public API/report integration or a persisted/posting split. Destination FX
+continuation, durable approval/application, database membership and historical report
+selection remain required. No deployment.

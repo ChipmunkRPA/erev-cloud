@@ -113,3 +113,27 @@ This resolves effective population selection inside the retained native calculat
 It does not persist database membership, provide a durable approval command, isolate later
 amendment allocation by destination, or partition destination balances/postings/report history.
 Those integration steps remain required before a public split can be applied. No deployment.
+
+## Destination balance calculation
+
+`erev_engine.combination_split_balances.calculate` now resolves effective destinations
+at a shared contracting-period end, folds original allocations through that date, and
+runs native recognition and balance presentation separately for each destination. It
+retains original billing/receipt ownership and the original events that produced allocation
+segments, including boundaries owned by a member now in another destination. The result
+contains group presentation, member balances/sums, current classification and a complete
+replayable trace for each destination. It is a transaction-currency query, with no writes
+or posting and no functional-currency carry-forward claim.
+
+An original three-member group with billing on an exited member now presents that member's
+liability separately from the other destinations' assets. The net of all destinations
+reconciles to the original combined net, while gross liabilities are no longer incorrectly
+offset by assets in other groups. A September query retains the two-member remainder before
+its October split and excludes October billing. Repeated calculations are equal and original
+input hashes remain unchanged. Eighteen focused split/allocation/balance cases pass; scoped
+Ruff and mypy pass. Specialist/estimated/refund continuations, unavailable period ends and
+missing effective split evidence are explicitly refused.
+
+This calculation is not yet wired into durable split approval/application, posting or public
+report routes. Effective database membership, destination recomputation and historical
+report selection still remain open. No deployment.
