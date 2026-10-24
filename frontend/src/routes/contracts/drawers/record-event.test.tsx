@@ -64,6 +64,7 @@ const TITLES: Readonly<Record<EventKind, string>> = {
   delivery: "Record delivery",
   usage: "Record usage",
   royalty: "Record royalty statement",
+  redemption: "Record redemption",
   progress: "Record progress",
   milestone: "Record milestone",
   cost: "Record cost",
@@ -203,7 +204,13 @@ async function open(
   renderWithApp(
     <RecordEventDrawer
       contract={CONTRACT}
-      obligations={[combined ? { ...O1, combined_component_keys: ["O1", "ORIGINAL"] } : O1]}
+      obligations={[
+        kind === "redemption"
+          ? { ...O1, recognition_method: "REDEMPTION_PATTERN" }
+          : combined
+            ? { ...O1, combined_component_keys: ["O1", "ORIGINAL"] }
+            : O1,
+      ]}
       kind={kind}
       obligationKey="O1"
       onClose={() => undefined}
@@ -224,13 +231,14 @@ async function open(
   const panel = within(drawer).getByRole("region", { name: "Preview" });
   expect(panel.textContent).toBe("PreviewThe preview appears once the fields are valid.");
   switch (kind) {
+    case "redemption":
     case "royalty":
     case "usage":
       type(drawer, /^Quantity/, "50000.125");
       type(drawer, /^Usage metric/, "API_CALL");
       type(drawer, /^Usage period start/, "01 Sep 2026");
       type(drawer, /^Usage period end/, "30 Sep 2026");
-      type(drawer, /^Rated amount/, "5000.25");
+      if (kind !== "redemption") type(drawer, /^Rated amount/, "5000.25");
       break;
     case "delivery":
       type(drawer, /^Quantity/, "120");
@@ -746,4 +754,47 @@ it("submits an explicitly marked royalty statement against the selected obligati
       },
     ],
   });
+});
+
+it("records redemption quantities without fabricating a rated amount", async () => {
+  serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+  const captured: unknown[] = [];
+  server.use(
+    http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+      captured.push(await request.json());
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  const { drawer } = await open("redemption");
+  expect(within(drawer).queryByLabelText(/^Rated amount/)).toBeNull();
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  await waitFor(() => expect(captured).toHaveLength(1));
+  expect(captured[0]).toMatchObject({
+    events: [
+      {
+        event_type: "USAGE_REPORTED",
+        obligation_key: "O1",
+        payload: {
+          obligation_key: "O1",
+          quantity: "50000.125",
+          metric: "API_CALL",
+          usage_period_start: "2026-09-01",
+          usage_period_end: "2026-09-30",
+        },
+      },
+    ],
+  });
+  const form = {
+    ...emptyEventForm("O1"),
+    quantity: "25.125",
+    metric: "CREDITS",
+    usageStart: "2026-09-01",
+    usageEnd: "2026-09-30",
+    effectiveDate: "2026-09-30",
+  };
+  const built = buildEvents("redemption", form, "USD");
+  expect(built.errors).toEqual({});
+  expect(built.events?.[0]?.payload).not.toHaveProperty("rated_amount");
+  expect(built.events?.[0]?.payload).not.toHaveProperty("is_royalty_statement");
+  expect(eventKindsFor({ recognition_method: "REDEMPTION_PATTERN" })).toContain("redemption");
 });

@@ -22,7 +22,7 @@ review and publish changes without PR accumulation, and do not deploy.
 
 ## Rated usage entry — October 24, 2026
 
-Usage/royalty entry supports approval; omitted original-member royalties now refuse.
+Usage/royalty/redemption entry supports approval; omitted member royalties refuse.
 See [checkpoint](docs/release/USAGE-WORKBENCH-2026-10-24.md).
 
 ## Multi-currency disclosure packs — October 24, 2026

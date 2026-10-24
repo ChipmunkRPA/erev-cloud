@@ -1134,3 +1134,13 @@ statements target current obligation keys; merged-away original components are n
 because the royalty calculation does not yet aggregate those original component sources.
 An admitted royalty statement naming a merged-away member also refuses native computation
 until that source-handling path is implemented; it must not silently omit the statement.
+
+
+### Record redemptions without a rated amount
+
+Choose **Record redemption** in the contract workbench or a REDEMPTION_PATTERN obligation's
+event menu. Select a current redemption-pattern obligation, enter the quantity, metric (for
+example CREDITS), usage period and effective date. No rated amount is requested or fabricated.
+The event uses the existing preview and independent manual-event approval workflow; the approved
+quantity feeds the existing redemption/breakage calculation. Returns remain separate events.
+This records actual redemptions and does not change expected redemption or shared breakage rules.

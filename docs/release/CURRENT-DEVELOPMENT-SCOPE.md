@@ -4,7 +4,7 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
-## Rated usage and royalty workbench entry — October 24, 2026
+## Usage, royalty and redemption workbench entry — October 24, 2026
 
 The workbench now exposes Record usage with metric, decimal quantity, rated amount and usage
 period. Ordinary usage permits original combined members. Record royalty statement explicitly
@@ -12,7 +12,8 @@ marks the payload and targets current obligations; original-member royalty aggre
 unimplemented. Native computation now refuses non-host original-member royalty statements
 instead of silently omitting them; explicit scope/correction handling is pending. Preview and
 independent manual-event approval reuse the existing API. See [checkpoint](USAGE-WORKBENCH-2026-10-24.md).
-This closes the ordinary rated-usage entry gap, not shared breakage or combination reassessment.
+Record redemption also accepts actual redemption quantities without a fabricated rated amount.
+These entry features do not complete shared breakage or combination reassessment.
 
 ## Contract costs across aligned calendars — October 24, 2026
 

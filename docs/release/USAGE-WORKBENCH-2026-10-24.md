@@ -69,3 +69,20 @@ Eight focused native cases pass, including the two omission refusals and six exi
 combined usage/RTI cases. Scoped lint and types pass. This is an interim source-completeness
 fix, not completion of combined royalties. The owner was asked whether to adopt explicit
 COMBINATION/MEMBERS scope, as already used for EAC and actual hours. No answer is inferred.
+
+
+## Unrated redemption entry — subsequent October 24 update
+
+Record redemption now exposes the existing quantity-only USAGE_REPORTED path to the workbench
+and REDEMPTION_PATTERN obligation actions. It offers current redemption-pattern obligations,
+requires metric/quantity/period/effective date, omits rated_amount and royalty flags, and uses
+existing preview and manual-event approval. Ordinary rated usage and royalty statements still
+require their amounts. It does not add original-member redemption aggregation or modify the
+pending shared-breakage expected-redemption rule.
+
+Necessary checks: rendered submission with decimal quantity and no money control; payload and
+action assertions; native redemption/breakage measurement with unrated usage instead of the
+same control-transferring deliveries. Four resulting cumulative revenue amounts remain
+33,600 / 84,000 / 100,181.82 / 116,000 and the calculation trace reevaluates exactly. The native
+fixture starts from allocated state, not a new full public lifecycle. Frontend types/lint and
+adjacent drawer cases pass. No deployment.

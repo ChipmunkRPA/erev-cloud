@@ -853,3 +853,32 @@ def test_royalty_realization_keeps_later_statement_when_revenue_freezes_same_day
         )
         == 0
     )
+
+
+def test_unrated_redemption_usage_preserves_breakage_measurement():
+    from erev_api.events.payloads import UsageReportedV1
+
+    original = _ex_09_d_state()
+    events = []
+    for event in original.measure_events:
+        if event.event_type != "DELIVERY_RECORDED":
+            events.append(event)
+            continue
+        payload = {
+            "obligation_key": "L1",
+            "quantity": str(event.payload["quantity"]),
+            "metric": "CREDITS",
+            "usage_period_start": event.effective_date.isoformat(),
+            "usage_period_end": event.effective_date.isoformat(),
+        }
+        assert UsageReportedV1.model_validate(payload).rated_amount is None
+        events.append(dataclasses.replace(event, event_type="USAGE_REPORTED", payload=payload))
+    state, trace = _stages(CTX_6, dataclasses.replace(original, measure_events=tuple(events)))
+    targets = targets_by_period(state.recognition, O_CREDITS)
+    assert [targets[f"FY2026-P{month:02d}"] for month in range(1, 5)] == [
+        usd("33600.00"),
+        usd("84000.00"),
+        usd("100181.82"),
+        usd("116000.00"),
+    ]
+    assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}

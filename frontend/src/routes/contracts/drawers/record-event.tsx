@@ -49,11 +49,12 @@ import {
 } from "./common";
 
 export type EventKind =
-  "delivery" | "progress" | "milestone" | "cost" | "return" | "usage" | "royalty";
+  "delivery" | "progress" | "milestone" | "cost" | "return" | "usage" | "royalty" | "redemption";
 export const EVENT_KINDS: readonly EventKind[] = [
   "delivery",
   "usage",
   "royalty",
+  "redemption",
   "progress",
   "milestone",
   "cost",
@@ -68,6 +69,8 @@ export function eventKindsFor(
     case "UNITS_DELIVERED":
     case "POINT_IN_TIME":
       return ["delivery", "return"];
+    case "REDEMPTION_PATTERN":
+      return ["redemption", "delivery", "return"];
     case "ROYALTY":
       return ["royalty"];
     case "USAGE":
@@ -204,6 +207,7 @@ export function buildEvents(
   const items: EventItem[] = [];
   const effective = date ?? "";
   switch (kind) {
+    case "redemption":
     case "royalty":
     case "usage": {
       const units = decimalText(form.quantity);
@@ -216,7 +220,7 @@ export function buildEvents(
       } else if (form.usageEnd && date && form.usageEnd > date) {
         errors.effectiveDate = t("contracts.drawer.event.usageEffectiveError");
       }
-      if (form.amount === null || decimalText(form.amount) === null) {
+      if (kind !== "redemption" && (form.amount === null || decimalText(form.amount) === null)) {
         errors.amount = t("common.form.money.invalid");
       }
       items.push({
@@ -229,7 +233,7 @@ export function buildEvents(
           quantity: units,
           usage_period_start: form.usageStart,
           usage_period_end: form.usageEnd,
-          rated_amount: { amount: form.amount, currency },
+          ...(kind === "redemption" ? {} : { rated_amount: { amount: form.amount, currency } }),
           ...(kind === "royalty" ? { is_royalty_statement: true } : {}),
         },
       });
@@ -607,13 +611,23 @@ function eventFields(
 ): Readonly<Record<EventField, readonly string[]>> {
   const on = (shown: boolean, ...endings: readonly string[]) => (shown ? endings : []);
   return {
-    metric: on(kind === "usage" || kind === "royalty", "metric"),
-    usageStart: on(kind === "usage" || kind === "royalty", "usage_period_start"),
-    usageEnd: on(kind === "usage" || kind === "royalty", "usage_period_end"),
+    metric: on(kind === "usage" || kind === "royalty" || kind === "redemption", "metric"),
+    usageStart: on(
+      kind === "usage" || kind === "royalty" || kind === "redemption",
+      "usage_period_start",
+    ),
+    usageEnd: on(
+      kind === "usage" || kind === "royalty" || kind === "redemption",
+      "usage_period_end",
+    ),
     purpose: on(kind === "cost", "purpose"),
     obligation: on(selectsObligation, "obligation_key"),
     quantity: on(
-      kind === "delivery" || kind === "return" || kind === "usage" || kind === "royalty",
+      kind === "delivery" ||
+        kind === "return" ||
+        kind === "usage" ||
+        kind === "royalty" ||
+        kind === "redemption",
       "quantity",
     ),
     trigger: on(kind === "delivery", "trigger"),
@@ -766,6 +780,10 @@ export function RecordEventDrawer({
     }
   };
 
+  const selectableObligations =
+    kind === "redemption"
+      ? obligations.filter((item) => item.recognition_method === "REDEMPTION_PATTERN")
+      : obligations;
   const acceptsOriginalComponents =
     kind === "delivery" ||
     kind === "usage" ||
@@ -782,7 +800,7 @@ export function RecordEventDrawer({
     }
   }
   const obligationChoices: readonly Choice<string>[] = [
-    ...obligations.map((item) => ({
+    ...selectableObligations.map((item) => ({
       value: item.obligation_key,
       label: `${item.obligation_key} · ${item.product.name}`,
     })),
@@ -793,7 +811,9 @@ export function RecordEventDrawer({
         label: t("contracts.drawer.event.originalComponent", { key: value, host }),
       })),
   ];
-  const selectedObligation = obligations.find((item) => item.obligation_key === obligationKey);
+  const selectedObligation = selectableObligations.find(
+    (item) => item.obligation_key === obligationKey,
+  );
   const readOnlyObligation =
     acceptsOriginalComponents && (selectedObligation?.combined_component_keys?.length ?? 0) > 0
       ? undefined
@@ -931,7 +951,11 @@ export function RecordEventDrawer({
           />
         ) : null}
         {obligationField}
-        {kind === "delivery" || kind === "return" || kind === "usage" || kind === "royalty" ? (
+        {kind === "delivery" ||
+        kind === "return" ||
+        kind === "usage" ||
+        kind === "royalty" ||
+        kind === "redemption" ? (
           <TextField
             name="event-quantity"
             label={t(
@@ -947,7 +971,7 @@ export function RecordEventDrawer({
             error={shown("quantity") ?? server("quantity")}
           />
         ) : null}
-        {kind === "usage" || kind === "royalty" ? (
+        {kind === "usage" || kind === "royalty" || kind === "redemption" ? (
           <>
             <TextField
               name="event-metric"
@@ -977,7 +1001,9 @@ export function RecordEventDrawer({
                 )}
               </Field>
             ))}
-            {moneyField("amount", t("contracts.drawer.event.ratedAmount"), false)}
+            {kind !== "redemption"
+              ? moneyField("amount", t("contracts.drawer.event.ratedAmount"), false)
+              : null}
           </>
         ) : null}
         {kind === "delivery" ? (
