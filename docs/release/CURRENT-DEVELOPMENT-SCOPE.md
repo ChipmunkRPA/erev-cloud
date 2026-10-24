@@ -2551,3 +2551,20 @@ pass, including the revision-40 missing-class refusal retained for historical re
 Ruff and mypy pass. The native missing-class gap for this supported population is closed.
 Public report balance-source fallbacks where ordinary period nodes are absent, foreign
 functional recomputation and mixed/agent populations still require work. No deployment.
+
+## October 24: report adapter for original closed-cutover sources
+
+`acquisition_native.single_member_cutover` now reads revision-41 recomputed acquisition
+snapshots from authenticated original input/output objects. It verifies the singleton
+member, principal/entity scope, cutover event, period/currency identity, original billed and
+revenue node amounts, complete retained source references and reconciliation to the native
+acquisition and closing captions. It returns the original sources and correctly scaled
+transaction amounts; same-currency functional reads share that evidence. It does not allocate
+multi-member group netting, reconstruct old revisions, or invent missing trace nodes.
+
+Four focused tests use real engine outputs covering liability, contract asset, unbilled
+receivable, old/multi-member exclusion and inconsistent-source refusal. Scoped Ruff/mypy pass.
+The public builders do not yet call this adapter: acquisition movements and all opening,
+closing, monthly and balance-comparison reads must adopt it together, with a retained-source
+marker and locked-end precedence. Enabling only the movement would create a false OTHER
+residual. Public end-to-end integration remains unfinished; no deployment or readiness claim.
