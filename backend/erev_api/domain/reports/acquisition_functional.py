@@ -41,7 +41,13 @@ def project(
         or any(Decimal(value) != row.value(role) for role, value in original["amounts"].items())
     ):
         raise tie_outs.invalid("currency_view", "Original acquisition functional endpoint differs.")
-    missing = set(measures) - functional["amounts"].keys()
+    # Exact zero transaction components can retain the existing functional-reader
+    # zero convention; nonzero missing components still need original FX evidence.
+    missing = {
+        role
+        for role in measures
+        if role not in functional["amounts"] and Decimal(original["amounts"][role]) != 0
+    }
     if missing:
         raise tie_outs.invalid(
             "currency_view",
@@ -49,7 +55,7 @@ def project(
             + ", ".join(sorted(missing)),
         )
     scale = Decimal(10) ** -functional["minor_unit"]
-    return {role: Decimal(functional["amounts"][role]) * scale for role in measures}
+    return {role: Decimal(functional["amounts"].get(role, 0)) * scale for role in measures}
 
 
 def liability_carrying(

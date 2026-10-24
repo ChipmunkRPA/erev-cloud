@@ -10,7 +10,13 @@ from erev_engine.bundle import InputBundle
 from . import tie_outs
 
 
-def verify(bundle: InputBundle, snapshot: Mapping[str, Any], nodes: Mapping[str, Any]) -> None:
+def verify(
+    bundle: InputBundle,
+    snapshot: Mapping[str, Any],
+    nodes: Mapping[str, Any],
+    *,
+    book: str | None = None,
+) -> None:
     if (bundle.evidence_revision or 0) < 46:
         return
     functional = snapshot["functional"]
@@ -74,3 +80,40 @@ def verify(bundle: InputBundle, snapshot: Mapping[str, Any], nodes: Mapping[str,
         raise tie_outs.invalid(
             "currency_view", "Original acquisition liability layers differ from total carrying."
         )
+
+    if (bundle.evidence_revision or 0) >= 47:
+        from erev_engine.stages.s12_fx_entities.current_layers import classify
+        from erev_engine.stages.state import PolicyResolver
+
+        original = next(item for item in bundle.books if item.book_code == book)
+        policies = PolicyResolver(original.policies)
+        policy = str(
+            policies.value(
+                "fx.cl_layer_consumption", entity=snapshot["entity"], period=snapshot["period_key"]
+            )
+        )
+        monetary = (
+            book == "ASC606"
+            and policies.value(
+                "fx.cl_historical_layering",
+                contract=snapshot["member"],
+                entity=snapshot["entity"],
+                period=snapshot["period_key"],
+            )
+            == "DISABLED_REMEASURE_AS_MONETARY"
+        )
+        try:
+            parts = classify(
+                layers,
+                snapshot["amounts"]["contract_liability_current"],
+                policy=policy,
+                minor_unit=functional["minor_unit"],
+                monetary=monetary,
+            )
+        except ValueError as error:
+            raise tie_outs.invalid("currency_view", str(error)) from error
+        expected = {"policy": policy, "monetary": monetary, "allocations": list(parts)}
+        if functional.get("liability_current") != expected or sum(
+            int(part["current_functional"]) for part in parts
+        ) != functional["amounts"].get("contract_liability_current"):
+            raise tie_outs.invalid("currency_view", "Original current liability layers differ.")

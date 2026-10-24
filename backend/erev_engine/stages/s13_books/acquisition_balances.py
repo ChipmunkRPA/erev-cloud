@@ -195,6 +195,63 @@ def capture(
                 and layer.period_key == period.period_key
                 and layer.balance_role == "CONTRACT_LIABILITY"
             ]
+        if (cb.bundle.evidence_revision or 0) >= 47:
+            from erev_engine.stages.s12_fx_entities.current_layers import classify
+
+            policy = str(
+                ctx.policies.value(
+                    "fx.cl_layer_consumption", entity=entity, period=period.period_key
+                )
+            )
+            monetary = (
+                str(ctx.framework) == "ASC606"
+                and ctx.policies.value(
+                    "fx.cl_historical_layering",
+                    contract=member,
+                    entity=entity,
+                    period=period.period_key,
+                )
+                == "DISABLED_REMEASURE_AS_MONETARY"
+            )
+            parts = classify(
+                functional["liability_layers"],
+                amounts["contract_liability_current"],
+                policy=policy,
+                minor_unit=functional["minor_unit"],
+                monetary=monetary,
+            )
+            value = sum(int(part["current_functional"]) for part in parts)
+            functional["liability_current"] = {
+                "policy": policy,
+                "monetary": monetary,
+                "allocations": list(parts),
+            }
+            name = "contract_liability_current"
+            fn_amounts[name] = value
+            fn_nodes[name] = evidence.node(
+                measure=f"{name}_functional",
+                subject_key=subject,
+                period_key=period.period_key,
+                value=value,
+                currency=currency,
+                minor_unit=functional["minor_unit"],
+                formula_id="fx.functional_member.v1",
+                inputs=[
+                    links[name],
+                    *(
+                        move["node"]
+                        for layer in functional["liability_layers"]
+                        for move in layer["movements"]
+                    ),
+                ],
+                params={
+                    "as_of": period.period_key,
+                    "value": str(value),
+                    "classification_basis": "ORIGINAL_LAYER_RELEASE",
+                    "release_policy": policy,
+                },
+                narrative_key="fx.functional_member",
+            )
     trace = evidence.build(root_measures={})
     prefix = f"acquisition-cutover/{period.period_key}/"
     names = {

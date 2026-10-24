@@ -443,7 +443,11 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
 
 def _closed_source_reports(world, complete=None, foreign=False):
     views = (
-        (("transaction", "EUR", "20000.00"),)
+        (
+            ("transaction", "EUR", "20000.00"),
+            ("functional", "USD", "22000.00"),
+            ("reporting", "EUR", "19909.50"),
+        )
         if foreign
         else (
             ("transaction", "USD", "20000.00"),
@@ -499,6 +503,7 @@ def _closed_source_reports(world, complete=None, foreign=False):
             assert layers
             assert sum(layer["functional_carrying"] for layer in layers) == 2200000
             assert sum(layer["txn_open"] for layer in layers) == 2000000
+            assert "Current liability follows original FIFO layer release" in str(contribution)
             assert "Original liability layer" in str(contribution)
             assert "LIABILITY_LAYER_CREATED" in str(contribution)
             assert "Original functional contract_liability: 22000.00 USD" in str(contribution)
@@ -551,10 +556,10 @@ def _closed_source_reports(world, complete=None, foreign=False):
         assert own["closing"] == {"currency": currency, "amount": expected}
         assert own["business_combinations"] == {
             "currency": currency,
-            "amount": "18181.82" if view == "reporting" else expected,
+            "amount": ("20000.00" if foreign else "18181.82") if view == "reporting" else expected,
         }
         if view == "reporting":
-            assert own["translation"]["amount"] == "-82.27"
+            assert own["translation"]["amount"] == ("-90.50" if foreign else "-82.27")
         assert own["other"]["amount"] == "0.00"
         checks = {item["code"]: item["result"] for item in run["tie_out_results"]}
         assert checks["TO_BALANCES_EQ_ROLLFORWARD"] == "PASS"

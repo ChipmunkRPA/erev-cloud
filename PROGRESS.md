@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [saved breakage review](docs/release/SHARED-BREAKAGE-REVIEW-2026-10-24.md) shows allocation/source changes; application still pending.
+Oct 24: [confirmed rules and FX classification](docs/release/CONFIRMED-CALCULATION-RULES-2026-10-24.md): three choices resolved; implementation continues.

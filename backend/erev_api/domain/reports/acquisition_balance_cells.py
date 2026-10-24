@@ -115,9 +115,20 @@ def cell(
             f"Original functional {role}: {Decimal(amount) * scale_fn} {functional['currency']}"
             for role, amount in sorted(functional["amounts"].items())
         )
-        details.append(
-            "Functional current/noncurrent classification is not supplied by these balance sources."
-        )
+        classification = functional.get("liability_current")
+        if classification is None:
+            details.append("Functional current liability classification is unavailable.")
+        else:
+            details.append(
+                f"Current liability follows original {classification['policy']} layer release."
+            )
+            for part in classification["allocations"]:
+                details.append(
+                    f"Layer {part['layer_key']}: current "
+                    f"{Decimal(part['current_functional']) * scale_fn} {functional['currency']}; "
+                    f"noncurrent {Decimal(part['noncurrent_functional']) * scale_fn} "
+                    f"{functional['currency']}."
+                )
         for layer in functional.get("liability_layers", ()):
             details.append(
                 f"Original liability layer {layer['layer_key']}: remaining "

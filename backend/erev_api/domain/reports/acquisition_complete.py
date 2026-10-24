@@ -115,7 +115,7 @@ def read(
     if functional is not None:
         from .acquisition_layer_sources import verify
 
-        verify(bundle, snapshot, nodes)
+        verify(bundle, snapshot, nodes, book=book)
     return amounts, {
         **snapshot,
         "nodes": sorted(snapshot["nodes"].values()),
