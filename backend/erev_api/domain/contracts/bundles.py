@@ -188,7 +188,8 @@ FORMAT_VERSION: Final = 1
 # Refresh persistence once even when monetary inputs match an earlier evidence revision.
 # Revision 5 captures original obligation closing eligibility and source identities.
 # Revision 6 requires explicit combined EAC scope; old retained bundles keep legacy selection.
-EVIDENCE_REVISION: Final = 6
+# Revision 7 retains original actual/expected hour sources without changing progress amounts.
+EVIDENCE_REVISION: Final = 7
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).

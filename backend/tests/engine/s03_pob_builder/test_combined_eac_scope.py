@@ -10,6 +10,7 @@ from support.recognition import estimate_version
 
 from erev_engine import compute
 from erev_engine.errors import EngineError
+from erev_engine.stages.s09_recognition import FORMULA_IDS
 from erev_engine.trace import SourceRef, reevaluate
 from tests.engine.s03_pob_builder.test_lessor_combination import example
 from tests.engine.s03_pob_builder.test_s03_elections import CONTRACT, INCEPTION, points
@@ -78,6 +79,7 @@ def test_complete_member_eac_aggregates_with_original_trace_sources():
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
     nodes = [n for n in result.trace.nodes if n.formula_id == "rec.progress.cost_to_cost.v3"]
     assert nodes
+    assert all(node.formula_id in FORMULA_IDS for node in nodes)
     for node in nodes:
         assert {
             s.ref_id
@@ -235,6 +237,42 @@ def test_combined_expected_hours_do_not_require_cost_estimates(missing_hours):
     ]
     assert measured
     assert all(n.params.get("expected_hours") == "1000" for n in measured)
+    evidenced = compute(replace(value, evidence_revision=7)).books[0]
+    assert evidenced.contract_version.columns == result.contract_version.columns
+    assert evidenced.posting_intents == result.posting_intents
+    assert reevaluate(evidenced.trace) == {n.id: n.value for n in evidenced.trace.nodes}
+    current = next(
+        n
+        for n in evidenced.trace.nodes
+        if n.formula_id == "rec.progress.labour_hours.v2" and n.params.get("hours") == "300"
+    )
+    assert current.formula_id in FORMULA_IDS
+    sources = [source for source in current.inputs if isinstance(source, SourceRef)]
+    assert {source.ref_id for source in sources if source.ref_type == "contract_event"} == {
+        progress.event_key
+    }
+    assert {source.ref_id for source in sources if source.ref_type == "estimate_version"} == {
+        v.version_key for v in versions
+    }
+    actual = next(source for source in sources if source.ref_type == "contract_event")
+    corrupt = replace(
+        current,
+        inputs=tuple(
+            replace(source, detail={**source.detail, "value": "301"})
+            if source == actual
+            else source
+            for source in current.inputs
+        ),
+    )
+    with pytest.raises(ValueError, match="do not reconcile"):
+        reevaluate(
+            replace(
+                evidenced.trace,
+                nodes=tuple(
+                    corrupt if node.id == current.id else node for node in evidenced.trace.nodes
+                ),
+            )
+        )
 
 
 def test_member_cost_total_is_not_summed_when_one_member_has_no_cost_estimate():

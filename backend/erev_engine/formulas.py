@@ -297,6 +297,28 @@ def _cost_to_cost(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Frac
     return progress.cost_fraction(costs - base, denominator - base)
 
 
+def _labour_hours_evidence(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    """Reconcile latest cumulative actuals, prospective baseline and original EAC hours."""
+    roles = params.get("source_roles", "").split(",") if params.get("source_roles") else []
+    _require_arity(inputs, len(roles), "rec.progress.labour_hours.v2")
+    totals = {name: Fraction(0) for name in ("hours", "base_hours", "expected_hours")}
+    for role, value in zip(roles, inputs, strict=True):
+        if role not in totals or value < 0:
+            raise ValueError("Invalid labour-hour source")
+        totals[role] += value
+    if roles.count("hours") > 1 or roles.count("base_hours") > 1:
+        raise ValueError("Cumulative hours must use one latest record per scope")
+    count = int(params["expected_source_count"])
+    if count < 0 or roles.count("expected_hours") != count:
+        raise ValueError("Expected-hour source population differs")
+    if "expected_hours" in params and count == 0:
+        raise ValueError("Expected hours have no original EAC source")
+    for name, value in totals.items():
+        if value != _optional_rational(params, name, Fraction(0)):
+            raise ValueError("Original hour sources do not reconcile to progress inputs")
+    return _labour_hours((), params)
+
+
 def _labour_hours(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     """``rec.progress.labour_hours.v1``: hours to date ÷ expected total hours, capped at 1
     (S09-R-15; ENC-5).
@@ -4227,6 +4249,7 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "rec.progress.cost_to_cost.v2": _cost_to_cost_evidence,
         "rec.progress.cost_to_cost.v3": _combined_cost_to_cost_evidence,
         "rec.progress.labour_hours.v1": _labour_hours,
+        "rec.progress.labour_hours.v2": _labour_hours_evidence,
         "rec.progress.milestone.v1": _milestone,
         "rec.progress.output_percent.v1": _output_percent,
         "rec.progress.point_in_time.v1": _point_in_time,

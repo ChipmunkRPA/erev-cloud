@@ -821,3 +821,19 @@ not decide whether a host EAC represents its component or the entire combination
 - This completes expected-hours input and denominator selection, not original-member actual-hour
   aggregation. Owner choice for combined percentage/milestone progress remains pending.
   Other documented development gaps remain open. No deployment.
+
+## Scoped EAC incurred-cost validation and display — October 23, 2026
+
+- The public EAC cost-floor check and displayed incurred-cost/progress figures now use the
+  version's explicit coverage. MEMBERS includes the named obligation/target union once;
+  COMBINATION resolves one complete original member set from a hash-verified current trace.
+  Missing or ambiguous combination identity requires recomputation/clarification.
+- Full-contract coverage includes unassigned contract-level progress costs. Partial-member
+  coverage refuses unassigned costs rather than silently ignoring or allocating them. Existing
+  versions without explicit coverage retain their prior filter. Date and void filters remain.
+- Populated event approval/report replay and EAC API checks passed: whole/member/member-union
+  costs are 300/100/300; another unassigned 50 raises the whole threshold to 350 and prevents
+  partial-member validation. The existing ordinary EAC cost-floor workflow also passes.
+  Scoped lint/types passed; the disposable database was stopped. No deployment.
+- Broader Reporting source gaps and combined progress/reassessment development remain open;
+  the pending owner choice for percentage/milestone progress is not inferred here.

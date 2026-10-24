@@ -20,21 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Scoped EAC incurred-cost validation and display — October 23, 2026
+## Original labour-hour progress sources — October 23, 2026
 
-- The public EAC cost-floor check and displayed incurred-cost/progress figures now use the
-  version's explicit coverage. MEMBERS includes the named obligation/target union once;
-  COMBINATION resolves one complete original member set from a hash-verified current trace.
-  Missing or ambiguous combination identity requires recomputation/clarification.
-- Full-contract coverage includes unassigned contract-level progress costs. Partial-member
-  coverage refuses unassigned costs rather than silently ignoring or allocating them. Existing
-  versions without explicit coverage retain their prior filter. Date and void filters remain.
-- Populated event approval/report replay and EAC API checks passed: whole/member/member-union
-  costs are 300/100/300; another unassigned 50 raises the whole threshold to 350 and prevents
-  partial-member validation. The existing ordinary EAC cost-floor workflow also passes.
-  Scoped lint/types passed; the disposable database was stopped. No deployment.
-- Broader Reporting source gaps and combined progress/reassessment development remain open;
-  the pending owner choice for percentage/milestone progress is not inferred here.
+- Evidence revision 7 retains the latest admitted cumulative-hour event and every selected
+  original EAC expected-hour version. Prospective segments also retain the original baseline
+  event; superseded cumulative readings are not added together.
+- Registered labour-hours formula v2 verifies current, baseline and expected source totals
+  before evaluating the existing arithmetic. Earlier retained bundles keep formula v1.
+  The full-engine comparison proves identical contract figures and posting intents.
+- Calculation explanations include the new source-verified formula text. Registered the
+  existing multi-member cost formula v3 in the stage catalogue and added its explanation.
+- Necessary validation: 43 focused cases pass, including original combined EAC sources,
+  exact trace replay, rejected changed source amounts, latest-record selection and prospective
+  baseline reconciliation. Scoped lint/types pass. No deployment.
+- Actual-hour aggregation across original members and the pending percentage/milestone choice
+  remain separate work. The broader Reporting/system gaps remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 

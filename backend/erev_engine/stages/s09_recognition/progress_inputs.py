@@ -207,11 +207,11 @@ def cost_inputs(
     return CostInputs(margin, uninstalled, wasted)
 
 
-def hours_to_date(
+def _hours_input(
     st: AllocatedState, ob: ObligationState, d: date, position: Position | None = None
-) -> Fraction:
+) -> tuple[EventView, Fraction] | None:
     """The latest ``PROGRESS_RECORDED.hours_to_date`` with ``measure = LABOUR_HOURS`` (S09-R-15)."""
-    latest: tuple[tuple[date, int, str], Fraction] | None = None
+    latest: tuple[EventView, Fraction] | None = None
     for ev in st.measure_events:
         if ev.event_type != _PROGRESS_EVENT or ev.payload.get("measure") != "LABOUR_HOURS":
             continue
@@ -219,8 +219,15 @@ def hours_to_date(
             continue
         if ev.payload.get("hours_to_date") is None:
             continue
-        if latest is None or ev.order_key > latest[0]:
-            latest = (ev.order_key, _amount(ev, ob, "hours_to_date"))
+        if latest is None or ev.order_key > latest[0].order_key:
+            latest = (ev, _amount(ev, ob, "hours_to_date"))
+    return latest
+
+
+def hours_to_date(
+    st: AllocatedState, ob: ObligationState, d: date, position: Position | None = None
+) -> Fraction:
+    latest = _hours_input(st, ob, d, position)
     return Fraction(0) if latest is None else latest[1]
 
 
@@ -601,7 +608,74 @@ def _labour_hours(
             findings = (_finding(ob, _HOURS_MISSING, "S09-R-15", eac),)
     else:
         params["expected_hours"] = rational_param(to_fraction(eac.expected_quantity))
-    return InputProgress(_evaluate(ob, LABOUR_HOURS_FORMULA, params), None, findings, eac)
+    measured = _evaluate(ob, LABOUR_HOURS_FORMULA, params)
+    if st.hours_source_evidence:
+        measured = _hours_sources(st, ob, seg, d, position, measured)
+    return InputProgress(measured, None, findings, eac)
+
+
+def _hours_sources(
+    st: AllocatedState,
+    ob: ObligationState,
+    seg: AllocationSegment,
+    d: date,
+    position: Position | None,
+    progress: Progress,
+) -> Progress:
+    sources: list[SourceRef] = []
+    roles: list[str] = []
+
+    def actual(day: date, at: Position | None, role: str) -> None:
+        item = _hours_input(st, ob, day, at)
+        if item is None:
+            return
+        event, amount = item
+        sources.append(
+            SourceRef(
+                "contract_event",
+                event.event_key,
+                {
+                    "member": "hours_to_date",
+                    "value": format_exact(amount),
+                    "effective_date": event.effective_date.isoformat(),
+                    "obligation_key": str(event.payload.get("obligation_key") or ""),
+                },
+            )
+        )
+        roles.append(role)
+
+    actual(d, position, "hours")
+    if seg.basis == "PROSPECTIVE":
+        boundary, before = _before_boundary(st, ob, seg)
+        actual(boundary, before, "base_hours")
+    versions = eac_versions(st, ob, seg, d, position) if "expected_hours" in progress.params else ()
+    for version in versions:
+        if version.expected_quantity is None:
+            raise _invariant("Expected-hours source is missing", ob, rule="S09-R-15")
+        sources.append(
+            SourceRef(
+                "estimate_version",
+                version.version_key,
+                {
+                    "member": "expected_quantity",
+                    "value": str(version.expected_quantity),
+                    "content_sha256": version.content_sha256,
+                },
+            )
+        )
+        roles.append("expected_hours")
+    return replace(
+        progress,
+        formula_id="rec.progress.labour_hours.v2",
+        sources=tuple(sources),
+        params=MappingProxyType(
+            {
+                **progress.params,
+                "source_roles": ",".join(roles),
+                "expected_source_count": str(len(versions)),
+            }
+        ),
+    )
 
 
 def _cost_recovery(

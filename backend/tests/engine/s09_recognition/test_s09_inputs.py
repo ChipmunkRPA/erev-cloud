@@ -608,3 +608,40 @@ def test_s09_r16_cost_recovery_since_an_opening_balance() -> None:
     assert (september.formula_id, september.value) == (COST_RECOVERY.replace(".v1", ".v2"), "0.125")
     assert (september.params["costs"], september.params["base_costs"]) == ("300", "200")
     assert _causes(state, O1, "FY2026-P09") == {"NORMAL": usd("100.00")}
+
+
+def test_labour_hour_evidence_keeps_latest_actual_and_prospective_baseline():
+    from erev_engine.stages.s09_recognition import progress_inputs
+
+    version = _eac(1, START, hours="1000")
+    estimate = _estimate_event(3, version)
+    baseline = _hours(4, date(2026, 1, 31), "100", "0.1")
+    boundary = event_view(CONTRACT_KEY, 5, "CONTRACT_AMENDED", date(2026, 2, 1), {})
+    superseded = _hours(6, date(2026, 2, 15), "150", "0.15")
+    latest = _hours(7, date(2026, 2, 28), "300", "0.3")
+    ob = _c2c("120000", method="LABOUR_HOURS")
+    seg = dataclasses.replace(
+        ob.segments[0],
+        basis="PROSPECTIVE",
+        effective_date=boundary.effective_date,
+        event_key=boundary.event_key,
+    )
+    st = dataclasses.replace(
+        allocated_state(
+            [ob],
+            events=[estimate, baseline, boundary, superseded, latest],
+            estimates=_pins((version, estimate)),
+        ),
+        hours_source_evidence=True,
+    )
+    progress = progress_inputs.progress(st, ob, seg, latest.effective_date).progress
+    assert progress.value == Fraction(2, 9)
+    assert [source.ref_id for source in progress.sources] == [
+        latest.event_key,
+        baseline.event_key,
+        version.version_key,
+    ]
+    values = tuple(Fraction(source.detail["value"]) for source in progress.sources)
+    assert FORMULAS[progress.formula_id](values, progress.params) == progress.value
+    with pytest.raises(ValueError, match="do not reconcile"):
+        FORMULAS[progress.formula_id]((values[0], values[1] + 1, values[2]), progress.params)
