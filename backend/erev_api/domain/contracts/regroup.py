@@ -7,8 +7,8 @@ permission, classification and preview; one spanning approval applies both sides
 Source book-specific remaining consideration and target inputs are retained and checked again
 before submission/application. Unsupported consideration, progress, currency and destination
 cases refuse before pair creation. New targets remain available only for unposted draft moves.
-The effective date is today in the contracting entity's timezone. Source and target groups and
-contracts are locked together before validating or writing the command.
+The effective date is authored, or defaults to today in the contracting entity's timezone.
+Source and target groups/contracts are locked together before validation or writes.
 """
 
 from __future__ import annotations
@@ -410,6 +410,13 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
         and _text(source["status"]) == ContractStatus.ACTIVE.value
         and _text(locked[body.target_contract_id]["status"]) == ContractStatus.ACTIVE.value
     )
+    if body.effective_date is not None and not retained_transfer:
+        raise _failed(
+            "effective_date",
+            RULE_TARGET,
+            "An authored transfer date is available only for a posted transfer "
+            "between active contracts.",
+        )
     if retained_transfer:
         require_for_entity(uow.ctx, mods.CREATE_PERMISSION, _uuid(source["contracting_entity_id"]))
     else:
@@ -462,7 +469,13 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             _refuse_at_once(target)
     currency = str(source["transaction_currency"]).strip()
     # 05 TZ-03: use the contracting entity's current date, not the UTC date.
-    effective = holds.entity_date(session, source, uow.now)
+    effective = body.effective_date or holds.entity_date(session, source, uow.now)
+    if retained_transfer and effective < max(source["inception_date"], target["inception_date"]):
+        raise _failed(
+            "effective_date",
+            RULE_TARGET,
+            "The transfer date cannot precede either contract's inception date.",
+        )
     transfer_basis: dict[str, FixedBoundaryBasis] = {}
     amounts: dict[str, Decimal] = {}
     book_lines: dict[str, dict[str, list[dict[str, Any]]]] = {"OUT": {}, "IN": {}}
@@ -616,6 +629,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             "target_contract_id": str(target_id),
             "obligation_keys": keys,
             "posted": posted,
+            "effective_date": effective.isoformat(),
             "modification_ids": [str(out_id), str(in_id)],
         },
         comment=body.comment,

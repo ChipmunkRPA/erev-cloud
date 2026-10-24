@@ -78,8 +78,9 @@ lines' booking terms; both contracts are recalculated. Find the new draft in the
 The action requires contract-creation permission. If the contract is no longer eligible, the
 server refuses the move and the drawer keeps the selection and comment. The server also checks the target status and conflicting obligation keys before making changes.
 For a posted active contract, choose **Transfer remaining service**. Select an existing active
-contract in the same entity and currency, choose lines and enter a comment, then choose
-**Prepare paired modifications**. This creates two drafts dated today in the entity timezone;
+contract in the same entity and currency, choose lines, enter a comment and optionally enter the
+effective date, then choose **Prepare paired modifications**. Leaving the date blank uses today
+in the entity timezone. The date cannot precede either contract's inception. This creates two drafts;
 it does not post the transfer. Follow the source and target modification links, classify and
 preview both, and submit the pair for one approval. Both sides apply together. An ACTIVE target may have fully performed prior fixed service; its
 old allocation is preserved while the incoming line receives the transferred remainder. Contract

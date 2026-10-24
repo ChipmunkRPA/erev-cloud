@@ -133,50 +133,66 @@ it("loads further target pages, excludes ineligible drafts, and submits the sele
   ]);
 });
 
-it("prepares an active transfer and links both modifications without claiming it posted", async () => {
-  const active = workbenchContract({ status: "ACTIVE" }) as unknown as Contract;
-  const targetId = "7e8f90a1-b2c3-4d4e-8f5a-6b7c8d9e0f1a";
-  const onClose = vi.fn();
-  const sent: unknown[] = [];
-  server.use(
-    http.get(apiUrl("/api/v1/currencies"), () =>
-      HttpResponse.json({
-        items: [
-          { code: "USD", minor_unit: 2, name: "US Dollar", numeric_code: "840", is_active: true },
-        ],
+it.each([null, "2026-09-01"])(
+  "prepares an active transfer with date %s and links both modifications",
+  async (effectiveDate) => {
+    const active = workbenchContract({ status: "ACTIVE" }) as unknown as Contract;
+    const targetId = "7e8f90a1-b2c3-4d4e-8f5a-6b7c8d9e0f1a";
+    const onClose = vi.fn();
+    const sent: unknown[] = [];
+    server.use(
+      http.get(apiUrl("/api/v1/currencies"), () =>
+        HttpResponse.json({
+          items: [
+            { code: "USD", minor_unit: 2, name: "US Dollar", numeric_code: "840", is_active: true },
+          ],
+        }),
+      ),
+      http.get(apiUrl("/api/v1/contracts"), ({ request }) => {
+        expect(new URL(request.url).searchParams.getAll("status")).toContain("ACTIVE");
+        return HttpResponse.json({
+          items: [
+            workbenchContract({ id: targetId, external_id: "ACTIVE-TARGET", status: "ACTIVE" }),
+            workbenchContract({ id: "draft", external_id: "DRAFT-TARGET", status: "DRAFT" }),
+          ],
+          next_cursor: null,
+        });
       }),
-    ),
-    http.get(apiUrl("/api/v1/contracts"), ({ request }) => {
-      expect(new URL(request.url).searchParams.getAll("status")).toContain("ACTIVE");
-      return HttpResponse.json({
-        items: [
-          workbenchContract({ id: targetId, external_id: "ACTIVE-TARGET", status: "ACTIVE" }),
-          workbenchContract({ id: "draft", external_id: "DRAFT-TARGET", status: "DRAFT" }),
-        ],
-        next_cursor: null,
+      http.post(apiUrl(`/api/v1/contracts/${active.id}/regroup`), async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({ modification_ids: ["out", "in"] }, { status: 201 });
+      }),
+    );
+    renderWithApp(<RegroupDrawer contract={active} obligations={obligations} onClose={onClose} />);
+    expect(screen.queryByRole("radio", { name: "New draft contract" })).toBeNull();
+    await fill();
+    const target = screen.getByRole("combobox", { name: "Target contract" });
+    fireEvent.keyDown(target, { key: "ArrowDown" });
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "ACTIVE-TARGET" }));
+    expect(screen.queryByRole("option", { name: "DRAFT-TARGET" })).toBeNull();
+    if (effectiveDate) {
+      fireEvent.change(screen.getByLabelText(/Effective date/), { target: { value: "invalid" } });
+      fireEvent.click(screen.getByRole("button", { name: "Prepare paired modifications" }));
+      expect(sent).toEqual([]);
+      fireEvent.change(screen.getByLabelText(/Effective date/), {
+        target: { value: effectiveDate },
       });
-    }),
-    http.post(apiUrl(`/api/v1/contracts/${active.id}/regroup`), async ({ request }) => {
-      sent.push(await request.json());
-      return HttpResponse.json({ modification_ids: ["out", "in"] }, { status: 201 });
-    }),
-  );
-  renderWithApp(<RegroupDrawer contract={active} obligations={obligations} onClose={onClose} />);
-  expect(screen.queryByRole("radio", { name: "New draft contract" })).toBeNull();
-  await fill();
-  const target = screen.getByRole("combobox", { name: "Target contract" });
-  fireEvent.keyDown(target, { key: "ArrowDown" });
-  fireEvent.mouseDown(await screen.findByRole("option", { name: "ACTIVE-TARGET" }));
-  expect(screen.queryByRole("option", { name: "DRAFT-TARGET" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Prepare paired modifications" }));
-  const sourceLink = await screen.findByRole("link", { name: "Review source modification" });
-  expect(sourceLink.getAttribute("href")).toBe(`/contracts/${active.id}/modifications/out`);
-  expect(
-    screen.getByRole("link", { name: "Review target modification" }).getAttribute("href"),
-  ).toBe(`/contracts/${targetId}/modifications/in`);
-  expect(sent).toEqual([
-    { obligation_keys: ["O1"], target_contract_id: targetId, comment: "Separate draft order." },
-  ]);
-  expect(onClose).not.toHaveBeenCalled();
-  expect(screen.queryByRole("button", { name: "Prepare paired modifications" })).toBeNull();
-});
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Prepare paired modifications" }));
+    const sourceLink = await screen.findByRole("link", { name: "Review source modification" });
+    expect(sourceLink.getAttribute("href")).toBe(`/contracts/${active.id}/modifications/out`);
+    expect(
+      screen.getByRole("link", { name: "Review target modification" }).getAttribute("href"),
+    ).toBe(`/contracts/${targetId}/modifications/in`);
+    expect(sent).toEqual([
+      {
+        obligation_keys: ["O1"],
+        target_contract_id: targetId,
+        comment: "Separate draft order.",
+        ...(effectiveDate ? { effective_date: effectiveDate } : {}),
+      },
+    ]);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Prepare paired modifications" })).toBeNull();
+  },
+);

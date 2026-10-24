@@ -5,6 +5,8 @@ import { RefusalBanner } from "../../../components/feedback/RefusalBanner";
 import { useToast } from "../../../components/feedback/Toast";
 import { Banner } from "../../../components/feedback/Banner";
 import { Button } from "../../../components/ui/Button";
+import { DateInput } from "../../../components/form/DateInput";
+import { parseDateInput } from "../../../lib/format";
 import { Field } from "../../../components/form/Field";
 import { MultiSelect } from "../../../components/form/MultiSelect";
 import { Drawer } from "../../../components/ui/Drawer";
@@ -26,6 +28,7 @@ const MEMBERS = {
   target: ["target_contract_id"],
   lines: ["obligation_keys"],
   comment: ["comment"],
+  effectiveDate: ["effective_date"],
 } as const;
 
 export function RegroupDrawer({
@@ -43,6 +46,9 @@ export function RegroupDrawer({
   const toast = useToast();
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [comment, setComment] = useState("");
+  const [effectiveText, setEffectiveText] = useState("");
+  const effective = parseDateInput(effectiveText);
+  const dateInvalid = active && effectiveText.trim() !== "" && !effective.ok;
   const [attempted, setAttempted] = useState(false);
   const [destination, setDestination] = useState<"new" | "existing">(active ? "existing" : "new");
   const [target, setTarget] = useState<string | null>(null);
@@ -82,6 +88,7 @@ export function RegroupDrawer({
   const valid =
     (contract.status === "DRAFT" || active) &&
     targetValid &&
+    !dateInvalid &&
     selected.length > 0 &&
     comment.trim() !== "" &&
     selected.every((key) => options.some((option) => option.value === key));
@@ -91,6 +98,7 @@ export function RegroupDrawer({
     const outcome = await command.submit({
       obligation_keys: selected,
       comment: comment.trim(),
+      ...(active && effective.ok ? { effective_date: effective.value } : {}),
       ...(destination === "existing" ? { target_contract_id: target } : {}),
     });
     if (outcome.kind === "succeeded") {
@@ -117,7 +125,7 @@ export function RegroupDrawer({
       )}
       subtitle={contract.external_id}
       initialFocus="field"
-      dirty={!prepared && (selected.length > 0 || comment !== "")}
+      dirty={!prepared && (selected.length > 0 || comment !== "" || effectiveText !== "")}
       submitting={command.pending}
       banner={<RefusalBanner problem={command.problem} placed={placed} conflict={command.banner} />}
       primaryAction={
@@ -178,6 +186,28 @@ export function RegroupDrawer({
                 onChange={setDestination}
               />
             )}
+            {active ? (
+              <Field
+                name="regroup-effective-date"
+                label={t("contracts.drawer.event.effectiveDate")}
+                optional
+                width="date"
+                error={
+                  attempted && dateInvalid
+                    ? t("contracts.drawer.regroup.invalidDate")
+                    : placed.fields.effectiveDate
+                }
+              >
+                {(control) => (
+                  <DateInput
+                    control={control}
+                    value={effectiveText}
+                    onChange={setEffectiveText}
+                    invalid={attempted && dateInvalid}
+                  />
+                )}
+              </Field>
+            ) : null}
             {destination === "existing" ? (
               <>
                 <SelectField

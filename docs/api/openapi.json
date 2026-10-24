@@ -35321,6 +35321,18 @@
             "title": "Comment",
             "type": "string"
           },
+          "effective_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Date"
+          },
           "obligation_keys": {
             "items": {
               "type": "string"

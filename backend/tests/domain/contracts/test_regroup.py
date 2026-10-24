@@ -732,7 +732,8 @@ def test_regroup_permission_prd_1_modification_create_alone_does_not_regroup(
 
 
 @pytest.mark.parametrize(
-    "shared_group,completed_target", [(False, False), (True, False), (False, True)]
+    "shared_group,completed_target,transfer_date",
+    [(False, False, None), (True, False, None), (False, True, None), (False, False, "2026-09-01")],
 )
 def test_retained_posted_pair_workflow(
     k02: K02World,
@@ -742,6 +743,7 @@ def test_retained_posted_pair_workflow(
     monkeypatch: pytest.MonkeyPatch,
     shared_group: bool,
     completed_target: bool,
+    transfer_date: str | None,
 ) -> None:
     """Public retained transfer: classify, preview, approve and apply both sides atomically."""
     from erev_api.jobs.context import JobRuntime
@@ -792,6 +794,21 @@ def test_retained_posted_pair_workflow(
             denied.text
         )  # Entity-scoped permission denial hides the record.
         assert _written(k02) == untouched
+    if transfer_date:
+        untouched = _written(k02)
+        refused = post(
+            k02.app,
+            f"{CONTRACTS}/{source_id}/regroup",
+            k02.place.author,
+            {
+                "obligation_keys": ["O2"],
+                "target_contract_id": str(target_id),
+                "comment": "Invalid date.",
+                "effective_date": "2025-12-31",
+            },
+        )
+        assert refused.status_code == 422, refused.text
+        assert _written(k02) == untouched
     before_inputs = {
         group: computed(k02.place, group)[0]
         for group in {
@@ -806,6 +823,7 @@ def test_retained_posted_pair_workflow(
             "obligation_keys": ["O2"],
             "target_contract_id": str(target_id),
             "comment": "Remaining service transfer.",
+            **({"effective_date": transfer_date} if transfer_date else {}),
         },
     )
     assert created.status_code == 201, created.text
@@ -813,6 +831,8 @@ def test_retained_posted_pair_workflow(
     prepared = k02.place.rows(
         select(modification).where(modification.c.id.in_([UUID(i) for i in ids]))
     )
+    if transfer_date:
+        assert {row["effective_date"] for row in prepared} == {date.fromisoformat(transfer_date)}
     assert {row["status"] for row in prepared} == {"DRAFT"}
     assert len({row["questionnaire"]["regroup_target_input_sha256"] for row in prepared}) == 1
     assert not _events(k02, source_id, ContractEventType.REGROUPED)

@@ -228,6 +228,7 @@ class RegroupIn(BaseModel):
 
     obligation_keys: list[str] = Field(min_length=1, max_length=500)
     target_contract_id: uuid.UUID | None = None
+    effective_date: date | None = None
     comment: str = Field(min_length=1, max_length=4000)
 
 

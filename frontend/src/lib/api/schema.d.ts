@@ -21532,6 +21532,8 @@ export interface components {
     RegroupIn: {
       /** Comment */
       comment: string;
+      /** Effective Date */
+      effective_date?: string | null;
       /** Obligation Keys */
       obligation_keys: string[];
       /** Target Contract Id */

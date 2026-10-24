@@ -366,3 +366,20 @@ missing optional fields and deterministic replay. The populated shared-group pub
 passes ordinary register generation with both pair sides and an identical-hash saved rerun,
 alongside its existing three-view causal/report replay checks. Scoped lint/types pass. This
 adds report context, not foreign-currency transfer support. No deployment.
+
+
+## Authored posted-transfer effective date — October 24, 2026
+
+RegroupIn now accepts an optional effective_date for supported posted transfers. Omission keeps
+the entity-local current date. Both modifications, dated source measurement and audit context
+use the chosen date; incoming service remains clamped to that boundary. Dates before either
+contract's inception refuse before pair insertion. An explicit date on a draft/inception move
+refuses rather than silently implying a dated transfer. The workbench exposes an optional date
+input only for active transfers and validates nonempty input before submission. Existing
+modification preview/approval and computation period controls remain in place.
+
+A dated public workflow passes with a September 1 transfer, including rejection before inception,
+paired effective dates, approval/application, conservation and causal/close replay. Five drawer
+cases pass, covering explicit/default dates, invalid entry and both modification links. Scoped
+lint and backend/frontend types pass; API schema and user guide updated. This is not new evidence
+for every closed-period or historical-grouping scenario. No deployment.
