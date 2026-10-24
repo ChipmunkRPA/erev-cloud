@@ -170,3 +170,117 @@ def test_original_current_parts_use_retained_maturity(unconditional):
             functional=False,
             include_current=True,
         )
+
+
+@pytest.mark.parametrize(
+    "policy,current",
+    [
+        ("POB_DEBIT_POSITIONS", "20000"),
+        ("CUMULATIVE_SSP_DELIVERED", "60000"),
+    ],
+)
+def test_mixed_maturity_reads_original_asset_attribution(policy, current):
+    from datetime import date
+
+    from support.cpc_worlds import line
+
+    value, _ = original("100000")
+    events = []
+    for event in value.events:
+        payload = dict(event.payload)
+        if event.event_type == "CONTRACT_BOOKED":
+            payload["lines"] = [
+                *payload["lines"],
+                line(
+                    "L2-LONG",
+                    "SUB-24M",
+                    "1",
+                    "240000.00",
+                    start=w.INCEPTION,
+                    end=date(2027, 12, 31),
+                ),
+            ]
+            event = replace(event, obligation_keys=(w.OBLIGATION, "L2-LONG"))
+        elif event.event_type == "OPENING_BALANCE_ESTABLISHED":
+            second = {**payload["obligations"][0], "obligation_key": "L2-LONG"}
+            payload["obligations"] = [*payload["obligations"], second]
+            event = replace(event, obligation_keys=(w.OBLIGATION, "L2-LONG"))
+        events.append(replace(event, payload=payload))
+    book = value.books[0]
+    extended = bundles.entity(start=w.INCEPTION, months=36, books=("ASC606",))
+    entity = replace(
+        value.entities[0],
+        periods=(
+            *value.entities[0].periods,
+            *(
+                replace(p, states=(("ASC606", "future"),))
+                for p in extended.periods
+                if p.fiscal_year == 2027
+            ),
+        ),
+    )
+    value = replace(
+        value,
+        entities=(entity,),
+        evidence_revision=43,
+        events=tuple(events),
+        books=(
+            replace(
+                book,
+                policies=tuple(
+                    replace(item, value=policy)
+                    if item.code == "position.reclass_attribution_key"
+                    else item
+                    for item in book.policies
+                ),
+            ),
+        ),
+    )
+    output = json.loads(canonical_bytes(compute(value)))
+    result = acquisition_native.single_member_cutover(
+        value,
+        output,
+        member=w.CONTRACT,
+        book="ASC606",
+        entity=w.ENTITY,
+        period=PERIOD,
+        functional=False,
+        include_current=True,
+    )
+    assert result is not None
+    amounts, snapshot = result
+    assert amounts["contract_asset"] == Decimal("100000")
+    assert amounts["contract_asset_current"] == Decimal(current)
+    attribution = snapshot["maturity"]["asset_attribution"]
+    assert attribution["policy"] == policy
+    assert sum(item["contract_asset"] for item in attribution["parts"].values()) == 10000000
+    previous = replace(value, evidence_revision=42)
+    prior_output = json.loads(canonical_bytes(compute(previous)))
+    # Disclosure evidence does not change posting, scheduling or ordinary balances.
+    for field in ("posting_intents", "schedules", "balances"):
+        assert output["books"][0][field] == prior_output["books"][0][field]
+    with pytest.raises(Problem):
+        acquisition_native.single_member_cutover(
+            previous,
+            prior_output,
+            member=w.CONTRACT,
+            book="ASC606",
+            entity=w.ENTITY,
+            period=PERIOD,
+            functional=False,
+            include_current=True,
+        )
+    row = output["books"][0]["disclosure_rollforwards"][0]
+    row["obligation_closing"]["asset_attribution"]["parts"][w.SUBJECT]["contract_asset"] += 1
+    with pytest.raises(Problem) as refused:
+        acquisition_native.single_member_cutover(
+            value,
+            output,
+            member=w.CONTRACT,
+            book="ASC606",
+            entity=w.ENTITY,
+            period=PERIOD,
+            functional=False,
+            include_current=True,
+        )
+    assert "does not reconcile" in refused.value.errors[0].message

@@ -578,6 +578,7 @@ def _stage_call(
             acquired_pob_opening=(cb.bundle.evidence_revision or 0) >= 14,
             capture_recomputed_acquisition=(cb.bundle.evidence_revision or 0) >= 38,
             capture_acquisition_maturity=(cb.bundle.evidence_revision or 0) >= 42,
+            capture_acquisition_attribution=(cb.bundle.evidence_revision or 0) >= 43,
             recomputed_acquisition_cutover=(cb.bundle.evidence_revision or 0) >= 39,
             acquisition_cutover_closing=(cb.bundle.evidence_revision or 0) >= 15,
             acquisition_functional_cutover=(cb.bundle.evidence_revision or 0) >= 19,

@@ -51,6 +51,42 @@ def current_parts(
     liability = row["lines"]["CONTRACT_LIABILITY"]["CLOSING"]
     asset = row["lines"]["CONTRACT_ASSET"]["CLOSING"]
     parts["contract_liability_current"] = min(liability, max(0, relief))
+    attribution = row.get("obligation_closing", {}).get("asset_attribution")
+    if asset and len(eligible) > 1 and (bundle.evidence_revision or 0) >= 43:
+        expected_policy = PolicyResolver(book.policies).value(
+            "position.reclass_attribution_key", entity=row["entity"], period=period.key
+        )
+        if (
+            not isinstance(attribution, dict)
+            or attribution.get("rule") != "S10-R-22"
+            or attribution.get("policy") != expected_policy
+            or attribution.get("as_of") != period.end.isoformat()
+            or attribution.get("contract_asset") != asset
+            or attribution.get("unbilled_receivable")
+            != row["lines"]["UNBILLED_RECEIVABLE"]["CLOSING"]
+            or not isinstance(attribution.get("parts"), dict)
+            or set(attribution["parts"]) != set(obligations)
+            or any(not isinstance(part, dict) for part in attribution["parts"].values())
+            or attribution.get("sources")
+            != sorted({identity for item in obligations.values() for identity in item["sources"]})
+            or any(identity not in nodes for identity in attribution["sources"])
+        ):
+            raise tie_outs.invalid("currency_view", "Acquisition asset attribution source differs.")
+        for role in ("contract_asset", "unbilled_receivable"):
+            values = [part.get(role) for part in attribution["parts"].values()]
+            if (
+                any(type(value) is not int or value < 0 for value in values)
+                or sum(values) != attribution[role]
+            ):
+                raise tie_outs.invalid(
+                    "currency_view", "Acquisition asset attribution does not reconcile."
+                )
+        parts["contract_asset_current"] = sum(
+            attribution["parts"][subject]["contract_asset"]
+            for subject, source in maturity.items()
+            if source["asset_current_eligible"]
+        )
+        return parts, {"policy": policy, "obligations": maturity, "asset_attribution": attribution}
     if asset and len(eligible) > 1:
         raise tie_outs.invalid(
             "currency_view", "Acquisition current asset requires original netting attribution."

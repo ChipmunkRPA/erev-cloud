@@ -21,6 +21,7 @@ def capture(
     functional: bool,
     capture_agent_control: bool = False,
     maturity_recognition: RecognitionState | None = None,
+    capture_acquisition_attribution: bool = False,
 ) -> dict[str, Any]:
     def unavailable(reason: str) -> dict[str, Any]:
         return {"status": "UNAVAILABLE", "reason": reason}
@@ -209,6 +210,12 @@ def capture(
         )
         for subject, detail in maturity.items():
             result["obligations"][subject]["maturity"] = detail
+    if capture_acquisition_attribution and set(recomputed) == subjects and not functional:
+        from .acquisition_attribution import capture as capture_attribution
+
+        attribution = capture_attribution(ctx, st, entity, period, result["obligations"])
+        if attribution is not None:
+            result["asset_attribution"] = attribution
     for ob in own:
         if ob.performing_entity != entity and intercompany_enabled(records, ob):
             result["obligations"][ob.subject_key]["relief_basis"] = "CONTRACTING_ENTITY_CONTROL"

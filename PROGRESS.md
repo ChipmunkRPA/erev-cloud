@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: saved breakage draft allocations; application pending. Missing acquisition rows now refuse: [gap](docs/release/ACQUISITION-POPULATION-2026-10-24.md).
+Oct 24: [acquisition mixed maturity](docs/release/ACQUISITION-ASSET-MATURITY-2026-10-24.md) works; absent balance rows and breakage application remain open.
