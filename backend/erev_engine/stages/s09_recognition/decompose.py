@@ -316,7 +316,11 @@ def points(
     return_versions = (
         set()
         if path is None
-        else {pin.event_order_key for pin in st.estimates.pins.get(path.estimate_key, ())}
+        else (
+            {pin.event_order_key for pin in path.pins if pin.event_order_key is not None}
+            if any(pin.shared_precedence for pin in path.pins)
+            else {pin.event_order_key for pin in st.estimates.pins.get(path.estimate_key, ())}
+        )
     )
     found: list[CausePoint] = []
     for ev in st.events:

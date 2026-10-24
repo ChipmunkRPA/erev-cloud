@@ -799,6 +799,7 @@ class ReturnPin:
     # A portfolio pin without expected_quantity: E = rate × units transferred (S04-R-08; PT-06)
     rate: Fraction | None = None
     event_order_key: OrderKey | None = None
+    shared_precedence: bool = False
 
 
 @dataclass(frozen=True, slots=True)

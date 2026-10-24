@@ -910,3 +910,67 @@ def test_same_day_actual_return_consumes_the_original_estimate_in_price_and_reve
     recognition = run(ctx, allocated, TraceBuilder(engine_version=ENGINE_VERSION))
     ob = recognition.obligation_measures[O_RET]
     assert ob.revenue_cum == ob.allocated_amount == 970000
+
+
+@pytest.mark.parametrize("revision", [10, 11])
+def test_shared_returns_override_local_only_after_effective_date(revision):
+    from erev_engine.bundle import PortfolioInput
+    from erev_engine.stages.s04_transaction_price.returns import _latest_pin
+    from erev_engine.stages.s09_recognition.returns import pin_at
+
+    base = chk_029(ssp=True, revised=True)
+    local = base.estimate_versions[0]
+    shared = dataclasses.replace(
+        local,
+        estimate_key="PORTFOLIO:RETURNS/SHARED",
+        element_code="SHARED",
+        version_key="PORTFOLIO:RETURNS/SHARED@v1",
+        effective_date=date(2026, 1, 20),
+        expected_quantity=Decimal("8"),
+    )
+    value = dataclasses.replace(
+        base,
+        evidence_revision=revision,
+        group=dataclasses.replace(base.group, portfolios=(PortfolioInput("RETURNS", (C_RET,)),)),
+        estimate_versions=tuple(
+            sorted((*base.estimate_versions, shared), key=lambda v: (v.estimate_key, v.version_no))
+        ),
+        events=tuple(
+            sorted(
+                (*base.events, changed(C_RET, 7, shared, shared.effective_date)),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    ctx, priced, allocated, _ = fold(value)
+    assert allocated is not None
+    path = allocated.return_paths[O_RET]
+    assert pin_at(path, date(2026, 1, 19)).expected_quantity == 3
+    # Later local revision (Jan 31) cannot displace the Jan 20 shared estimate.
+    assert pin_at(path, date(2026, 1, 31)).expected_quantity == (8 if revision == 11 else 4)
+    keys = (local.estimate_key, shared.estimate_key)
+    selected = _latest_pin(
+        allocated.estimates, keys, date(2026, 1, 31), None, shared_precedence=revision >= 11
+    )
+    assert selected.expected_quantity == (8 if revision == 11 else 4)
+    assert len(path.pins) == (3 if revision == 11 else 2)
+
+    if revision == 11:
+        from erev_engine.stages.s09_recognition.progress_events import Position
+
+        shared_pin = next(pin for pin in path.pins if pin.shared_precedence)
+        before = Position(shared_pin.event_order_key, inclusive=False)
+        after = Position(shared_pin.event_order_key, inclusive=True)
+        assert pin_at(path, shared.effective_date, before).expected_quantity == 3
+        assert pin_at(path, shared.effective_date, after).expected_quantity == 8
+        overlapping = dataclasses.replace(shared_pin, version_key="PORTFOLIO:OTHER/SHARED@v1")
+        with pytest.raises(EngineError, match="Multiple shared return estimates"):
+            pin_at(dataclasses.replace(path, pins=(*path.pins, overlapping)), date(2026, 1, 31))
+
+    from erev_engine.stages.s09_recognition import run
+    from support.recognition import targets_by_period
+
+    recognized = run(ctx, allocated, TraceBuilder(engine_version=ENGINE_VERSION))
+    assert targets_by_period(recognized, O_RET)["FY2026-P01"] == (
+        920_000 if revision == 11 else 960_000
+    )

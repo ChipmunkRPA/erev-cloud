@@ -250,7 +250,14 @@ def pin_at(path: ReturnPath, d: date, position: Position | None = None) -> Retur
         if pin.effective_date <= d and (
             position is None or pin.event_order_key is None or position.admits(pin.event_order_key)
         ):
-            found = pin
+            if found is not None and found.shared_precedence and pin.shared_precedence:
+                if found.version_key.rsplit("@v", 1)[0] != pin.version_key.rsplit("@v", 1)[0]:
+                    raise EngineError(
+                        "ENGINE_INVARIANT_VIOLATED",
+                        "Multiple shared return estimates target one obligation",
+                    )
+            if found is None or pin.shared_precedence or not found.shared_precedence:
+                found = pin
     return found
 
 

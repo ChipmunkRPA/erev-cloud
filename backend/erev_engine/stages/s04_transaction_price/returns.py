@@ -9,13 +9,14 @@ Standard library only (DG-ARC-02).
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from fractions import Fraction
 from types import MappingProxyType
 from typing import Final
 
 from erev_engine.bundle import EstimateVersionInput, ResolvedPolicyInput
+from erev_engine.errors import EngineError
 from erev_engine.money import format_exact, round_half_up, to_fraction
 from erev_engine.stages.s01_canonicalize import (
     contract_subject_key,
@@ -113,9 +114,12 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
     if ob.quantity == 0:
         raise ValueError(f"{ob.subject_key}: a returnable obligation has quantity 0")
     key = item.estimate_keys[0] if item.estimate_keys else ""
+    shared_precedence = (st.identified.canonical.bundle.evidence_revision or 0) >= 11
+    keys = item.estimate_keys if shared_precedence else (key,)
     versions = {
         applied.version.version_key: applied
-        for applied in st.identified.canonical.estimates.pins.get(key, ())
+        for source in keys
+        for applied in st.identified.canonical.estimates.pins.get(source, ())
     }
     ordered = sorted(
         versions.values(), key=lambda v: (v.version.effective_date, v.version.version_no)
@@ -127,7 +131,14 @@ def path(ctx: BookContext, st: PobState, item: Returnable) -> ReturnPath:
     }
     return ReturnPath(
         estimate_key=key,
-        pins=tuple(_pin(applied.version, applied.event_order_key) for applied in ordered),
+        pins=tuple(
+            replace(
+                _pin(applied.version, applied.event_order_key),
+                shared_precedence=shared_precedence
+                and applied.version.estimate_key.startswith(_PORTFOLIO_PREFIX),
+            )
+            for applied in ordered
+        ),
         r=(),
         p_ref=ob.stated_price / ob.quantity,
         policy=MappingProxyType(dict(sorted(policy.items()))),
@@ -191,7 +202,13 @@ def measure(
             continue
         returns = tuple(_events(st, ob, "RETURN_RECORDED", at, before))
         returned = sum((quantity for _, quantity in returns), Fraction(0))
-        pin = _latest_pin(pins, item.estimate_keys, at, before)
+        pin = _latest_pin(
+            pins,
+            item.estimate_keys,
+            at,
+            before,
+            shared_precedence=(st.identified.canonical.bundle.evidence_revision or 0) >= 11,
+        )
         expected = Fraction(0)
         if item.model != ACTUAL_RETURNS_ONLY and pin is not None:
             window = payload_date(pin.parameters, "window_end_date")
@@ -346,8 +363,21 @@ def _belongs(st: PobState, estimate_key: str, contract_key: str) -> bool:
 
 
 def _latest_pin(
-    pins: EstimatePins, keys: Sequence[str], at: date, before: EventView | None
+    pins: EstimatePins,
+    keys: Sequence[str],
+    at: date,
+    before: EventView | None,
+    *,
+    shared_precedence: bool = False,
 ) -> EstimateVersionInput | None:
+    candidates = [version for key in keys if (version := pins.pin(key, at, before)) is not None]
+    shared = [v for v in candidates if v.estimate_key.startswith(_PORTFOLIO_PREFIX)]
+    if shared_precedence and len(shared) > 1:
+        raise EngineError(
+            "ENGINE_INVARIANT_VIOLATED", "Multiple shared return estimates target one obligation"
+        )
+    if shared_precedence and shared:
+        return shared[0]
     found: EstimateVersionInput | None = None
     for key in keys:
         version = pins.pin(key, at, before)
