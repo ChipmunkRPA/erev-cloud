@@ -211,3 +211,26 @@ summary/member explanations in all three currency views alongside the existing r
 checks. Two source-retention checks and six focused UI checks pass, as do scoped backend types,
 frontend typechecking and lint. No journal changes or deployment. Broader acquired-history
 and mixed-member attribution limitations above remain open.
+
+
+## Cross-entity principal API verification — October 24, 2026
+
+The public acquisition/report path also passes when the EUR contract belongs to AVM-US and a
+separate USD entity performs its obligation on the same calendar. The scenario includes both
+entities in the report selection and has complete intercompany account mappings. Both an open
+cutover and an actually closed/locked August cutover pass subsequent September delivery,
+transaction/functional/reporting views, acquisition cell explanations and retained reruns.
+The original 10,000 EUR liability is shown once; later contracting-entity relief is 5,000 EUR /
+5,500 USD (4,954.95 EUR reporting), matching the retained layer basis.
+
+This corrects the earlier blanket public cross-entity limitation; no new calculation or reporting
+algorithm was needed for this scenario. The first exploratory zero-revenue result came from
+missing intercompany account mappings in the fixture, which prevented the expected posting.
+
+Boundaries: both entities use USD functional currency and the same calendar; only the contracting
+entity's August is locked. The public opening report uses the existing fixture-selected POB
+consumption policy after lock. This does not establish native S15 cross-entity POB snapshot
+coverage under a published POB policy, different functional currencies/calendars, acquired
+agents, mixed acquired/existing groups, or recomputed acquisition baselines. Opening acquisition
+facts are fixture-appended, not a public acquisition-entry workflow. Two targeted database
+scenarios pass; no deployment or full-system readiness claim.

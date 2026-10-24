@@ -265,8 +265,9 @@ escaped identities and dated FX. Breakage application and combination reassessme
 
 Original cutover balances enter BUSINESS_COMBINATIONS with retained evidence and clickable
 summary/member source explanations in all three currency views.
-Same-entity principal ASC606 close/lock, later income, three currency views and reruns pass.
-Mixed groups, agents, cross-entity and recomputed baselines remain open. See
+Principal ASC606 close/lock, later income, three currency views and reruns pass, including a
+USD cross-entity performer on the same calendar. Mixed groups, agents, broader cross-entity
+and recomputed baselines remain open. See
 [checkpoint](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
 
 ## Aligned range reports across calendars — October 23, 2026

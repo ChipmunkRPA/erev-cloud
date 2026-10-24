@@ -26,10 +26,22 @@ def app(committed_db, app_settings, clock):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("locked", [False, True])
+@pytest.mark.parametrize(
+    "locked,cross_entity", [(False, False), (True, False), (False, True), (True, True)]
+)
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
-    app, keyring, clock, app_settings, monkeypatch, locked
+    app, keyring, clock, app_settings, monkeypatch, locked, cross_entity
 ):
+    if cross_entity:
+        monkeypatch.setattr(
+            close_run_worlds,
+            "EUR_CHART",
+            (
+                *close_run_worlds.EUR_CHART,
+                ("1300", "Intercompany due from", "ASSET", "D", "INTERCOMPANY_DUE_FROM"),
+                ("2300", "Intercompany due to", "LIABILITY", "C", "INTERCOMPANY_DUE_TO"),
+            ),
+        )
     world = close_run_worlds.eur_receivable(
         app, keyring, clock, LocalFileStore(app_settings.file_root), reporting_currency="EUR"
     )
@@ -58,6 +70,25 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         if_match='"s3"',
     )
     assert settled.status_code == 201, settled.text
+    selected_entities = [worlds.AVM_US]
+    if cross_entity:
+        from sqlalchemy import select
+        from support.factories import open_periods
+        from support.reference import entity
+
+        from erev_api.db.tables import legal_entity
+
+        calendar_id = world.place.scalar(
+            select(legal_entity.c.calendar_id).where(legal_entity.c.id == world.entity_id)
+        )
+        entity(app, world.maya, code="ACQUIRED-PERFORMER", calendar_id=str(calendar_id))
+        open_periods(
+            app,
+            world.maya,
+            entity_code="ACQUIRED-PERFORMER",
+            keys=[f"FY2026-P{m:02d}" for m in range(1, 10)],
+        )
+        selected_entities.append("ACQUIRED-PERFORMER")
     acquired = booked_contract(
         world.place,
         {
@@ -70,6 +101,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                 {
                     "obligation_key": "O1",
                     "product_code": close_run_worlds.EUR_HOURS,
+                    **({"performing_entity_code": "ACQUIRED-PERFORMER"} if cross_entity else {}),
                     "quantity": "200",
                     "total_price": {"amount": "20000.00", "currency": "EUR"},
                     "unit_price": "100.00",
@@ -180,7 +212,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             world,
             "contract_balance_rollforward",
             {
-                "entity_codes": [worlds.AVM_US],
+                "entity_codes": selected_entities,
                 "book": "ASC606",
                 "from_period_key": "FY2026-P08",
                 "to_period_key": "FY2026-P08",
@@ -227,7 +259,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             world,
             "revenue_from_opening_liability",
             {
-                "entity_codes": [worlds.AVM_US],
+                "entity_codes": selected_entities,
                 "book": "ASC606",
                 "from_period_key": "FY2026-P09",
                 "to_period_key": "FY2026-P09",
