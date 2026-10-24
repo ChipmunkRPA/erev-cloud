@@ -244,31 +244,38 @@ def capture(
                 "allocations": list(parts),
             }
             name = "contract_liability_current"
-            fn_amounts[name] = value
-            fn_nodes[name] = evidence.node(
-                measure=f"{name}_functional",
-                subject_key=subject,
-                period_key=period.period_key,
-                value=value,
-                currency=currency,
-                minor_unit=functional["minor_unit"],
-                formula_id="fx.functional_member.v1",
-                inputs=[
-                    links[name],
-                    *(
-                        move["node"]
-                        for layer in functional["liability_layers"]
-                        for move in layer["movements"]
-                    ),
-                ],
-                params={
-                    "as_of": period.period_key,
-                    "value": str(value),
-                    "classification_basis": "ORIGINAL_LAYER_RELEASE",
-                    "release_policy": policy,
-                },
-                narrative_key="fx.functional_member",
-            )
+            if name in fn_amounts:
+                if fn_amounts[name] != value:
+                    raise EngineError(
+                        "ENGINE_INVARIANT_VIOLATED",
+                        "Acquired member current liability differs from layer classification.",
+                    )
+            else:
+                fn_amounts[name] = value
+                fn_nodes[name] = evidence.node(
+                    measure=f"{name}_functional",
+                    subject_key=subject,
+                    period_key=period.period_key,
+                    value=value,
+                    currency=currency,
+                    minor_unit=functional["minor_unit"],
+                    formula_id="fx.functional_member.v1",
+                    inputs=[
+                        links[name],
+                        *(
+                            move["node"]
+                            for layer in functional["liability_layers"]
+                            for move in layer["movements"]
+                        ),
+                    ],
+                    params={
+                        "as_of": period.period_key,
+                        "value": str(value),
+                        "classification_basis": "ORIGINAL_LAYER_RELEASE",
+                        "release_policy": policy,
+                    },
+                    narrative_key="fx.functional_member",
+                )
     trace = evidence.build(root_measures={})
     prefix = f"acquisition-cutover/{period.period_key}/"
     names = {

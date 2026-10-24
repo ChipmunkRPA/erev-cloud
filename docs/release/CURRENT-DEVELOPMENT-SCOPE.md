@@ -2945,3 +2945,13 @@ focused cases pass; eight projection cases also pass. See
 [checkpoint](ACQUIRED-MEMBER-CURRENT-LIABILITY-2026-10-24.md) for scope and remaining exclusions.
 This supersedes the blanket acquired-member exclusion in the revision 54 checkpoint only for
 the admitted cutover method. No deployment; pending owner decisions remain unchanged.
+
+
+### 2026-10-24 — Recomputed member current liability
+
+Revision 60 extends member current allocation to principal acquisition recompute baselines,
+including mixed onboarding methods. Existing closed-cutover layer classification is reconciled
+with new member nodes and reused without duplicate evidence. Fifty focused cases pass; see
+[checkpoint](RECOMPUTED-MEMBER-CURRENT-LIABILITY-2026-10-24.md). This supersedes the revision 59
+recompute exclusion for this presentation feature, not the foreign onboarding-posting refusal.
+No deployment; acquired agents and pending policy decisions remain separate work.

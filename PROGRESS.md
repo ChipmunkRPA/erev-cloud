@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: acquired member current liabilities now allocate by carrying in both currencies; 32 focused cases pass. See CURRENT-DEVELOPMENT-SCOPE. No deployment.
+Oct 24: recomputed acquisition members now receive carrying-based current liabilities; 50 focused cases pass. See CURRENT-DEVELOPMENT-SCOPE. No deployment.

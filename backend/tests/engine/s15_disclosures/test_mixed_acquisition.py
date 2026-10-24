@@ -438,3 +438,66 @@ def test_acquired_member_current_liability_uses_carrying_weights(mixed, foreign,
         assert sum(amounts) == int(Decimal(group.value) * 100)
         for amount, total in zip(amounts, totals, strict=True):
             assert abs(amount * sum(totals) - sum(amounts) * total) <= sum(totals)
+
+
+@pytest.mark.parametrize("all_recomputed", [False, True])
+def test_recomputed_combination_current_members_follow_actual_balances(all_recomputed):
+    from erev_engine.trace import reevaluate
+
+    value = w.two_contracts(as_of=date(2026, 1, 31))
+    if all_recomputed:
+        value = replace(
+            value,
+            books=tuple(
+                replace(
+                    book,
+                    policies=tuple(
+                        replace(p, value="RECOMPUTE_FROM_INCEPTION")
+                        if p.code == "onboarding.method"
+                        else p
+                        for p in book.policies
+                    ),
+                )
+                for book in value.books
+            ),
+        )
+    events = tuple(
+        bundles.event(
+            member,
+            4,
+            "BILLING_RECORDED",
+            w.CUTOVER,
+            {
+                "invoice_number": f"SOURCE-{index}",
+                "line_external_id": f"SOURCE-{index}",
+                "obligation_key": w.OBLIGATION,
+                "amount": Decimal("300000") + index,
+                "issue_date": w.CUTOVER,
+            },
+            obligation_keys=[w.OBLIGATION],
+        )
+        for index, member in enumerate(w.COLLIDING)
+    )
+    value = replace(
+        value,
+        events=tuple(
+            sorted(
+                (*value.events, *events),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+        evidence_revision=60,
+    )
+    prior = compute(replace(value, evidence_revision=59)).books[0]
+    current = compute(value).books[0]
+    assert current.posting_intents == prior.posting_intents
+    assert current.schedules == prior.schedules
+    assert reevaluate(current.trace) == {n.id: n.value for n in current.trace.nodes}
+    rows = [r for r in current.balances if r.period_key == "FY2026-P01"]
+    assert len(rows) == 2
+    amounts = [r.columns["contract_liability_current_txn"] for r in rows]
+    totals = [r.columns["contract_liability_txn"] for r in rows]
+    assert 0 < sum(amounts) <= sum(totals)
+    for amount, total in zip(amounts, totals, strict=True):
+        assert 0 <= amount <= total
+        assert abs(amount * sum(totals) - total * sum(amounts)) <= sum(totals)

@@ -359,14 +359,10 @@ def test_complete_nonposting_observation_retains_all_balances_without_posting():
     assert "source differs" in refused.value.errors[0].message
 
 
-@pytest.mark.parametrize("unconditional,long_lived", [(False, False), (True, False), (False, True)])
-def test_foreign_cutover_current_asset_retains_original_functional_amount(
-    unconditional, long_lived
-):
+def foreign_cutover_value(unconditional=False, long_lived=False, billed="100000"):
     from erev_engine.bundle import FxRateInput
-    from erev_engine.trace import reevaluate
 
-    value, _ = original("100000", unconditional)
+    value, _ = original(billed, unconditional)
     inception = w.CUTOVER.replace(day=1)
     value = replace(
         value,
@@ -451,6 +447,16 @@ def test_foreign_cutover_current_asset_retains_original_functional_amount(
         currencies=bundles.currencies("USD", "EUR"),
         fx_rates=rates,
     )
+    return value
+
+
+@pytest.mark.parametrize("unconditional,long_lived", [(False, False), (True, False), (False, True)])
+def test_foreign_cutover_current_asset_retains_original_functional_amount(
+    unconditional, long_lived
+):
+    from erev_engine.trace import reevaluate
+
+    value = foreign_cutover_value(unconditional, long_lived)
     result = compute(value)
     output = result.books[0]
     prior = compute(replace(value, evidence_revision=51)).books[0]
@@ -483,3 +489,59 @@ def test_foreign_cutover_current_asset_retains_original_functional_amount(
     )
     assert readback is not None
     assert readback[1]["functional"]["amounts"]["contract_asset_current"] == expected
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+@pytest.mark.parametrize("layer_policy", ["FIFO", "PRO_RATA"])
+def test_recomputed_cutover_current_liability_keeps_original_carrying(foreign, layer_policy):
+    from erev_api.domain.reports.acquisition_complete import read as read_complete
+    from erev_engine.trace import reevaluate
+
+    value = foreign_cutover_value(billed="300000")
+    value = replace(
+        value,
+        evidence_revision=60,
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    replace(p, value=layer_policy) if p.code == "fx.cl_layer_consumption" else p
+                    for p in book.policies
+                ),
+            )
+            for book in value.books
+        ),
+    )
+    if not foreign:
+        value = replace(
+            value, entities=tuple(replace(e, functional_currency="USD") for e in value.entities)
+        )
+    prior = compute(replace(value, evidence_revision=59)).books[0]
+    result = compute(value)
+    output = result.books[0]
+    assert output.posting_intents == prior.posting_intents
+    assert output.schedules == prior.schedules
+    assert output.balances == prior.balances == ()
+    (snapshot,) = output.acquisition_balance_observations
+    assert snapshot["amounts"]["contract_liability_current"] == 12000000
+    assert snapshot["amounts"]["contract_liability"] == 18000000
+    if foreign:
+        amounts = snapshot["functional"]["amounts"]
+        assert amounts["contract_liability"] == 14400000
+        assert amounts["contract_liability_current"] == 9600000
+        node = snapshot["functional"]["nodes"]["contract_liability_current"]
+        assert Decimal(reevaluate(output.trace)[node]) == Decimal("96000")
+    opening = next(e for e in value.events if e.event_type == "OPENING_BALANCE_ESTABLISHED")
+    selected = read_complete(
+        value,
+        json.loads(canonical_bytes(result)),
+        member=w.CONTRACT,
+        entity=w.ENTITY,
+        book="ASC606",
+        period=PERIOD,
+        event_key=opening.event_key,
+    )
+    assert selected is not None
+    assert selected[1]["amounts"] == snapshot["amounts"]
+    if foreign:
+        assert selected[1]["functional"] == snapshot["functional"]

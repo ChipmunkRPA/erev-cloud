@@ -25,7 +25,12 @@ def supported(ctx: BookContext, state: AllocatedState) -> bool:
             or ob.opening.get("reason") != "BUSINESS_COMBINATION"
             or ob.principal_agent.value != "PRINCIPAL"
             or baseline is None
-            or baseline.method != "OPENING_BALANCES_AT_CUTOVER"
+            or baseline.method
+            not in (
+                {"OPENING_BALANCES_AT_CUTOVER", "RECOMPUTE_FROM_INCEPTION"}
+                if ctx.recomputed_member_current_liability
+                else {"OPENING_BALANCES_AT_CUTOVER"}
+            )
         ):
             return False
     return True
