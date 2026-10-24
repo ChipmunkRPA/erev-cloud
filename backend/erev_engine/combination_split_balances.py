@@ -54,11 +54,14 @@ def calculate(
         for e in canonical.boundary_events
     ):
         raise ValueError("Destination balances require an effective retained split")
+    source_trace = TraceBuilder(engine_version=ENGINE_VERSION)
+    original = fold_book(ctx, canonical, source_trace, boundary_cutoff=as_of)
+    source_evidence = source_trace.build(root_measures={})
     results = []
     for destination in sorted(set(membership.values())):
         members = tuple(sorted(key for key, group in membership.items() if group == destination))
         trace = TraceBuilder(engine_version=ENGINE_VERSION)
-        original = fold_book(ctx, canonical, trace, boundary_cutoff=as_of)
+        trace.merge_evidence(source_evidence)
         if any(f.severity == "ERROR" for f in original.findings):
             raise ValueError("Destination balance source has blocking calculation findings")
         if original.estimates.pins or original.return_paths or original.refund_components:
@@ -137,3 +140,54 @@ def calculate(
             )
         )
     return tuple(results)
+
+
+def preview_input(
+    bundle: InputBundle, *, effective_date: date, destinations: dict[str, str]
+) -> InputBundle:
+    """Add a nonpersistent candidate event to an authenticated current source bundle."""
+    from erev_engine.bundle import EventInput
+    from erev_engine.canonical import sha256_hex
+
+    if (bundle.evidence_revision or 0) < 48:
+        raise ValueError("Recompute the source with current evidence before balance preview")
+    if not destinations:
+        raise ValueError("Select an original population for split preview")
+    owner = min(destinations)
+    stream = (
+        max((e.stream_version for e in bundle.events if e.contract_key == owner), default=0) + 1
+    )
+    payload: dict[str, object] = {
+        "action": "LEAVE",
+        "prospective_split_destinations": dict(sorted(destinations.items())),
+    }
+    event = EventInput(
+        event_key=f"{owner}/EV-{stream:06d}",
+        contract_key=owner,
+        stream_version=stream,
+        event_type="COMBINATION_CHANGED",
+        schema_version=1,
+        effective_date=effective_date,
+        recorded_at=bundle.known_at,
+        record_seq=max((e.record_seq for e in bundle.events), default=0) + 1,
+        origin="SYSTEM",
+        is_manual=False,
+        obligation_keys=(),
+        payload=payload,
+        payload_sha256=sha256_hex(payload),
+        idempotency_key=None,
+        supersedes_event_key=None,
+        modification_key=None,
+        estimate_version_key=None,
+        manual_adjustment_key=None,
+    )
+    return replace(
+        bundle,
+        evidence_revision=max(bundle.evidence_revision or 0, 49),
+        trigger="DRY_RUN",
+        events=tuple(
+            sorted(
+                (*bundle.events, event), key=lambda e: (e.effective_date, e.record_seq, e.event_key)
+            )
+        ),
+    )

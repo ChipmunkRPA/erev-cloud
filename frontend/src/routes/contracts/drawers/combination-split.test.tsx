@@ -41,6 +41,7 @@ it("reads the chosen split and clears stale results after an edit or server refu
       const url = new URL(request.url);
       expect(url.searchParams.getAll("leave_contract_ids")).toEqual(["b"]);
       expect(url.searchParams.get("book_code")).toBe("ASC606");
+      expect(url.searchParams.get("balance_as_of")).toBe("2026-09-30");
       if (reads > 1)
         return problemResponse("validation-failed", 422, "Recompute the combination first.");
       expect(url.searchParams.get("effective_date")).toBe("2026-09-16");
@@ -54,6 +55,19 @@ it("reads the chosen split and clears stale results after an edit or server refu
         source_computation_id: "original-source",
         input_sha256: "abc",
         output_sha256: "def",
+        balance_preview: {
+          as_of: "2026-09-30",
+          rows: [
+            {
+              destination: "SINGLETON:MEMBER-B",
+              entity: "US01",
+              member_contract_keys: ["MEMBER-B"],
+              contract_liability_minor: 12345,
+              contract_asset_minor: 0,
+              unbilled_receivable_minor: 0,
+            },
+          ],
+        },
         members: [
           {
             contract_id: "b",
@@ -78,8 +92,13 @@ it("reads the chosen split and clears stale results after an edit or server refu
   fireEvent.change(screen.getByLabelText("Split effective date"), {
     target: { value: "09/16/2026" },
   });
+  fireEvent.change(screen.getByLabelText("Balance period end (optional)"), {
+    target: { value: "09/30/2026" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Calculate split allocation" }));
-  await screen.findByRole("table");
+  await screen.findByRole("table", { name: "Balances by destination" });
+  expect(screen.getAllByRole("table")).toHaveLength(2);
+  expect(screen.getByText("123.45")).toBeTruthy();
   expect(screen.getByText("55/3")).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Split effective date"), {
     target: { value: "09/17/2026" },

@@ -2748,3 +2748,16 @@ and full trace replay pass with the existing split tests (18 cases); scoped lint
 This is not yet public API/report integration or a persisted/posting split. Destination FX
 continuation, durable approval/application, database membership and historical report
 selection remain required. No deployment.
+
+
+### October 24 — public split destination balance preview
+
+The split preview API and workbench now accept an optional common balance period end and
+show each destination/entity's transaction-currency CL, CA and unbilled receivable. The
+calculation uses a deterministic nonpersistent candidate over authenticated original evidence;
+all original members must be authorized and the source head clean. Candidate and destination
+trace hashes are separate from original evidence. Original folding is reused across outputs.
+A real database API case, two UI cases and 18 native cases pass, plus scoped lint/types and
+OpenAPI freshness. No membership/event changes or deployment. Public preview is connected;
+durable split application, destination posting and official report-history integration are
+still unfinished.

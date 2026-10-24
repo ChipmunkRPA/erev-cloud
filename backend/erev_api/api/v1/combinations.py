@@ -255,6 +255,7 @@ def split_preview(
     ctx: ReadContext,
     deps: Deps,
     book_code: str | None = None,
+    balance_as_of: date | None = None,
 ) -> CombinationSplitPreviewOut:
     with tenant_session(
         ctx.principal.db_context, read_only=True, isolation_level="REPEATABLE READ"
@@ -263,5 +264,5 @@ def split_preview(
             ctx=ctx, session=session, clock=deps.clock, keyring=deps.keyring, files=deps.files
         )
         return combination_split.preview(
-            uow, group_id, effective_date, leave_contract_ids, book_code
+            uow, group_id, effective_date, leave_contract_ids, book_code, balance_as_of
         )

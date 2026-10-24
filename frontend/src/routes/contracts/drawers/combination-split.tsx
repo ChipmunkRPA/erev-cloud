@@ -39,6 +39,7 @@ export function CombinationSplitDrawer({
 }) {
   const path = `/api/v1/combination-groups/${contract.combination_group.id}`;
   const [date, setDate] = useState("");
+  const [balanceDate, setBalanceDate] = useState("");
   const [book, setBook] = useState<string | null>("ASC606");
   const [leaving, setLeaving] = useState<readonly string[]>([]);
   const [request, setRequest] = useState<{ query: string; nonce: number } | null>(null);
@@ -71,10 +72,12 @@ export function CombinationSplitDrawer({
     retry: false,
   });
   const parsed = parseDateInput(date);
+  const parsedBalance = parseDateInput(balanceDate);
   const ready =
     members.isSuccess &&
     !members.isFetching &&
     parsed.ok &&
+    (balanceDate.trim() === "" || (parsedBalance.ok && parsedBalance.value >= parsed.value)) &&
     book !== null &&
     leaving.length > 0 &&
     leaving.every((id) => members.data.some((m) => m.id === id));
@@ -105,6 +108,19 @@ export function CombinationSplitDrawer({
             />
           )}
         </Field>
+        <Field label={label("balanceDate")} name="split-balance-date">
+          {(control) => (
+            <DateInput
+              control={control}
+              value={balanceDate}
+              onChange={(value) => {
+                setBalanceDate(value);
+                setRequest(null);
+              }}
+            />
+          )}
+        </Field>
+        <p className="text-body-sm">{label("balanceHelp")}</p>
         <SelectField
           name="split-book"
           label={label("book")}
@@ -137,6 +153,8 @@ export function CombinationSplitDrawer({
           onClick={() => {
             if (!ready || !parsed.ok || book === null) return;
             const params = new URLSearchParams({ effective_date: parsed.value, book_code: book });
+            if (balanceDate.trim() !== "" && parsedBalance.ok)
+              params.set("balance_as_of", parsedBalance.value);
             [...leaving].sort().forEach((id) => params.append("leave_contract_ids", id));
             setRequest((old) => ({ query: params.toString(), nonce: (old?.nonce ?? 0) + 1 }));
           }}
@@ -184,6 +202,36 @@ export function CombinationSplitDrawer({
                 </tbody>
               </table>
             </div>
+            {result.balance_preview ? (
+              <div className="overflow-x-auto">
+                <p>
+                  {label("balanceNote")} · {result.balance_preview.as_of} · {result.currency}
+                </p>
+                <table className="w-full text-left text-body-sm">
+                  <caption>{label("balances")}</caption>
+                  <thead>
+                    <tr>
+                      {["destination", "entity", "liability", "asset", "unbilled"].map((key) => (
+                        <th className="p-2" scope="col" key={key}>
+                          {label(key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.balance_preview.rows.map((row) => (
+                      <tr key={`${row.destination}:${row.entity}`}>
+                        <td className="p-2">{row.member_contract_keys.join(", ")}</td>
+                        <td className="p-2">{row.entity}</td>
+                        <td className="p-2">{amount(row.contract_liability_minor, result)}</td>
+                        <td className="p-2">{amount(row.contract_asset_minor, result)}</td>
+                        <td className="p-2">{amount(row.unbilled_receivable_minor, result)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
             {result.members.map((member) => (
               <details key={member.contract_id}>
                 <summary>

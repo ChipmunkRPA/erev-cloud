@@ -8259,5 +8259,13 @@
   "contracts.drawer.split.retry": "Reload members",
   "contracts.drawer.split.amountUnavailable": "Amount exceeds safe display precision",
   "contracts.drawer.split.required": "Choose a valid date, book and at least one available member.",
-  "contracts.drawer.split.loading": "Loading combination members…"
+  "contracts.drawer.split.loading": "Loading combination members…",
+  "contracts.drawer.split.balanceDate": "Balance period end (optional)",
+  "contracts.drawer.split.balanceHelp": "Choose a common accounting period end on or after the split date to preview each destination’s balances.",
+  "contracts.drawer.split.balanceNote": "Hypothetical transaction-currency balances; no membership changes or postings",
+  "contracts.drawer.split.balances": "Balances by destination",
+  "contracts.drawer.split.entity": "Entity",
+  "contracts.drawer.split.liability": "Contract liability",
+  "contracts.drawer.split.asset": "Contract asset",
+  "contracts.drawer.split.unbilled": "Unbilled receivable"
 }

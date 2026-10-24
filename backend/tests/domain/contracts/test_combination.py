@@ -18,6 +18,32 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+from fastapi import FastAPI
+from sqlalchemy import func, select
+from support.db import TestDatabase
+from support.factories import (
+    K11World,
+    SeatWorld,
+    activated_contract,
+    booked_contract,
+    computed,
+    k11_body,
+    k11_world,
+    product_with_template,
+    seat_body,
+    seat_line,
+    seat_world,
+)
+from support.interleave import (
+    await_lock_wait,
+    await_lock_waits,
+    backend_pid,
+    observing_checkouts,
+)
+from support.principals import colleague, enrolled
+from support.reference import APPROVALS, approve, assign, fields, get, patch, post, put, slug
+from support.rows import publish_registry_version
+
 from erev_api.approvals.subjects import COMBINATION_AUTHOR_DETAIL
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import RequestContext, system_principal
@@ -46,31 +72,6 @@ from erev_api.enums import RegistryCategory, TenantKind
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from erev_api.uow import unit_of_work
-from fastapi import FastAPI
-from sqlalchemy import func, select
-from support.db import TestDatabase
-from support.factories import (
-    K11World,
-    SeatWorld,
-    activated_contract,
-    booked_contract,
-    computed,
-    k11_body,
-    k11_world,
-    product_with_template,
-    seat_body,
-    seat_line,
-    seat_world,
-)
-from support.interleave import (
-    await_lock_wait,
-    await_lock_waits,
-    backend_pid,
-    observing_checkouts,
-)
-from support.principals import colleague, enrolled
-from support.reference import APPROVALS, approve, assign, fields, get, patch, post, put, slug
-from support.rows import publish_registry_version
 
 GROUPS = "/api/v1/combination-groups"
 SUGGESTIONS = "/api/v1/combination-suggestions"
@@ -449,6 +450,32 @@ def test_combination_by_approved_command_reruns_group(seats: SeatWorld) -> None:
     assert {m["contract_id"] for m in split["members"]} == {str(first), str(second)}
     assert all(m["obligations"][0]["ssp_sources"] for m in split["members"])
     assert get(seats.app, split_path, seats.place.author, params=split_params).json() == split
+    with_balances = {**split_params, "balance_as_of": "2026-09-30"}
+    balance_response = get(seats.app, split_path, seats.place.author, params=with_balances)
+    assert balance_response.status_code == 200, balance_response.text
+    balance_result = balance_response.json()["balance_preview"]
+    assert balance_result["basis"] == "TRANSACTION_CURRENCY_DESTINATION_NETTING"
+    assert len(balance_result["rows"]) == 2
+    assert len(balance_result["preview_input_sha256"]) == 64
+    assert all(len(row["trace_sha256"]) == 64 for row in balance_result["rows"])
+    assert (
+        get(seats.app, split_path, seats.place.author, params=with_balances).json()
+        == balance_response.json()
+    )
+    refused_date = get(
+        seats.app,
+        split_path,
+        seats.place.author,
+        params={**split_params, "balance_as_of": "2026-08-31"},
+    )
+    assert refused_date.status_code == 422
+    refused_period = get(
+        seats.app,
+        split_path,
+        seats.place.author,
+        params={**split_params, "balance_as_of": "2026-09-17"},
+    )
+    assert refused_period.status_code == 422
     assert [_last_event(seats, key)["id"] for key in (first, second)] == before_events
     assert _current_group(seats, first) == _current_group(seats, second) == group_id
 
@@ -1299,8 +1326,9 @@ def test_combined_aging_retains_billing_owner_and_member_adjustments(seats: Seat
         )
     assert set(amounts) == {"SF-ORD-10417", "SF-ORD-10418"}
 
-    from erev_api.jobs.context import JobRuntime
     from support.worlds import ReportWorld, report_run, run_now
+
+    from erev_api.jobs.context import JobRuntime
 
     world = ReportWorld(
         seats.place,

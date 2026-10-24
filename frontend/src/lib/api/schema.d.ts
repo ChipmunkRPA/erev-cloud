@@ -11424,6 +11424,41 @@ export interface components {
       judgement_record_id: string;
       status: components["schemas"]["JudgementStatus"];
     };
+    /** CombinationSplitBalanceRowOut */
+    CombinationSplitBalanceRowOut: {
+      /** Contract Asset Minor */
+      contract_asset_minor: number;
+      /** Contract Liability Minor */
+      contract_liability_minor: number;
+      /** Destination */
+      destination: string;
+      /** Entity */
+      entity: string;
+      /** Member Contract Keys */
+      member_contract_keys: string[];
+      /** Trace Sha256 */
+      trace_sha256: string;
+      /** Unbilled Receivable Minor */
+      unbilled_receivable_minor: number;
+    };
+    /** CombinationSplitBalancesOut */
+    CombinationSplitBalancesOut: {
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      /**
+       * Basis
+       * @default TRANSACTION_CURRENCY_DESTINATION_NETTING
+       * @constant
+       */
+      basis: "TRANSACTION_CURRENCY_DESTINATION_NETTING";
+      /** Preview Input Sha256 */
+      preview_input_sha256: string;
+      /** Rows */
+      rows: components["schemas"]["CombinationSplitBalanceRowOut"][];
+    };
     /** CombinationSplitMemberOut */
     CombinationSplitMemberOut: {
       /**
@@ -11471,6 +11506,7 @@ export interface components {
        * @constant
        */
       applied: false;
+      balance_preview?: components["schemas"]["CombinationSplitBalancesOut"] | null;
       /**
        * Basis
        * @default EFFECTIVE_DATE_REMAINING_SSP
@@ -31463,6 +31499,7 @@ export interface operations {
         effective_date: string;
         leave_contract_ids: string[];
         book_code?: string | null;
+        balance_as_of?: string | null;
       };
       header?: never;
       path: {

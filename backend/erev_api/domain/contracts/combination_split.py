@@ -11,6 +11,8 @@ from erev_api.domain.contracts import queries
 from erev_api.domain.reports.computation_sources import read_for_report
 from erev_api.problems import Problem
 from erev_api.schemas.combinations import (
+    CombinationSplitBalanceRowOut,
+    CombinationSplitBalancesOut,
     CombinationSplitMemberOut,
     CombinationSplitObligationOut,
     CombinationSplitPreviewOut,
@@ -26,6 +28,7 @@ def preview(
     effective_date: date,
     leave_contract_ids: list[UUID],
     book_code: str | None,
+    balance_as_of: date | None = None,
 ) -> CombinationSplitPreviewOut:
     group = (
         uow.session.execute(select(combination_group).where(combination_group.c.id == group_id))
@@ -76,8 +79,44 @@ def preview(
         )
     except (ValueError, EngineError) as error:
         raise Problem("validation-failed", str(error)) from error
+    balance_preview = None
+    if balance_as_of is not None:
+        from erev_engine.combination_split_balances import calculate, preview_input
+
+        if balance_as_of < effective_date:
+            raise Problem("validation-failed", "Balance date must be on or after the split date.")
+        try:
+            candidate = preview_input(
+                original.bundle, effective_date=effective_date, destinations=destinations
+            )
+            calculated = calculate(candidate, book_code=plan.book_code, as_of=balance_as_of)
+        except (ValueError, EngineError) as error:
+            raise Problem("validation-failed", str(error)) from error
+        rows = []
+        for destination in calculated:
+            for entity in sorted({target.entity for target in destination.presentation}):
+                amounts = {
+                    target.measure: target.value
+                    for target in destination.presentation
+                    if target.entity == entity
+                }
+                rows.append(
+                    CombinationSplitBalanceRowOut(
+                        destination=destination.destination,
+                        entity=entity,
+                        member_contract_keys=list(destination.member_contract_keys),
+                        contract_liability_minor=amounts["contract_liability"],
+                        contract_asset_minor=amounts["contract_asset"],
+                        unbilled_receivable_minor=amounts["unbilled_receivable"],
+                        trace_sha256=destination.trace.sha256(),
+                    )
+                )
+        balance_preview = CombinationSplitBalancesOut(
+            as_of=balance_as_of, preview_input_sha256=candidate.sha256(), rows=rows
+        )
     ids = {m["external_id"]: m["id"] for m in members}
     return CombinationSplitPreviewOut(
+        balance_preview=balance_preview,
         group_id=group_id,
         source_computation_id=original.computation_id,
         input_sha256=plan.input_sha256,

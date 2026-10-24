@@ -137,3 +137,25 @@ missing effective split evidence are explicitly refused.
 This calculation is not yet wired into durable split approval/application, posting or public
 report routes. Effective database membership, destination recomputation and historical
 report selection still remain open. No deployment.
+
+## Public destination balance preview
+
+The existing authenticated split-preview endpoint accepts optional `balance_as_of`. After
+checking complete member authorization and the clean original computation, it appends a
+deterministic nonpersistent split candidate to the retained input and calculates destination
+balances at the requested period end. Dates before the split or without a common period end
+are refused. Original input/output hashes remain distinct from the candidate input and
+destination trace hashes. Inputs older than revision 48 require a current recomputation.
+
+The workbench now provides the optional balance date and an entity/destination table of
+transaction-currency contract liability, contract asset and unbilled receivable. Hypothetical
+status and absence of postings are explicit. Changing the balance date invalidates the prior
+result, just like changing the split date, book or members. Original fold evidence is computed
+once and reused immutably across destination traces.
+
+The real approved-combination API case passes with allocation and balance previews, repeatable
+results, invalid-date refusals and unchanged member/event state. Two focused UI tests pass,
+as do the 18 native split/balance cases, scoped Python types/lint, TypeScript, ESLint and
+generated OpenAPI checks. No deployment. This resolves public preview access only: durable
+submit/approval/application, effective database membership, destination posting and official
+report selection remain open.

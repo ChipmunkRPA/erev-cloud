@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [destination balances](docs/release/COMBINATION-SPLIT-PREVIEW-2026-10-24.md) avoid cross-group netting; durable/public integration remains open.
+Oct 24: [split balance preview](docs/release/COMBINATION-SPLIT-PREVIEW-2026-10-24.md) is in the API/UI; durable application remains open.

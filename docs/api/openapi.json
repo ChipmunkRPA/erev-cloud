@@ -7002,6 +7002,85 @@
         "title": "CombinationProposalOut",
         "type": "object"
       },
+      "CombinationSplitBalanceRowOut": {
+        "properties": {
+          "contract_asset_minor": {
+            "title": "Contract Asset Minor",
+            "type": "integer"
+          },
+          "contract_liability_minor": {
+            "title": "Contract Liability Minor",
+            "type": "integer"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "entity": {
+            "title": "Entity",
+            "type": "string"
+          },
+          "member_contract_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Member Contract Keys",
+            "type": "array"
+          },
+          "trace_sha256": {
+            "title": "Trace Sha256",
+            "type": "string"
+          },
+          "unbilled_receivable_minor": {
+            "title": "Unbilled Receivable Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "destination",
+          "entity",
+          "member_contract_keys",
+          "contract_liability_minor",
+          "contract_asset_minor",
+          "unbilled_receivable_minor",
+          "trace_sha256"
+        ],
+        "title": "CombinationSplitBalanceRowOut",
+        "type": "object"
+      },
+      "CombinationSplitBalancesOut": {
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "basis": {
+            "const": "TRANSACTION_CURRENCY_DESTINATION_NETTING",
+            "default": "TRANSACTION_CURRENCY_DESTINATION_NETTING",
+            "title": "Basis",
+            "type": "string"
+          },
+          "preview_input_sha256": {
+            "title": "Preview Input Sha256",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CombinationSplitBalanceRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "preview_input_sha256",
+          "rows"
+        ],
+        "title": "CombinationSplitBalancesOut",
+        "type": "object"
+      },
       "CombinationSplitMemberOut": {
         "properties": {
           "contract_id": {
@@ -7103,6 +7182,16 @@
             "default": false,
             "title": "Applied",
             "type": "boolean"
+          },
+          "balance_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CombinationSplitBalancesOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "basis": {
             "const": "EFFECTIVE_DATE_REMAINING_SSP",
@@ -56035,6 +56124,23 @@
                 }
               ],
               "title": "Book Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "balance_as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Balance As Of"
             }
           }
         ],

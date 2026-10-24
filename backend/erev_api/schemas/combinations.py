@@ -146,6 +146,25 @@ class CombinationSplitMemberOut(BaseModel):
     obligations: list[CombinationSplitObligationOut]
 
 
+class CombinationSplitBalanceRowOut(BaseModel):
+    destination: str
+    entity: str
+    member_contract_keys: list[str]
+    contract_liability_minor: int
+    contract_asset_minor: int
+    unbilled_receivable_minor: int
+    trace_sha256: str
+
+
+class CombinationSplitBalancesOut(BaseModel):
+    basis: Literal["TRANSACTION_CURRENCY_DESTINATION_NETTING"] = (
+        "TRANSACTION_CURRENCY_DESTINATION_NETTING"
+    )
+    as_of: date
+    preview_input_sha256: str
+    rows: list[CombinationSplitBalanceRowOut]
+
+
 class CombinationSplitPreviewOut(BaseModel):
     basis: Literal["EFFECTIVE_DATE_REMAINING_SSP"] = "EFFECTIVE_DATE_REMAINING_SSP"
     applied: Literal[False] = False
@@ -161,3 +180,4 @@ class CombinationSplitPreviewOut(BaseModel):
     unrecognized_minor: int
     currency_minor_unit: int
     members: list[CombinationSplitMemberOut]
+    balance_preview: CombinationSplitBalancesOut | None = None

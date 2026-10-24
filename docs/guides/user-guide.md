@@ -97,6 +97,11 @@ become separate contracts, then choose **Calculate split allocation**. The resul
 member's preserved income, remaining consideration before and after allocation, and exact
 remaining SSP. Expand a member to inspect obligation allocations and SSP references; original
 calculation evidence is also available. Changing the date, book or members clears the old result.
+Optionally enter **Balance period end** to see contract assets, contract liabilities and
+unbilled receivables separately for each destination and entity. Use a common accounting
+period end on or after the split date. These hypothetical balances are in transaction
+currency; they retain original receipts/billing and do not net different destinations.
+Changing this date also clears the old result.
 The complete combination must be readable. This is a read-only preview: split submission,
 approval and effective-date application are not available yet.
 
