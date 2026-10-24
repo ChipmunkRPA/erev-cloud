@@ -95,3 +95,19 @@ FX-source, native-snapshot-reader and POB-reader checks pass together (49 tests)
 lint and types. This validates native snapshot production, not the still-open populated
 public report/approval/lock/rerun workflow. Mid-period cutovers, acquired agents/cross-entity
 and mixed-sign source allocations remain separate gaps. No deployment or reopened period.
+
+
+## Cutover admission clarification — October 24, 2026
+
+The earlier references to mid-period cutovers as unfinished Reporting work were incorrect.
+The native S07-R-01 admission rule explicitly requires the acquisition cutover to be a period
+end in every contracting entity's calendar. `s07_onboarding/opening.py` compares the cutover
+to the containing period's end and emits ONBOARDING_CUTOVER_NOT_PERIOD_END; computation
+then refuses with CV-15 before disclosure calculation. A January 15 acquisition fixture
+reproduced this refusal. Its exploratory Reporting change was discarded without publication.
+
+This is an intentional existing input constraint, not evidence that Reporting silently omits
+an admitted mid-period acquisition. The current remaining work is public report/close/rerun
+integration for admitted period-end acquisitions and special-source attribution. Introducing
+mid-period acquisition accounting would require changing the upstream admission and baseline
+rules as a separate feature; this checkpoint neither changes nor claims that capability.

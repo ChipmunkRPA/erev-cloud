@@ -51,8 +51,9 @@ sources; 43 focused cases pass. See [checkpoint](ACQUIRED-CLOSED-CUTOVER-2026-10
 Revision 18 also retains original FX trace sources at eligible foreign closed cutovers,
 without changing financial outputs. Revision 19 connects them to native closing snapshots
 and classifies exact period-end acquisition balances as BUSINESS_COMBINATIONS, with no OTHER
-offset; 49 focused cases pass. Full public acquired-report/lock workflows, mid-period
-cutovers and special-source cases remain open.
+offset; 49 focused cases pass. Full public acquired-report/lock workflows and special-source
+cases remain open. Mid-period acquisition cutovers are intentionally rejected by S07-R-01,
+not a Reporting implementation gap; changing that admission rule is outside this checkpoint.
 
 ## Acquired functional sources — October 23, 2026
 
