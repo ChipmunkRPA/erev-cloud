@@ -68,6 +68,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         else opening_relief_reporting_pob.KEY
     )
     slices: dict[str, Any] | None = {} if view == "reporting" else None
+    policies: dict[str, str] = {}
     if params.binding is None or pob_key in params.binding.evidence:
         policies = opening_consumption_policy.by_entity(session, params, entities, book)
         per_obligation = "FIFO_WITHIN_POB" in policies.values()
@@ -89,6 +90,19 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     "currency_view", "Unexpected retained functional POB sources."
                 )
             tie_outs.record_evidence(params, pob_key, {})
+    from .opening_agent_contract_currency import rows as contract_agent_rows
+
+    agent_rows, agent_excluded = contract_agent_rows(
+        uow,
+        params,
+        book=book,
+        periods=periods,
+        items=items,
+        policies=policies,
+        reporting_slices=slices,
+    )
+    contracts.extend(agent_rows)
+    excluded.update(agent_excluded)
     rates: list[dict[str, Any]] = []
     if view == "reporting":
         items, rates = reporting_rollforward.project(
@@ -101,7 +115,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             items=items,
             locked=locked,
         )
-    if view == "reporting" and per_obligation:
+    if view == "reporting" and (per_obligation or agent_rows):
         opening_relief_reporting_pob.translate(contracts, slices or {}, items, periods, rates)
     totals: dict[str, dict[str, Decimal]] = {}
     for row in contracts:
@@ -293,6 +307,13 @@ def finish(
             " Agent revenue is the verified net posting, excluding supplier payable. "
             "Positive opening attribution requires the complete net source set to belong "
             "to one opening/non-opening category; no per-source net split is inferred."
+        )
+    if retained.get("agent_contract_opening_v1"):
+        footnote += (
+            " Contract FIFO agent disclosure uses verified net income and original opening "
+            "sources, "
+            "with one contract/combination cap. Supplier reallocations are included; "
+            "combined net relief is not allocated to individual members."
         )
     from .opening_relief_explanation import controls as explanation_controls
 

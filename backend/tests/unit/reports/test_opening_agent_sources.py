@@ -222,3 +222,13 @@ def test_control_counterpart_must_belong_to_captured_net_population(monkeypatch)
     uow, row, entry, _ = setup(monkeypatch, proof(date(2026, 3, 1)))
     with pytest.raises(Problem):
         agent.read(uow, row, [entry], START, D(100), net_entries=[])
+
+
+def test_zero_consumption_keeps_mixed_net_sources_without_invented_opening_share(monkeypatch):
+    uow, row, entry, _ = setup(monkeypatch, proof(date(2026, 3, 1), START))
+    result = agent.read(uow, row, [entry], START, D(100), classify_opening=False)
+    assert result.entries[0].flow.amount == D(20)
+    assert result.eligible == {"C/S": D(0)}
+    source = result.evidence["C/S"]["lines"][0]["source_sets"][0]
+    assert source["bucket"] == "NO_CONSUMPTION"
+    assert len(source["sources"]) == 2

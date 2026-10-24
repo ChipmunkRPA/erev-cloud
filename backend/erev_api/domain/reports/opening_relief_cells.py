@@ -23,6 +23,7 @@ KEY = "opening_relief_cells_v1"
 OWNERSHIP_KEY = "opening_relief_ownership_detail_v1"
 COLUMNS = ("opening_contract_liability", "revenue_recognized", "revenue_from_opening")
 POB_KEYS = (
+    "agent_contract_opening_v1",
     "opening_relief_pob_v1",
     "opening_relief_functional_pob_v1",
     "opening_relief_reporting_pob_v1",
@@ -173,6 +174,11 @@ def _details(source: dict[str, Any]) -> list[str]:
             "Retained contract balance-path contribution; "
             "obligation-level source detail is unavailable for this row."
         )
+    if facts.get("basis") == "CONTRACT_FIFO_ORIGINAL_NET_SOURCES":
+        result.append(
+            "Contract FIFO: one group cap over net revenue and original opening-source income; "
+            "no per-obligation cap or member allocation."
+        )
     members = facts.get("members", {"group": facts})
     # The group key is retained before reporting projection; its currency is the source basis.
     parts = source.get("group_key", "").split(":")
@@ -200,6 +206,13 @@ def _details(source: dict[str, Any]) -> list[str]:
         result.append(
             "Posted revenue sources: " + "; ".join(map(str, detail.get("posted_lines", [])))
         )
+        for identity, principal in sorted(detail.get("principal_sources", {}).items()):
+            result.append(
+                f"Principal control line: {identity}; net line: {principal['net_line']}; "
+                f"net income: {principal['net_income']} {currency}; "
+                f"original opening-source income: {principal['opening_income']} {currency}; "
+                "sources: " + "; ".join(principal["sources"])
+            )
         for subject, obligation in sorted(detail.get("obligations", {}).items()):
             for field, label in (
                 ("opening_billing", "Opening attributed billing"),

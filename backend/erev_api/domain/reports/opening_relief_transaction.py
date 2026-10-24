@@ -127,6 +127,10 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         if (use_agent_sources and agent_key == opening_agent_sources.KEY)
         else None
     )
+    from . import opening_agent_contract as agent_contract
+
+    contract_evidence: dict[str, Any] = {}
+    contract_paid: set[UUID] = set()
     agent_evidence: dict[str, Any] = {}
     for (version, entity, currency), members in groups.items():
         first = {
@@ -264,6 +268,44 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             )
         group_identity = f"{version}:{entity}:{currency}"
         membership[group_identity] = sorted(str(member[0]) for member in members)
+        if agent_contract.enabled(params) and policies.get(str(entity)) == "FIFO_WITHIN_CONTRACT":
+            opening_value = first["contract_liability"]
+            contract_result = agent_contract.calculate(
+                source_uow,
+                [selected[member] for member in members],
+                {
+                    member: [entry for owner, entry in entries if owner == member]
+                    for member in members
+                },
+                all_net or {},
+                start=periods[entity][0].start,
+                opening=opening_value,
+                consumed=-(
+                    path["REVENUE_FROM_OPENING"]["contract_liability"]
+                    + path["REVENUE_FROM_PERIOD_BILLINGS"]["contract_liability"]
+                ),
+                view="transaction",
+            )
+            if contract_result is not None:
+                contract_evidence[group_identity] = contract_result.evidence
+                contract_paid.update(contract_result.paid)
+                contracts.append(
+                    agent_contract.row(
+                        [selected[member] for member in members],
+                        group_identity,
+                        currency,
+                        opening_value,
+                        contract_result,
+                    )
+                )
+                group = totals.setdefault(currency, {})
+                for name, value in (
+                    ("opening", opening_value),
+                    ("revenue", contract_result.recognized),
+                    ("relief", contract_result.relief),
+                ):
+                    tie_outs.add(group, name, value)
+                continue
         if policies.get(str(entity)) == "FIFO_WITHIN_POB":
             previous = before.get(entity)
             frozen = None if previous is None else locked.at(entity, previous)
@@ -417,6 +459,8 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             )
         tie_outs.record_evidence(params, agent_key, agent_evidence)
     tie_outs.record_evidence(params, "opening_relief_groups_v1", membership)
+    if agent_contract.enabled(params):
+        agent_contract.retain(params, contract_evidence, contract_paid)
     contracts.sort(key=lambda row: row["row_key"])
     return finish(
         uow,

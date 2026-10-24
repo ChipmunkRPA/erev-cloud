@@ -60,9 +60,12 @@ def read(
     *,
     view: str = "transaction",
     net_entries: list[Entry] | None = None,
+    allowed_source_contracts: set[UUID] | None = None,
+    classify_opening: bool = True,
 ) -> Result | None:
     if view not in {"transaction", "functional"}:
         raise ValueError("Agent source view must be transaction or functional.")
+    allowed_owners = allowed_source_contracts or {row.contract_id}
     agents = set(
         uow.session.scalars(
             select(obligation_version.c.obligation_key).where(
@@ -110,12 +113,18 @@ def read(
                 posted_amount = txn if view == "transaction" else functional
                 if proof.amount != Fraction(posted_amount):
                     raise ValueError("Agent net amount differs from its original posting.")
-                if any(source.contract_id != row.contract_id for source in proof.sources):
+                if any(source.contract_id not in allowed_owners for source in proof.sources):
                     raise ValueError(
                         "Agent opening attribution across original member owners "
                         "remains unsupported."
                     )
-                category = "NO_OPENING" if opening <= 0 else bucket(proof, start)
+                category = (
+                    "NO_OPENING"
+                    if opening <= 0
+                    else "NO_CONSUMPTION"
+                    if not classify_opening
+                    else bucket(proof, start)
+                )
                 amount = -Decimal(posted_amount)
                 net += amount
                 if category == "OPENING":
@@ -177,9 +186,15 @@ def read(
             proof = revenue_attribution.verify_component(uow, entry.line_id, view=view)
             if proof.amount != -Fraction(entry.flow.amount):
                 raise ValueError("Agent net-only amount differs from the original posting.")
-            if any(source.contract_id != row.contract_id for source in proof.sources):
+            if any(source.contract_id not in allowed_owners for source in proof.sources):
                 raise ValueError("Agent net-only sources cross original member owners.")
-            category = "NO_OPENING" if opening <= 0 else bucket(proof, start)
+            category = (
+                "NO_OPENING"
+                if opening <= 0
+                else "NO_CONSUMPTION"
+                if not classify_opening
+                else bucket(proof, start)
+            )
             amount = entry.flow.amount if category == "OPENING" else ZERO
             eligible[entry.subject_key] += amount
             converted.append(entry)

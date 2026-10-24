@@ -4,16 +4,15 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
-## Agent multi-currency opening reports — October 23, 2026
+## Agent contract and POB FIFO reports — October 23, 2026
 
-FIFO_WITHIN_POB now reads complete original net postings, including supplier reallocations
-with no gross control movement. Functional amounts come from the original net leg;
-reporting currency translates signed period net income and opening eligibility at retained
-average rates. Public agent reports, cell explanation and retained rerun now exercise both
-opening and current-period receipts. See [checkpoint](AGENT-MULTICURRENCY-OPENING-2026-10-23.md).
-Remaining: contract FIFO agent net disclosure, cross-owner/cross-entity/acquired sources and
-mixed opening/non-opening net source sets with positive opening. Historical gross-closing
-notes below remain source evidence, not the current extent of report support.
+Contract FIFO now uses verified net income and one contract/combination cap across all three
+currency views. Selected-group members may supply original receipts; the combined result stays
+indivisible. POB FIFO retains its separate obligation caps. Net/supplier reallocations, original
+source evidence and retained reruns are included. See [checkpoint](AGENT-CONTRACT-FIFO-2026-10-23.md).
+Remaining: mixed source sets with positive consumption, cross-owner POB attribution,
+cross-entity/acquired sources and owners outside the selected historical group.
+Historical gross-closing notes below are source preparation, not the current report boundary.
 
 ## Original agent gross-control closing evidence — October 23, 2026
 

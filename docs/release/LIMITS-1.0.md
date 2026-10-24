@@ -10,12 +10,12 @@ development scope; historical production-use requirements below are not developm
 
 ## Agent opening-income disclosure — October 23, 2026
 
-FIFO_WITHIN_POB now supports original net postings in transaction/functional views and signed
-period reporting-currency translation, including net/supplier reallocations with no control
-movement. See [current checkpoint](AGENT-MULTICURRENCY-OPENING-2026-10-23.md).
-Contract FIFO, cross-owner/cross-entity/acquired cases and mixed source categories with positive
-opening remain unfinished. Revision-1 bound reports retain their historical calculation.
-Existing gross closing evidence alone is not net revenue attribution.
+Contract and POB FIFO now use original net postings across all three currency views; contract
+FIFO supports cross-member sources within the selected combination and shows one group total.
+See [current checkpoint](AGENT-CONTRACT-FIFO-2026-10-23.md).
+Mixed positive-consumption source sets, cross-owner POB attribution, cross-entity/acquired
+sources and owners outside the historical group remain unfinished. Older bound reports keep
+their historical calculation; original gross closing evidence is not net income attribution.
 
 
 ## Royalty RPO exemption for pending performance — October 22, 2026

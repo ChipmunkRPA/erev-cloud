@@ -1720,7 +1720,16 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     "to_period_key": AUGUST,
                 },
             )
-            detail = next(row for row in data if row.get("contract_external_id") == "AGENT-SOURCES")
+            detail = next(
+                row
+                for row in data
+                if row.get("contract_external_id") == "AGENT-SOURCES"
+                or (
+                    combined
+                    and code == "revenue_from_opening_liability"
+                    and str(row["row_key"]).startswith("combined:")
+                )
+            )
             if code == "contract_balance_rollforward":
                 assert Decimal(detail["other"]["amount"]) == 0, detail
                 assert (
@@ -1735,11 +1744,11 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 if not opening_deposit:
                     assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
                 if view == "transaction":
-                    # Existing disclosure policy reports the gross control-relief family.
-                    # Net revenue remains separately proven above, not substituted here.
-                    assert Decimal(detail["revenue_recognized"]["amount"]) == Decimal("90000"), (
-                        detail
-                    )
+                    assert Decimal(detail["revenue_recognized"]["amount"]) == expected_net, detail
+                    assert Decimal(detail["revenue_from_opening"]["amount"]) == (
+                        expected_net if opening_deposit else Decimal(0)
+                    ), detail
+                assert "Contract FIFO agent disclosure" in run["control_totals"]["footnote"]
             restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
             assert restarted.status_code == 202, restarted.text
             complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
@@ -1921,7 +1930,14 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     },
                 )
                 detail = next(
-                    row for row in rows if row.get("contract_external_id") == "AGENT-SOURCES"
+                    row
+                    for row in rows
+                    if row.get("contract_external_id") == "AGENT-SOURCES"
+                    or (
+                        combined
+                        and code == "revenue_from_opening_liability"
+                        and str(row["row_key"]).startswith("combined:")
+                    )
                 )
                 if code == "contract_balance_rollforward":
                     assert Decimal(detail["other"]["amount"]) == 0, detail
@@ -1934,9 +1950,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
                         == "PASS"
                     ), run["tie_out_results"]
                 elif view == "transaction":
-                    assert Decimal(detail["revenue_recognized"]["amount"]) == Decimal("-90000"), (
-                        detail
-                    )
+                    assert Decimal(detail["revenue_recognized"]["amount"]) == -expected_net, detail
                     assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
                 restarted = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
                 assert restarted.status_code == 202, restarted.text
