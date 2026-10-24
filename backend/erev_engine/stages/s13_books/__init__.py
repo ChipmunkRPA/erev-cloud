@@ -348,6 +348,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         tenant_preset=cb.bundle.tenant_preset,
         contracting_agent_relief=(cb.bundle.evidence_revision or 0) >= 21,
         contracting_agent_calendar=(cb.bundle.evidence_revision or 0) >= 22,
+        retain_boundary_allocation_basis=(cb.bundle.evidence_revision or 0) >= 23,
     )
 
 

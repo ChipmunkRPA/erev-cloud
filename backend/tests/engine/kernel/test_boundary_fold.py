@@ -7,14 +7,16 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 from fractions import Fraction
+
+from support import golden_streams
+from support.fold import fold_trace
 
 from erev_engine.money import format_money
 from erev_engine.stages.state import AllocatedState
 from erev_engine.trace import reevaluate
-from support import golden_streams
-from support.fold import fold_trace
 
 TOLERANCE = Fraction(1, 10**4)
 
@@ -55,3 +57,45 @@ def test_fold_golden_contract2_through_step_09() -> None:
             gap = abs(Fraction(Decimal(recomputed[node.id])) - Fraction(Decimal(node.value)))
             assert gap <= Fraction(1, 10**12), (node.id, node.value, recomputed[node.id])
     assert any(node.id.startswith("catch_up@Contract 2/EV-000010:") for node in trace.nodes)
+
+
+def test_boundary_basis_preserves_entitlement_and_exact_remaining_ssp() -> None:
+    bundle = golden_streams.stream("Contract 2", "09").input_bundle(preset="LEGACY_PARITY")
+    state, trace = fold_trace(replace(bundle, evidence_revision=23), "ASC606")
+    old_state, old_trace = fold_trace(replace(bundle, evidence_revision=22), "ASC606")
+    nodes = {node.id: node for node in trace.nodes}
+    before = nodes["fixed_boundary_before@Contract 2/EV-000009:Contract 2/POB %231:-"]
+    after = nodes["fixed_boundary_after@Contract 2/EV-000009:Contract 2/POB %231:-"]
+    assert before.params["entitlement_quantity"] == "8"
+    assert after.params["entitlement_quantity"] == "10"
+    # One unit was already delivered: remaining segment quantity must not replace entitlement.
+    assert after.params["segment_quantity"] == "9"
+    assert after.params["remaining_ssp"] == "1485/2"
+    next_before = nodes["fixed_boundary_before@Contract 2/EV-000010:Contract 2/POB %231:-"]
+    retained = {
+        "allocation_basis_version",
+        "entitlement_quantity",
+        "remaining_ssp",
+        "segment_quantity",
+    }
+    assert {key: after.params[key] for key in retained} == {
+        key: next_before.params[key] for key in retained
+    }
+    # Revision 23 changes evidence only; the old revision and accounting state stay identical.
+    assert state == old_state
+    assert len(trace.nodes) == len(old_trace.nodes)
+    for old_node in old_trace.nodes:
+        new_node = nodes[old_node.id]
+        if "allocation_basis_version" not in new_node.params:
+            assert new_node == old_node
+            continue
+        assert not retained.intersection(old_node.params)
+        assert (
+            replace(
+                new_node,
+                params={
+                    key: value for key, value in new_node.params.items() if key not in retained
+                },
+            )
+            == old_node
+        )

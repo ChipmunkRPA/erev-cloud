@@ -19,6 +19,7 @@ from __future__ import annotations
 from fractions import Fraction
 from typing import Final
 
+from erev_engine.formulas import rational_param
 from erev_engine.money import format_exact, round_half_up
 from erev_engine.stages.state import (
     AllocatedState,
@@ -43,6 +44,23 @@ def _fixed(ob: ObligationState) -> AllocationSegment | None:
         if segment.component == FIXED:
             found = segment
     return found
+
+
+def _allocation_basis(
+    ob: ObligationState | None, segment: AllocationSegment | None
+) -> dict[str, str]:
+    """Retain total entitlement separately from the prospective segment's remaining units.
+
+    Exact rational parameters avoid rounding SSP weights before a later allocation. This is
+    evidence of the boundary state, not approval to apply a shared estimate to that state.
+    Missing obligations/segments remain explicitly unavailable rather than fabricated zeros.
+    """
+    return {
+        "allocation_basis_version": "1",
+        "entitlement_quantity": "" if ob is None else rational_param(ob.quantity),
+        "remaining_ssp": "" if segment is None else rational_param(segment.remaining_ssp),
+        "segment_quantity": "" if segment is None else rational_param(segment.totals.quantity),
+    }
 
 
 def _previous_stated_node(
@@ -98,6 +116,11 @@ def _allocation_change(
                 formula_id="rec.allocation.v1",
                 inputs=lineage,
                 params={
+                    **(
+                        _allocation_basis(item, segment)
+                        if ctx.retain_boundary_allocation_basis
+                        else {}
+                    ),
                     "allocated": str(amount),
                     "as_of": ev.effective_date.isoformat(),
                     "kind": "posted",

@@ -70,3 +70,19 @@ Necessary verification covers selecting IFRS15, the actual query parameter, clea
 book's source rows, and hiding stale IFRS15 sources after a refused refresh. The focused UI case,
 frontend TypeScript and scoped ESLint pass. This exposes existing per-book calculation; it does
 not enable shared-breakage approval/application or freeze the effective-date allocation.
+
+
+## October 24: original modification allocation basis
+
+Native evidence revision 23 retains total entitlement quantity, the fixed segment's remaining
+SSP and its separate segment quantity on both sides of stage-06 modification boundaries.
+Exact rational parameters preserve the source weights without decimal rounding. Earlier
+revision bundles retain their existing trace shape and accounting behavior.
+
+A native golden-stream witness covers entitlement changing from 8 to 10 while the prospective
+segment contains only 9 remaining units, preserving SSP 1485/2 across the next event. It also
+compares the revision-22 accounting state and all original trace fields. The boundary-fold and
+prospective-modification checks pass (9 cases). This is a prerequisite for effective-date shared
+breakage allocation; it does not freeze or apply a shared estimate. Inception, non-modification
+SSP changes, combined-member identity and approved allocation capture still need integration.
+The existing preview remains explicitly current-computation based. No deployment.

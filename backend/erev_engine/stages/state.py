@@ -261,6 +261,7 @@ class BookContext:
     tenant_preset: str  # "DEFAULT" | "LEGACY_PARITY"
     contracting_agent_relief: bool = False
     contracting_agent_calendar: bool = False
+    retain_boundary_allocation_basis: bool = False
 
 
 def revenue_calendar_entity(ctx: BookContext, ob: ObligationState) -> str:
