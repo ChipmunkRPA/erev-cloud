@@ -31,6 +31,7 @@ class Attribution:
     view: str
     components: tuple[tuple[UUID, str, str, str], ...] = ()
     gross_control_id: UUID | None = None
+    verified_source_owners: tuple[UUID, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -467,6 +468,7 @@ def _read(
         )
         if isinstance(found, Attribution):
             paid.extend(found.delta.movements)
+            verified_source_owners.update(found.verified_source_owners)
         else:
             source_identities.update((item.movement_id, item) for item in found.sources)
             verified_source_owners.update(found.verified_source_owners)
@@ -529,6 +531,7 @@ def _read(
         tuple(sorted(evidence, key=str)),
         tuple((owner, layer, created) for (owner, layer), created in sorted(layer_dates.items())),
         view,
+        verified_source_owners=tuple(sorted(verified_source_owners, key=str)),
     )
     cache[line_id] = answer
     return answer
@@ -661,6 +664,12 @@ def _agent_control(
             (row["id"], label, str(row["amount_txn"]), str(row["amount_functional"]))
             for row, label in labeled
         ),
+        verified_source_owners=tuple(
+            sorted(
+                {owner for component in components for owner in component.verified_source_owners},
+                key=str,
+            )
+        ),
     )
 
 
@@ -704,4 +713,5 @@ def _agent_gross_sources(
             for row, label in labeled
         ),
         control["id"],
+        gross.verified_source_owners,
     )

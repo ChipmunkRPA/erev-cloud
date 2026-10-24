@@ -1424,6 +1424,9 @@ def test_intercompany_due_to_sources_support_progress_reversal(
             ).scalar_one()
             assert role == "INTERCOMPANY_DUE_TO"
             assert attributed.delta.amount == -control["amount_functional"]
+            assert {part.contract_id for part in attributed.delta.movements} <= set(
+                attributed.verified_source_owners
+            )
     if pob_policy:
         from types import SimpleNamespace
         from erev_api.domain.reports import opening_consumption_policy

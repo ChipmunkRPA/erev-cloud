@@ -121,6 +121,8 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             files=uow.files,
         )
     )
+    from . import opening_source_membership
+
     intercompany_reader = IntercompanyReader(source_uow, params, "transaction")
     frozen_sources = opening_relief_frozen.Reader(source_uow, params)
     agent_key = opening_agent_sources.key_for(
@@ -194,10 +196,16 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     raise tie_outs.invalid(
                         "currency_view", "Transaction revenue differs from its retained sources."
                     )
+                try:
+                    historical_owners = opening_source_membership.verify(
+                        result, member_ids, historical=opening_source_membership.enabled(params)
+                    )
+                except ValueError as error:
+                    raise tie_outs.invalid("currency_view", str(error)) from error
                 dates = {(owner, layer): created for owner, layer, created in result.layer_dates}
                 released = ZERO
                 for part in result.delta.movements:
-                    if part.contract_id not in member_ids or part.movement_kind not in {
+                    if part.movement_kind not in {
                         "LIABILITY_LAYER_CONSUMED",
                         "LIABILITY_LAYER_CREATED",
                         "ASSET_LAYER_CREATED",
@@ -222,6 +230,9 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 paid_members.update((revenue_id, *result.paid_line_ids))
                 paid_members.update(item[0] for item in result.components)
                 signed_evidence[str(entry.line_id)] = {
+                    **(
+                        {"historical_source_owners": historical_owners} if historical_owners else {}
+                    ),
                     "revenue_line_id": str(revenue_id),
                     **(
                         {"gross_control_line_id": str(result.gross_control_id)}
@@ -309,6 +320,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 view="transaction",
                 allow_unresolved=availability.enabled(params),
                 allow_historical_owners=opening_agent_sources.historical_enabled(params),
+                allow_historical_principal=opening_source_membership.enabled(params),
             )
             if contract_result is not None:
                 contract_evidence[group_identity] = contract_result.evidence

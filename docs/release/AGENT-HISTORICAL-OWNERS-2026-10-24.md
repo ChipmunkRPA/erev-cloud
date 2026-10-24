@@ -24,3 +24,23 @@ paid history, then exercises public currency reports and retained reruns. This f
 source ownership admission, not an end-to-end group split followed by a new report. Principal
 historical outsiders, cross-entity agents and broader historical group-transition paths remain
 unfinished. No posting or recognition changes, no deployment, and no overall readiness claim.
+
+
+## Principal control sources — October 24, 2026
+
+Principal and gross-control attribution now retain verified original group members recursively
+through paid history as well. Contract FIFO in mixed principal/agent reports, signed transaction
+reversals and contracting-entity intercompany attribution can accept a source outside the selected
+group only when this original evidence verifies its membership. Unsupported movement kinds,
+original amount and role mismatches, missing layer dates and unknown owners still refuse.
+
+A separate principal interpretation marker preserves prior saved-report behavior. New source
+facts retain historical owner IDs, while cell explanations identify the historical provenance.
+Existing source-set permission filtering and the single group cap remain unchanged. This enables
+source admission; the full public group-split/recompute/report workflow remains unfinished.
+Cross-entity agents and mixed acquired/existing group sources remain separate work.
+
+Necessary verification: 44 focused cases cover group-cap conservation, verified/unknown owners,
+legacy refusal and retained replay. Scoped lint and Python types pass. Two populated intercompany
+progress/reversal scenarios pass original due-to proofs, contract/POB consumption, three
+currency views and retained reruns. No posting changes or deployment.

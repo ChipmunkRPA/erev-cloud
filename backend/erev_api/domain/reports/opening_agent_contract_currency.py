@@ -14,6 +14,7 @@ from . import (
 from . import (
     opening_agent_postings,
     opening_agent_sources,
+    opening_source_membership,
     tie_outs,
 )
 from . import (
@@ -105,6 +106,7 @@ def rows(
             view="functional",
             allow_unresolved=availability.enabled(params),
             allow_historical_owners=opening_agent_sources.historical_enabled(params),
+            allow_historical_principal=opening_source_membership.enabled(params),
             allow_zero_consumption=reporting_slices is None
             or all(
                 sum(

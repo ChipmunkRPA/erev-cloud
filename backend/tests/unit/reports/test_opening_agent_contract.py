@@ -51,7 +51,10 @@ def fixture(monkeypatch, net="40", eligible="20"):
     return income
 
 
-def test_contract_fifo_has_one_group_cap_not_per_obligation_caps(monkeypatch):
+@pytest.mark.parametrize("source_owner,history", [(A, False), (UUID(int=99), True)])
+def test_contract_fifo_has_one_group_cap_not_per_obligation_caps(
+    monkeypatch, source_owner, history
+):
     income = fixture(monkeypatch)
     principal = entry(B, "120", 2)
     proof = NS(
@@ -61,14 +64,15 @@ def test_contract_fifo_has_one_group_cap_not_per_obligation_caps(monkeypatch):
             source_ids=(UUID(int=8),),
             movements=(
                 NS(
-                    contract_id=A,
+                    contract_id=source_owner,
                     layer_key="opening",
                     movement_kind="LIABILITY_LAYER_CONSUMED",
                     amount=F(-120),
                 ),
             ),
         ),
-        layer_dates=((A, "opening", date(2026, 3, 1)),),
+        layer_dates=((source_owner, "opening", date(2026, 3, 1)),),
+        verified_source_owners=(source_owner,),
         paid_line_ids=(),
         evidence=(),
     )
@@ -84,6 +88,7 @@ def test_contract_fifo_has_one_group_cap_not_per_obligation_caps(monkeypatch):
         opening=D(100),
         consumed=D(200),
         view="transaction",
+        allow_historical_principal=history,
     )
     assert result.recognized == D(160)
     assert result.relief == D(100)

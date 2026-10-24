@@ -29,6 +29,7 @@ def fixture(monkeypatch):
     )
     proof = NS(
         components=(),
+        verified_source_owners=(),
         delta=NS(
             amount=Fraction(-40), source_ids=(UUID(int=8),), movements=(NS(contract_id=owner),)
         ),
@@ -75,3 +76,24 @@ def test_other_entities_roles_amounts_and_agent_splits_are_not_admitted(monkeypa
     else:
         with pytest.raises(Problem):
             reader.read(row, obligations, [entry])
+
+
+def test_verified_historical_intercompany_owner_is_retained(monkeypatch):
+    from erev_api.domain.reports import opening_source_membership
+
+    uow, row, obligations, entry, _, proof = fixture(monkeypatch)
+    former = UUID(int=99)
+    proof.delta.movements[0].contract_id = former
+    proof.verified_source_owners = (former,)
+    sources = SourceCollector()
+    reader = ic.Reader(uow, NS(binding=None, sources=sources), "functional")
+    facts = reader.read(row, obligations, [entry])
+    assert facts["C/S"]["lines"][0]["historical_source_owners"] == [str(former)]
+    assert facts["C/S"]["lines"][0]["control_relief"] == "40"
+    reader.retain()
+    assert opening_source_membership.KEY in sources.evidence
+    replay = ic.Reader(uow, NS(binding=NS(evidence=sources.evidence), sources=None), "functional")
+    assert replay.read(row, obligations, [entry]) == facts
+    old = ic.Reader(uow, NS(binding=NS(evidence={ic.KEY: facts}), sources=None), "functional")
+    with pytest.raises(Problem):
+        old.read(row, obligations, [entry])

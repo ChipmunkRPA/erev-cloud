@@ -44,7 +44,8 @@ combination total across three currency views. See [group sources](docs/release/
 with unavailable opening amounts explicitly marked. Cross-entity principal POB verifies original
 [due-to sources](docs/release/INTERCOMPANY-POB-OPENING-2026-10-23.md).
 Historical agent owners now use verified original membership: [checkpoint](docs/release/AGENT-HISTORICAL-OWNERS-2026-10-24.md).
-Cross-entity agents and principal historical-group outsiders remain open. No deployment.
+Principal historical owners now use original membership proof in FIFO, reversals and due-to attribution.
+Full regrouping workflows and cross-entity agents remain open. No deployment.
 
 ## Acquired POB sources — October 23, 2026
 

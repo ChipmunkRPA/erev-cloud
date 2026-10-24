@@ -211,6 +211,11 @@ def _details(source: dict[str, Any]) -> list[str]:
             "Posted revenue sources: " + "; ".join(map(str, detail.get("posted_lines", [])))
         )
         for identity, principal in sorted(detail.get("principal_sources", {}).items()):
+            if principal.get("historical_source_owners"):
+                result.append(
+                    "Historical principal source ownership is verified "
+                    "by original computation evidence."
+                )
             result.append(
                 f"Principal control line: {identity}; net line: {principal['net_line']}; "
                 f"net income: {principal['net_income']} {currency}; "
@@ -240,6 +245,11 @@ def _details(source: dict[str, Any]) -> list[str]:
                     "Contracting-entity control relief; counterpart is intercompany due-to."
                 )
                 for line in intercompany["lines"]:
+                    if line.get("historical_source_owners"):
+                        result.append(
+                            "Historical intercompany source ownership is verified "
+                            "by original computation evidence."
+                        )
                     result.append(
                         f"Control line: {line['control_line']}; "
                         f"due-to line: {line['due_to_line']}; "

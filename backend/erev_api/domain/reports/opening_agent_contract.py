@@ -12,6 +12,7 @@ from erev_api.uow import UnitOfWork
 from . import (
     opening_agent_sources,
     opening_relief_periods,
+    opening_source_membership,
     revenue_attribution,
     tie_outs,
 )
@@ -52,6 +53,7 @@ def calculate(
     allow_zero_consumption: bool = True,
     allow_unresolved: bool = False,
     allow_historical_owners: bool = False,
+    allow_historical_principal: bool = False,
 ) -> Result | None:
     owners = {row.contract_id for row in rows}
     agents = {}
@@ -107,11 +109,12 @@ def calculate(
                     raise ValueError(
                         "Contract FIFO principal amount differs from original sources."
                     )
+                historical_owners = opening_source_membership.verify(
+                    proof, owners, historical=allow_historical_principal
+                )
                 dates = {(owner, layer): when for owner, layer, when in proof.layer_dates}
                 eligible = ZERO
                 for part in proof.delta.movements:
-                    if part.contract_id not in owners:
-                        raise ValueError("Contract FIFO source belongs to another group.")
                     if part.movement_kind != "LIABILITY_LAYER_CONSUMED":
                         continue
                     created = dates.get((part.contract_id, part.layer_key))
@@ -124,6 +127,9 @@ def calculate(
                 eligible_entries.append(replace(entry, flow=replace(entry.flow, amount=eligible)))
                 paid.update((entry.line_id, identity, *proof.paid_line_ids))
                 principal[str(entry.line_id)] = {
+                    **(
+                        {"historical_source_owners": historical_owners} if historical_owners else {}
+                    ),
                     "net_line": str(identity),
                     "net_income": str(entry.flow.amount),
                     "opening_income": str(eligible),

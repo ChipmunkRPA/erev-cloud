@@ -10,7 +10,7 @@ from erev_api.db.tables import obligation_version, subledger_line
 from erev_api.uow import UnitOfWork
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
-from . import revenue_attribution, tie_outs
+from . import opening_source_membership, revenue_attribution, tie_outs
 from .builders import ReportParams
 from .builders.contract_balance_rollforward import Entry
 
@@ -85,11 +85,17 @@ class Reader:
                 )
                 if proof.components or proof.delta.amount != -entry.flow.amount:
                     raise ValueError("Intercompany due-to sources differ from control relief.")
-                if any(part.contract_id not in owners for part in proof.delta.movements):
-                    raise ValueError("Intercompany source owner is outside the selected group.")
+                historical_owners = opening_source_membership.verify(
+                    proof, owners, historical=opening_source_membership.enabled(self.params)
+                )
                 self.paid.update((entry.line_id, counterpart, *proof.paid_line_ids))
                 facts[entry.subject_key]["lines"].append(
                     {
+                        **(
+                            {"historical_source_owners": historical_owners}
+                            if historical_owners
+                            else {}
+                        ),
                         "control_line": str(entry.line_id),
                         "due_to_line": str(counterpart),
                         "control_relief": str(entry.flow.amount),
