@@ -46,3 +46,28 @@ This closes the missing transaction billing trace. It does not establish the ful
 acquired-report/approval/lock/rerun journey or complete foreign closed-cutover revenue
 sources. Existing authenticated native lock snapshots retain their separate path.
 No database migration, historical evidence rewrite, reopened period or deployment.
+
+
+## Foreign closed-cutover evidence — October 24, 2026
+
+Revision 18 computes supplementary original FX evidence through an exact closed/locked
+acquisition cutover beyond the ordinary posting horizon. Admission requires same-entity
+principal obligations with complete OPENING_BALANCES_AT_CUTOVER business-combination
+baselines sharing the cutover. It uses the existing FX calculation and published rate inputs;
+its posting targets, layer movements and balances are discarded. Only its trace nodes are
+merged, atomically requiring every overlapping node to equal the original. Current fiscal
+period states remain unchanged; future cutovers are not admitted by this path.
+
+The original functional POB reader can now consume cutover billing and revenue sources:
+the USD/EUR fixture retains ASC606 EUR 216,000 billing and EUR 108,000 revenue and IFRS15
+EUR 81,000 billing and zero revenue. Subsequent illustrative relief of EUR 9,000 / 6,750
+passes the reader against these original traces. Open cutovers keep their existing traces.
+All other book output fields match revision 17, and every original trace node is unchanged.
+Missing original FX rates leave the supplementary evidence absent; readers retain their
+explicit missing-source refusal. Existing native disclosure snapshot outputs are unchanged.
+
+Validation: 53 acquired-opening, FX-source, trace-kernel and POB-reader cases pass, including
+closed/open cutovers, missing rates and atomic conflicting-evidence rejection. Scoped lint
+and types pass. New bundles select revision 18; old evidence remains immutable. Public
+report/approval/lock/rerun integration, acquisition agents/cross-entity cases and mixed-sign
+allocations remain open. No migration or deployment.

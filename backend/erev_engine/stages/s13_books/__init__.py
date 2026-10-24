@@ -578,6 +578,7 @@ def _stage_call(
             return lambda: spec.entry(
                 ctx, source, tb, rates=cb.fx,
                 capture_opening_attribution=(cb.bundle.evidence_revision or 0) >= 16,
+                capture_cutover_evidence=(cb.bundle.evidence_revision or 0) >= 18,
             )
         return lambda: spec.entry(ctx, source, tb, rates=cb.fx)
     if spec.stage == "14":

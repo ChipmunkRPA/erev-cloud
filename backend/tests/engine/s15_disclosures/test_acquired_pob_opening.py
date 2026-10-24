@@ -219,3 +219,115 @@ def test_cutover_billing_evidence_serves_original_pob_reader_without_posting(
         assert Decimal(facts["obligations"][w.SUBJECT]["opening_billing"]) == (
             Decimal("240000") if book.book_code == "ASC606" else Decimal("90000")
         )
+
+
+@pytest.mark.parametrize(
+    "cutover_open,missing_rates", [(False, False), (True, False), (False, True)]
+)
+def test_foreign_cutover_evidence_is_readable_without_financial_changes(
+    monkeypatch, cutover_open, missing_rates
+):
+    from types import SimpleNamespace as NS
+    from uuid import UUID
+
+    from support import cpc_worlds as cpc
+
+    from erev_api.domain.reports import opening_relief_pob as pob
+    from erev_api.domain.reports.builders.contract_balance_rollforward import Entry, Flow
+    from erev_engine.bundle import FxRateInput
+
+    value = w.chk_121(
+        as_of=w.CUTOVER,
+        states={"FY2025-P12": "open"} if cutover_open else None,
+        accounts=[("FX_GAIN_LOSS", None, "FX-GL")],
+        policies={"onboarding.method": "OPENING_BALANCES_AT_CUTOVER"},
+    )
+    rates = tuple(
+        FxRateInput(
+            f"{kind}-{p.period_key}",
+            "v1",
+            kind,
+            "USD",
+            "EUR",
+            p.end_date,
+            None if kind == "spot" else p.period_key,
+            Decimal("0.9"),
+        )
+        for p in value.entities[0].periods
+        for kind in ("spot", "average", "closing")
+    )
+    value = replace(
+        value,
+        currencies=bundles.currencies("EUR", "USD"),
+        entities=tuple(replace(e, functional_currency="EUR") for e in value.entities),
+        fx_rates=tuple(
+            sorted(
+                rates,
+                key=lambda r: (
+                    r.rate_type,
+                    r.base_currency,
+                    r.quote_currency,
+                    r.effective_date,
+                    r.version_key,
+                ),
+            )
+        ),
+    )
+    if missing_rates:
+        value = replace(value, fx_rates=())
+    old = erev_engine.compute(replace(value, evidence_revision=17))
+    new = erev_engine.compute(replace(value, evidence_revision=18))
+    entity = UUID(int=1)
+    session = NS(
+        execute=lambda *a: NS(
+            mappings=lambda: NS(
+                all=lambda: [
+                    dict(
+                        obligation_key=w.OBLIGATION,
+                        performing_entity_id=entity,
+                        principal_agent="PRINCIPAL",
+                    )
+                ]
+            )
+        )
+    )
+    row = NS(
+        version_id=UUID(int=2),
+        contract_id=UUID(int=3),
+        entity_id=entity,
+        external_id=w.CONTRACT,
+        currency="USD",
+    )
+    period = NS(key="FY2025-P12", end=w.CUTOVER)
+    for prior, book in zip(old.books, new.books, strict=True):
+        assert book.posting_intents == prior.posting_intents
+        assert book.fx_layer_movements == prior.fx_layer_movements
+        assert book.disclosure_rollforwards == prior.disclosure_rollforwards
+        assert replace(book, trace=prior.trace) == prior
+        if missing_rates:
+            assert book == prior
+            assert not any(node.id.startswith("revenue_functional:") for node in book.trace.nodes)
+            continue
+        after = {node.id: node for node in book.trace.nodes}
+        assert all(after[node.id] == node for node in prior.trace.nodes)
+        assert cpc.trace_mismatches(book.trace) == []
+        if cutover_open:
+            assert book.trace == prior.trace
+        monkeypatch.setattr(pob.store, "load_trace", lambda *a, trace=book.trace: trace)
+        monthly = Decimal("9000" if book.book_code == "ASC606" else "6750")
+        relief, facts = pob.calculate(
+            session,
+            row,
+            period,
+            [
+                Entry(
+                    order=(1,), flow=Flow(monthly, True), subject_key=w.SUBJECT, line_id=UUID(int=4)
+                )
+            ],
+            monthly * 12,
+            monthly,
+            functional_currency="EUR",
+        )
+        assert relief == monthly
+        expected = Decimal("216000" if book.book_code == "ASC606" else "81000")
+        assert Decimal(facts["obligations"][w.SUBJECT]["opening_billing"]) == expected

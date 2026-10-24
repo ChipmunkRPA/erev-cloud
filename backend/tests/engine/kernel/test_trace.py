@@ -7,6 +7,7 @@ import re
 from fractions import Fraction
 
 import pytest
+
 from erev_engine.errors import EngineError
 from erev_engine.formulas import FORMULAS
 from erev_engine.money import format_exact
@@ -248,3 +249,22 @@ def test_builder_and_reevaluate_reject_malformed_input() -> None:
     orphan = dataclasses.replace(trace, nodes=trace.nodes[:1])  # revenue:P01 without its inputs
     with pytest.raises(ValueError, match="unknown input"):
         reevaluate(orphan)
+
+
+def test_supplementary_evidence_preserves_original_nodes_and_rejects_conflicts_atomically():
+    builder = _ex_09_b_builder()
+    original = builder.build(root_measures={})
+    extra = _chk_007_builder().build(root_measures={})
+    builder.merge_evidence(original)
+    assert builder.build(root_measures={}) == original
+    conflict = dataclasses.replace(original.nodes[0], value="1.00")
+    with pytest.raises(EngineError, match="differs from an original"):
+        builder.merge_evidence(dataclasses.replace(extra, nodes=(*extra.nodes, conflict)))
+    assert builder.build(root_measures={}) == original
+    with pytest.raises(ValueError, match="version differs"):
+        builder.merge_evidence(dataclasses.replace(extra, engine_version="different"))
+    assert builder.build(root_measures={}) == original
+    builder.merge_evidence(extra)
+    merged = builder.build(root_measures={})
+    assert len(merged.nodes) == len(original.nodes) + len(extra.nodes)
+    assert reevaluate(merged) == {node.id: node.value for node in merged.nodes}

@@ -233,6 +233,22 @@ class TraceBuilder:
             return value
         return value + to_fraction(found.rounding_residue)
 
+    def merge_evidence(self, trace: Trace) -> None:
+        """Add independently computed evidence, never replace an existing node or root."""
+        if (
+            trace.engine_version != self._engine_version
+            or trace.format_version != TRACE_FORMAT_VERSION
+        ):
+            raise ValueError("Evidence trace version differs")
+        for node in trace.nodes:
+            if node.id in self._nodes and self._nodes[node.id] != node:
+                raise EngineError(
+                    "TRACE_DUPLICATE_NODE",
+                    "Supplementary evidence differs from an original trace node",
+                    detail={"node_id": node.id},
+                )
+        self._nodes.update((node.id, node) for node in trace.nodes)
+
     def build(self, *, root_measures: Mapping[str, str]) -> Trace:
         roots = _str_mapping(root_measures, "root_measures")
         for node_id in roots.values():

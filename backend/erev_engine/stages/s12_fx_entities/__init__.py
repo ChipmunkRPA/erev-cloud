@@ -40,9 +40,9 @@ from erev_engine.stages.s12_fx_entities import monetary, receivables, reclass, r
 from erev_engine.stages.s12_fx_entities.balances import functional_member_targets, release_targets
 from erev_engine.stages.s12_fx_entities.intercompany import IcPair, PairBook
 from erev_engine.stages.s12_fx_entities.layers import (
+    BillingAttribution,
     ControlFlow,
     FxTarget,
-    BillingAttribution,
     LayerBalance,
     LayerMovement,
     RateRef,
@@ -175,6 +175,7 @@ def run(
     *,
     rates: RateIndex | None = None,
     capture_opening_attribution: bool = False,
+    capture_cutover_evidence: bool = False,
 ) -> FxState:
     """Layers, functional targets and remeasurements of one book (ENGINE_SPEC_B §12.2)."""
     flows = st.fx_flows
@@ -266,9 +267,14 @@ def run(
         ic_pairs=tuple(ic_pairs),
         findings=tuple(sorted(findings, key=lambda finding: finding.sort_key())),
     )
-    return dataclasses.replace(
+    result_state = dataclasses.replace(
         state, functional_member_balances=_functional_member_balances(ctx, st, state, tb)
     )
+    if capture_cutover_evidence:
+        from .cutover_evidence import capture
+
+        capture(ctx, st, tb, rates=rates)
+    return result_state
 
 
 def _functional_member_balances(
