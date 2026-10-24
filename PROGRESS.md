@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [foreign cost clawbacks](docs/release/COST-CLAWBACK-CURRENCY-2026-10-24.md) verifies FIFO across distinct historical rates; impairment basis pending.
+Oct 24: [split history navigation](docs/release/SPLIT-HISTORY-NAVIGATION-2026-10-24.md) adds dated destination groups and original-member links.

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Banner } from "../../../components/feedback/Banner";
 import { RefusalBanner } from "../../../components/feedback/RefusalBanner";
@@ -97,14 +98,70 @@ export function CombinationSplitDrawer({
     <Drawer open title={label("title")} subtitle={contract.external_id} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <p>{label("help")}</p>
-        {(members.data?.group.effective_splits ?? []).map((split) => (
-          <p key={split.event_id}>
-            {split.effective_date}:{" "}
-            {Object.entries(split.destinations)
-              .map(([member, destination]) => `${member} → ${destination}`)
-              .join("; ")}
-          </p>
-        ))}
+        {(members.data?.group.effective_splits?.length ?? 0) > 0 && (
+          <section className="flex flex-col gap-2">
+            <h3 className="font-semibold">{label("history")}</h3>
+            <p className="text-sm text-fg-2">{label("historyHelp")}</p>
+            <div className="overflow-x-auto">
+              <table aria-label={label("history")} className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className="p-2">{label("date")}</th>
+                    <th className="p-2">{label("destination")}</th>
+                    <th className="p-2">{label("historyMembers")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(members.data?.group.effective_splits ?? []).flatMap((split) => {
+                    const destinations = new Map<string, string[]>();
+                    for (const [member, destination] of Object.entries(split.destinations)) {
+                      destinations.set(destination, [
+                        ...(destinations.get(destination) ?? []),
+                        member,
+                      ]);
+                    }
+                    return [...destinations.entries()].map(([destination, keys]) => (
+                      <tr
+                        key={`${split.event_id}:${destination}`}
+                        className="border-t border-border"
+                      >
+                        <td className="p-2 align-top">{split.effective_date}</td>
+                        <td className="p-2 align-top">
+                          {destination.startsWith("SINGLETON:") ? label("standalone") : destination}
+                        </td>
+                        <td className="p-2">
+                          <ul className="flex flex-col gap-1">
+                            {keys.sort().map((key) => {
+                              const member = members.data?.contracts.find(
+                                (item) => item.external_id === key,
+                              );
+                              return (
+                                <li key={key}>
+                                  {member ? (
+                                    <Link
+                                      className="text-accent-fg underline"
+                                      to={`/contracts/${member.id}`}
+                                      onClick={onClose}
+                                    >
+                                      {key}
+                                    </Link>
+                                  ) : (
+                                    key
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </td>
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         {members.isPending ? <p role="status">{label("loading")}</p> : null}
         {error instanceof ApiProblem ? (
           <RefusalBanner problem={error} />

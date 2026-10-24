@@ -107,8 +107,9 @@ for approval**; submission requires contract creation permission for every membe
 An independent approver applies the dated split through the combination approval request.
 The reviewed source must remain current. Application preserves earlier income and the original
 calculation history, and recomputes all active books atomically. Unsupported methods or foreign
-currency splits are refused before submission. The drawer lists applied split history; later
-splits use membership at the chosen effective date.
+currency splits are refused before submission. The drawer groups applied split history by effective date and destination, with links to each
+original member contract. Each entry shows only members affected by that split; earlier entries
+remain visible. Later splits use membership at the chosen effective date.
 
 A contract moves through the statuses `DRAFT`, `PENDING_REVIEW`, `ACTIVE`, `COMPLETED`, `TERMINATED` and `VOIDED`; a document that fails the contract criteria is `NOT_A_CONTRACT`. The API under `/api/v1/contracts`:
 

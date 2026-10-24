@@ -2882,3 +2882,12 @@ Verified a single recovery spanning two cost assets at distinct historical rates
 functional amounts, ledger totals and retained rate identities agree. Foreign impairment requires
 owner clarification of independent functional recoverability versus simplified transaction-result
 translation; this does not block independent remaining development. No deployment.
+
+
+### 2026-10-24 — Effective split history navigation
+
+The split drawer now groups retained events by date/destination and links original member
+contracts, preserving older entries and complete-population access guards. See
+[checkpoint](SPLIT-HISTORY-NAVIGATION-2026-10-24.md). Four focused UI cases, lint and types pass.
+Foreign split-layer allocation and functional impairment policy remain unanswered; this change
+does not decide them. No deployment.

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { registerCurrencies } from "../../../lib/format";
@@ -15,10 +15,18 @@ beforeEach(() => registerCurrencies([{ code: "USD", minor_unit: 2 }]));
 const contract = workbenchContract({ status: "ACTIVE" }) as unknown as Contract;
 const path = `/api/v1/combination-groups/${contract.combination_group.id}`;
 
-function serve(partial = false) {
+function serve(
+  partial = false,
+  history: {
+    event_id: string;
+    effective_date: string;
+    destinations: Record<string, string>;
+  }[] = [],
+) {
   server.use(
     http.get(apiUrl(path), () =>
       HttpResponse.json({
+        effective_splits: history,
         member_count: 2,
         member_contract_ids: partial ? [contract.id] : [contract.id, "b"],
       }),
@@ -30,7 +38,7 @@ function serve(partial = false) {
       HttpResponse.json({ ...contract, id: "b", external_id: "MEMBER-B" }),
     ),
   );
-  renderWithApp(<CombinationSplitDrawer contract={contract} onClose={() => undefined} />);
+  return renderWithApp(<CombinationSplitDrawer contract={contract} onClose={() => undefined} />);
 }
 
 it("reads the chosen split and clears stale results after an edit or server refusal", async () => {
@@ -172,4 +180,30 @@ it("submits the reviewed source and rationale through the approval command", asy
     }),
   );
   expect(await screen.findByText("Split submitted for approval.")).toBeTruthy();
+});
+
+it("groups effective split history and opens the original member record", async () => {
+  const { router } = serve(false, [
+    {
+      event_id: "first",
+      effective_date: "2026-08-01",
+      destinations: { "MEMBER-A": "GROUP-1", "MEMBER-B": "GROUP-1" },
+    },
+    {
+      event_id: "second",
+      effective_date: "2026-09-16",
+      destinations: { "MEMBER-B": "SINGLETON:MEMBER-B" },
+    },
+  ]);
+  const table = await screen.findByRole("table", { name: "Effective split history" });
+  const rows = within(table).getAllByRole("row");
+  expect(rows).toHaveLength(3);
+  if (!rows[1] || !rows[2]) throw new Error("Missing split history rows");
+  expect(rows[1]?.textContent).toContain("2026-08-01");
+  expect(within(rows[1]).getAllByRole("link")).toHaveLength(2);
+  expect(rows[2]?.textContent).toContain("Standalone contract");
+  const member = within(rows[2]).getByRole("link", { name: "MEMBER-B" });
+  expect(member.getAttribute("href")).toBe("/contracts/b");
+  fireEvent.click(member);
+  await waitFor(() => expect(router.state.location.pathname).toBe("/contracts/b"));
 });
