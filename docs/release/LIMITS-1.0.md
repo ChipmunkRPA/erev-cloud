@@ -10,12 +10,11 @@ development scope; historical production-use requirements below are not developm
 
 ## Agent opening-income disclosure — October 23, 2026
 
-Contract and POB FIFO now use original net postings across all three currency views; contract
-FIFO supports cross-member sources within the selected combination and shows one group total.
-See [current checkpoint](AGENT-CONTRACT-FIFO-2026-10-23.md).
-Mixed positive-consumption source sets, cross-owner POB attribution, cross-entity/acquired
-sources and owners outside the historical group remain unfinished. Older bound reports keep
-their historical calculation; original gross closing evidence is not net income attribution.
+Both FIFO policies now admit selected-group original agent sources across all three currency
+views. Original POB caps and single group caps remain distinct; no final member split is inferred.
+See [current checkpoint](AGENT-POB-GROUP-SOURCES-2026-10-23.md).
+Positive-consumption mixed source sets, cross-entity/acquired sources and owners outside the
+historical group remain unfinished. Prior saved source revisions retain their original behavior.
 
 
 ## Royalty RPO exemption for pending performance — October 22, 2026

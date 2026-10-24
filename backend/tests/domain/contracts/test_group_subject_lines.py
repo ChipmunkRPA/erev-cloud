@@ -1467,6 +1467,7 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         ("18000.00", 2, False, False),
         ("18000.00", 2, True, False),
         ("18000.00", 2, False, True),
+        ("18000.00", 2, True, True),
     ],
 )
 def test_agent_supplier_sources_retain_original_paid_history(
@@ -1554,7 +1555,14 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 select(contract.c.head_stream_version).where(contract.c.id == source_owner)
             )
             _recorded(
-                fx, source_owner, int(head), _invoice(f"FUNDING-{index}", "2026-08-01", "45000.00")
+                fx,
+                source_owner,
+                int(head),
+                _invoice(
+                    f"FUNDING-{index}",
+                    "2026-07-20" if opening_deposit else "2026-08-01",
+                    "45000.00",
+                ),
             )
     for index in range(deposits):
         head = fx.place.scalar(
@@ -1760,7 +1768,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
             )
             assert repeated.status_code == 200 and repeated.json()["items"] == data, repeated.text
 
-    if not combined and Decimal(net_fee):
+    if Decimal(net_fee):
         from types import SimpleNamespace
         from erev_api.domain.reports import opening_consumption_policy
         from erev_api.domain.reports.reporting_currency import Translation
@@ -1788,9 +1796,12 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     },
                 )
                 detail = next(
-                    row for row in data if row.get("contract_external_id") == "AGENT-SOURCES"
+                    row
+                    for row in data
+                    if row.get("contract_external_id") == "AGENT-SOURCES"
+                    or (combined and str(row["row_key"]).startswith("combined:"))
                 )
-                expected = Decimal(net_fee) if view == "transaction" else net_functional
+                expected = expected_net if view == "transaction" else net_functional
                 if view == "reporting":
                     rate = next(
                         rate

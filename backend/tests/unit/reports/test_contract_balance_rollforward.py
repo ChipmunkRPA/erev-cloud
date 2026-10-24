@@ -426,3 +426,23 @@ def test_opening_relief_is_reduced_by_a_prior_credit_memo() -> None:
     assert attributed == {1: D(20)}
     assert lines["REVENUE_FROM_OPENING"][LIABILITY] == D(-20)
     assert all(amount == 0 for amount in lines["OTHER"].values())
+
+
+def test_original_fx_can_restore_zero_opening_liability_without_inventing_a_new_layer():
+    result = cbr.path(
+        NONE,
+        [cbr.Flow(D("-10"), False, cbr.FX, liability_fx=((None, D("-10")),))],
+        {**NONE, LIABILITY: D("10")},
+    )
+    assert result["OPENING"][LIABILITY] == 0
+    assert result["FX_REMEASUREMENT"][LIABILITY] == D("10")
+    assert result["OTHER"][LIABILITY] == 0
+    assert ties(result)
+
+
+@pytest.mark.parametrize("layer,amount", [(None, D("10")), ("unknown", D("-10"))])
+def test_zero_opening_does_not_allow_fx_overdraw_or_unknown_named_sources(layer, amount):
+    from erev_api.problems import Problem
+
+    with pytest.raises(Problem):
+        cbr.path(NONE, [cbr.Flow(amount, False, cbr.FX, liability_fx=((layer, amount),))], NONE)

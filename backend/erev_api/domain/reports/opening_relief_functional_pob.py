@@ -73,9 +73,10 @@ def rows(
         )
     )
     frozen_sources = opening_relief_frozen.Reader(source_uow, params)
-    use_agent_sources = (
-        params.binding is None or opening_agent_sources.KEY in params.binding.evidence
+    agent_key = opening_agent_sources.key_for(
+        None if params.binding is None else params.binding.evidence
     )
+    use_agent_sources = params.binding is None or agent_key != opening_agent_sources.LEGACY_KEY
     from .opening_agent_postings import read as net_postings
 
     all_net = (
@@ -150,6 +151,11 @@ def rows(
                     opening,
                     view="functional",
                     net_entries=all_net.get(key, []),
+                    allowed_source_contracts={member.contract_id for member in members}
+                    if agent_key == opening_agent_sources.KEY
+                    else None,
+                    classify_opening=agent_key != opening_agent_sources.KEY
+                    or not (zero_consumption_safe and consumed <= ZERO),
                 )
                 if use_agent_sources
                 else None
@@ -298,14 +304,11 @@ def rows(
             }
         )
     if use_agent_sources:
-        if (
-            params.binding is not None
-            and params.binding.evidence[opening_agent_sources.KEY] != agent_evidence
-        ):
+        if params.binding is not None and params.binding.evidence[agent_key] != agent_evidence:
             raise tie_outs.invalid(
                 "currency_view", "Agent net functional sources differ from retained evidence."
             )
-        tie_outs.record_evidence(params, opening_agent_sources.KEY, agent_evidence)
+        tie_outs.record_evidence(params, agent_key, agent_evidence)
         tie_outs.require_members(params, "agent_net_paid_line", paid_members)
         tie_outs.record_members(params, "agent_net_paid_line", paid_members)
     if params.binding is not None and params.binding.evidence[evidence_key] != evidence:

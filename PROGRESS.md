@@ -29,17 +29,17 @@ approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](doc
 entry and saved-report replay; partial-member removal remains open;
 [local build/startup](docs/release/LOCAL-BUILD-2026-10-23.md) passes on 13ad937c; security/restore refresh remains. No deployment.
 
-## Agent contract FIFO disclosure — October 23, 2026
+## Agent POB group sources — October 23, 2026
 
-Both contract and POB FIFO read original agent net postings across transaction, functional
-and reporting currencies, including net/supplier reallocations without gross control.
-Contract FIFO uses one group cap; combined source owners may be any member of the selected
-computation group. Group totals are not allocated to members. New reports retain the complete
-source population; older bindings retain their prior calculation. See
-[checkpoint](docs/release/AGENT-CONTRACT-FIFO-2026-10-23.md).
-54 focused cases and four populated database cases pass; scoped lint/types pass.
-Mixed positive-consumption source sets, cross-owner POB attribution, cross-entity/acquired
-sources and owners outside the historical group remain open. No posting changes or deployment.
+Contract and POB FIFO now accept original agent sources from any member of the selected
+computation group across all three currency views. POB opening caps remain tied to original
+attributed billing/control relief; the final group amount is not allocated to members.
+New source revision 3 preserves prior report behavior through explicit revision selection.
+A related refund/FX fix preserves zero-balance original opening sources without permitting
+overdraw or unknown layers. 88 focused cases and two populated API scenarios pass.
+See [checkpoint](docs/release/AGENT-POB-GROUP-SOURCES-2026-10-23.md).
+Remaining: positive-consumption mixed source sets, cross-entity/acquired sources and owners
+outside the selected historical group. No posting changes or deployment.
 
 ## Rollforward Other explanation — October 23, 2026
 

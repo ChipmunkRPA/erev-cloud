@@ -253,9 +253,10 @@ def path(
     for balance in ROLLFORWARD_BALANCES:
         lines["OPENING"][balance] = opening.get(balance, ZERO)
         lines["CLOSING"][balance] = closing.get(balance, ZERO)
-    layers: list[list[Any]] = []
-    if opening.get(LIABILITY, ZERO) > 0:
-        layers.append(["OPENING", opening[LIABILITY], None])
+    # A retained negative FX adjustment can restore an original opening source
+    # whose carrying balance is zero. Keep its empty bucket; positive FX still
+    # cannot overdraw it, and unknown named layers remain invalid.
+    layers: list[list[Any]] = [["OPENING", max(ZERO, opening.get(LIABILITY, ZERO)), None]]
     asset = {UNBILLED: opening.get(UNBILLED, ZERO), ASSET: opening.get(ASSET, ZERO)}
     for flow_index, flow in enumerate(flows):
         family = family_of(flow)

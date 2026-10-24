@@ -1,5 +1,6 @@
 """Net agent opening income only where the complete original source set proves its bucket."""
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from datetime import date
 from decimal import Decimal
@@ -16,8 +17,16 @@ from erev_api.uow import UnitOfWork
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 
 LEGACY_KEY = "agent_opening_source_sets_v1"
-KEY = "agent_opening_source_sets_v2"
+PREVIOUS_KEY = "agent_opening_source_sets_v2"
+KEY = "agent_opening_source_sets_v3"
+SUPPORTED_KEYS = (KEY, PREVIOUS_KEY, LEGACY_KEY)
 ZERO = Decimal(0)
+
+
+def key_for(evidence: Mapping[str, Any] | None) -> str:
+    if evidence is None:
+        return KEY
+    return next((key for key in SUPPORTED_KEYS if key in evidence), LEGACY_KEY)
 
 
 def bucket(proof: revenue_attribution.AmountProof, start: date) -> str:

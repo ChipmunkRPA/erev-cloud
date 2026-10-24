@@ -232,3 +232,36 @@ def test_zero_consumption_keeps_mixed_net_sources_without_invented_opening_share
     source = result.evidence["C/S"]["lines"][0]["source_sets"][0]
     assert source["bucket"] == "NO_CONSUMPTION"
     assert len(source["sources"]) == 2
+
+
+def test_selected_group_can_supply_original_agent_sources(monkeypatch):
+    other = UUID(int=99)
+    original = proof(date(2026, 3, 1))
+    shared = replace(
+        original,
+        sources=(replace(original.sources[0], contract_id=other),),
+        layer_dates=((other, "0", date(2026, 3, 1)),),
+    )
+    uow, row, entry, _ = setup(monkeypatch, shared)
+    result = agent.read(
+        uow,
+        row,
+        [entry],
+        START,
+        D(100),
+        allowed_source_contracts={OWNER, other},
+    )
+    assert result.eligible == {"C/S": D(20)}
+    source = result.evidence["C/S"]["lines"][0]["source_sets"][0]["sources"][0]
+    assert source["contract_id"] == str(other)
+    assert "amount" not in source
+    with pytest.raises(Problem):
+        agent.read(uow, row, [entry], START, D(100), allowed_source_contracts={OWNER})
+
+
+def test_source_revision_selection_preserves_bound_report_behavior():
+    assert agent.key_for(None) == agent.KEY
+    assert agent.key_for({agent.KEY: {}}) == agent.KEY
+    assert agent.key_for({agent.PREVIOUS_KEY: {}}) == agent.PREVIOUS_KEY
+    assert agent.key_for({agent.LEGACY_KEY: {}}) == agent.LEGACY_KEY
+    assert agent.key_for({}) == agent.LEGACY_KEY

@@ -312,3 +312,25 @@ def test_agent_opening_uses_verified_net_eligibility_not_gross_liability(monkeyp
     assert facts["obligations"]["C/S"]["posted_revenue"] == "800"
     assert facts["obligations"]["C/S"]["eligible_relief"] == "200"
     assert facts["obligations"]["C/S"]["agent_net_sources"]["basis"] == "UNIFORM_NET_SOURCE_SET"
+
+
+def test_group_source_income_does_not_replace_original_pob_opening_cap(monkeypatch):
+    session, row, _ = fixture(monkeypatch)
+    obligations = [
+        {"obligation_key": "S", "performing_entity_id": row.entity_id, "principal_agent": "AGENT"}
+    ]
+    session.execute = lambda *a: NS(mappings=lambda: NS(all=lambda: obligations))
+    amount, facts = pob.calculate(
+        session,
+        row,
+        NS(key="P03"),
+        [entry(1, "S", "8000")],
+        D("10000"),
+        D("10000"),
+        agent_eligible={"C/S": D("8000")},
+        agent_evidence={"C/S": {"basis": "UNIFORM_NET_SOURCE_SET"}},
+    )
+    assert amount == D("5000")
+    assert facts["obligations"]["C/S"]["opening_billing"] == "20000"
+    assert facts["obligations"]["C/S"]["opening_revenue"] == "15000"
+    assert facts["obligations"]["C/S"]["eligible_relief"] == "5000"

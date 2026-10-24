@@ -6,13 +6,13 @@ LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfini
 
 ## Agent contract and POB FIFO reports — October 23, 2026
 
-Contract FIFO now uses verified net income and one contract/combination cap across all three
-currency views. Selected-group members may supply original receipts; the combined result stays
-indivisible. POB FIFO retains its separate obligation caps. Net/supplier reallocations, original
-source evidence and retained reruns are included. See [checkpoint](AGENT-CONTRACT-FIFO-2026-10-23.md).
-Remaining: mixed source sets with positive consumption, cross-owner POB attribution,
-cross-entity/acquired sources and owners outside the selected historical group.
-Historical gross-closing notes below are source preparation, not the current report boundary.
+Both FIFO policies admit original agent sources from any selected-group member across all
+three currency views. POB caps remain tied to original attributed opening evidence; combination
+totals are not allocated to members. Revision-3 reports preserve older saved-version behavior.
+See [checkpoint](AGENT-POB-GROUP-SOURCES-2026-10-23.md).
+Remaining: positive-consumption mixed source sets, cross-entity/acquired sources and owners
+outside the selected historical group. Historical gross-closing notes below are source
+preparation, not the current report boundary.
 
 ## Original agent gross-control closing evidence — October 23, 2026
 
