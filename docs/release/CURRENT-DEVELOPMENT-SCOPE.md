@@ -2206,3 +2206,20 @@ it verifies all view paths, not a new foreign-FX regroup rule. Existing causal f
 and offsetting-effect cases also pass. Ten causal cases passed before expanding the missing/
 legacy evidence guard to three passing cases; scoped lint/types pass. Public regroup entry
 remains gated for outstanding accounting scenarios. No deployment.
+
+
+## Termination causal reporting — October 24, 2026
+
+The modification register's causal-analysis path now accepts CONTRACT_TERMINATED alongside
+ordinary amendments, bookings and retained regroup boundaries. Full and partial terminations
+are classified as MODIFICATION contributors in the sequential analysis; an unselected later
+termination also remains a separate reconciling event rather than making the report unavailable.
+The shared close-variance driver allowlist and termination accounting/posting logic are unchanged.
+
+Necessary verification: both populated original-member combined termination workflows pass
+public classification, preview, submission, approval and causal report generation in transaction,
+functional and reporting views. Selected rows retain owner contract/effective date; all three
+saved reports rerun with equal output hashes. The existing status report still shows 18,000
+cumulative revenue. These USD fixtures exercise the view paths, not additional foreign-FX rules.
+Scoped lint/types pass. This removes the termination-event selection/classification gap in
+Reporting; it does not claim all remaining system gaps are complete. No deployment.

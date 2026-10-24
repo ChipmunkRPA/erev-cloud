@@ -65,3 +65,20 @@ after 0.5 of two units were delivered retains 2,500 earned revenue without furth
 Earlier revision 9 keeps its previous 2,750 result for retained replay; new platform inputs use
 revision 10. Scoped types/lint pass. No deployment. This is a correction to supported complete
 termination and price changes, not implementation of partial-member reassessment.
+
+
+## Termination causal reporting — October 24, 2026
+
+The modification register's causal-analysis path now accepts CONTRACT_TERMINATED alongside
+ordinary amendments, bookings and retained regroup boundaries. Full and partial terminations
+are classified as MODIFICATION contributors in the sequential analysis; an unselected later
+termination also remains a separate reconciling event rather than making the report unavailable.
+The shared close-variance driver allowlist and termination accounting/posting logic are unchanged.
+
+Necessary verification: both populated original-member combined termination workflows pass
+public classification, preview, submission, approval and causal report generation in transaction,
+functional and reporting views. Selected rows retain owner contract/effective date; all three
+saved reports rerun with equal output hashes. The existing status report still shows 18,000
+cumulative revenue. These USD fixtures exercise the view paths, not additional foreign-FX rules.
+Scoped lint/types pass. This removes the termination-event selection/classification gap in
+Reporting; it does not claim all remaining system gaps are complete. No deployment.

@@ -1575,6 +1575,30 @@ def test_combined_original_termination_public_workflow(
     assert replay["state"] == "SUCCEEDED", replay
     assert replay["result"]["output_sha256_equal"] is True
 
+    for view in ("transaction", "functional", "reporting"):
+        causal_run, causal_rows = report_run(
+            world,
+            "modification_register",
+            {
+                "entity_codes": [AVM_US],
+                "book": "ASC606",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+                "contract_external_id": BR06_EXTERNAL_ID,
+                "currency_basis": "causal_analysis",
+                "currency_view": view,
+            },
+        )
+        selected = [row for row in causal_rows if row["contribution"] == "Selected modification"]
+        assert selected
+        assert {row["modification_contract"] for row in selected} == {BR06_EXTERNAL_ID}
+        assert {row["modification_effective_date"] for row in selected} == {"2026-09-10"}
+        rerun = post(app, f"/api/v1/report-runs/{causal_run['id']}/rerun", world.maya, {})
+        assert rerun.status_code == 202, rerun.text
+        replay = run_now(world, UUID(rerun.json()["id"]))
+        assert replay["state"] == "SUCCEEDED", replay
+        assert replay["result"]["output_sha256_equal"] is True
+
 
 @pytest.mark.parametrize(
     "mode",

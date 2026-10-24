@@ -69,7 +69,7 @@ def calculate(
         or not selected <= indexed.keys()
         or any(
             events[indexed[key]].event_type
-            not in {"CONTRACT_AMENDED", "CONTRACT_BOOKED", "REGROUPED"}
+            not in {"CONTRACT_AMENDED", "CONTRACT_BOOKED", "REGROUPED", "CONTRACT_TERMINATED"}
             for key in selected
         )
     ):
@@ -89,6 +89,8 @@ def calculate(
     }
 
     def causal_driver(event: EventInput) -> str:
+        if event.event_type == "CONTRACT_TERMINATED":
+            return "MODIFICATION"
         if event.event_type == "REGROUPED":
             retained = modifications.get(
                 event.modification_key or str(event.payload.get("modification_id"))
