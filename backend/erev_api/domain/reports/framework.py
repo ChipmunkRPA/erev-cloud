@@ -125,6 +125,7 @@ from erev_api.domain.ai.access import job_requester
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.platform.jobs import job_outs
 from erev_api.domain.reports import (
+    acquisition_balance_cells,
     acquisition_cells,
     catalogue,
     locked,
@@ -1048,6 +1049,7 @@ CELL_EXPLAINERS: Final[Mapping[str, CellExplainer]] = MappingProxyType(
     {
         "revenue_from_opening_liability": opening_relief_cells.cell,
         "contract_balance_rollforward": acquisition_cells.cell,
+        "contract_balances": acquisition_balance_cells.cell,
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.cell,
         rpo_builder.CODE: rpo_builder.cell,
         loss_provision_register_builder.CODE: loss_provision_register_builder.cell,

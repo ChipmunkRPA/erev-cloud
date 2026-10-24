@@ -930,6 +930,9 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
       ...(sourceKind === "decimal" ? { decimal: true } : {}),
       ...(sourceKind === "actor" || sourceKind === "codes" ? { textFormat: sourceKind } : {}),
       kind,
+      ...(definition.code === "contract_balances" ? {
+        drillableWhen: (row: ReportRow) => typeof row.acquisition_source_period === "string",
+      } : {}),
       ...(definition.code === "contract_balance_rollforward" ? {
         drillableWhen: (row: ReportRow) => row.line_code === "BUSINESS_COMBINATIONS" ||
           (key === "business_combinations" && isMoney(row[key]) && Number(row[key].amount) !== 0),
@@ -940,6 +943,7 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
           definition.code === "modification_register" ||
           (definition.code === "bookings_billings_revenue" && ["booked_new", "booked_modifications", "billings", "revenue"].includes(key)) ||
           (definition.code === "variance_between_closes" && key === "change") ||
+          (definition.code === "contract_balances" && ["contract_liability", "contract_liability_current", "contract_liability_noncurrent", "contract_asset", "contract_asset_current", "contract_asset_noncurrent", "unbilled_receivable"].includes(key)) ||
           (definition.code === "contract_balance_rollforward" && ["contract_liability", "contract_asset", "unbilled_receivable", "business_combinations"].includes(key)) ||
           (definition.code === "revenue_from_opening_liability" && ["opening_contract_liability", "revenue_recognized", "revenue_from_opening"].includes(key))) &&
         kind === "money",

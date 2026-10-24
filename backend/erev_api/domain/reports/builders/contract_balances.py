@@ -32,6 +32,7 @@ from decimal import Decimal
 from typing import Any, Final
 
 from erev_api.domain.reports import (
+    acquisition_balance_cells,
     functional_balances,
     locked_ends,
     reporting_currency,
@@ -185,11 +186,19 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 **{name: tie_outs.money(amount, currency) for name, amount in values.items()},
             }
         )
+    acquisition_sources = acquisition_balance_cells.retain(
+        params, balances, rows, at, {} if translation is None else translation.rates
+    )
     columns = (
         Column("contract_external_id", "Contract", "code"),
         Column("customer_name", "Customer", "text"),
         Column("entity_code", "Entity", "code"),
         Column("currency", "Currency", "code"),
+        *(
+            (Column(acquisition_balance_cells.COLUMN, "Acquisition source period", "code"),)
+            if acquisition_sources
+            else ()
+        ),
         *(
             (
                 Column("functional_currency", "Functional currency", "code"),

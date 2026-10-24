@@ -422,7 +422,7 @@ def _closed_source_reports(world):
         ("reporting", "EUR", "18099.55"),
     ):
         params = {"entity_codes": [worlds.AVM_US], "book": "ASC606", "currency_view": view}
-        _, balances = worlds.report_run(
+        balance_run, balances = worlds.report_run(
             world,
             "contract_balances",
             {
@@ -436,6 +436,37 @@ def _closed_source_reports(world):
         assert own["contract_liability"] == {"currency": currency, "amount": expected}
         assert own["contract_liability_current"] == own["contract_liability"]
         assert own["contract_liability_noncurrent"]["amount"] == "0.00"
+        assert own["acquisition_source_period"] == "FY2026-P08"
+        explained_balance = get(
+            world.app,
+            f"/api/v1/explain/report-runs/{balance_run['id']}/cell",
+            world.maya,
+            params={"row_key": own["row_key"], "column_key": "contract_liability_current"},
+        )
+        assert explained_balance.status_code == 200, explained_balance.text
+        body = explained_balance.json()
+        assert body["value"] == own["contract_liability_current"]
+        contribution = body["contributors"]["items"][0]
+        assert any("/trace/" in link["href"] for link in contribution["source_links"])
+        assert "maturity horizon" in str(contribution)
+        if view == "reporting":
+            assert "Retained closing FX rate" in str(contribution)
+            repeated = post(
+                world.app, f"/api/v1/report-runs/{balance_run['id']}/rerun", world.maya, {}
+            )
+            assert repeated.status_code == 202, repeated.text
+            done = worlds.run_now(world, UUID(repeated.json()["id"]))
+            assert done["state"] == "SUCCEEDED", done
+            rerun_id = repeated.headers[worlds.REPORT_RUN_ID_HEADER]
+            repeated_explanation = get(
+                world.app,
+                f"/api/v1/explain/report-runs/{rerun_id}/cell",
+                world.maya,
+                params={"row_key": own["row_key"], "column_key": "contract_liability_current"},
+            )
+            assert repeated_explanation.status_code == 200, repeated_explanation.text
+            assert repeated_explanation.json()["value"] == body["value"]
+            assert repeated_explanation.json()["contributors"] == body["contributors"]
         if view == "transaction":
             _, later = worlds.report_run(
                 world,

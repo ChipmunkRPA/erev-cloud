@@ -37,3 +37,23 @@ it("offers acquisition explanations only on their rollforward cells", () => {
   expect(column.drillableWhen?.(acquired)).toBe(true);
   expect(column.drillableWhen?.(opening)).toBe(false);
 });
+
+
+it("offers acquisition balance explanations only with retained source periods", () => {
+  const definition: ReportDefinition = {
+    code: "contract_balances", version: 1, name: "Balances", kind: "STANDARD",
+    description: "Balances", parameters_schema: {}, output_formats: ["JSON"],
+    tie_outs: [], ipe_logic: null,
+  };
+  const money = { amount: "80000.00", currency: "USD" };
+  const acquired = { row_key: "contract:ACQUIRED:US", acquisition_source_period: "FY2026-P08", contract_asset_noncurrent: money, refund_liability: money };
+  const ordinary = { row_key: "contract:ORDINARY:US", contract_asset_noncurrent: money, refund_liability: money };
+  const columns = reportColumns({ definition, periods: [], bands: [], section: {
+    number: 1, heading: "Balances", totals: [], rows: [acquired, ordinary],
+  }});
+  const column = columns.find(c => c.key === "contract_asset_noncurrent")!;
+  expect(column.drillable).toBe(true);
+  expect(column.drillableWhen?.(acquired)).toBe(true);
+  expect(column.drillableWhen?.(ordinary)).toBe(false);
+  expect(columns.find(c => c.key === "refund_liability")?.drillable).toBe(false);
+});
