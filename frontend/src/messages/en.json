@@ -8188,5 +8188,6 @@
   "contracts.drawer.event.ratedAmount": "Rated amount",
   "contracts.drawer.event.usageQuantityError": "Enter a nonnegative usage quantity.",
   "contracts.drawer.event.usagePeriodError": "Usage period end must be on or after its start.",
-  "contracts.drawer.event.usageEffectiveError": "Effective date must be on or after the usage period end."
+  "contracts.drawer.event.usageEffectiveError": "Effective date must be on or after the usage period end.",
+  "contracts.drawer.event.title.royalty": "Record royalty statement"
 }

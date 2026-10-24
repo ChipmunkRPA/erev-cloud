@@ -1127,5 +1127,8 @@ and zero rated amounts are permitted. The quantity is sent as decimal text witho
 conversion. The preview shows the existing calculation impact before submission.
 
 Submission follows the existing independent manual-event approval flow. Evidence is optional
-for usage. This form records ordinary rated usage; it does not mark the event as a royalty
-statement. The usage API/import supports royalty-specific payloads separately.
+for usage. For ordinary rated usage choose **Record usage**. For a royalty statement choose
+**Record royalty statement**, also available on ROYALTY obligations. That form explicitly sends
+`is_royalty_statement: true` through the same preview and independent approval flow. Royalty
+statements target current obligation keys; merged-away original components are not offered
+because the royalty calculation does not yet aggregate those original component sources.

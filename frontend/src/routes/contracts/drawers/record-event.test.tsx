@@ -63,6 +63,7 @@ const PERIODS = [
 const TITLES: Readonly<Record<EventKind, string>> = {
   delivery: "Record delivery",
   usage: "Record usage",
+  royalty: "Record royalty statement",
   progress: "Record progress",
   milestone: "Record milestone",
   cost: "Record cost",
@@ -223,6 +224,7 @@ async function open(
   const panel = within(drawer).getByRole("region", { name: "Preview" });
   expect(panel.textContent).toBe("PreviewThe preview appears once the fields are valid.");
   switch (kind) {
+    case "royalty":
     case "usage":
       type(drawer, /^Quantity/, "50000.125");
       type(drawer, /^Usage metric/, "API_CALL");
@@ -689,4 +691,59 @@ it("validates usage dates and amounts before preview or submission", () => {
   ).toHaveProperty("amount");
   expect(eventKindsFor({ recognition_method: "USAGE" })).toContain("usage");
   expect(eventKindsFor({ recognition_method: "RIGHT_TO_INVOICE" })).toContain("usage");
+});
+
+it("keeps royalty statements distinct from ordinary rated usage", () => {
+  const form = {
+    ...emptyEventForm("O1"),
+    quantity: "20",
+    metric: "SALES",
+    amount: "200.00",
+    usageStart: "2026-09-01",
+    usageEnd: "2026-09-30",
+    effectiveDate: "2026-09-30",
+  };
+  const statement = buildEvents("royalty", form, "USD");
+  expect(statement.errors).toEqual({});
+  expect(statement.events?.[0]?.payload).toHaveProperty("is_royalty_statement", true);
+  expect(buildEvents("usage", form, "USD").events?.[0]?.payload).not.toHaveProperty(
+    "is_royalty_statement",
+  );
+  expect(
+    buildEvents("royalty", { ...form, effectiveDate: "2026-09-29" }, "USD").errors,
+  ).toHaveProperty("effectiveDate");
+  expect(eventKindsFor({ recognition_method: "ROYALTY" })).toEqual(["royalty"]);
+});
+
+it("submits an explicitly marked royalty statement against the selected obligation", async () => {
+  serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+  const captured: unknown[] = [];
+  server.use(
+    http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+      captured.push(await request.json());
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  const { drawer } = await open("royalty", false, true);
+  expect(within(drawer).queryByText("ORIGINAL · Combined into O1")).toBeNull();
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  await waitFor(() => expect(captured).toHaveLength(1));
+  expect(captured[0]).toMatchObject({
+    events: [
+      {
+        event_type: "USAGE_REPORTED",
+        effective_date: "2026-09-30",
+        obligation_key: "O1",
+        payload: {
+          obligation_key: "O1",
+          is_royalty_statement: true,
+          metric: "API_CALL",
+          quantity: "50000.125",
+          usage_period_start: "2026-09-01",
+          usage_period_end: "2026-09-30",
+          rated_amount: { amount: "5000.25", currency: "USD" },
+        },
+      },
+    ],
+  });
 });

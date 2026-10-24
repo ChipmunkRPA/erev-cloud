@@ -22,7 +22,7 @@ review and publish changes without PR accumulation, and do not deploy.
 
 ## Rated usage entry — October 24, 2026
 
-Workbench usage entry supports original combined members, preview and approval.
+Workbench usage/royalty entry supports preview and approval; usage offers original members.
 See [checkpoint](docs/release/USAGE-WORKBENCH-2026-10-24.md).
 
 ## Multi-currency disclosure packs — October 24, 2026

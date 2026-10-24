@@ -48,10 +48,12 @@ import {
   yesNoChoices,
 } from "./common";
 
-export type EventKind = "delivery" | "progress" | "milestone" | "cost" | "return" | "usage";
+export type EventKind =
+  "delivery" | "progress" | "milestone" | "cost" | "return" | "usage" | "royalty";
 export const EVENT_KINDS: readonly EventKind[] = [
   "delivery",
   "usage",
+  "royalty",
   "progress",
   "milestone",
   "cost",
@@ -66,6 +68,8 @@ export function eventKindsFor(
     case "UNITS_DELIVERED":
     case "POINT_IN_TIME":
       return ["delivery", "return"];
+    case "ROYALTY":
+      return ["royalty"];
     case "USAGE":
     case "RIGHT_TO_INVOICE":
       return ["usage", "delivery", "return"];
@@ -200,6 +204,7 @@ export function buildEvents(
   const items: EventItem[] = [];
   const effective = date ?? "";
   switch (kind) {
+    case "royalty":
     case "usage": {
       const units = decimalText(form.quantity);
       if (units === null) errors.quantity = t("contracts.drawer.event.usageQuantityError");
@@ -225,6 +230,7 @@ export function buildEvents(
           usage_period_start: form.usageStart,
           usage_period_end: form.usageEnd,
           rated_amount: { amount: form.amount, currency },
+          ...(kind === "royalty" ? { is_royalty_statement: true } : {}),
         },
       });
       break;
@@ -601,19 +607,22 @@ function eventFields(
 ): Readonly<Record<EventField, readonly string[]>> {
   const on = (shown: boolean, ...endings: readonly string[]) => (shown ? endings : []);
   return {
-    metric: on(kind === "usage", "metric"),
-    usageStart: on(kind === "usage", "usage_period_start"),
-    usageEnd: on(kind === "usage", "usage_period_end"),
+    metric: on(kind === "usage" || kind === "royalty", "metric"),
+    usageStart: on(kind === "usage" || kind === "royalty", "usage_period_start"),
+    usageEnd: on(kind === "usage" || kind === "royalty", "usage_period_end"),
     purpose: on(kind === "cost", "purpose"),
     obligation: on(selectsObligation, "obligation_key"),
-    quantity: on(kind === "delivery" || kind === "return" || kind === "usage", "quantity"),
+    quantity: on(
+      kind === "delivery" || kind === "return" || kind === "usage" || kind === "royalty",
+      "quantity",
+    ),
     trigger: on(kind === "delivery", "trigger"),
     measure: on(kind === "progress", "measure"),
     progress: on(kind === "progress", "cumulative_progress_ratio"),
     hours: on(kind === "progress" && labourHours, "hours_to_date"),
     milestone: on(kind === "milestone", "milestone_code"),
     weight: on(kind === "milestone", "cumulative_weight"),
-    amount: on(kind === "cost" || kind === "usage", "amount", "rated_amount"),
+    amount: on(kind === "cost" || kind === "usage" || kind === "royalty", "amount", "rated_amount"),
     reference: on(kind === "delivery" || kind === "return", "source_ref", "reason"),
     effectiveDate: ["effective_date"],
     creditMemo: on(kind === "return", "credit_memo_number"),
@@ -922,7 +931,7 @@ export function RecordEventDrawer({
           />
         ) : null}
         {obligationField}
-        {kind === "delivery" || kind === "return" || kind === "usage" ? (
+        {kind === "delivery" || kind === "return" || kind === "usage" || kind === "royalty" ? (
           <TextField
             name="event-quantity"
             label={t(
@@ -938,7 +947,7 @@ export function RecordEventDrawer({
             error={shown("quantity") ?? server("quantity")}
           />
         ) : null}
-        {kind === "usage" ? (
+        {kind === "usage" || kind === "royalty" ? (
           <>
             <TextField
               name="event-metric"
