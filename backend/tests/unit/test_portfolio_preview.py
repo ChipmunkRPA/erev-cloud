@@ -12,12 +12,14 @@ from erev_api.problems import Problem
 from erev_engine.bundle import FxRateInput
 
 
-def setup_preview(monkeypatch, *, dirty=False, currency="USD"):
+def setup_preview(
+    monkeypatch, *, dirty=False, currency="USD", identities=(("A", "POINTS"), ("B", "POINTS"))
+):
     portfolio, estimate, version = uuid4(), uuid4(), uuid4()
     members = []
     results = []
     computed = []
-    for name, ssp in [("A", "100"), ("B", "200")]:
+    for index, ((name, key), ssp) in enumerate(zip(identities, ("100", "200"), strict=True)):
         contract, group, computation, cv = uuid4(), uuid4(), uuid4(), uuid4()
         members.append({"contract_id": contract})
         results.extend(
@@ -29,9 +31,9 @@ def setup_preview(monkeypatch, *, dirty=False, currency="USD"):
                         "contract_id": contract,
                         "contract_version_id": cv,
                         "obligation_id": uuid4(),
-                        "obligation_key": "POINTS",
+                        "obligation_key": key,
                         "recognition_method": "REDEMPTION_PATTERN",
-                        "txn_currency": currency if name == "A" else "USD",
+                        "txn_currency": currency if index == 0 else "USD",
                         "modification_boundary_no": 0,
                         "original_ssp_selected": Decimal(ssp),
                         "remaining_ssp": Decimal(ssp),
@@ -162,3 +164,23 @@ def test_ssp_conversion_does_not_round_small_weights():
         [rate(rate=Decimal("1.234567890123"))],
     )
     assert value.converted_ssp == "0.000000000000000001234567890123"
+
+
+@pytest.mark.parametrize(
+    "identities",
+    [
+        (("A/B", "C"), ("A", "B/C")),
+        (("A%2FB", "C"), ("A/B", "C")),
+    ],
+)
+def test_delimiters_preserve_independent_original_allocation_sources(monkeypatch, identities):
+    value = service.preview(*setup_preview(monkeypatch, identities=identities))
+    assert value.allocated_total == "9"
+    assert {
+        (row.contract_external_id, row.obligation_key): row.breakage_quantity
+        for row in value.shares
+    } == {
+        identities[0]: "3",
+        identities[1]: "6",
+    }
+    assert len({row.contract_version_id for row in value.shares}) == 2

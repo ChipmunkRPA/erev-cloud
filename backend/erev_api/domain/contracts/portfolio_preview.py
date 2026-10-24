@@ -16,6 +16,8 @@ from erev_api.domain.contracts import (
     portfolios,
     queries,
 )
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
 from erev_api.problems import Problem
 from erev_api.schemas.portfolios import PortfolioBreakagePreviewOut, PortfolioBreakageShareOut
 
@@ -101,7 +103,7 @@ def preview(
                 "Every member must have a retained redemption or loyalty obligation.",
             )
         for row in eligible:
-            key = f"{current['external_id']}/{row['obligation_key']}"
+            key = obligation_subject_key(current["external_id"], row["obligation_key"])
             ssp = Decimal(
                 row["original_ssp_selected"]
                 if row["modification_boundary_no"] == 0

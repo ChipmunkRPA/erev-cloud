@@ -21,3 +21,16 @@ Validation: 15 focused backend cases cover allocation, currency-weight changes, 
 missing/inverse/future rates and tiny exact weights. The focused viewer scenario verifies source
 presentation and removal of obsolete results after a refused refresh. Scoped lint, Python types and
 frontend TypeScript checks pass. No deployment.
+
+
+## October 24 original-identity correction
+
+Preview allocation now uses the engine's encoded contract/obligation subject key instead of
+joining raw identifiers with a slash. Previously (contract A/B, obligation C) and (contract A,
+obligation B/C) collided and incorrectly refused a complete population. Literal percent escapes
+must also remain distinct from slash characters. Original API identity fields are unchanged.
+
+The regression checks retain both original version identities and the distinct 100/200 SSP
+weights, producing 3/6 of a total breakage quantity of 9. Seventeen focused allocation/preview
+cases pass, with scoped lint/types. This is a preview correctness fix; frozen effective-date
+application and the pending expected-redemption rule remain unfinished. No deployment.

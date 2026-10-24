@@ -256,7 +256,7 @@ Current outstanding implementation and verification gaps remain in
 Shared overrides local; breakage totals use SSP allocation; combination changes require effective-date
 reassessment. Shared return-rate drafts now support frozen bindings, impact previews, independent
 approval, atomic application/recomputation, effective-date exits and onboarding by common target
-keys, version-specific target changes and frozen FX for foreign unit costs. Foreign SSP breakage previews now retain direct effective-date FX sources; application and
+keys, version-specific target changes and frozen FX for foreign unit costs. Breakage previews retain escaped member identities and direct dated FX; application and
 combination reassessment remain open. See
 [checkpoint](docs/release/SHARED-TARGET-CHANGES-2026-10-23.md).
 
