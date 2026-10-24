@@ -118,6 +118,20 @@ def cell(
         details.append(
             "Functional current/noncurrent classification is not supplied by these balance sources."
         )
+        for layer in functional.get("liability_layers", ()):
+            details.append(
+                f"Original liability layer {layer['layer_key']}: remaining "
+                f"{Decimal(layer['txn_open']) * scale} {snapshot['currency']}; carrying "
+                f"{Decimal(layer['functional_carrying']) * scale_fn} {functional['currency']}."
+            )
+            for move in layer["movements"]:
+                details.append(
+                    f"{move['effective_date']} {move['kind']}: "
+                    f"{Decimal(move['amount_txn']) * scale} {snapshot['currency']}; "
+                    f"{Decimal(move['amount_functional']) * scale_fn} {functional['currency']}; "
+                    f"rate {move['rate']} ({move['rate_key']}, {move['version_key']}); "
+                    f"source {move['source_key'] or 'period-end remeasurement'}."
+                )
     maturity = snapshot.get("maturity", {})
     details.append(f"Current/noncurrent policy: {maturity.get('policy', 'unavailable')}")
     attribution = maturity.get("asset_attribution")
@@ -151,6 +165,11 @@ def cell(
     nodes = set(snapshot["nodes"])
     if functional is not None:
         nodes.update(functional["nodes"].values())
+        nodes.update(
+            move["node"]
+            for layer in functional.get("liability_layers", ())
+            for move in layer["movements"]
+        )
     for item in maturity.get("obligations", {}).values():
         nodes.update(item["sources"])
     links = [

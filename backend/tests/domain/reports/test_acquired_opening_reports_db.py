@@ -495,6 +495,12 @@ def _closed_source_reports(world, complete=None, foreign=False):
             (original,) = complete
             assert original["functional"]["currency"] == "USD"
             assert original["functional"]["amounts"]["contract_liability"] == 2200000
+            layers = original["functional"]["liability_layers"]
+            assert layers
+            assert sum(layer["functional_carrying"] for layer in layers) == 2200000
+            assert sum(layer["txn_open"] for layer in layers) == 2000000
+            assert "Original liability layer" in str(contribution)
+            assert "LIABILITY_LAYER_CREATED" in str(contribution)
             assert "Original functional contract_liability: 22000.00 USD" in str(contribution)
             assert any(
                 "contract_liability_functional" in link["href"]

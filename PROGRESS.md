@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [foreign acquisition sources](docs/release/ACQUISITION-FOREIGN-SOURCES-2026-10-24.md) added; full functional classification remains pending.
+Oct 24: [original FX layers](docs/release/ACQUISITION-LAYER-SOURCES-2026-10-24.md) reconcile and drill through; functional classification pending.

@@ -165,6 +165,36 @@ def capture(
             "amounts": fn_amounts,
             "nodes": fn_nodes,
         }
+        if (cb.bundle.evidence_revision or 0) >= 46:
+            functional["liability_layers"] = [
+                {
+                    "layer_key": layer.layer_key,
+                    "txn_open": layer.txn_open,
+                    "functional_carrying": layer.fn_carrying,
+                    "movements": [
+                        {
+                            "kind": move.movement_kind,
+                            "effective_date": move.effective_date.isoformat(),
+                            "amount_txn": move.amount_txn,
+                            "amount_functional": move.amount_functional,
+                            "rate_key": move.rate_key,
+                            "version_key": move.version_key,
+                            "rate": str(move.rate),
+                            "source_key": move.source_key,
+                            "node": move.trace_node_id,
+                        }
+                        for move in fx.layer_movements
+                        if move.entity == entity
+                        and move.layer_key == layer.layer_key
+                        and move.balance_role == "CONTRACT_LIABILITY"
+                        and move.effective_date <= cutover
+                    ],
+                }
+                for layer in fx.layer_balances
+                if layer.entity == entity
+                and layer.period_key == period.period_key
+                and layer.balance_role == "CONTRACT_LIABILITY"
+            ]
     trace = evidence.build(root_measures={})
     prefix = f"acquisition-cutover/{period.period_key}/"
     names = {
@@ -185,6 +215,9 @@ def capture(
     tb.merge_evidence(trace)
     if functional is not None:
         functional["nodes"] = {name: names[node] for name, node in functional["nodes"].items()}
+        for layer in functional.get("liability_layers", ()):
+            for move in layer["movements"]:
+                move["node"] = names[move["node"]]
     return (
         {
             "basis": "ORIGINAL_NONPOSTING_CUTOVER_EVALUATION",

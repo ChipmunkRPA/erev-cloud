@@ -112,6 +112,10 @@ def read(
                 raise tie_outs.invalid(
                     "currency_view", "Original acquisition functional source differs."
                 )
+    if functional is not None:
+        from .acquisition_layer_sources import verify
+
+        verify(bundle, snapshot, nodes)
     return amounts, {
         **snapshot,
         "nodes": sorted(snapshot["nodes"].values()),
