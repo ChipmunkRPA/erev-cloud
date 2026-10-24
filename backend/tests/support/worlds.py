@@ -26,32 +26,6 @@ from types import MappingProxyType
 from typing import Any, Final
 from uuid import UUID
 
-from erev_api.auth.keyring import KeyRing
-from erev_api.clock import FrozenClock
-from erev_api.config import Settings
-from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import (
-    contract,
-    contract_computation,
-    gl_account,
-    job,
-    legal_entity,
-    obligation,
-    period,
-)
-from erev_api.domain.contracts.commands import BookedContract
-from erev_api.domain.journals import subledger
-from erev_api.enums import ContractEventType, SubledgerPostingKind
-from erev_api.events.payloads import BillingRecordedV1, ProgressRecordedV1
-from erev_api.events.stream import EventIn
-from erev_api.files.store import LocalFileStore
-from erev_api.jobs.context import JobRuntime
-from erev_api.jobs.registry import run_job
-from erev_api.money import MoneyIn
-from erev_engine.bundle import InputBundle
-from erev_engine.currencies import ISO_4217
-from erev_engine.errors import EngineError
-from erev_engine.money import minor_to_decimal
 from fastapi import FastAPI
 from sqlalchemy import select, text
 from support import golden_streams, intent_totals
@@ -86,6 +60,33 @@ from support.principals import Actor, colleague, enrolled, member, sign_in
 from support.principals import workspace as signed_workspace
 from support.reference import PERIODS, approve, assign, get, holding, periods, post, put
 from support.reference import gl_account as new_gl_account
+
+from erev_api.auth.keyring import KeyRing
+from erev_api.clock import FrozenClock
+from erev_api.config import Settings
+from erev_api.db.session import DbContext, tenant_session
+from erev_api.db.tables import (
+    contract,
+    contract_computation,
+    gl_account,
+    job,
+    legal_entity,
+    obligation,
+    period,
+)
+from erev_api.domain.contracts.commands import BookedContract
+from erev_api.domain.journals import subledger
+from erev_api.enums import ContractEventType, SubledgerPostingKind
+from erev_api.events.payloads import BillingRecordedV1, ProgressRecordedV1
+from erev_api.events.stream import EventIn
+from erev_api.files.store import LocalFileStore
+from erev_api.jobs.context import JobRuntime
+from erev_api.jobs.registry import run_job
+from erev_api.money import MoneyIn
+from erev_engine.bundle import InputBundle
+from erev_engine.currencies import ISO_4217
+from erev_engine.errors import EngineError
+from erev_engine.money import minor_to_decimal
 
 JOURNAL_RUNS: Final = "/api/v1/journal-runs"
 RUN_ID_HEADER: Final = "X-Erev-Journal-Run-Id"
@@ -1573,8 +1574,9 @@ def k03_castellan(
     invoices INV-US-2001 to INV-US-2006 (550,000.00) and is computed: cumulative revenue
     600,000.00 at 31 Aug 2026 (WLD-X-09). The booking carries ``scope_605_35``: the contract is in
     the loss-test scope of POL-151."""
-    from erev_api.events.payloads import CostIncurredV1
     from support.factories import activated_contract
+
+    from erev_api.events.payloads import CostIncurredV1
 
     maya_member = member(keyring, clock, name="maya")
     assign(maya_member, "revenue_accountant")
@@ -2038,6 +2040,7 @@ def br06_lease(
     mixed_ssp_bases: bool = False,
     delivered_units: bool = False,
     cost_recovery: bool = False,
+    cost_to_cost: bool = False,
     labour_hours: bool = False,
 ) -> Br06World:
     """The facts of answer key ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT through the product's
@@ -2048,9 +2051,10 @@ def br06_lease(
     01 Jan 2026 to 31 Dec 2028, and is activated: the lease allocation of 81,000.00 is out of
     scope and the transaction price is 27,000.00. [J] The key's lease template recognises
     ``MANUAL``; this world uses units delivered, which no test reads (the line earns nothing)."""
-    from erev_api.db.tables import contract_version
     from support.factories import activated_contract, open_periods
     from support.reference import calendar, entity
+
+    from erev_api.db.tables import contract_version
 
     maya_member = member(keyring, clock, name="maya")
     assign(maya_member, "revenue_accountant")
@@ -2102,7 +2106,7 @@ def br06_lease(
                 "recognition_method": "USAGE",
                 "ratable_convention": None,
             }
-        if delivered_units or cost_recovery or labour_hours:
+        if delivered_units or cost_recovery or labour_hours or cost_to_cost:
             outputs = {
                 **outputs,
                 "distinctness": "distinct",
@@ -2111,6 +2115,8 @@ def br06_lease(
                 "over_time_criterion": "OT_A",
                 "recognition_method": "LABOUR_HOURS"
                 if labour_hours
+                else "COST_TO_COST"
+                if cost_to_cost
                 else "COST_RECOVERY"
                 if cost_recovery
                 else "UNITS_DELIVERED",
@@ -2346,8 +2352,9 @@ def k09_orrin_vale(world: ReportWorld) -> ReportWorld:
     INV-US-3101 36,000.00 (01 Sep 2026) and the commission ``COM-K09`` 6,480.00 incurred
     2026-09-05 (PRD WLD-F-27); computed once. The world then holds both contracts. The billing
     plan of WLD-K-09 (36,000.00 on 2027-09-01 and 2028-09-01) is not part of it (CTR-14)."""
-    from erev_api.db.tables import customer
     from support.factories import k09_body
+
+    from erev_api.db.tables import customer
 
     place = world.place
     buyer = place.scalar(select(customer.c.id).where(customer.c.code == "C-09"))
@@ -2632,9 +2639,10 @@ def k04_saltmarsh(
     the ``ASC606`` book only (PRD §2.5 adds ``IFRS15``, which no intercompany figure reads)."""
     from datetime import timedelta
 
-    from erev_api.db.tables import obligation_version
     from support.factories import open_periods
     from support.reference import approve, calendar, entity
+
+    from erev_api.db.tables import obligation_version
 
     maya, priya, marcus = _analysis_people(app, keyring, clock)
     enabled = put(app, "/api/v1/tenant-currencies", marcus, {"currency_codes": ["USD", "GBP"]})
@@ -3175,9 +3183,10 @@ def ifrs_sw01(
     deposit liability of 3,000.00); ``IFRS15`` recognises 1,000.00 a month. [J] The key names two
     ``COLLECTIBILITY`` records; the product takes a not-probable assessment only on a
     ``NOT_A_CONTRACT`` record (PRD SM-02 guard), so the ``ASC606`` record has that topic."""
-    from erev_api.db.tables import contract_version
     from support.factories import open_periods
     from support.reference import approve, calendar, entity
+
+    from erev_api.db.tables import contract_version
 
     maya, priya, marcus = _analysis_people(app, keyring, clock)
     enabled = put(app, "/api/v1/tenant-currencies", marcus, {"currency_codes": ["USD"]})
@@ -3371,9 +3380,10 @@ def chk_010_position(
     unbilled receivable 3,000.00 (P1) and contract asset 2,000.00 (P2). [J] The key books P1-TM
     with quantity 1 and delivers 120 hours; the product refuses a delivery beyond the booked
     quantity (``PROGRESS_OVER_DELIVERY``), so the line books the 120 hours."""
-    from erev_api.db.tables import contract_version_balance
     from support.factories import open_periods
     from support.reference import calendar, entity
+
+    from erev_api.db.tables import contract_version_balance
 
     maya, priya, marcus = _analysis_people(app, keyring, clock)
     enabled = put(app, "/api/v1/tenant-currencies", marcus, {"currency_codes": ["USD"]})
@@ -3709,8 +3719,9 @@ def verified(world: ReportWorld, clock: FrozenClock, name: str) -> ReportWorld:
     present step — a spent code is refused (T-PLT-04 ``last_used_step``)."""
     from datetime import timedelta
 
-    from erev_api.auth import totp
     from support.principals import step_up
+
+    from erev_api.auth import totp
 
     actor: Actor = getattr(world, name)
     user_id = actor.member.user_id
@@ -3831,8 +3842,9 @@ def reviewed_reopen_judgement(
     world: ReportWorld, clock: FrozenClock, *, entity_code: str, comment: str
 ) -> tuple[str, ReportWorld]:
     """Prepare and independently review the evidence before an error-correction reopen."""
-    from erev_api.db.tables import contract, legal_entity
     from support.reference import approve
+
+    from erev_api.db.tables import contract, legal_entity
 
     with world.place.uow() as uow:
         contract_id = uow.session.execute(
@@ -3927,9 +3939,10 @@ def k07_delivered(
     10,714.29 (WLD-X-17). No invoice is recorded (WLD-K-07). [J] The option's terms (40% off one
     further order by 13 Oct 2026; redemption 80%) are T-CON-14 facts no command stores before
     CTR-14; the booking carries what allocates it, its standalone selling price."""
+    from support.factories import K11_CHART
+
     from erev_api.db.tables import obligation_version
     from erev_api.events.payloads import DeliveryRecordedV1
-    from support.factories import K11_CHART
 
     maya, priya, marcus = _analysis_people(app, keyring, clock)
     enabled = put(app, "/api/v1/tenant-currencies", marcus, {"currency_codes": ["USD", "EUR"]})

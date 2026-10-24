@@ -870,8 +870,22 @@ def _amended(
 
     original = ModificationView.of(ev.contract_key, _modification_input(st, ev), event=ev)
     continuing = combined_reassessment.continued(ctx, st, original)
-    if any(treatments.get(host) != ModificationTreatment.PROSPECTIVE for host in continuing):
-        raise ValueError("Combined continuation must preserve prior revenue prospectively")
+    for host in continuing:
+        ob = next(
+            o
+            for o in st.obligations
+            if o.contract_key == ev.contract_key and o.obligation_key == host
+        )
+        input_term = (
+            ctx.combined_input_term_reassessment
+            and original.kind == "TERM_CHANGE"
+            and ob.recognition_method in {"COST_TO_COST", "LABOUR_HOURS"}
+        )
+        allowed = {ModificationTreatment.PROSPECTIVE}
+        if input_term:
+            allowed.add(ModificationTreatment.CUMULATIVE_CATCH_UP)
+        if treatments.get(host) not in allowed:
+            raise ValueError("Combined continuation must preserve prior revenue prospectively")
     result = _native(ctx, st, ev, tb, identified, price_at, route)
     return combined_reassessment.install(st, result, original, continuing)
 

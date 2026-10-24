@@ -66,12 +66,14 @@ def continued(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> se
             raise ValueError("Combined continuation requires complete dated eligibility assessment")
         if mod.template_mode is not None or ob.scope_flag != "IN_SCOPE_606":
             raise ValueError("Combined quantity continuation requires native in-scope treatment")
-        time_terms = (
-            ctx.combined_time_term_reassessment
-            and term_change
-            and ob.recognition_method == "TIME_ELAPSED"
+        nonunit_terms = term_change and (
+            (ctx.combined_time_term_reassessment and ob.recognition_method == "TIME_ELAPSED")
+            or (
+                ctx.combined_input_term_reassessment
+                and ob.recognition_method in {"COST_TO_COST", "LABOUR_HOURS"}
+            )
         )
-        if ob.recognition_method not in {"UNITS_DELIVERED", "POINT_IN_TIME"} and not time_terms:
+        if ob.recognition_method not in {"UNITS_DELIVERED", "POINT_IN_TIME"} and not nonunit_terms:
             raise ValueError("Combined quantity continuation requires an original unit measure")
         if any(line.action != "CHANGE" for line in changes):
             raise ValueError("Combined member removal requires separate reassessment")
@@ -101,9 +103,9 @@ def continued(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> se
             delta = sum(
                 (line.quantity_delta for line in changes if line.obligation_key == key), Fraction(0)
             )
-            if time_terms:
-                # A time-only change keeps quantities intact. Original delivery counters
-                # do not measure elapsed service; the prospective boundary measures it.
+            if nonunit_terms:
+                # A term-only change keeps quantities intact. The native boundary reads
+                # elapsed service or scoped cost/hour progress, not delivery counters.
                 continue
             component = replace(
                 ob,

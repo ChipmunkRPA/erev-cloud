@@ -361,6 +361,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         combined_quantity_reassessment=(cb.bundle.evidence_revision or 0) >= 29,
         combined_unit_term_reassessment=(cb.bundle.evidence_revision or 0) >= 30,
         combined_time_term_reassessment=(cb.bundle.evidence_revision or 0) >= 31,
+        combined_input_term_reassessment=(cb.bundle.evidence_revision or 0) >= 32,
         contracting_agent_calendar=(cb.bundle.evidence_revision or 0) >= 22,
         retain_boundary_allocation_basis=(cb.bundle.evidence_revision or 0) >= 23,
     )

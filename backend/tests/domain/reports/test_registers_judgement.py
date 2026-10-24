@@ -1576,12 +1576,13 @@ def test_combined_original_termination_public_workflow(
     assert replay["result"]["output_sha256_equal"] is True
 
 
-@pytest.mark.parametrize("mode", ["quantity", "unit_term", "time_term"])
+@pytest.mark.parametrize("mode", ["quantity", "unit_term", "time_term", "cost_term", "hours_term"])
 def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files, mode):
     term_change = mode != "quantity"
     time_terms = mode == "time_term"
+    input_terms = mode in {"cost_term", "hours_term"}
     from support.modifications import confirm_answers
-    from support.worlds import run_now
+    from support.worlds import estimate_version_approved, evidence_file, run_now
 
     from erev_api.db.tables import contract
 
@@ -1592,10 +1593,12 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         files,
         lessor_combination=True,
         nonlease_predominates=True,
-        delivered_units=not time_terms,
+        delivered_units=not (time_terms or input_terms),
+        cost_to_cost=mode == "cost_term",
+        labour_hours=mode == "hours_term",
     )
     world = lease.report
-    if not time_terms:
+    if not (time_terms or input_terms):
         head = world.place.scalar(
             select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
         )
@@ -1621,6 +1624,73 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         )
         assert delivered.status_code == 201, delivered.text
         accepted = approve(app, delivered.json()["approval_request_id"], world.priya)
+        assert accepted.status_code == 200, accepted.text
+    if input_terms:
+        element = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/estimates",
+            world.maya,
+            {
+                "estimate_kind": "EAC",
+                "element_code": "TERM-EAC",
+                "method": "COST_BUILDUP",
+                "obligation_key": "L2-SERVICE",
+                "allocation_target": "CONTRACT",
+            },
+        )
+        assert element.status_code == 201, element.text
+        estimate_version_approved(
+            app,
+            world.maya,
+            world.priya,
+            element.json()["id"],
+            {
+                "effective_date": "2026-09-01",
+                ("expected_quantity" if mode == "hours_term" else "expected_total_amount"): "1000",
+                "parameters": {"eac_scope": "COMBINATION"},
+                "rationale": "Complete combined estimate before the common term change.",
+            },
+        )
+        head = world.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+        )
+        progress = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/events",
+            world.maya,
+            {
+                "events": [
+                    {
+                        "event_type": "PROGRESS_RECORDED"
+                        if mode == "hours_term"
+                        else "COST_INCURRED",
+                        "effective_date": "2026-09-05",
+                        "obligation_key": key,
+                        "payload": {
+                            "obligation_key": key,
+                            **(
+                                {
+                                    "measure": "LABOUR_HOURS",
+                                    "hours_scope": "MEMBERS",
+                                    "hours_to_date": amount,
+                                    "cumulative_progress_ratio": "0.3",
+                                }
+                                if mode == "hours_term"
+                                else {
+                                    "purpose": "PROGRESS_INPUT",
+                                    "amount": {"amount": amount, "currency": "USD"},
+                                }
+                            ),
+                        },
+                    }
+                    for key, amount in [("L1-LEASE", "200"), ("L2-SERVICE", "100")]
+                ],
+                "evidence_file_ids": [evidence_file(app, world.maya)],
+            },
+            if_match=f'"s{head}"',
+        )
+        assert progress.status_code == 201, progress.text
+        accepted = approve(app, progress.json()["approval_request_id"], world.priya)
         assert accepted.status_code == 200, accepted.text
     assessment = {
         "decision": "CONTINUE",
@@ -1657,7 +1727,9 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     assert created.status_code == 201, created.text
     path = f"/api/v1/modifications/{created.json()['id']}"
     classified = confirm_answers(app, created.json()["id"], world.maya)
-    assert classified["proposed_treatments"] == {"L2-SERVICE": "PROSPECTIVE"}
+    assert classified["proposed_treatments"] == {
+        "L2-SERVICE": "CUMULATIVE_CATCH_UP" if input_terms else "PROSPECTIVE"
+    }
     assert classified["questionnaire"]["combined_reassessment"]["L2-SERVICE"] == assessment
     queued = post(app, path + "/preview", world.maya, {})
     assert queued.status_code == 202, queued.text
@@ -1688,7 +1760,9 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     assert rows[0]["allocated_amount"] == usd("108000.00" if term_change else "109000.00")
     # MONTHLY_EVEN counts eight completed original months before September 10.
     # Remaining 84,000 spreads over 21.7 months; September earns 0.7 / 21.7.
-    assert rows[0]["revenue_cum"] == usd("26709.68" if time_terms else "27000.00")
+    assert rows[0]["revenue_cum"] == usd(
+        "32400.00" if input_terms else "26709.68" if time_terms else "27000.00"
+    )
     assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
     rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
     assert rerun.status_code == 202, rerun.text

@@ -284,3 +284,88 @@ def test_time_term_continuation_preserves_prior_period_and_reprices_remaining_se
     assert reevaluate(after.trace) == {n.id: n.value for n in after.trace.nodes}
     with pytest.raises(ValueError, match="original unit measure"):
         compute(replace(value, evidence_revision=30))
+
+
+@pytest.mark.parametrize("method", ["COST_TO_COST", "LABOUR_HOURS"])
+@pytest.mark.parametrize("treatment", ["PROSPECTIVE", "CUMULATIVE_CATCH_UP"])
+def test_input_term_continuation_preserves_progress_and_consumes_later_original_inputs(
+    method, treatment
+):
+    from tests.engine.s03_pob_builder.test_combined_eac_scope import scenario
+    from tests.engine.s03_pob_builder.test_combined_hours import hours
+
+    value = (
+        scenario()
+        if method == "COST_TO_COST"
+        else hours([("SERVICE", "100", "MEMBERS"), ("LEASE", "200", "MEMBERS")])
+    )
+    original_output = compute(value).books[0]
+    contract = value.contracts[0]
+    mod = term_continuation().contracts[0].modifications[0]
+    effective = date(2026, 2, 15)
+    assessment = {
+        **mod.questionnaire["combined_reassessment"]["SERVICE"],
+        "effective_date": effective.isoformat(),
+    }
+    mod = replace(
+        mod,
+        effective_date=effective,
+        questionnaire={"combined_reassessment": {"SERVICE": assessment}},
+    )
+    event = bundles.event(
+        CONTRACT,
+        10,
+        "CONTRACT_AMENDED",
+        effective,
+        {
+            "modification_id": mod.modification_key,
+            "lines": list(mod.lines),
+            "treatments": {"SERVICE": treatment},
+            "ssp_basis": {},
+        },
+        obligation_keys=["LEASE", "SERVICE"],
+    )
+    value = replace(
+        value,
+        evidence_revision=32,
+        contracts=(replace(contract, modifications=(mod,)),),
+        events=(*value.events, event),
+    )
+    before_later = compute(value).books[0]
+    assert before_later.contract_version.columns["revenue_cum"] == 300_000
+    later = bundles.event(
+        CONTRACT,
+        11,
+        "COST_INCURRED" if method == "COST_TO_COST" else "PROGRESS_RECORDED",
+        date(2026, 2, 28),
+        {
+            "obligation_key": "LEASE",
+            **(
+                {"purpose": "PROGRESS_INPUT", "amount": "100"}
+                if method == "COST_TO_COST"
+                else {
+                    "measure": "LABOUR_HOURS",
+                    "hours_to_date": "300",
+                    "hours_scope": "MEMBERS",
+                    "cumulative_progress_ratio": "0.4",
+                }
+            ),
+        },
+        obligation_keys=["LEASE"],
+    )
+    after = compute(replace(value, events=(*value.events, later))).books[0]
+    assert after.contract_version.columns["revenue_cum"] == 400_000
+
+    def january(book):
+        return [
+            (s.schedule_kind, s.line_type, s.amount, s.cumulative_amount)
+            for s in book.schedules
+            if s.period_key == "FY2026-P01"
+        ]
+
+    assert january(original_output)
+    assert january(after) == january(original_output)
+    assert after.obligation_versions[0].columns["end_date"] == date(2026, 6, 30)
+    assert reevaluate(after.trace) == {n.id: n.value for n in after.trace.nodes}
+    with pytest.raises(ValueError, match="original unit measure"):
+        compute(replace(value, evidence_revision=31))

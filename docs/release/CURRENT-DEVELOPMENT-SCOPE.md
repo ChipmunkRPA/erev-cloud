@@ -1982,3 +1982,13 @@ Daily native and monthly-series public workflows preserve prior service, apply t
 term prospectively and retain report replay. See the
 [updated term checkpoint](COMBINED-UNIT-TERMS-2026-10-24.md). Cost/hour/progress measures,
 divergent terms, changed starts and removal/split work remain open; no deployment.
+
+## October 24: cost/hour combined term continuation
+
+Revision 32 and the wizard now accept complete common-end-date changes for COST_TO_COST and
+LABOUR_HOURS combinations. Existing classification may choose cumulative catch-up; application
+retains that treatment instead of forcing a prospective override. Scoped EAC and original
+progress carry across the boundary, with earlier periods unchanged in the validated scenarios.
+Native and public approval/report replay checks pass; see
+[checkpoint](COMBINED-INPUT-TERMS-2026-10-24.md). Cost recovery, percentage/milestone scope,
+divergent terms and splitting remain open. No deployment.

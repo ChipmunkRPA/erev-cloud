@@ -293,14 +293,18 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
           .filter(
             (item) =>
               item.scope_flag === "IN_SCOPE_606" &&
-              ["UNITS_DELIVERED", "POINT_IN_TIME", "TIME_ELAPSED"].includes(
-                item.recognition_method,
-              ) &&
+              [
+                "UNITS_DELIVERED",
+                "POINT_IN_TIME",
+                "TIME_ELAPSED",
+                "COST_TO_COST",
+                "LABOUR_HOURS",
+              ].includes(item.recognition_method) &&
               (item.combined_component_keys?.length ?? 0) > 0,
           )
           .map((item) => ({
             host: item.obligation_key,
-            quantityChanges: item.recognition_method !== "TIME_ELAPSED",
+            quantityChanges: ["UNITS_DELIVERED", "POINT_IN_TIME"].includes(item.recognition_method),
             members: item.combined_component_keys ?? [],
           })),
         combinedObligationMembers: obligations.data
