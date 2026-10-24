@@ -170,6 +170,7 @@ def run(
     acquired_pob_opening: bool = False,
     acquisition_cutover_closing: bool = False,
     acquisition_functional_cutover: bool = False,
+    acquisition_intercompany_sources: bool = False,
     opening_billing_sources: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
@@ -222,6 +223,7 @@ def run(
             acquired_pob_opening=acquired_pob_opening,
             acquisition_cutover_closing=acquisition_cutover_closing,
             acquisition_functional_cutover=acquisition_functional_cutover,
+            acquisition_intercompany_sources=acquisition_intercompany_sources,
             opening_billing_sources=opening_billing_sources,
         )
         if opening_billing_sources:

@@ -234,3 +234,27 @@ coverage under a published POB policy, different functional currencies/calendars
 agents, mixed acquired/existing groups, or recomputed acquisition baselines. Opening acquisition
 facts are fixture-appended, not a public acquisition-entry workflow. Two targeted database
 scenarios pass; no deployment or full-system readiness claim.
+
+
+## Native cross-entity acquisition control sources — October 24, 2026
+
+Evidence revision 20 connects original principal acquisition baselines and FX control sources
+when the contracting and performing entities differ. The closed-cutover FX evidence pass can
+retain the contracting entity's original sources; transaction and functional POB disclosures
+and closing eligibility use those sources at cutover and in subsequent periods. Closing evidence
+explicitly labels CONTRACTING_ENTITY_CONTROL and retains the performing entity. The resulting
+liability is the original obligation eligibility before the combination cap, not a second
+recognition of performing-entity income.
+
+Admission still requires BUSINESS_COMBINATION, OPENING_BALANCES_AT_CUTOVER and principal status.
+Complete baselines, consistent cutover dates, original billing attribution, currency and amount
+reconciliation continue to be checked. Existing stored input revisions preserve prior behavior.
+No journal, balance, schedule or FX-layer amounts are changed, and closed periods are not posted.
+
+Native verification covers ASC606 and IFRS15 at the closed cutover and the following month,
+USD transaction with USD or EUR contracting functional currency and a USD performing entity,
+FIFO_WITHIN_POB, original trace formulas, and unchanged financial output. Twenty focused cases
+pass, including existing same-entity acquisition cases and the earlier revision's refusal.
+Scoped lint and types pass. Two public open/locked cross-entity scenarios also pass.
+Different-calendar and broader multiple-member histories, mixed acquired/existing populations,
+agents and recomputed baselines remain unfinished; no overall readiness claim or deployment.

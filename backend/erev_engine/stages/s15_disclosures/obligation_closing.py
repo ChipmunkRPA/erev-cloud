@@ -6,6 +6,7 @@ from erev_engine.bundle import PeriodInput
 from erev_engine.stages.s07_onboarding import baseline_of
 from erev_engine.stages.state import AllocatedState, BookContext
 
+from .acquisition_sources import intercompany_enabled
 from .rollforward import BalanceInputs, _entered
 
 
@@ -50,7 +51,9 @@ def capture(
         cutover = next(iter(dates))
         if period.end_date < cutover:
             return unavailable("The acquisition has not entered the reporting entity.")
-    if any(ob.performing_entity != entity for ob in own) or (
+    if any(
+        ob.performing_entity != entity and not intercompany_enabled(records, ob) for ob in own
+    ) or (
         agents
         and (
             not capture_agent_control
@@ -159,6 +162,11 @@ def capture(
             for subject in sorted(subjects)
         },
     }
+
+    for ob in own:
+        if ob.performing_entity != entity and intercompany_enabled(records, ob):
+            result["obligations"][ob.subject_key]["relief_basis"] = "CONTRACTING_ENTITY_CONTROL"
+            result["obligations"][ob.subject_key]["performing_entity"] = ob.performing_entity
 
     if agents:
         # S12 revenue_cum here is the gross control flow for agents, including supplier

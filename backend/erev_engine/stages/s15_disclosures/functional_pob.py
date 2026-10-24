@@ -7,6 +7,8 @@ from erev_engine.bundle import PeriodInput
 from erev_engine.errors import EngineError
 from erev_engine.stages.state import BookContext, ObligationState
 
+from .acquisition_sources import intercompany_enabled
+
 if TYPE_CHECKING:
     from .rollforward import BalanceInputs
 
@@ -41,7 +43,7 @@ def classify(
         fx = records.fx
         assert fx is not None
         if any(
-            ob.performing_entity != entity
+            (ob.performing_entity != entity and not intercompany_enabled(records, ob))
             or ob.principal_agent.value != "PRINCIPAL"
             or (ob.opening is not None and not records.opening_billing_sources)
             for ob in own

@@ -11,7 +11,12 @@ from . import FxSource, FxState, run
 
 
 def capture(
-    ctx: BookContext, source: FxSource, tb: TraceBuilder, *, rates: RateIndex | None
+    ctx: BookContext,
+    source: FxSource,
+    tb: TraceBuilder,
+    *,
+    rates: RateIndex | None,
+    intercompany_sources: bool = False,
 ) -> FxState | None:
     horizon = dict(ctx.horizon)
     for entity, view in ctx.entities.items():
@@ -19,7 +24,7 @@ def capture(
             continue
         own = [ob for ob in source.allocated.obligations if ob.contracting_entity == entity]
         if not own or any(
-            ob.performing_entity != entity
+            (ob.performing_entity != entity and not intercompany_sources)
             or ob.principal_agent.value != "PRINCIPAL"
             or ob.opening is None
             or ob.opening.get("reason") != "BUSINESS_COMBINATION"

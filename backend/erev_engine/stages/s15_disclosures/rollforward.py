@@ -66,6 +66,8 @@ from erev_engine.stages.state import (
     Target,
 )
 
+from .acquisition_sources import intercompany_enabled
+
 __all__ = [
     "BALANCES",
     "BALANCE_LINES",
@@ -211,6 +213,7 @@ class BalanceInputs:
     acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
+    acquisition_intercompany_sources: bool = False  # Revision 20: contracting control sources
     opening_billing_sources: bool = False  # Revision 16: original cutover FX attribution
 
 
@@ -360,7 +363,7 @@ def rollforward_balances(
             records,
             acquisition_functional_cutover=bool(own)
             and all(
-                ob.performing_entity == entity
+                (ob.performing_entity == entity or intercompany_enabled(records, ob))
                 and ob.principal_agent.value == "PRINCIPAL"
                 and _acquired(ob)
                 and (baseline := baseline_of(ob)) is not None
@@ -554,7 +557,7 @@ def _transaction(
                 not _acquired(ob)
                 or baseline is None
                 or baseline.cutover_date != cutover
-                or ob.performing_entity != entity
+                or (ob.performing_entity != entity and not intercompany_enabled(records, ob))
                 or ob.principal_agent.value != "PRINCIPAL"
                 or (
                     baseline.revenue_cum > baseline.billed_cum
@@ -731,7 +734,7 @@ def _within_obligations(
                 baseline is None
                 or baseline.cutover_date != cutover
                 or baseline.method != "OPENING_BALANCES_AT_CUTOVER"
-                or ob.performing_entity != entity
+                or (ob.performing_entity != entity and not intercompany_enabled(records, ob))
                 or ob.principal_agent.value != "PRINCIPAL"
             ):
                 raise EngineError(

@@ -178,6 +178,7 @@ def run(
     capture_opening_attribution: bool = False,
     capture_cutover_evidence: bool = False,
     retain_cutover_sources: bool = False,
+    acquisition_intercompany_sources: bool = False,
 ) -> FxState:
     """Layers, functional targets and remeasurements of one book (ENGINE_SPEC_B §12.2)."""
     flows = st.fx_flows
@@ -275,7 +276,9 @@ def run(
     if capture_cutover_evidence:
         from .cutover_evidence import capture
 
-        supplementary = capture(ctx, st, tb, rates=rates)
+        supplementary = capture(
+            ctx, st, tb, rates=rates, intercompany_sources=acquisition_intercompany_sources
+        )
         if retain_cutover_sources:
             result_state = dataclasses.replace(
                 result_state, cutover_disclosure_sources=supplementary
