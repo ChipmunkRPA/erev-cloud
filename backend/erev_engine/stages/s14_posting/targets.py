@@ -393,7 +393,7 @@ def part_targets(ctx: BookContext, st: FxState, inputs: PartInputs) -> tuple[Par
         *_customer_consideration(ctx, inputs, st),
         *_warranties(ctx, inputs),
         *_noncash(ctx, inputs),
-        *_cost_assets(ctx, inputs),
+        *_cost_assets(ctx, inputs, st),
         *_loss_provisions(ctx, inputs, st),
     ]
     keys = [target.key for target in found]
@@ -421,7 +421,7 @@ _COST_ASSET_ROLES: Final[Mapping[str, str]] = MappingProxyType(
 )
 
 
-def _cost_assets(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
+def _cost_assets(ctx: BookContext, inputs: PartInputs, st: FxState) -> list[PartTarget]:
     """``JET-09a`` to ``JET-09f`` per cost asset from the stage 11 measures (Table 14-A; S11-R-01
     to S11-R-13; lane L5-5).
 
@@ -430,6 +430,9 @@ def _cost_assets(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
     deltas, as it posts relief (L3-2-Q-15; L5-5-Q-15).
     """
     out: list[PartTarget] = []
+    functional = {
+        (f.entity, f.subject_key, f.period_key, f.measure): f for f in st.functional_targets
+    }
     for target in inputs.cost_assets:
         part = _COST_PARTS.get(target.measure)
         if part is None:
@@ -444,7 +447,19 @@ def _cost_assets(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
         if part == "JET-09a":
             part = "JET-09a′" if target.cause == "FULFILL" else part
             component = None
-        out.append(_plain(ctx, target, part, component, target.value, ((target.node_id, 1),)))
+        out.append(
+            _plain(
+                ctx,
+                target,
+                part,
+                component,
+                target.value,
+                ((target.node_id, 1),),
+                fx=functional.get(
+                    (target.entity, target.subject_key, target.period_key, target.measure)
+                ),
+            )
+        )
     return out
 
 

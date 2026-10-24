@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [split application](docs/release/SPLIT-APPLICATION-2026-10-24.md) adds dated approval and atomic recomputation.
+Oct 24: [cost currency](docs/release/COST-ASSET-CURRENCY-2026-10-24.md) adds historical cost postings and report carrying.

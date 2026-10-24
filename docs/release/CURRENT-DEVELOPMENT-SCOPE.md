@@ -2816,3 +2816,11 @@ This supersedes the earlier “implementation outstanding” checkpoint for ordi
 See [split application](SPLIT-APPLICATION-2026-10-24.md). Supported same-currency splits now
 submit, approve and apply atomically, with dated membership and original history retained.
 Foreign-currency layer continuation and unsupported specialist methods remain open.
+
+
+## 2026-10-24 — ordinary foreign contract costs
+
+Revision 55 adds historical functional capitalisation, amortisation, dated member carrying
+and JET-09 rate references for ordinary cost assets. See [cost currency](COST-ASSET-CURRENCY-2026-10-24.md).
+Impairment/reversal/clawback/acceleration, delayed capitalisation, return assets and loss provisions
+remain outside this addition. Foreign split layer distribution awaits the owner’s choice.

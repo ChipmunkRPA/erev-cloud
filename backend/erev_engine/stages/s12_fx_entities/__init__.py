@@ -270,9 +270,15 @@ def run(
         ic_pairs=tuple(ic_pairs),
         findings=tuple(sorted(findings, key=lambda finding: finding.sort_key())),
     )
+    if any(f.severity == "ERROR" for f in state.findings):
+        return state  # Let the stage boundary report the original blocking finding.
     result_state = dataclasses.replace(
         state, functional_member_balances=_functional_member_balances(ctx, st, state, tb)
     )
+    if ctx.historical_cost_currency:
+        from .cost_assets import measure as cost_currency
+
+        result_state = cost_currency(ctx, st, result_state, tb, rates=rates)
     if capture_cutover_evidence:
         from .cutover_evidence import capture
 

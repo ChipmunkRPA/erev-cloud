@@ -271,6 +271,7 @@ class BookContext:
     combined_unit_mixed_reassessment: bool = False
     cost_recovery_boundaries: bool = False
     member_current_liability: bool = False
+    historical_cost_currency: bool = False
     prospective_split_netting: bool = False
     dated_current_asset: bool = False
     dated_current_liability: bool = False

@@ -1191,3 +1191,13 @@ example CREDITS), usage period and effective date. No rated amount is requested 
 The event uses the existing preview and independent manual-event approval workflow; the approved
 quantity feeds the existing redemption/breakage calculation. Returns remain separate events.
 This records actual redemptions and does not change expected redemption or shared breakage rules.
+
+
+### Foreign contract-cost balances
+
+Ordinary capitalised contract costs use the capitalisation-date historical exchange rate for
+capitalisation and cumulative amortisation. Functional balance reports retain this carrying
+amount, and cost journal lines retain their rate references; they do not translate the asset
+at the current closing rate. This applies when occurrence and capitalisation share a date.
+Foreign costs involving impairment, impairment reversal, clawback, termination acceleration
+or delayed capitalisation still require additional functional measurement and are refused.
