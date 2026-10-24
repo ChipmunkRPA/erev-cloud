@@ -49,8 +49,10 @@ Revision 17 supplies period-keyed original billing traces at closed acquisition 
 without adding posting targets. ASC606/IFRS15 transaction POB readers can consume these
 sources; 43 focused cases pass. See [checkpoint](ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
 Revision 18 also retains original FX trace sources at eligible foreign closed cutovers,
-without changing financial outputs; 53 focused cases pass. Full public acquired-report/lock
-workflows and special-source cases remain open.
+without changing financial outputs. Revision 19 connects them to native closing snapshots
+and classifies exact period-end acquisition balances as BUSINESS_COMBINATIONS, with no OTHER
+offset; 49 focused cases pass. Full public acquired-report/lock workflows, mid-period
+cutovers and special-source cases remain open.
 
 ## Acquired functional sources — October 23, 2026
 

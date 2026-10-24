@@ -554,6 +554,7 @@ def _stage_call(
             capture_agent_control=(cb.bundle.evidence_revision or 0) >= 8,
             acquired_pob_opening=(cb.bundle.evidence_revision or 0) >= 14,
             acquisition_cutover_closing=(cb.bundle.evidence_revision or 0) >= 15,
+            acquisition_functional_cutover=(cb.bundle.evidence_revision or 0) >= 19,
             opening_billing_sources=(cb.bundle.evidence_revision or 0) >= 16,
             frozen_openings=cb.bundle.disclosure_openings or (),
         )
@@ -579,6 +580,7 @@ def _stage_call(
                 ctx, source, tb, rates=cb.fx,
                 capture_opening_attribution=(cb.bundle.evidence_revision or 0) >= 16,
                 capture_cutover_evidence=(cb.bundle.evidence_revision or 0) >= 18,
+                retain_cutover_sources=(cb.bundle.evidence_revision or 0) >= 19,
             )
         return lambda: spec.entry(ctx, source, tb, rates=cb.fx)
     if spec.stage == "14":

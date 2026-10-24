@@ -45,7 +45,7 @@ the contract asset and the unbilled receivable in one view (L4-3-Q-3):
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from types import MappingProxyType
 from typing import Final
@@ -210,6 +210,7 @@ class BalanceInputs:
     fx: FxState | None = None  # stage 12 state, for the functional view
     acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
+    acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
     opening_billing_sources: bool = False  # Revision 16: original cutover FX attribution
 
 
@@ -354,6 +355,20 @@ def rollforward_balances(
         previous = ordered[index - 1]
     unit = group_entity_subject_key(st.group_code, entity)
     own = tuple(ob for ob in st.obligations if ob.contracting_entity == entity)
+    if records.acquisition_functional_cutover:
+        records = replace(
+            records,
+            acquisition_functional_cutover=bool(own)
+            and all(
+                ob.performing_entity == entity
+                and ob.principal_agent.value == "PRINCIPAL"
+                and _acquired(ob)
+                and (baseline := baseline_of(ob)) is not None
+                and baseline.method == "OPENING_BALANCES_AT_CUTOVER"
+                and baseline.cutover_date == period.end_date
+                for ob in own
+            ),
+        )
     if opening_obligations is not None:
         if (
             opening is None
@@ -585,6 +600,12 @@ def _functional(
             detail={"rule": "REQ-FX-007", "stage": "15"},
         )
     start, end = period.start_date, period.end_date
+    if (
+        records.acquisition_functional_cutover
+        and cutover == end
+        and fx.cutover_disclosure_sources is not None
+    ):
+        fx = fx.cutover_disclosure_sources
     by_source: dict[str, list[ControlFlow]] = {}
     for item in records.flows:
         if item.entity == entity:
@@ -672,6 +693,11 @@ def _functional(
             closing[role_of(held.layer_key, period.period_key)] += held.fn_carrying
     for role in BALANCES:
         lines[role][CLOSING] = closing[role]
+        if records.acquisition_functional_cutover and cutover == end:
+            lines[role][_COMBINATIONS] = closing[role]
+    if records.acquisition_functional_cutover and cutover == end:
+        for role in (UNBILLED_RECEIVABLE, CONTRACT_ASSET):
+            asset[role] = closing[role]
     _captions(asset, closing, lines)
     return relief
 

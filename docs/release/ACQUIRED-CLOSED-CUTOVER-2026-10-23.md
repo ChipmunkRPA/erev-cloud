@@ -71,3 +71,27 @@ closed/open cutovers, missing rates and atomic conflicting-evidence rejection. S
 and types pass. New bundles select revision 18; old evidence remains immutable. Public
 report/approval/lock/rerun integration, acquisition agents/cross-entity cases and mixed-sign
 allocations remain open. No migration or deployment.
+
+
+## Functional acquisition closing snapshots — October 24, 2026
+
+Revision 19 connects the supplementary cutover FX sources to native functional closing
+snapshots. Previously revision 18 retained the trace but kept the snapshot on the posting
+horizon: a closed cutover showed no functional closing, and an open cutover's established
+balance fell into OTHER. At an exact period-end cutover, complete same-entity principal
+OPENING_BALANCES_AT_CUTOVER acquisition baselines now retain the original functional
+closing and classify it as BUSINESS_COMBINATIONS. Opening and OTHER are zero. The native
+obligation eligibility snapshot uses the same original billing/revenue FX sources.
+
+Supplementary FX results are held separately from ordinary producer targets. They are
+consumed only for this disclosure scope; posting intents, FX movements, trace nodes and
+all non-disclosure book outputs match revision 18. Old revisions remain unchanged. Missing
+rates still leave evidence unavailable, without fabricating a functional closing.
+
+Necessary validation: closed and open USD/EUR acquisitions show ASC606 EUR 108,000 and
+IFRS15 EUR 81,000 closing liability, equal business-combination increases, no OTHER offset,
+and matching per-obligation eligibility. Every balance rollforward reconciles. Acquired,
+FX-source, native-snapshot-reader and POB-reader checks pass together (49 tests), with scoped
+lint and types. This validates native snapshot production, not the still-open populated
+public report/approval/lock/rerun workflow. Mid-period cutovers, acquired agents/cross-entity
+and mixed-sign source allocations remain separate gaps. No deployment or reopened period.

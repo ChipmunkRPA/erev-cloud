@@ -156,6 +156,7 @@ class FxState:
     # Disclosure-only original billing allocation; never producer targets for posting.
     billing_disclosure_targets: tuple[FxTarget, ...] = ()
     billing_attribution_sources: tuple[BillingAttribution, ...] = ()
+    cutover_disclosure_sources: FxState | None = None
 
 
 Flow = ControlFlow | MonetaryFlow | ReceivableFlow
@@ -176,6 +177,7 @@ def run(
     rates: RateIndex | None = None,
     capture_opening_attribution: bool = False,
     capture_cutover_evidence: bool = False,
+    retain_cutover_sources: bool = False,
 ) -> FxState:
     """Layers, functional targets and remeasurements of one book (ENGINE_SPEC_B §12.2)."""
     flows = st.fx_flows
@@ -273,7 +275,11 @@ def run(
     if capture_cutover_evidence:
         from .cutover_evidence import capture
 
-        capture(ctx, st, tb, rates=rates)
+        supplementary = capture(ctx, st, tb, rates=rates)
+        if retain_cutover_sources:
+            result_state = dataclasses.replace(
+                result_state, cutover_disclosure_sources=supplementary
+            )
     return result_state
 
 

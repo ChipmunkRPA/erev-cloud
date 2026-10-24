@@ -277,6 +277,22 @@ def test_foreign_cutover_evidence_is_readable_without_financial_changes(
         value = replace(value, fx_rates=())
     old = erev_engine.compute(replace(value, evidence_revision=17))
     new = erev_engine.compute(replace(value, evidence_revision=18))
+    current = erev_engine.compute(replace(value, evidence_revision=19))
+    for prior, book in zip(new.books, current.books, strict=True):
+        assert replace(book, disclosure_rollforwards=prior.disclosure_rollforwards) == prior
+        if missing_rates:
+            assert book == prior
+            continue
+        snapshot = next(r for r in book.disclosure_rollforwards if r.view == "FUNCTIONAL")
+        expected = 10800000 if book.book_code == "ASC606" else 8100000
+        values = snapshot.lines["CONTRACT_LIABILITY"]
+        assert values["CLOSING"] == values["BUSINESS_COMBINATIONS"] == expected
+        assert values["OPENING"] == values["OTHER"] == 0
+        assert snapshot.obligation_closing["status"] == "AVAILABLE"
+        assert snapshot.obligation_closing["obligations"][w.SUBJECT]["liability"] == expected
+        for values in snapshot.lines.values():
+            assert values["CLOSING"] == sum(v for k, v in values.items() if k != "CLOSING")
+
     entity = UUID(int=1)
     session = NS(
         execute=lambda *a: NS(

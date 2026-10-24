@@ -3,8 +3,8 @@
 from typing import Any
 
 from erev_engine.bundle import PeriodInput
-from erev_engine.stages.state import AllocatedState, BookContext
 from erev_engine.stages.s07_onboarding import baseline_of
+from erev_engine.stages.state import AllocatedState, BookContext
 
 from .rollforward import BalanceInputs, _entered
 
@@ -98,6 +98,12 @@ def capture(
         fx = records.fx
         if fx is None:
             return unavailable("Original functional sources are unavailable.")
+        if (
+            records.acquisition_functional_cutover
+            and cutover == period.end_date
+            and fx.cutover_disclosure_sources is not None
+        ):
+            fx = fx.cutover_disclosure_sources
         original = {}
         for item in fx.billing_attribution_sources:
             if item.entity != entity or item.period_key > period.period_key:

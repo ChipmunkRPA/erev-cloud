@@ -30,11 +30,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from erev_engine.bundle import DisclosureOpeningInput
 from datetime import date
 from types import MappingProxyType
 from typing import Final
 
+from erev_engine.bundle import DisclosureOpeningInput
 from erev_engine.errors import EngineError
 from erev_engine.stages.s09_recognition import RecognitionState
 from erev_engine.stages.s10_billing_balances import BalanceState
@@ -169,6 +169,7 @@ def run(
     capture_agent_control: bool = False,
     acquired_pob_opening: bool = False,
     acquisition_cutover_closing: bool = False,
+    acquisition_functional_cutover: bool = False,
     opening_billing_sources: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
@@ -220,11 +221,15 @@ def run(
             balances_rollforward.balance_inputs(ctx, balances, fx, intents, posted),
             acquired_pob_opening=acquired_pob_opening,
             acquisition_cutover_closing=acquisition_cutover_closing,
+            acquisition_functional_cutover=acquisition_functional_cutover,
             opening_billing_sources=opening_billing_sources,
         )
         if opening_billing_sources:
             attribution = {key: dict(shares) for key, shares in records.attribution.items()}
-            for item in fx.billing_attribution_sources:
+            sources = fx.billing_attribution_sources
+            if acquisition_functional_cutover and fx.cutover_disclosure_sources is not None:
+                sources = fx.cutover_disclosure_sources.billing_attribution_sources
+            for item in sources:
                 if item.source_key.endswith("/opening_billed_cum"):
                     attribution.setdefault(item.source_key, {})[item.subject_key] = item.amount_txn
             records = replace(records, attribution=attribution)

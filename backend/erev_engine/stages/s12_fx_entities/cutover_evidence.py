@@ -7,12 +7,12 @@ from erev_engine.stages.s07_onboarding import baseline_of
 from erev_engine.stages.state import BookContext, RateIndex
 from erev_engine.trace import TraceBuilder
 
-from . import FxSource, run
+from . import FxSource, FxState, run
 
 
 def capture(
     ctx: BookContext, source: FxSource, tb: TraceBuilder, *, rates: RateIndex | None
-) -> None:
+) -> FxState | None:
     horizon = dict(ctx.horizon)
     for entity, view in ctx.entities.items():
         if view.functional_currency == ctx.txn_currency:
@@ -43,7 +43,7 @@ def capture(
         ):
             horizon[entity] = closing.period_key
     if horizon == dict(ctx.horizon):
-        return
+        return None
     original = tb.build(root_measures={})
     evidence = TraceBuilder(engine_version=original.engine_version)
     calculated = run(
@@ -56,5 +56,6 @@ def capture(
     # Missing original rates or invalid evidence must never fabricate functional sources.
     # Financial output of the ordinary run remains authoritative; readers refuse gaps.
     if any(f.severity == "ERROR" for f in calculated.findings):
-        return
+        return None
     tb.merge_evidence(evidence.build(root_measures={}))
+    return calculated
