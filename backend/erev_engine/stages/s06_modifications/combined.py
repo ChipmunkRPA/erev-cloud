@@ -31,6 +31,30 @@ def view(st: AllocatedState, mod: ModificationView) -> ModificationView:
     names = aliases(st, mod.contract_key)
     if not names:
         return mod
+    # Removing every original component ends the combination, so no surviving scope
+    # needs reassessment. Retain separate original lines and their signed quantities.
+    removed = {
+        ob.obligation_key
+        for ob in st.obligations
+        if mod.kind == "TERMINATION"
+        and (mod.event is None or mod.event.event_type == "CONTRACT_TERMINATED")
+        and ob.contract_key == mod.contract_key
+        and ob.combined_component_keys
+        and {
+            line.obligation_key
+            for line in mod.lines
+            if names.get(line.obligation_key) == ob.obligation_key
+        }
+        == set(ob.combined_component_keys)
+        and all(
+            line.action == "REMOVE"
+            and line.quantity_delta <= 0
+            and line.consideration_delta <= 0
+            and all(line.members.get(name) is None for name in ("start_date", "end_date"))
+            for line in mod.lines
+            if names.get(line.obligation_key) == ob.obligation_key
+        )
+    }
     lines = []
     for line in mod.lines:
         host = names.get(line.obligation_key)
@@ -39,7 +63,7 @@ def view(st: AllocatedState, mod: ModificationView) -> ModificationView:
             continue
         # A component quantity or transfer-term change can invalidate the reviewed combination.
         # It needs reassessment, not an inferred change to the host's synthetic quantity/term.
-        if (
+        if host not in removed and (
             line.action != "CHANGE"
             or line.quantity_delta != 0
             or any(line.members.get(name) is not None for name in ("start_date", "end_date"))

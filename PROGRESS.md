@@ -20,12 +20,13 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Bounded local image builds — October 23, 2026
+## Combined termination and hours — October 23, 2026
 
-Frontend build passes. Compose image builds now have a configurable 1800-second limit,
-process-group cleanup and recorded failure. Four focused checks and a real short-budget
-Docker timeout pass. Full container verification remains open: image resolution did not
-finish. No deployment. See [local build evidence](docs/release/LOCAL-BUILD-2026-10-23.md).
+Whole-combination termination is implemented in the engine; public verification remains open.
+See [checkpoint](docs/release/COMBINED-TERMINATION-2026-10-23.md).
+Owner confirmed actual-hour scope: explicit whole or member values; sum latest member readings
+only with complete coverage, refuse mixed/missing scope. Implement next; this question is answered.
+[Local build evidence](docs/release/LOCAL-BUILD-2026-10-23.md) remains current. No deployment.
 
 ## Original agent gross-control closing evidence — October 23, 2026
 

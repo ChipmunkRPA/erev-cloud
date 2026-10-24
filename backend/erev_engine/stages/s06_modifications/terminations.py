@@ -99,6 +99,17 @@ def ended(
     names = _named(ev)
     if not names:
         raise ValueError(f"{ev.event_key}: a PARTIAL termination names obligation_keys (S06-R-21)")
+    resolved = set(names)
+    for ob in existing:
+        members = set(ob.combined_component_keys)
+        named = members & resolved
+        if not named:
+            continue
+        if named != members:
+            raise ValueError("Partial combined-component termination requires reassessment")
+        resolved.difference_update(members)
+        resolved.add(ob.obligation_key)
+    names = tuple(sorted(resolved))
     unknown = sorted(set(names) - keys)
     if unknown:
         raise ValueError(f"{ev.event_key}: {unknown[0]} is not an obligation of the contract")

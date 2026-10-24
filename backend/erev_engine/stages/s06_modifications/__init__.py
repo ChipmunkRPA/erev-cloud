@@ -1154,7 +1154,7 @@ def _terminated(
     the modification's ``chosen_treatments``; an ended obligation takes no treatment.
     """
     found = _modification_input(st, ev)
-    mod = ModificationView.of(ev.contract_key, found, event=ev)
+    mod = combined.view(st, ModificationView.of(ev.contract_key, found, event=ev))
     existing = classify.contract_obligations(st, mod)
     progress = {ob.obligation_key: _measure(ctx, st, ob, ev).progress for ob in existing}
     ended = terminations.ended(ev, existing, progress)
@@ -1164,9 +1164,10 @@ def _terminated(
     refund = max(terminations.refund(ctx, ev) - _deposit_refund(ctx, identified, ev), 0)
     terminations.check_lines(ctx, mod, ended, refund)
     raw = ev.payload.get("treatments", found.chosen_treatments)
-    chosen = _treatments(raw, ev)
+    aliases = combined.aliases(st, ev.contract_key)
+    chosen = combined.keyed(_treatments(raw, ev), aliases)
     treatments = MappingProxyType({key: t for key, t in chosen.items() if key not in ended})
-    basis = _ssp_basis(ev.payload.get("ssp_basis", found.ssp_basis), ev)
+    basis = combined.keyed(_ssp_basis(ev.payload.get("ssp_basis", found.ssp_basis), ev), aliases)
     route = _Route(mod, treatments, basis, ended=ended, refund=refund)
     return _native(ctx, st, ev, tb, identified, price_at, route)
 
