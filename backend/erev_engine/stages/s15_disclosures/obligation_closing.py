@@ -193,6 +193,12 @@ def capture(
         },
     }
 
+    if st.acquisition_cutover_rights:
+        for subject in recomputed:
+            right = records.right_classes.get((subject, period.period_key))
+            if right is not None:
+                result["obligations"][subject]["right_class"] = right
+                result["obligations"][subject]["right_class_rule"] = "S10-R-21"
     for ob in own:
         if ob.performing_entity != entity and intercompany_enabled(records, ob):
             result["obligations"][ob.subject_key]["relief_basis"] = "CONTRACTING_ENTITY_CONTROL"

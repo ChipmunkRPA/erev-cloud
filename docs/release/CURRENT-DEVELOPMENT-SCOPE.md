@@ -2531,3 +2531,23 @@ This retains new native computation evidence, not a reconstruction or replacemen
 older lock's missing historical input. Original right classification for closed asset cases,
 foreign-functional recomputation, and public per-contract balance-source fallbacks where
 ordinary cutover nodes are absent remain open. No deployment or overall readiness claim.
+
+
+## October 24: original right classification at closed recomputed cutover
+
+Evidence revision 41 extends the existing S10-R-21 right-to-consideration classification to
+otherwise unmeasured period-end acquired recomputed cutovers. It uses the original contract,
+obligation population and pinned policy resolver, including approved contract overrides.
+Only the classification map is extended; no presentation/posting target or reclassification
+entry is added. Native acquisition balances can therefore distinguish a contract asset from
+an unbilled receivable when recomputed revenue exceeds actual billing. POB closing evidence
+retains right_class and right_class_rule alongside the original billed/revenue trace sources.
+
+Two new full-engine cases cover the default conditional right and an explicit unconditional
+contract override: both show a 20,000 acquisition asset in the correct caption, zero liability
+and zero OTHER. Posting intents, balances, obligation versions and schedules equal the
+previous original financial calculation. Fifty focused native acquisition/onboarding cases
+pass, including the revision-40 missing-class refusal retained for historical reruns. Scoped
+Ruff and mypy pass. The native missing-class gap for this supported population is closed.
+Public report balance-source fallbacks where ordinary period nodes are absent, foreign
+functional recomputation and mixed/agent populations still require work. No deployment.

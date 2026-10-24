@@ -1217,6 +1217,29 @@ def present(
     for entity in sorted({ob.contracting_entity for ob in obligations}):
         own = [ob for ob in obligations if ob.contracting_entity == entity]
         measured = billing.periods(ctx, st, entity)
+        if st.acquisition_cutover_rights:
+            from erev_engine.stages.s07_onboarding import baseline_of
+
+            measured_keys = {p.period_key for p in measured}
+            for ob in own:
+                baseline = baseline_of(ob)
+                if (
+                    baseline is None
+                    or baseline.method != "RECOMPUTE_FROM_INCEPTION"
+                    or ob.opening is None
+                    or ob.opening.get("reason") != "BUSINESS_COMBINATION"
+                    or ob.principal_agent.value != "PRINCIPAL"
+                    or ob.performing_entity != entity
+                ):
+                    continue
+                for period in ctx.entities[entity].periods:
+                    if (
+                        period.end_date == baseline.cutover_date
+                        and period.period_key not in measured_keys
+                    ):
+                        rights[ob.subject_key, period.period_key] = right_class(
+                            ctx, contracts[ob.contract_key], ob, obligations, period.end_date
+                        )
         if not measured:
             # C-05 rev 1.100: the group's inception period lies after this entity's horizon.
             emitter.unmeasured(own, v)

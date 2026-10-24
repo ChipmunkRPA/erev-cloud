@@ -225,3 +225,70 @@ def test_closed_recomputed_asset_requires_original_right_class():
     # Missing original classification cannot silently label it a contract asset.
     with pytest.raises(EngineError, match="asset classification"):
         erev_engine.compute(replace(value, evidence_revision=40))
+
+
+@pytest.mark.parametrize("right", ["CONDITIONAL", "UNCONDITIONAL"])
+def test_closed_recomputed_asset_keeps_original_class_without_posting(right):
+    from erev_engine.bundle import ResolvedPolicyInput
+
+    invoice = bundles.event(
+        w.CONTRACT,
+        4,
+        "BILLING_RECORDED",
+        date(2025, 6, 1),
+        {
+            "invoice_number": "LOW-BILL",
+            "line_external_id": "LOW-BILL-1",
+            "obligation_key": w.OBLIGATION,
+            "amount": Decimal("100000"),
+            "issue_date": date(2025, 6, 1),
+        },
+        obligation_keys=[w.OBLIGATION],
+    )
+    value = w.chk_121(
+        as_of=w.CUTOVER,
+        extra=[invoice],
+        books=("ASC606",),
+        policies={"onboarding.method": "RECOMPUTE_FROM_INCEPTION", "billing.posting": "ENGINE"},
+    )
+    if right == "UNCONDITIONAL":
+        book = value.books[0]
+        override = ResolvedPolicyInput(
+            "balance.right_to_consideration",
+            "CONTRACT",
+            w.CONTRACT,
+            right,
+            "C",
+            "approved-right-override",
+            "K",
+        )
+        value = replace(
+            value,
+            books=(
+                replace(
+                    book,
+                    policies=tuple(
+                        sorted(
+                            (*book.policies, override),
+                            key=lambda p: (p.code, p.scope, p.subject_key),
+                        )
+                    ),
+                ),
+            ),
+        )
+    old = erev_engine.compute(replace(value, evidence_revision=39)).books[0]
+    current = erev_engine.compute(replace(value, evidence_revision=41)).books[0]
+    assert current.posting_intents == old.posting_intents == ()
+    assert current.balances == old.balances
+    assert current.schedules == old.schedules
+    assert current.obligation_versions == old.obligation_versions
+    role = "CONTRACT_ASSET" if right == "CONDITIONAL" else "UNBILLED_RECEIVABLE"
+    other = "UNBILLED_RECEIVABLE" if right == "CONDITIONAL" else "CONTRACT_ASSET"
+    for row in current.disclosure_rollforwards:
+        item = row.obligation_closing["obligations"][w.SUBJECT]
+        assert item["right_class"] == right
+        assert item["right_class_rule"] == "S10-R-21"
+        assert (item["billed"], item["revenue"], item["liability"]) == (10000000, 12000000, 0)
+        assert row.lines[role]["BUSINESS_COMBINATIONS"] == row.lines[role]["CLOSING"] == 2000000
+        assert row.lines[other]["CLOSING"] == row.lines["CONTRACT_LIABILITY"]["CLOSING"] == 0
+        assert all(lines["OTHER"] == 0 for lines in row.lines.values())
