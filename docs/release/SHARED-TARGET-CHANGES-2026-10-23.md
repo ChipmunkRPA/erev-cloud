@@ -132,3 +132,18 @@ no eligible redemption contract and therefore does not prove an end-to-end posit
 source read; native replay and positive preview assembly are covered separately. Approval input
 freezing, shared breakage application and the expected-redemption rule remain outstanding.
 No deployment.
+
+
+## October 24: positive native preview path verified
+
+The public API witness now publishes an actual REDEMPTION_PATTERN template, activates a native
+100-right contract, creates its shared breakage draft and requests the effective-date allocation.
+It reads the saved computation files through the production verification path, returns a conserved
+12-right allocation with the original computation ID/digest, and reproduces the response on a
+second read without changing the contract computation head. This closes the preceding checkpoint's
+positive-source-read verification gap. The single necessary API witness and scoped lint pass.
+
+Shared breakage submission/application remains disabled until its frozen member inputs and native
+application path are complete. The owner has been asked whether expected total redemptions should
+be total entitlement minus allocated breakage, overriding the local estimate, or retain the local
+expected-redemption estimate and refuse inconsistencies. No choice has been assumed. No deployment.

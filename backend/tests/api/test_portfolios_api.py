@@ -1018,3 +1018,142 @@ def test_portfolio_membership_workflow(
         assert current_input.portfolio_target_subject_keys == (
             obligation_subject_key("NEW-SHARED-MEMBER", other_key),
         )
+
+
+def test_breakage_preview_reads_verified_native_redemption_sources(
+    app: FastAPI, app_settings: Settings, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    from support.factories import (
+        TPL_PROD_UNITS,
+        activated_contract,
+        booked_contract,
+        published_template,
+        set_default_template,
+    )
+
+    from erev_api.db.tables import product
+
+    world = worlds.k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    template = published_template(
+        app,
+        world.maya,
+        world.marcus,
+        code="TPL-SHARED-REDEMPTION",
+        outputs={
+            **TPL_PROD_UNITS,
+            "recognition_method": "REDEMPTION_PATTERN",
+            "satisfaction_pattern": "OVER_TIME",
+            "over_time_criterion": "OT_A",
+        },
+        case_line={
+            "obligation_key": "POINTS",
+            "product_code": "AVM-IMPL-STD",
+            "quantity": "100",
+            "start_date": "2026-01-01",
+            "end_date": "2026-12-31",
+            "total_price": "1000.00",
+        },
+    )
+    product_id = world.place.scalar(
+        select(product.c.id).where(product.c.code == "AVM-IMPL-STD")
+    )
+    set_default_template(app, world.maya, str(product_id), template["template_id"])
+    customer = world.place.scalar(
+        select(contract.c.customer_id).where(
+            contract.c.id == UUID(str(world.contracts[worlds.K01].contract["id"]))
+        )
+    )
+    booked = activated_contract(
+        world.place,
+        booked_contract(
+            world.place,
+            {
+                "external_id": "SHARED-POINTS",
+                "customer_id": str(customer),
+                "contracting_entity_code": "AVM-US",
+                "transaction_currency": "USD",
+                "inception_date": "2026-01-01",
+                "lines": [
+                    {
+                        "obligation_key": "POINTS",
+                        "product_code": "AVM-IMPL-STD",
+                        "quantity": "100",
+                        "start_date": "2026-01-01",
+                        "end_date": "2026-12-31",
+                        "total_price": {"amount": "1000.00", "currency": "USD"},
+                    }
+                ],
+            },
+            activate=False,
+        ),
+    )
+    created = post(
+        app,
+        "/api/v1/portfolios",
+        world.maya,
+        {"code": "POINTS", "name": "Shared redemption points"},
+    )
+    assert created.status_code == 201, created.text
+    path = created.headers["location"]
+    joined = post(
+        app,
+        path + "/members",
+        world.maya,
+        {
+            "contract_id": str(booked.contract["id"]),
+            "rationale": "Common redemption terms",
+        },
+        if_match=created.headers["etag"],
+    )
+    assert joined.status_code == 201, joined.text
+    definition = post(
+        app,
+        path + "/estimates",
+        world.maya,
+        {
+            "element_code": "BREAKAGE",
+            "estimate_kind": "BREAKAGE",
+            "method": "RATE",
+            "target_obligation_keys": ["POINTS"],
+        },
+        if_match=get(app, path, world.maya).headers["etag"],
+    )
+    assert definition.status_code == 201, definition.text
+    version = post(
+        app,
+        definition.headers["location"] + "/versions",
+        world.maya,
+        {
+            "effective_date": "2026-09-01",
+            "currency": "USD",
+            "rationale": "Expected unused rights",
+            "parameters": {
+                "portfolio_total_breakage_quantity": "12",
+            },
+        },
+        if_match=get(app, path, world.maya).headers["etag"],
+    )
+    assert version.status_code == 201, version.text
+    source_id = world.place.scalar(
+        select(contract.c.latest_computation_id).where(contract.c.id == booked.contract["id"])
+    )
+    preview_path = version.headers["location"] + "/allocation-preview"
+    response = get(app, preview_path, world.maya)
+    assert response.status_code == 200, response.text
+    shown = response.json()
+    assert shown["basis"] == "EFFECTIVE_DATE_SSP_PREVIEW"
+    assert shown["effective_date"] == "2026-09-01"
+    assert shown["allocated_total"] == "12"
+    assert len(shown["shares"]) == 1
+    share = shown["shares"][0]
+    assert share["entitlement_quantity"] == "100"
+    assert share["breakage_quantity"] == "12"
+    assert share["computation_id"] == str(source_id)
+    assert len(share["computation_output_sha256"]) == 64
+    assert get(app, preview_path, world.maya).json() == shown
+    assert (
+        world.place.scalar(
+            select(contract.c.latest_computation_id).where(contract.c.id == booked.contract["id"])
+        )
+        == source_id
+    )

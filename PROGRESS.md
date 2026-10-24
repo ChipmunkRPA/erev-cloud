@@ -259,7 +259,7 @@ reassessment. Shared return-rate drafts now support frozen bindings, impact prev
 approval, atomic application/recomputation, effective-date exits and onboarding by common target
 keys, version-specific targets and frozen cost FX. Breakage drafts now retain original-member
 targets; previews use those targets and refuse changed populations/identities. SSP previews retain
-dated FX. Dated SSP/quantity preview is connected; approval/application and reassessment remain open. See
+dated FX. Dated preview passes native API verification; application and reassessment remain open. See
 [checkpoint](docs/release/SHARED-TARGET-CHANGES-2026-10-23.md).
 
 ## Acquired reporting and locked continuation — October 24, 2026
