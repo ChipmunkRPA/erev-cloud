@@ -274,6 +274,7 @@ class BookContext:
     historical_cost_currency: bool = False
     historical_cost_acceleration: bool = False
     historical_cost_deferred: bool = False
+    historical_cost_clawback: bool = False
     prospective_split_netting: bool = False
     dated_current_asset: bool = False
     dated_current_liability: bool = False

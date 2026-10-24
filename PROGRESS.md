@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [foreign deferred cost](docs/release/COST-ASSET-DEFERRED-2026-10-24.md) supports capitalization on activation and historical FX carrying.
+Oct 24: [foreign cost clawbacks](docs/release/COST-CLAWBACK-CURRENCY-2026-10-24.md) adds historical FX asset release and amortisation reconciliation.

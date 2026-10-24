@@ -2865,3 +2865,12 @@ Revision 57 closes delayed capitalization for ordinary foreign contract costs us
 stage-11 activation date and its spot rate. Native posting/carrying and trace checks pass.
 See [checkpoint](COST-ASSET-DEFERRED-2026-10-24.md). Foreign impairment, reversal and clawback
 remain open; no deployment or additional business approval workflow.
+
+
+### 2026-10-24 — Foreign commission clawback
+
+Revision 58 measures cost clawbacks at each matched asset’s historical rate, retaining the
+existing transaction FIFO/carrying cap, with functional JET-09f and subsequent amortisation
+reconciliation. Ten native cases pass; see [checkpoint](COST-CLAWBACK-CURRENCY-2026-10-24.md).
+Foreign impairment/reversal remain open. ERP settlement is outside this asset-release path.
+No deployment; publish directly to main.

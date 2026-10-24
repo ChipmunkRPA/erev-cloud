@@ -35,10 +35,12 @@ def measure(
         if currency == ctx.txn_currency:
             continue
         own = [t for t in targets if t.subject_key == spec.asset_key]
-        # Recoverability and reimbursement need their own functional measurement.
+        # Recoverability requires separate functional measurement.
         supported = {"cost_capitalised", "cost_amortised_cum", "carrying_amount"}
         if ctx.historical_cost_acceleration:
             supported.add("cost_accelerated_cum")
+        if ctx.historical_cost_clawback:
+            supported.add("cost_clawback_cum")
         if any(t.value and t.measure not in supported for t in own):
             continue
         event = next(e for e in fx.allocated.events if e.event_key == spec.asset_key)
@@ -67,7 +69,8 @@ def measure(
             amort = measures["cost_amortised_cum"]
             held = measures["carrying_amount"]
             accelerated = measures["cost_accelerated_cum"]
-            total_released = amort.value + accelerated.value
+            clawback = measures["cost_clawback_cum"]
+            total_released = amort.value + accelerated.value + clawback.value
             if (
                 capital.value != spec.amount_capitalized
                 or held.value != capital.value - total_released
@@ -75,8 +78,15 @@ def measure(
                 raise ValueError("Ordinary cost carrying does not reconcile")
             if not 0 <= amort.value <= total_released <= capital.value:
                 raise ValueError("Ordinary cost amortisation exceeds capitalised cost")
+            # Keep cumulative clawback independent of later amortisation. Allocate the
+            # shared historical rounding residue to amortisation/terminal acceleration.
+            recovered = (
+                round_half_up(Fraction(original * clawback.value, capital.value), 0)
+                if capital.value
+                else 0
+            )
             released = (
-                round_half_up(Fraction(original * amort.value, capital.value), 0)
+                round_half_up(Fraction(original * (amort.value + clawback.value), capital.value), 0)
                 if capital.value
                 else 0
             )
@@ -87,11 +97,13 @@ def measure(
             )
             values = {
                 "cost_capitalised": original,
-                "cost_amortised_cum": released,
+                "cost_amortised_cum": released - recovered,
                 "carrying_amount": original - consumed,
             }
             if ctx.historical_cost_acceleration:
                 values["cost_accelerated_cum"] = consumed - released
+            if ctx.historical_cost_clawback:
+                values["cost_clawback_cum"] = recovered
             for name, amount in values.items():
                 target = measures[name]
                 node = trace.node(
@@ -108,6 +120,7 @@ def measure(
                         held.node_id,
                         *rate.inputs(),
                         *([accelerated.node_id] if ctx.historical_cost_acceleration else []),
+                        *([clawback.node_id] if ctx.historical_cost_clawback else []),
                     ],
                     params={
                         "value": str(amount),
@@ -116,6 +129,11 @@ def measure(
                         "capitalised_txn": str(capital.value),
                         "capitalised_functional": str(original),
                         "amortised_txn": str(amort.value),
+                        **(
+                            {"clawback_txn": str(clawback.value)}
+                            if ctx.historical_cost_clawback
+                            else {}
+                        ),
                         **(
                             {"accelerated_txn": str(accelerated.value)}
                             if ctx.historical_cost_acceleration

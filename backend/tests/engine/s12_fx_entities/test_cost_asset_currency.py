@@ -111,7 +111,7 @@ def test_missing_cost_spot_rate_is_reported():
 
 
 def test_same_currency_costs_keep_existing_outputs():
-    value = replace(source(), evidence_revision=57)
+    value = replace(source(), evidence_revision=58)
     value = replace(
         value, entities=tuple(replace(e, functional_currency="USD") for e in value.entities)
     )
@@ -261,3 +261,74 @@ def test_cost_before_activation_uses_capitalization_date_rate():
     )
     with pytest.raises(EngineError, match="no functional amount"):
         compute(replace(value, evidence_revision=56))
+
+
+@pytest.mark.parametrize("recovery", ["1000.00", "20000.00"])
+@pytest.mark.parametrize("spot", [".9", ".9000005"])
+def test_foreign_clawback_releases_historical_cost_and_retains_remaining_amortisation(
+    recovery, spot
+):
+    value = replace(source(), evidence_revision=58)
+    original = next(e for e in value.events if e.payload.get("is_incremental") is True)
+    payload = {**original.payload, "cost_adjustment": "CLAWBACK", "amount": Decimal(recovery)}
+    clawback = replace(
+        original,
+        event_key=f"{original.contract_key}/EV-000008",
+        stream_version=8,
+        record_seq=max(e.record_seq for e in value.events) + 1,
+        effective_date=date(2026, 7, 1),
+        payload=payload,
+        payload_sha256=sha256_hex(payload),
+    )
+    value = replace(
+        value,
+        events=(*value.events, clawback),
+        fx_rates=tuple(
+            replace(r, rate=Decimal(spot)) if r.rate_type == "spot" else r for r in value.fx_rates
+        ),
+    )
+    result = compute(value).books[0]
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    recovered = [
+        n
+        for n in result.trace.nodes
+        if n.measure == "cost_clawback_cum_functional" and n.id.endswith(":FY2026-P07")
+    ]
+    assert len(recovered) == 1 and Decimal(recovered[0].value) > 0
+    if recovery == "1000.00":
+        assert Decimal(recovered[0].value) == Decimal("900.00")
+    else:
+        # Excess reimbursement remains outside this subledger, capped by cost carrying.
+        assert Decimal(recovered[0].value) < Decimal(recovery) * Decimal(spot)
+    for period in value.entities[0].periods:
+        held = [
+            n
+            for n in result.trace.nodes
+            if n.measure == "cost_asset_carrying_functional"
+            and n.id.endswith(f":{period.period_key}")
+        ]
+        if not held:
+            continue
+        lines = [
+            line
+            for entry in result.posting_intents
+            if entry.posting_period_key <= period.period_key
+            for line in entry.lines
+            if line.account_role == "COST_TO_OBTAIN_ASSET"
+        ]
+        assert Decimal(
+            sum((1 if line.side == "D" else -1) * line.amount_functional for line in lines)
+        ) / 100 == sum(Decimal(n.value) for n in held)
+        assert all(
+            dict(result.line_rates)[line.line_key] == (("cost-spot", "1"),) for line in lines
+        )
+        assert all(Decimal(n.value) >= 0 for n in held)
+    terminal = [
+        n
+        for n in result.trace.nodes
+        if n.measure == "cost_asset_carrying_functional" and n.id.endswith(":FY2027-P12")
+    ]
+    assert terminal and all(Decimal(n.value) == 0 for n in terminal)
+    assert result == compute(value).books[0]
+    with pytest.raises(EngineError, match="no functional amount"):
+        compute(replace(value, evidence_revision=57))
