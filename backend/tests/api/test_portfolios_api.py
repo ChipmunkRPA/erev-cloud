@@ -1154,6 +1154,66 @@ def test_breakage_preview_reads_verified_native_redemption_sources(
     assert share["computation_id"] == str(source_id)
     assert len(share["computation_output_sha256"]) == 64
     assert get(app, preview_path, world.maya).json() == shown
+    retained = post(
+        app,
+        version.headers["location"] + "/retain-allocation",
+        world.maya,
+        shown,
+        if_match=version.headers["etag"],
+    )
+    assert retained.status_code == 200, retained.text
+    assert retained.json()["status"] == "DRAFT"
+    frozen = retained.json()["portfolio_application_basis"]["breakage_allocations"][
+        shown["book_code"]
+    ]
+    assert frozen["allocation"] == shown
+    assert len(frozen["sha256"]) == 64
+    assert (
+        post(
+            app,
+            version.headers["location"] + "/retain-allocation",
+            world.maya,
+            shown,
+            if_match=version.headers["etag"],
+        ).status_code
+        == 412
+    )
+    changed = {
+        **shown,
+        "total_breakage_quantity": "13",
+        "allocated_total": "13",
+        "shares": [{**share, "breakage_quantity": "13"}],
+    }
+    stale = post(
+        app,
+        version.headers["location"] + "/retain-allocation",
+        world.maya,
+        changed,
+        if_match=retained.headers["etag"],
+    )
+    assert stale.status_code == 409, stale.text
+    assert (
+        get(app, version.headers["location"], world.maya).json()["portfolio_application_basis"][
+            "breakage_allocations"
+        ][shown["book_code"]]
+        == frozen
+    )
+    headers = cookie_headers(world.maya.token, world.maya.csrf_token, key=True)
+    headers["If-Match"] = retained.headers["etag"]
+    edited = call(
+        app,
+        "PUT",
+        version.headers["location"],
+        json={
+            "effective_date": "2026-09-01",
+            "currency": "USD",
+            "rationale": "Updated shared quantity",
+            "parameters": {"portfolio_total_breakage_quantity": "13"},
+        },
+        headers=headers,
+    )
+    assert edited.status_code == 200, edited.text
+    assert not (edited.json().get("portfolio_application_basis") or {}).get("breakage_allocations")
     assert (
         world.place.scalar(
             select(contract.c.latest_computation_id).where(contract.c.id == booked.contract["id"])

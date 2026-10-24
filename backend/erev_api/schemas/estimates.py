@@ -264,6 +264,7 @@ class SharedEstimateApplicationBasis(BaseModel):
     cost_conversions: list[SharedEstimateCostConversion] = Field(default_factory=list)
     target_obligation_keys: list[str] | None = None
     retired_targets: list[SharedEstimateMemberBinding] = Field(default_factory=list)
+    breakage_allocations: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class EstimateVersionOut(BaseModel):

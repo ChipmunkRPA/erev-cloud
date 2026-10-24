@@ -33,6 +33,7 @@ from erev_api.db.session import tenant_session
 from erev_api.db.tables import contract, estimate, estimate_version, portfolio, portfolio_member
 from erev_api.domain.contracts import (
     estimates,
+    portfolio_breakage_freeze,
     portfolio_estimate_versions,
     portfolio_impact,
     portfolio_preview,
@@ -489,6 +490,35 @@ def allocation_preview(
         return portfolio_preview.preview(
             session, ctx, portfolio_id, estimate_id, version_id, book_code, uow=uow
         )
+
+
+@router.post(
+    VERSION_PATH + "/{version_id}/retain-allocation",
+    operation_id="portfolio_breakage_allocation_retain",
+    response_model=EstimateVersionOut,
+    responses=problem_responses(*WRITE_PROBLEMS),
+)
+def retain_allocation(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    version_id: UUID,
+    body: PortfolioBreakagePreviewOut,
+    cmd: EditContext,
+    deps: Deps,
+) -> Response:
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: portfolio_breakage_freeze.retain(
+            uow,
+            portfolio_id,
+            estimate_id,
+            version_id,
+            body,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        ),
+        etag=lambda out: row_etag(out.row_version),
+    )
 
 
 @router.get(

@@ -130,6 +130,9 @@ export function PortfolioVersions({
           key={`${selected.id}:${selected.row_version}:${portfolio.row_version}`}
           path={`${path}/${selected.id}/allocation-preview`}
           revision={`${selected.row_version}:${portfolio.row_version}`}
+          version={selected}
+          editable={writable && selected.status === "DRAFT"}
+          onRetained={setSelected}
         />
       ) : null}
       {selected &&

@@ -447,6 +447,7 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   serve();
   let refuse = false;
   let reads = 0;
+  let retained: Record<string, unknown> | null = null;
   const requestedBooks: (string | null)[] = [];
   const version = {
     id: "v1",
@@ -460,6 +461,25 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
     parameters: { portfolio_total_breakage_quantity: "9" },
   };
   server.use(
+    http.post(
+      apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/retain-allocation"),
+      async ({ request }) => {
+        expect(request.headers.get("if-match")).toBe('"r1"');
+        retained = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          ...version,
+          row_version: 2,
+          portfolio_application_basis: {
+            schema_version: 1,
+            portfolio_id: "p1",
+            members: [],
+            breakage_allocations: {
+              IFRS15: { schema_version: 1, sha256: "b".repeat(64), allocation: retained },
+            },
+          },
+        });
+      },
+    ),
     http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
       HttpResponse.json({
         items: [{ id: "e1", element_code: "BREAKAGE", estimate_kind: "BREAKAGE", method: "RATE" }],
@@ -536,6 +556,12 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   fireEvent.click(button);
   await waitFor(() => expect(reads).toBe(3));
   await waitFor(() => expect(screen.queryByText("ifrs-source")).toBeNull());
+  refuse = false;
+  fireEvent.click(button);
+  await screen.findByText("ifrs-source");
+  fireEvent.click(screen.getByRole("button", { name: "Save this allocation basis" }));
+  await screen.findByText(/Saved allocation basis: IFRS15/);
+  expect(retained).toMatchObject({ book_code: "IFRS15", version_id: "v1", allocated_total: "9" });
 });
 
 it("calculates shared return impact on demand and shows period changes without posting", async () => {

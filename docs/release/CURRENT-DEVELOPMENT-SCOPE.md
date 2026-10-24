@@ -2624,3 +2624,30 @@ native snapshot from an older revision or a later computation that no longer car
 cutover snapshot. Groups requiring member allocation, mixed current-asset netting,
 foreign-functional recomputation, and contracts with no ordinary subject trace at all
 remain outside this path. No deployment or overall production-readiness claim.
+
+
+## October 24: saved shared-breakage draft allocations
+
+The allocation viewer now offers Save this allocation basis for editable drafts. The
+new retain-allocation command accepts the displayed preview, locks the portfolio,
+version and affected contract groups under the existing FX publication lock, then
+rebuilds the authorized dated preview. Its canonical allocation must equal the
+submitted preview before any write. The saved application basis retains per-book
+shares, exact SSP/quantity inputs, currency conversions, original computation
+identities and the allocation digest. Automatic redemption targets receive explicit
+retained member/obligation identities on first save. No client-supplied snapshot or
+hash is trusted in place of source validation.
+
+The command uses the version ETag, requires estimate-create access across the
+population, retains DRAFT status and writes an audit event. Editing a draft clears
+its saved allocations. Existing shared return workflow guards remain in place;
+this command does not enable breakage submission, approval, impact or financial
+application. The expected-redemption denominator decision was requested again in
+this turn because application changes revenue timing; it remains unanswered.
+
+Two public API cases cover explicit and automatic target selection, original source
+retention, unchanged member computation, stale ETag refusal, changed-preview refusal
+and invalidation after an edit. A focused UI case verifies sending the selected
+book's displayed preview and displaying the returned saved basis. Backend Ruff/mypy
+and frontend TypeScript checks pass; OpenAPI and generated types are updated.
+No deployment or overall readiness claim.
