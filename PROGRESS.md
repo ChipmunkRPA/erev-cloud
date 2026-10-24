@@ -27,7 +27,7 @@ and original-source trace reconciliation. 51 native cases, 15 UI cases and a pop
 approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](docs/release/COMBINED-ACTUAL-HOURS-2026-10-23.md).
 [Termination](docs/release/COMBINED-TERMINATION-2026-10-23.md) now passes public approval,
 entry and saved-report replay; partial-member removal remains open;
-[local builds](docs/release/LOCAL-BUILD-2026-10-23.md) remain partly unverified. No deployment.
+[local build/startup](docs/release/LOCAL-BUILD-2026-10-23.md) passes on 13ad937c; security/restore refresh remains. No deployment.
 
 ## Original agent gross-control closing evidence — October 23, 2026
 
