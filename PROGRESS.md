@@ -20,6 +20,12 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
+## Retained split causal reporting — October 24, 2026
+
+Posted-transfer groundwork now includes shared-group two-sided previews and sequential causal
+reporting in all three currency views, with original-evidence reruns. Public regroup entry
+remains gated for unsupported scenarios. See [checkpoint](docs/release/REGROUP-BOUNDARY-BASIS-2026-10-24.md).
+
 ## Rated usage entry — October 24, 2026
 
 Usage/royalty/redemption entry supports approval; omitted member royalties refuse.
@@ -161,17 +167,10 @@ Mixed groups, agents and recomputed baselines remain unfinished.
 
 ## Per-event modification amounts — October 22, 2026
 
-- Native calculations now retain transaction price before/after each successful modification
-  boundary, alongside existing obligation catch-ups. The modification register reads these
-  event-specific amounts instead of conflating the whole application-version delta.
-- Multiple modifications in one computation can be reported separately. Retained inputs include
-  the verified trace hash and selected node identities; historical traces keep the guarded
-  predecessor fallback and explicit shared-catch-up limitation.
-- Necessary checks passed: 15 engine cases, 28 focused report/catalogue cases and two populated
-  database report cases. A native two-event calculation yields TP changes +20,000/-10,000 and
-  catch-ups +10,000/-5,000. Scoped lint/types passed.
-- Foreign functional per-event allocation remains outstanding; this change enables original
-  transaction-currency attribution, not an unsupported FX allocation. No deployment.
+Native boundaries retain transaction-price changes and catch-ups per event. Sequential causal
+analysis now supplies the owner-selected functional/reporting interpretation; it is not a
+per-event allocation of original journals. Retained evidence and historical limits are recorded
+in CURRENT-DEVELOPMENT-SCOPE.md and the dated Reporting checkpoints. No deployment.
 
 ## Modification transaction-price predecessor evidence — October 22, 2026
 

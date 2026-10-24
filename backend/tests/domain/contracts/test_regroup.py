@@ -848,5 +848,60 @@ def test_retained_posted_pair_workflow(
     for group_id in {
         modification_flows._group_of(k02, identity) for identity in (source_id, target_id)
     }:
-        computed(k02.place, group_id)
+        retained_input, retained_output, _ = computed(k02.place, group_id)
+        from erev_api.domain.reports.modification_causal import calculate
+
+        selected = tuple(e.event_key for e in retained_input.events if e.event_type == "REGROUPED")
+        entity = next(
+            e
+            for e in retained_input.entities
+            if e.code == retained_input.contracts[0].contracting_entity_code
+        )
+        period = next(
+            p for p in entity.periods if p.start_date <= source_row["effective_date"] <= p.end_date
+        )
+        for view in ("transaction", "functional"):
+            causal = calculate(
+                retained_input,
+                source_output_sha256=retained_output.sha256(),
+                selected_event_keys=selected,
+                entity_code=entity.code,
+                book_code="ASC606",
+                period_key=period.period_key,
+                currency_view=view,
+            )
+            assert causal.selected_event_keys == selected
+            assert all(measure.sums_exactly for measure in causal.replay.measures.values())
+            for measure in causal.replay.measures.values():
+                assert [effect.event_keys for effect in measure.effects] == [
+                    (key,) for key in selected
+                ]
     assert len(k02.place.rows(select(subledger_line.c.id))) == lines_before
+
+    if shared_group:
+        from support.worlds import ReportWorld, report_run, run_now
+
+        world = ReportWorld(k02.place, k02.priya, k02.marcus, runtime, k02.entity_id, {})
+        for view in ("transaction", "functional", "reporting"):
+            run, rows = report_run(
+                world,
+                "modification_register",
+                {
+                    "entity_codes": [entity.code],
+                    "book": "ASC606",
+                    "from_date": "2026-09-01",
+                    "to_date": "2026-09-30",
+                    "currency_basis": "causal_analysis",
+                    "currency_view": view,
+                },
+            )
+            selected_rows = [r for r in rows if r["contribution"] == "Selected modification"]
+            assert {r["modification_contract"] for r in selected_rows} == {
+                "REGROUP-SOURCE",
+                "REGROUP-TARGET",
+            }
+            rerun = post(k02.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+            assert rerun.status_code == 202, rerun.text
+            replay = run_now(world, UUID(rerun.json()["id"]))
+            assert replay["state"] == "SUCCEEDED", replay
+            assert replay["result"]["output_sha256_equal"] is True

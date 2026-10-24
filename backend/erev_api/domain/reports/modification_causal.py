@@ -13,10 +13,9 @@ from datetime import date
 from fractions import Fraction
 from typing import Literal
 
-from erev_engine import ENGINE_VERSION, compute
-from erev_engine.bundle import InputBundle, OutputBundle
-
 from erev_api.problems import Problem
+from erev_engine import ENGINE_VERSION, compute
+from erev_engine.bundle import EventInput, InputBundle, OutputBundle
 
 from .variance_measures import MeasureKey
 from .variance_projection import Projection
@@ -69,7 +68,8 @@ def calculate(
         or len(indexed) != len(events)
         or not selected <= indexed.keys()
         or any(
-            events[indexed[key]].event_type not in {"CONTRACT_AMENDED", "CONTRACT_BOOKED"}
+            events[indexed[key]].event_type
+            not in {"CONTRACT_AMENDED", "CONTRACT_BOOKED", "REGROUPED"}
             for key in selected
         )
     ):
@@ -82,10 +82,30 @@ def calculate(
     additions = events[first:]
     # Validate classifications before expensive execution. No cutoff is fabricated to
     # satisfy the historical-close replay API: this is one fixed-basis causal scenario.
-    drivers = tuple(
-        "NEW_CONTRACT" if event.event_type == "CONTRACT_BOOKED" else driver(event, date.min)
-        for event in additions
-    )
+    modifications = {
+        item.modification_key: item
+        for contract in source.contracts
+        for item in contract.modifications
+    }
+
+    def causal_driver(event: EventInput) -> str:
+        if event.event_type == "REGROUPED":
+            retained = modifications.get(
+                event.modification_key or str(event.payload.get("modification_id"))
+            )
+            if (
+                (source.evidence_revision or 0) < 37
+                or retained is None
+                or not (
+                    retained.questionnaire.get("regroup_book_lines")
+                    and retained.questionnaire.get("regroup_source_basis")
+                )
+            ):
+                raise _refuse("regroup analysis requires retained after-posting transfer evidence.")
+            return "MODIFICATION"
+        return "NEW_CONTRACT" if event.event_type == "CONTRACT_BOOKED" else driver(event, date.min)
+
+    drivers = tuple(causal_driver(event) for event in additions)
     projection = Projection(
         source,
         entity_code,

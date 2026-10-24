@@ -2183,3 +2183,26 @@ this does not enable unsupported consideration/progress or separate-contract tre
 
 Necessary verification: 3 populated workflow/ordinary-preview cases and 7 focused event/preview
 cases pass, along with scoped types/lint. No deployment.
+
+
+## Retained regroup modification causal reporting
+
+The modification register's causal-analysis calculation now accepts retained after-posting
+REGROUPED events, which the ordinary register already included but causal selection rejected.
+Each OUT/IN remains an individual MODIFICATION contributor in original effective-date/record
+order. Baseline plus event differences reconciles to reproduced period revenue. This remains
+counterfactual causal analysis, not original journal attribution or a new posting allocation.
+
+Regroup replay requires evidence revision 37 or later, the referenced modification, retained
+book-specific transfer lines and source basis. Legacy/inception draft moves without that basis
+refuse explicitly. The general close-variance driver allowlist is unchanged; no unsupported
+historical grouping replay is enabled by this change.
+
+Both cross-group and shared-group populated applied transfers pass native transaction/functional
+causal reconciliation. The shared-group public report worker passes transaction, functional and
+reporting views, identifies both source and target modifications, and retained reruns reproduce
+the output hash in each view. This fixture uses USD transaction/functional/reporting currencies;
+it verifies all view paths, not a new foreign-FX regroup rule. Existing causal foreign-currency
+and offsetting-effect cases also pass. Ten causal cases passed before expanding the missing/
+legacy evidence guard to three passing cases; scoped lint/types pass. Public regroup entry
+remains gated for outstanding accounting scenarios. No deployment.

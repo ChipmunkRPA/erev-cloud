@@ -5,6 +5,7 @@ from datetime import date
 from fractions import Fraction
 
 import pytest
+
 from erev_api.domain.reports.modification_causal import calculate
 from erev_api.domain.reports.variance_measures import MeasureKey
 from erev_api.domain.reports.variance_reporting import Basis
@@ -131,3 +132,20 @@ def test_delivery_between_modifications_is_not_charged_to_a_modification():
         ((keys[1],), Fraction(-4800)),
     ]
     assert metric.sums_exactly
+
+
+@pytest.mark.parametrize("revision", [None, 36, 37])
+def test_draft_regroup_without_retained_transfer_basis_is_not_a_causal_modification(revision):
+    from tests.engine.s06_modifications.test_regroup_future_service import incoming
+
+    source = incoming(revision=revision)
+    selected = tuple(e.event_key for e in source.events if e.event_type == "REGROUPED")
+    with pytest.raises(Problem, match="retained after-posting transfer evidence"):
+        calculate(
+            source,
+            source_output_sha256="unused",
+            selected_event_keys=selected,
+            entity_code="US01",
+            book_code="ASC606",
+            period_key="FY2026-P09",
+        )
