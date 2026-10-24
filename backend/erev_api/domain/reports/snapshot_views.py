@@ -24,11 +24,14 @@ KINDS = frozenset(
         "CONTRACT_BALANCE_ROLLFORWARD",
         "RPO_ROLLFORWARD",
         "DISAGGREGATION",
+        "COST_ROLLFORWARD",
     }
 )
 VIEWS = ("transaction", "functional", "reporting")
 VIEW = "__erev_currency_view_v1"
 META = "__erev_currency_metadata_v1"
+ASSETS = "__erev_cost_assets_v1"
+COST_VIEWS = (*VIEWS, *(f"asset:{view}" for view in VIEWS))
 
 
 def raw(content: bytes) -> tuple[list[str], list[dict[str, str]]]:
@@ -37,15 +40,18 @@ def raw(content: bytes) -> tuple[list[str], list[dict[str, str]]]:
 
 
 def pack(variants: Mapping[str, engine.Encoded]) -> engine.Encoded:
-    if set(variants) != set(VIEWS):
+    views = COST_VIEWS if set(variants) == set(COST_VIEWS) else VIEWS
+    if set(variants) != set(views):
         raise ValueError("A currency snapshot requires all three bases.")
     first = variants["transaction"]
-    decoded = {view: raw(variants[view].content) for view in VIEWS}
-    headers = list(dict.fromkeys(h for view in VIEWS for h in decoded[view][0]))
-    if first.kind not in KINDS or VIEW in headers or META in headers:
+    decoded = {view: raw(variants[view].content) for view in views}
+    headers = list(dict.fromkeys(h for view in views for h in decoded[view][0]))
+    if first.kind not in KINDS or VIEW in headers or META in headers or ASSETS in headers:
         raise ValueError("Unsupported currency snapshot schema.")
+    if views == COST_VIEWS and first.kind != "COST_ROLLFORWARD":
+        raise ValueError("Asset variants require a cost dataset.")
     rows: list[dict[str, object]] = []
-    for view in VIEWS:
+    for view in views:
         variant = variants[view]
         columns, items = decoded[view]
         if (
@@ -54,7 +60,7 @@ def pack(variants: Mapping[str, engine.Encoded]) -> engine.Encoded:
             or len(columns) != len(set(columns))
         ):
             raise ValueError("Currency variants have inconsistent schemas or row counts.")
-        if variant.control_totals.get("currency_view", view) != view:
+        if variant.control_totals.get("currency_view", view.split(":")[-1]) != view.split(":")[-1]:
             raise ValueError("Currency snapshot controls identify another basis.")
         prefix = f"currency:{view}:"
         rows.append(
@@ -66,7 +72,19 @@ def pack(variants: Mapping[str, engine.Encoded]) -> engine.Encoded:
                     {
                         "row_count": len(items),
                         "columns": columns,
-                        "controls": {"currency_view": view, **variant.control_totals},
+                        "controls": {
+                            "currency_view": view.split(":")[-1],
+                            **variant.control_totals,
+                            **(
+                                {
+                                    "granularity": "asset"
+                                    if view.startswith("asset:")
+                                    else "category"
+                                }
+                                if views == COST_VIEWS
+                                else {}
+                            ),
+                        },
                     }
                 ).decode(),
             }
@@ -81,9 +99,17 @@ def pack(variants: Mapping[str, engine.Encoded]) -> engine.Encoded:
             }
             for row in items
         )
+    if views == COST_VIEWS:
+        for row in rows:
+            row[ASSETS] = "1"
     return engine.encode(
         engine.Dataset(
-            first.kind, tuple(engine.Column(h, "text") for h in [*headers, VIEW, META]), tuple(rows)
+            first.kind,
+            tuple(
+                engine.Column(h, "text")
+                for h in [*headers, VIEW, META, *([ASSETS] if views == COST_VIEWS else [])]
+            ),
+            tuple(rows),
         ),
         {**first.control_totals, "available_currency_views": list(VIEWS)},
     )
@@ -94,6 +120,8 @@ def select(
 ) -> tuple[list[str], list[dict[str, str]], dict[str, Any] | None]:
     headers, rows = raw(content)
     if VIEW not in headers and META not in headers:
+        if ASSETS in headers:
+            raise ValueError("Incomplete cost-asset snapshot schema.")
         if view not in (None, "transaction"):
             raise ValueError(
                 "This historical lock has no retained dataset for the requested currency view."
@@ -101,11 +129,14 @@ def select(
         return headers, rows, None
     if len(headers) != len(set(headers)) or not {"row_key", VIEW, META} <= set(headers):
         raise ValueError("Incomplete currency snapshot header.")
+    views = COST_VIEWS if ASSETS in headers else VIEWS
+    if ASSETS in headers and any(row.get(ASSETS) != "1" for row in rows):
+        raise ValueError("Incomplete cost-asset snapshot marker.")
     requested = view or "transaction"
-    if requested not in VIEWS:
+    if requested not in views:
         raise ValueError("Unknown frozen currency view.")
-    plain = [h for h in headers if h not in (VIEW, META)]
-    groups: dict[str, list[dict[str, str]]] = {basis: [] for basis in VIEWS}
+    plain = [h for h in headers if h not in (VIEW, META, ASSETS)]
+    groups: dict[str, list[dict[str, str]]] = {basis: [] for basis in views}
     metadata: dict[str, dict[str, Any]] = {}
     identities: set[str] = set()
     for row in rows:
@@ -113,7 +144,7 @@ def select(
             raise ValueError("Malformed currency snapshot row.")
         basis = row[VIEW]
         key = row["row_key"]
-        if basis not in VIEWS or not key or key in identities:
+        if basis not in views or not key or key in identities:
             raise ValueError("Unknown or duplicate currency snapshot identity.")
         identities.add(key)
         if row[META]:
@@ -130,19 +161,23 @@ def select(
                 or not isinstance(record.get("controls"), dict)
             ):
                 raise ValueError("Invalid currency snapshot controls.")
-            if record["controls"].get("currency_view") != basis:
+            if record["controls"].get("currency_view") != basis.split(":")[-1]:
                 raise ValueError("Currency snapshot metadata identifies another basis.")
+            if views == COST_VIEWS and record["controls"].get("granularity") != (
+                "asset" if basis.startswith("asset:") else "category"
+            ):
+                raise ValueError("Cost snapshot metadata identifies another granularity.")
             metadata[basis] = record
         else:
             prefix = f"currency:{basis}:"
             if not key.startswith(prefix) or not key[len(prefix) :]:
                 raise ValueError("Invalid currency snapshot data key.")
             groups[basis].append({**{h: row[h] for h in plain}, "row_key": key[len(prefix) :]})
-    if set(metadata) != set(VIEWS) or any(
-        metadata[b]["row_count"] != len(groups[b]) for b in VIEWS
+    if set(metadata) != set(views) or any(
+        metadata[b]["row_count"] != len(groups[b]) for b in views
     ):
         raise ValueError("Currency snapshot variants are missing or incomplete.")
-    for basis in VIEWS:
+    for basis in views:
         columns = metadata[basis].get("columns")
         if (
             not isinstance(columns, list)

@@ -58,22 +58,6 @@ from typing import Any, Final
 from uuid import UUID
 
 import pytest
-from erev_api.auth.keyring import KeyRing
-from erev_api.clock import FrozenClock
-from erev_api.config import Settings
-from erev_api.db import new_id
-from erev_api.db.tables import file_object, journal_line, legal_entity, lock_snapshot, period
-from erev_api.domain.close import dependencies as close_dependencies
-from erev_api.domain.close import relock_diff
-from erev_api.domain.close import snapshots as close_snapshots
-from erev_api.domain.reports import locked, snapshots
-from erev_api.domain.reports.builders import contract_balance_rollforward as cbr_builder
-from erev_api.domain.reports.builders import rpo as rpo_builder
-from erev_api.domain.reports.outputs import csv as csv_output
-from erev_api.domain.reports.outputs import utc_text
-from erev_api.enums import FilePurpose
-from erev_api.files.store import LocalFileStore, store_file
-from erev_api.main import create_app
 from fastapi import FastAPI
 from sqlalchemy import func, insert, select
 from support.db import TestDatabase
@@ -92,6 +76,23 @@ from support.worlds import (
     resigned,
 )
 from support.worlds import report_run as run_report
+
+from erev_api.auth.keyring import KeyRing
+from erev_api.clock import FrozenClock
+from erev_api.config import Settings
+from erev_api.db import new_id
+from erev_api.db.tables import file_object, journal_line, legal_entity, lock_snapshot, period
+from erev_api.domain.close import dependencies as close_dependencies
+from erev_api.domain.close import relock_diff
+from erev_api.domain.close import snapshots as close_snapshots
+from erev_api.domain.reports import locked, snapshots
+from erev_api.domain.reports.builders import contract_balance_rollforward as cbr_builder
+from erev_api.domain.reports.builders import rpo as rpo_builder
+from erev_api.domain.reports.outputs import csv as csv_output
+from erev_api.domain.reports.outputs import utc_text
+from erev_api.enums import FilePurpose
+from erev_api.files.store import LocalFileStore, store_file
+from erev_api.main import create_app
 
 BOOK: Final = "ASC606"
 SEPTEMBER: Final = "FY2026-P09"
@@ -575,3 +576,48 @@ def test_a_request_after_the_clock_is_still_refused_as_future(scene: Scene) -> N
         },
     )
     assert started.status_code == 422 and "known_at" in started.text
+
+
+def test_frozen_cost_asset_view_reads_and_exports_selected_variant(scene: Scene) -> None:
+    from erev_api.domain.reports import snapshot_views
+    from erev_engine.stages.s15_disclosures import snapshots as encoding
+    from tests.domain.reports import test_as_locked as fixture
+
+    world = scene.world
+    variants = {}
+    for key in snapshot_views.COST_VIEWS:
+        asset = key.startswith("asset:")
+        headers = ["row_key", "cost_kind", "line_code", "currency", "amount"]
+        row = {
+            "row_key": "cost",
+            "cost_kind": "OBTAIN",
+            "line_code": "CLOSING",
+            "currency": "USD",
+            "amount": "12.34",
+        }
+        if asset:
+            headers += ["asset_key", "contract_external_id"]
+            row.update(asset_key="C/EV-1", contract_external_id="C")
+        variants[key] = encoding.encode(
+            encoding.Dataset(
+                "COST_ROLLFORWARD", tuple(encoding.Column(h, "text") for h in headers), (row,)
+            ),
+            {"currency_view": key.split(":")[-1]},
+        )
+    packed = snapshot_views.pack(variants)
+    lock_id = fixture._lock_by_writer(world)
+    _plant(world, lock_id, packed)
+    params = {
+        **REQUESTS["COST_ROLLFORWARD"],
+        "period_lock_id": str(lock_id),
+        "currency_view": "functional",
+        "granularity": "asset",
+    }
+    run, rows = run_report(world, "contract_cost_rollforward", params)
+    assert run["status"] == "SUCCEEDED"
+    assert rows[0]["asset_key"] == "C/EV-1"
+    assert run["control_totals"]["granularity"] == "asset"
+    exported, _ = run_report(world, "contract_cost_rollforward", params, output_format="CSV")
+    response = get(world.app, f"{REPORT_RUNS}/{exported['id']}/output", world.maya)
+    assert response.status_code == 200
+    assert response.content == variants["asset:functional"].content

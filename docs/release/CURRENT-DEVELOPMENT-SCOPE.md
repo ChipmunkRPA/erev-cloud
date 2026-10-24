@@ -2847,3 +2847,13 @@ engine currency limits are unchanged.
 Cost rollforward asset granularity now provides original asset and contract identities in all
 three currency views, including category-conserving reporting rounding. See [cost asset detail](COST-ASSET-DETAIL-2026-10-24.md).
 Existing lock snapshots retain category totals; dedicated frozen asset detail remains open.
+
+
+### 2026-10-24 — Frozen cost-asset report variants
+
+Completed category/asset lock snapshots across transaction, functional and reporting currency,
+selected frozen JSON/CSV output, and asset-level relock comparisons. Legacy unavailable views
+refuse rather than rebuild. See [checkpoint](COST-ASSET-FROZEN-VIEWS-2026-10-24.md).
+Member current liabilities retain the approved proportional carrying-value allocation.
+This completes the frozen-detail gap recorded in the preceding cost-asset checkpoint;
+remaining specialist foreign-cost and split measurement gaps are unchanged. No deployment.

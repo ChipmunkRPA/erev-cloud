@@ -1461,21 +1461,6 @@ def _resolve(
     session = uow.session
     properties: Mapping[str, Any] = schema.get("properties", {})
     parameters = dict(given)
-    if (
-        code == "contract_cost_rollforward"
-        and parameters.get("granularity") == "asset"
-        and parameters.get("period_lock_id")
-    ):
-        raise _invalid(
-            [
-                _finding(
-                    "parameters.granularity",
-                    "Locked cost datasets contain category totals. "
-                    "Run a dated cost-asset view instead.",
-                    RULE_REPORT,
-                )
-            ]
-        )
     errors: list[ProblemError] = []
     defaults = PARAMETER_DEFAULTS.get(code, {})
     for key, spec in properties.items():
@@ -2329,10 +2314,17 @@ def _render_locked(
 
         kinds = registry.declared_kinds(
             frozen.kind,
-            locked.headers_of(frozen, run["parameters"].get("currency_view")),
+            locked.headers_of(
+                frozen, run["parameters"].get("currency_view"), run["parameters"].get("granularity")
+            ),
             data.control_totals,
         )
-        content, sha256 = locked.export_csv(frozen, kinds, run["parameters"].get("currency_view"))
+        content, sha256 = locked.export_csv(
+            frozen,
+            kinds,
+            run["parameters"].get("currency_view"),
+            run["parameters"].get("granularity"),
+        )
         stamp = _run_stamp(session, run, definition, output_sha256=sha256, style=style)
         manifest = manifest_output.manifest_bytes(
             stamp=stamp,
@@ -2749,7 +2741,9 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             frozen = locked.locked_dataset(
                 uow, report_code=str(run["report_code"]), lock_id=UUID(str(run["period_lock_id"]))
             )
-            data = locked.report_data(frozen, run["parameters"].get("currency_view"))
+            data = locked.report_data(
+                frozen, run["parameters"].get("currency_view"), run["parameters"].get("granularity")
+            )
             jc.heartbeat()
             rendered = _render_locked(session, run, definition, frozen, data, style)
         elif str(run["report_code"]) == "disclosure_pack":
@@ -2987,7 +2981,18 @@ def _consistent_with_lock() -> Any:
     currency_admitted = pg_array(
         [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"currency_view"})]
     )
+    cost_admitted = pg_array(
+        [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"currency_view", "granularity"})]
+    )
     parameters_admitted = or_(
+        and_(
+            report_run.c.report_code == "contract_cost_rollforward",
+            parameters.op("-")(cost_admitted) == cast(literal("{}"), JSONB),
+            func.coalesce(parameters["currency_view"].astext, "transaction").in_(
+                snapshot_views.VIEWS
+            ),
+            func.coalesce(parameters["granularity"].astext, "category").in_(("category", "asset")),
+        ),
         parameters.op("-")(admitted) == cast(literal("{}"), JSONB),
         and_(
             report_run.c.report_code.in_(

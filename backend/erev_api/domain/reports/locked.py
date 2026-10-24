@@ -223,19 +223,27 @@ def _rows(content: bytes) -> tuple[list[str], list[dict[str, str]]]:
 
 
 def currency_rows(
-    dataset: LockedDataset, currency_view: str | None = None
+    dataset: LockedDataset, currency_view: str | None = None, granularity: str | None = None
 ) -> tuple[list[str], list[dict[str, str]], dict[str, Any] | None]:
     try:
+        if granularity not in (None, "category", "asset"):
+            raise ValueError("Unknown frozen cost granularity.")
+        if granularity == "asset":
+            if dataset.kind != "COST_ROLLFORWARD":
+                raise ValueError("Asset granularity requires a cost snapshot.")
+            currency_view = f"asset:{currency_view or 'transaction'}"
         return snapshot_views.select(dataset.content, currency_view)
     except (ValueError, TypeError, KeyError) as error:
         raise LockedRefusal(str(error)) from error
 
 
-def report_data(dataset: LockedDataset, currency_view: str | None = None) -> ReportData:
+def report_data(
+    dataset: LockedDataset, currency_view: str | None = None, granularity: str | None = None
+) -> ReportData:
     """The frozen rows as ``ReportData``: text-kind columns under the frozen header (the
     ``row_key`` column becomes each row's key, not a column), the snapshot's control totals and no
     tie-outs (the freeze evaluated them). ``LockedRefusal`` when the header lacks ``row_key``."""
-    headers, rows, controls = currency_rows(dataset, currency_view)
+    headers, rows, controls = currency_rows(dataset, currency_view, granularity)
     if ROW_KEY not in headers:
         raise LockedRefusal(
             KEY_MISSING.format(kind=dataset.kind, lock=dataset.lock_id, column=ROW_KEY)
@@ -277,6 +285,8 @@ def reconcile_selectors(
     admitted = ADMITTED_KEYS | (
         {"currency_view"} if kind in snapshot_views.KINDS or disclosure else set()
     )
+    if kind == "COST_ROLLFORWARD":
+        admitted = admitted | {"granularity"}
     for key in sorted(given):
         if key not in (admitted | {"quarter"} if disclosure else admitted):
             refuse(key, NOT_A_LOCK_SELECTOR.format(key=key, kind=kind, lock=scope.lock_id))
@@ -298,6 +308,10 @@ def reconcile_selectors(
         if given["currency_view"] not in snapshot_views.VIEWS:
             refuse("currency_view", "Choose transaction, functional or reporting currency.")
         parameters["currency_view"] = given["currency_view"]
+    if kind == "COST_ROLLFORWARD" and "granularity" in given:
+        if given["granularity"] not in ("category", "asset"):
+            refuse("granularity", "Choose category or asset granularity.")
+        parameters["granularity"] = given["granularity"]
     if "known_at" in given:
         parameters["known_at"] = given["known_at"]
     if "entity_codes" in properties:
@@ -328,6 +342,10 @@ def run_mismatch(run: Mapping[str, Any], scope: LockScope) -> str | None:
         admitted = admitted | {"currency_view"}
         if parameters.get("currency_view", "transaction") not in snapshot_views.VIEWS:
             return "parameters.currency_view"
+    if run.get("report_code") == "contract_cost_rollforward":
+        admitted = admitted | {"granularity"}
+        if parameters.get("granularity", "category") not in ("category", "asset"):
+            return "parameters.granularity"
     if run.get("report_code") == "disclosure_pack":
         admitted = admitted | {"currency_view"}
         if parameters.get("currency_view", "transaction") not in snapshot_views.VIEWS:
@@ -363,13 +381,18 @@ def _field(text: str) -> str:
     return text
 
 
-def headers_of(dataset: LockedDataset, currency_view: str | None = None) -> list[str]:
+def headers_of(
+    dataset: LockedDataset, currency_view: str | None = None, granularity: str | None = None
+) -> list[str]:
     """The frozen header row (the declared kinds of the export boundary are keyed by it)."""
-    return currency_rows(dataset, currency_view)[0]
+    return currency_rows(dataset, currency_view, granularity)[0]
 
 
 def export_csv(
-    dataset: LockedDataset, kinds: Mapping[str, str], currency_view: str | None = None
+    dataset: LockedDataset,
+    kinds: Mapping[str, str],
+    currency_view: str | None = None,
+    granularity: str | None = None,
 ) -> tuple[bytes, str]:
     """The CSV OUTPUT of an as-locked run (RPS-SNAP A4 13.1; S15-R-19; Codex 1739 §3 (c)): the
     verified frozen rows re-serialised with the engine's field quoting and ``\n``, every cell
@@ -381,7 +404,7 @@ def export_csv(
     the original whole-file hash remains the source identity. The stored artefact is never altered.
     """
     verify(dataset)
-    headers, rows, _ = currency_rows(dataset, currency_view)
+    headers, rows, _ = currency_rows(dataset, currency_view, granularity)
     lines = [",".join(_field(header) for header in headers)]
     for row in rows:
         lines.append(

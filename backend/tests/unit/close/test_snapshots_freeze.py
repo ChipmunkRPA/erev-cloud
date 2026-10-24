@@ -15,6 +15,7 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+
 from erev_api.domain.close import dependencies, snapshots
 from erev_api.enums import SnapshotKind
 
@@ -357,3 +358,51 @@ def test_historical_manifest_compatibility_never_weakens_new_freezes() -> None:
         snapshots.manifest_of(old[:-1], allow_legacy=True)
     with pytest.raises(ValueError, match="every required"):
         snapshots.manifest_of((*old, old[0]), allow_legacy=True)
+
+
+def test_cost_freeze_captures_both_granularities_at_one_cutoff(monkeypatch):
+    from dataclasses import replace
+
+    from erev_api.domain.reports import snapshot_views
+    from erev_api.domain.reports.snapshots import SnapshotScope
+    from erev_engine.stages.s15_disclosures import snapshots as encoding
+
+    seen = []
+    stored = []
+
+    def build(uow, scope):
+        seen.append(scope)
+        return encoding.encode(
+            encoding.Dataset("COST_ROLLFORWARD", (encoding.Column("row_key", "text"),), ()),
+            {"currency_view": scope.currency_view or "functional"},
+        )
+
+    def store(uow, *, stream, original_filename, **kwargs):
+        content = stream.read()
+        stored.append(content)
+        return {
+            "id": UUID(int=1),
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "original_filename": original_filename,
+            "media_type": kwargs["media_type"],
+        }
+
+    monkeypatch.setattr(snapshots, "store_file", store)
+    snapshots.freeze_datasets(
+        SimpleNamespace(),
+        ENTITY,
+        "ASC606",
+        PERIOD,
+        NOW,
+        registry={"COST_ROLLFORWARD": build},
+        scope_type=SnapshotScope,
+        engine=replace(_engine(), kinds=("COST_ROLLFORWARD",)),
+        reader=_same_unit,
+        currency_variants=True,
+    )
+    assert {(s.currency_view, s.cost_granularity) for s in seen if s.currency_view} == {
+        (v, g) for v in snapshot_views.VIEWS for g in ("category", "asset")
+    }
+    assert all(s.known_at == NOW and s.entity_id == ENTITY for s in seen)
+    assert len(stored) == 1
+    assert snapshot_views.select(stored[0], "asset:reporting")[2]["granularity"] == "asset"

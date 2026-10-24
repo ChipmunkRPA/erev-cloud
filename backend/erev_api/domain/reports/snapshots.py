@@ -67,7 +67,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from erev_engine.stages.s15_disclosures import snapshots as engine
 from sqlalchemy import select
 
 from erev_api.db.tables import legal_entity, period
@@ -89,6 +88,7 @@ from erev_api.domain.reports.builders import rpo_rollforward as rpo_rf_builder
 from erev_api.domain.reports.builders.out_of_period_register import ENCODED, encode_component
 from erev_api.domain.reports.outputs import ROW_KEY, Column, ReportData, utc_text
 from erev_api.domain.reports.outputs import csv as csv_output
+from erev_engine.stages.s15_disclosures import snapshots as engine
 
 if TYPE_CHECKING:
     from erev_api.uow import UnitOfWork
@@ -133,6 +133,7 @@ class SnapshotScope:
     known_at: datetime
     frozen_at: datetime | None = None
     currency_view: str | None = None
+    cost_granularity: str | None = None
 
 
 type DatasetBuilder = Callable[["UnitOfWork", SnapshotScope], engine.Encoded]
@@ -437,6 +438,10 @@ def scope_parameters(
     else:
         given["from_period_key"] = period_key
         given["to_period_key"] = period_key
+    if scope.cost_granularity is not None:
+        if code != "contract_cost_rollforward":
+            raise SnapshotRefusal(kind, "Cost granularity requires a cost dataset.")
+        given["granularity"] = scope.cost_granularity
     if scope.currency_view is not None:
         if "currency_view" not in properties:
             raise SnapshotRefusal(kind, f"{code} does not support a currency view.")

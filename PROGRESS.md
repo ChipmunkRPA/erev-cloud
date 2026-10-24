@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [cost asset detail](docs/release/COST-ASSET-DETAIL-2026-10-24.md) adds asset grouping in all currency views.
+Oct 24: [frozen cost asset views](docs/release/COST-ASSET-FROZEN-VIEWS-2026-10-24.md) adds locked detail, currency exports and relock comparisons.

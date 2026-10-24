@@ -146,7 +146,16 @@ def freeze_datasets(
             if currency_variants:
                 from erev_api.domain.reports import snapshot_views
 
-                if kind in snapshot_views.KINDS:
+                if kind == "COST_ROLLFORWARD":
+                    variants = {
+                        (f"asset:{view}" if granularity == "asset" else view): registry[kind](
+                            source, replace(scope, currency_view=view, cost_granularity=granularity)
+                        )
+                        for granularity in ("category", "asset")
+                        for view in snapshot_views.VIEWS
+                    }
+                    encoded = snapshot_views.pack(variants)
+                elif kind in snapshot_views.KINDS:
                     variants = {"transaction": encoded}
                     variants.update(
                         {

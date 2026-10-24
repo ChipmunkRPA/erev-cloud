@@ -11,6 +11,7 @@ import re
 from uuid import UUID
 
 import pytest
+
 from erev_api.domain.close import relock_diff
 from erev_api.domain.close.relock_diff import DatasetSide, LockSide
 from erev_api.enums import SnapshotKind
@@ -110,6 +111,7 @@ FIXTURE_HEADERS: dict[str, list[str]] = {
         "contract_liability_noncurrent",
         "contract_asset",
         "contract_asset_current",
+        "contract_asset_noncurrent",
         "unbilled_receivable",
         "accounts_receivable",
         "refund_liability",
@@ -172,6 +174,7 @@ FIXTURE_HEADERS: dict[str, list[str]] = {
         "modifications",
         "vc_estimate_changes",
         "exemptions",
+        "eligibility_changes",
         "late_events",
         "revenue",
         "cancellations",

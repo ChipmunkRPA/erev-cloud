@@ -1215,6 +1215,7 @@ amortisation, acceleration, impairment/reversal, clawbacks and closing balance. 
 transaction, functional and reporting currency. Reporting translation keeps monthly rates and
 allocates rounding within each category so every line sums back to the category view.
 A posted line without an original asset identity is refused instead of being grouped under a
-guessed asset. Saved runs retain the selected granularity. Existing lock datasets contain only
-category totals; asset granularity with a lock ID is explicitly refused. Use a dated report
-for asset detail.
+guessed asset. Saved runs retain the selected granularity. New period locks freeze both granularities in all three currency views. Locked reports and
+CSV exports use those retained rows, and relock comparisons identify asset-level changes.
+Historical locks without retained asset detail refuse that selection; use a dated report
+when the historical lock does not contain the requested view.

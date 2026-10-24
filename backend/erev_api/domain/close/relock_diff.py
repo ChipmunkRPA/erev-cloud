@@ -374,6 +374,8 @@ def diff_dataset(
     """One kind: hashes, row counts and the row-key comparison (S15-R-20; D-98 81)."""
     key_columns = key_columns_of(kind)
     spec = KEY_COLUMNS[str(kind)]
+    if kind == "COST_ROLLFORWARD" and currency_view and currency_view.startswith("asset:"):
+        key_columns = (*key_columns, "asset_key")
     out: dict[str, Any] = {
         "previous_file_sha256": None if previous is None else previous.file_sha256,
         "current_file_sha256": None if current is None else current.file_sha256,
@@ -423,6 +425,22 @@ def diff_dataset(
                 }
                 for view in ("functional", "reporting")
             }
+        if kind == "COST_ROLLFORWARD":
+            old_assets = snapshot_views.ASSETS in snapshot_views.raw(previous.content)[0]
+            new_assets = snapshot_views.ASSETS in snapshot_views.raw(current.content)[0]
+            if old_assets or new_assets:
+                out["asset_views"] = {
+                    view: {
+                        "previous_available": old_assets,
+                        "current_available": new_assets,
+                        "comparison": diff_dataset(
+                            kind, previous, current, currency_view=f"asset:{view}"
+                        )
+                        if old_assets and new_assets
+                        else None,
+                    }
+                    for view in snapshot_views.VIEWS
+                }
     headers = list(dict.fromkeys([*before_headers, *after_headers]))
     before = _keyed(kind, before_headers, before_rows, key_columns)
     after = _keyed(kind, after_headers, after_rows, key_columns)
