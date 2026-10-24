@@ -2048,3 +2048,14 @@ rows remain unassigned. The new retained flag leaves earlier saved outputs uncha
 Amounts, currency calculation and period reconciliation are unchanged. Focused context and
 public PROSPECTIVE/CUMULATIVE_CATCH_UP workflow checks cover exact report replay.
 See `MODIFICATION-TREATMENT-CONTEXT-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Dated fixed allocation basis for regroup integration
+
+Added a native query combining original pre-event folding with segment measurement. It
+retains exact and minor-unit allocation, recognized target and remainder, plus input/event/book
+identity. This supplies dated fixed-component evidence instead of latest-version remainder.
+Six focused unit/time/order/target checks and scoped types/lint pass. Public after-posting
+regroup remains refused until paired changes, target future service and atomic approval are
+integrated; other consideration components and book balances are not inferred from this query.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
