@@ -97,7 +97,6 @@ def calculate(
     Locked openings must supply the authenticated lock-time source row, or proven absence.
     A range is evaluated once, never as a sum of monthly opening-consumption disclosures.
     """
-    zero_functional_opening = functional_currency is not None and opening <= 0
     obligations = (
         session.execute(
             select(obligation_version).where(
@@ -114,9 +113,12 @@ def calculate(
         for item in obligations
     )
     zero_special_consumption = (
-        allow_zero_consumption and functional_currency is not None and consumed <= 0 and special
+        allow_zero_consumption and consumed <= 0 and special
     )
-    zero_cap = zero_functional_opening or zero_special_consumption
+    # A reconciled zero group opening cannot contribute opening relief in any
+    # currency. Preserve the established principal transaction evidence shape.
+    zero_group_opening = opening <= 0 and (functional_currency is not None or special)
+    zero_cap = zero_group_opening or zero_special_consumption
     if not obligations or (not zero_cap and special):
         raise tie_outs.invalid(
             "currency_view",
@@ -180,7 +182,7 @@ def calculate(
             "opening_cap": str(opening),
             "consumption_cap": str(consumed),
             "relief": "0",
-            "basis": "ZERO_GROUP_OPENING" if zero_functional_opening else "ZERO_CONSUMPTION",
+            "basis": "ZERO_GROUP_OPENING" if zero_group_opening else "ZERO_CONSUMPTION",
         }
     trace = store.load_trace(session, source.version_id)
     if trace is None:

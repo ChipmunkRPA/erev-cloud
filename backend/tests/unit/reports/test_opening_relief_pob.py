@@ -138,8 +138,9 @@ def test_combination_cap_is_applied_once_after_member_eligibility(monkeypatch):
 
 
 @pytest.mark.parametrize("role,performer", [("AGENT", UUID(int=1)), ("PRINCIPAL", UUID(int=9))])
-def test_zero_functional_opening_keeps_special_contract_revenue_without_invented_sources(
-    monkeypatch, role, performer
+@pytest.mark.parametrize("functional", [None, "USD"])
+def test_zero_opening_keeps_special_contract_revenue_without_invented_sources(
+    monkeypatch, role, performer, functional
 ):
     session, row, _ = fixture(monkeypatch)
     obligations = [
@@ -156,7 +157,7 @@ def test_zero_functional_opening_keeps_special_contract_revenue_without_invented
         [entry(1, "S", "50"), entry(2, "S", "-10")],
         D(0),
         D(40),
-        functional_currency="USD",
+        functional_currency=functional,
     )
     assert amount == 0
     assert facts["basis"] == "ZERO_GROUP_OPENING"
@@ -171,7 +172,7 @@ def test_zero_functional_opening_keeps_special_contract_revenue_without_invented
             [entry(1, "S", "40")],
             D(1),
             D(40),
-            functional_currency="USD",
+            functional_currency=functional,
         )
     # A zero cap does not bypass posted-source membership validation.
     with pytest.raises(Problem):
@@ -182,7 +183,7 @@ def test_zero_functional_opening_keeps_special_contract_revenue_without_invented
             [entry(1, "UNKNOWN", "40")],
             D(0),
             D(40),
-            functional_currency="USD",
+            functional_currency=functional,
         )
 
 
@@ -229,8 +230,9 @@ def test_new_obligation_proof_does_not_override_conflicting_history(monkeypatch)
 
 @pytest.mark.parametrize("role,performer", [("AGENT", UUID(int=1)), ("PRINCIPAL", UUID(int=99))])
 @pytest.mark.parametrize("consumed", ["0", "-10"])
+@pytest.mark.parametrize("functional", [None, "USD"])
 def test_special_positive_opening_without_consumption_needs_no_invented_attribution(
-    monkeypatch, role, performer, consumed
+    monkeypatch, role, performer, consumed, functional
 ):
     session, row, _ = fixture(monkeypatch)
     obligations = [
@@ -247,7 +249,7 @@ def test_special_positive_opening_without_consumption_needs_no_invented_attribut
         [entry(1, "S", "10"), entry(2, "S", "-20")],
         D("100"),
         D(consumed),
-        functional_currency="USD",
+        functional_currency=functional,
     )
     assert amount == 0
     assert facts["basis"] == "ZERO_CONSUMPTION"
@@ -263,7 +265,7 @@ def test_special_positive_opening_without_consumption_needs_no_invented_attribut
             [entry(1, "S", "10")],
             D("100"),
             D("1"),
-            functional_currency="USD",
+            functional_currency=functional,
         )
     with pytest.raises(Problem):
         pob.calculate(
@@ -273,7 +275,7 @@ def test_special_positive_opening_without_consumption_needs_no_invented_attribut
             [entry(1, "UNKNOWN", "10")],
             D("100"),
             D(consumed),
-            functional_currency="USD",
+            functional_currency=functional,
         )
 
     # A reporting range with a positive earlier period cannot erase that period's FX effect.
@@ -285,6 +287,6 @@ def test_special_positive_opening_without_consumption_needs_no_invented_attribut
             [entry(1, "S", "-10")],
             D("100"),
             D(consumed),
-            functional_currency="USD",
+            functional_currency=functional,
             allow_zero_consumption=False,
         )
