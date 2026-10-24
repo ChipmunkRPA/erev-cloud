@@ -120,3 +120,29 @@ def test_ordinary_and_legacy_pairs_keep_their_existing_workflows():
     for row in rows:
         row["questionnaire"] = {}
     require_consistent(rows, primary_book="ASC606")
+
+
+def test_classification_edits_preserve_server_transfer_evidence():
+    from erev_api.domain.contracts.regroup_pair import preserve_evidence
+
+    row = pair()[0]
+    row["questionnaire"]["regroup_target_input_sha256"] = "a" * 64
+    values = {"questionnaire": {"O1": {"remaining_distinct": True}}}
+    preserve_evidence(row, values)
+    assert values["questionnaire"]["O1"] == {"remaining_distinct": True}
+    assert (
+        values["questionnaire"]["regroup_source_basis"]
+        == row["questionnaire"]["regroup_source_basis"]
+    )
+    assert values["questionnaire"]["regroup_target_input_sha256"] == "a" * 64
+    with pytest.raises(Problem, match="server-managed"):
+        preserve_evidence(row, {"questionnaire": {"regroup_source_basis": {}}})
+
+
+def test_pair_requires_matching_target_input_digest():
+    rows = pair()
+    rows[0]["questionnaire"]["regroup_target_input_sha256"] = "a" * 64
+    with pytest.raises(Problem):
+        require_consistent(rows, primary_book="ASC606")
+    rows[1]["questionnaire"]["regroup_target_input_sha256"] = "a" * 64
+    require_consistent(rows, primary_book="ASC606")

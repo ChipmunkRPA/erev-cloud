@@ -44,14 +44,7 @@ def snapshot(measured: Sequence[FixedBoundaryBasis]) -> dict[str, Any]:
     }
 
 
-def source_basis(
-    original: InputBundle,
-    *,
-    contract_key: str,
-    effective_date: date,
-    obligation_keys: tuple[str, ...],
-    pending_pair: frozenset[str],
-) -> dict[str, Any]:
+def without_pending_pair(original: InputBundle, pending_pair: frozenset[str]) -> InputBundle:
     # Preparing/submitting this very pair adds draft headers, not source performance.
     # Remove only these unapplied headers; retain every other original input.
     if any(
@@ -60,7 +53,7 @@ def source_basis(
         for event in original.events
     ):
         raise Problem("invalid-transition", "The regroup pair already has an applied source event.")
-    value = replace(
+    return replace(
         original,
         contracts=tuple(
             replace(
@@ -74,6 +67,17 @@ def source_basis(
             for contract in original.contracts
         ),
     )
+
+
+def source_basis(
+    original: InputBundle,
+    *,
+    contract_key: str,
+    effective_date: date,
+    obligation_keys: tuple[str, ...],
+    pending_pair: frozenset[str],
+) -> dict[str, Any]:
+    value = without_pending_pair(original, pending_pair)
     header = next(c for c in value.contracts if c.external_id == contract_key)
     result = {}
     for book in value.books:
@@ -114,6 +118,15 @@ def require_fresh(uow: UnitOfWork, rows: Sequence[Mapping[str, Any]]) -> None:
         )
     receiving = repo.get_contract(uow.session, UUID(str(target["contract_id"])))
     target_input = bundles.build(uow.session, UUID(str(receiving["combination_group_id"])), uow.now)
+    expected_target = (source.get("questionnaire") or {}).get("regroup_target_input_sha256")
+    if (
+        expected_target is not None
+        and without_pending_pair(target_input, frozenset(str(row["id"]) for row in rows)).sha256()
+        != expected_target
+    ):
+        raise Problem(
+            "invalid-transition", "Regroup target inputs changed; rebuild and review both sides."
+        )
     header = next(c for c in target_input.contracts if c.external_id == receiving["external_id"])
     target_books = {
         book.book_code

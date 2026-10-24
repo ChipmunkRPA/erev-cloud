@@ -1,46 +1,14 @@
-"""CTR-17 regrouping: ``POST /contracts/{id}/regroup`` (04 API-R-28, §16.1; 03 REQ-CON-012;
-ENGINE_SPEC S06-R-27; BUILD_SPEC CTR-17; D-98 140 Q-4).
+"""Move draft lines or prepare a retained transfer between existing active contracts.
 
-In release 1.0 the command is taken between two DRAFT contracts and for nothing else (04 §16.1 rev
-1.234; 03 REQ-CON-012 rev 1.136; supervisor's rulings of 2026-10-01). The cases are decided from
-the contracts' status and from persisted postings (the engine reads none, CV-14):
-
-- **Before any line of either contract has posted, between two DRAFT contracts** — the moved
-  obligations are treated as booked in the target contract from its inception: the command creates
-  the pair of T-CON-06 rows (``REMOVE_OBLIGATION`` on the source, ``ADD_OBLIGATION`` on the target,
-  one ``regroup_id``), applies them at once (no approval request: nothing has posted and nothing
-  can — a draft posts nothing, REQ-CON-002), appends the paired ``REGROUPED`` events (``OUT`` /
-  ``IN``, each naming its row), inserts the target's obligation rows
-  (``regrouped_from_obligation_id``) and recomputes both groups. Bundle assembly moves the booking
-  lines (``bundles._apply_regroups``), so stage 06's ``before_posting`` sees the obligations absent
-  from the source and booked in the target from inception (no boundary).
-- **No posted line, and the source or the target is not a DRAFT** — refused before anything is
-  written (04 §16.1 rev 1.234; ENGINE_SPEC S06-R-27 rev 1.148; item REGROUP-BEFORE-POSTING-1). A
-  contract that is not a draft posts as soon as it has something to recognise: measured, an
-  obligation in service since January moved from a draft into an ACTIVE contract that had posted
-  nothing yet was recognised at once — 18 lines, 35,901.37 — with no activation and no
-  modification approval (REQ-CON-012: "through an approved command").
-- **After posting** — refused before anything is written, by the same ruling (item
-  REGROUP-AFTER-POSTING-AMOUNT-1): an obligation is moved between contracts that have posted by a
-  modification of each, each with its own approval. THE ROAD BELOW IS WITHDRAWN FROM 1.0 UNTIL IT
-  IS REBUILT and is reached by no route; its code stays for the rebuild. As built, the same pair is
-  created as DRAFT modifications (``REMOVE`` lines with ΔC = −(moved remaining consideration) on
-  the source, ``ADD`` lines with +ΔC on the target) and returned as ``{modification_ids}``; the
-  preparer classifies and previews each, ``submit`` routes ONE spanning ``MODIFICATION`` request
-  over the pair, and its approval appends both ``REGROUPED`` events or neither
-  (``modifications._approved``). Measured end to end before the ruling: ``_remaining`` reads the
-  latest obligation version's remaining allocation, which is not the remainder at the regroup's
-  date (95,868.49 of 96,000.00 with 35,901.37 posted), and an ``ADD`` row classified a separate
-  contract books the obligation with its original service dates, so the new contract's activation
-  recognised service the source had recognised already (69,254.93 posted against 35,901.37).
-
-A regroup to a new contract (``target_contract_id`` absent) books the target as a DRAFT of the same
-customer, entity and currency from the moved booking lines — from a DRAFT source, like every
-regroup of release 1.0 (after posting the ADD lines would double the booking).
-The pair is dated the contracting entity's current date (05 TZ-03; ``holds.entity_date``).
-The command asks ``contract.create`` for the contracting entity of the source and of an existing
-target (04 §16.1 rev 1.263; PRD ACT-04; item REGROUP-PERMISSION-PRD-1).
-Locks: ``lock_groups_then_contracts`` over source and target (DG-KRN-DB-08; D-98 101a / 101c).
+Two unposted drafts are regrouped from inception and recomputed immediately. After posting,
+two existing ACTIVE contracts may prepare a pair of DRAFT modifications for ordinary fixed
+service in the same entity and functional/transaction currency. Both sides require modification
+permission, classification and preview; one spanning approval applies both sides atomically.
+Source book-specific remaining consideration and target inputs are retained and checked again
+before submission/application. Unsupported consideration, progress, currency and destination
+cases refuse before pair creation. New targets remain available only for unposted draft moves.
+The effective date is today in the contracting entity's timezone. Source and target groups and
+contracts are locked together before validating or writing the command.
 """
 
 from __future__ import annotations
@@ -115,11 +83,10 @@ AT_ONCE_ACTIVE: Final = (
 AT_ONCE_OTHER: Final = (
     "{external_id} is {status}. A regroup is applied at once only between two drafts."
 )
-# Item REGROUP-AFTER-POSTING-AMOUNT-1: the after-posting road is withdrawn from release 1.0.
+# Posted moves outside the supported existing-ACTIVE pair remain refused.
 AFTER_POSTING: Final = (
-    "{external_id} has posted. After a posting an obligation is moved between contracts by a "
-    "modification of each: a removal on the one and an addition on the other, each with its own "
-    "approval."
+    "{external_id} has posted. A retained transfer requires two existing active contracts "
+    "with supported fixed service; moves involving a draft or a new target are unavailable."
 )
 
 
@@ -168,9 +135,7 @@ def _refuse_at_once(row: Mapping[str, Any]) -> None:
 
 
 def _refuse_after_posting(session: Session, row: Mapping[str, Any]) -> None:
-    """A line of the contract has posted: 409 ``invalid-transition`` naming it (04 §16.1 rev
-    1.234 (c)). The DRAFT pair this command created there is withdrawn from release 1.0 until
-    its amount and its dates are rebuilt (module docstring)."""
+    """Refuse posted contracts in unsupported destination/status combinations."""
     if _posted(session, [_uuid(row["id"])]):
         raise _refused(AFTER_POSTING.format(external_id=row["external_id"]))
 
@@ -439,12 +404,18 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             RULE_TARGET,
             TERMS_MISSING.format(external_id=source["external_id"], key=lacking[0]),
         )
-    # Release 1.0 takes two drafts and nothing else (04 §16.1 rev 1.234). The source is judged
-    # here, before a new target is booked; the target after its own checks, so that a refusal
-    # names no contract the caller may not see.
-    _refuse_after_posting(session, source)
-    if not posted:
-        _refuse_at_once(source)
+    retained_transfer = (
+        posted
+        and body.target_contract_id is not None
+        and _text(source["status"]) == ContractStatus.ACTIVE.value
+        and _text(locked[body.target_contract_id]["status"]) == ContractStatus.ACTIVE.value
+    )
+    if retained_transfer:
+        require_for_entity(uow.ctx, mods.CREATE_PERMISSION, _uuid(source["contracting_entity_id"]))
+    else:
+        _refuse_after_posting(session, source)
+        if not posted:
+            _refuse_at_once(source)
     if body.target_contract_id is None:
         target = _new_target(uow, source, booking, keys)
         target_id = _uuid(target["id"])
@@ -471,9 +442,24 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
                 RULE_TARGET,
                 TARGET_KEY_COLLISION.format(external_id=target["external_id"], key=collisions[0]),
             )
-        _refuse_after_posting(session, target)
-        _refuse_at_once(target)
-    # From here ``posted`` is false: the after-posting branches below are the withdrawn road.
+        if retained_transfer:
+            require_for_entity(
+                uow.ctx, mods.CREATE_PERMISSION, _uuid(target["contracting_entity_id"])
+            )
+            functional = session.scalar(
+                select(legal_entity.c.functional_currency).where(
+                    legal_entity.c.id == source["contracting_entity_id"]
+                )
+            )
+            if str(functional).strip() != str(source["transaction_currency"]).strip():
+                raise _failed(
+                    "target_contract_id",
+                    RULE_TARGET,
+                    "Foreign-currency transfers require retained historical FX transfer treatment.",
+                )
+        else:
+            _refuse_after_posting(session, target)
+            _refuse_at_once(target)
     currency = str(source["transaction_currency"]).strip()
     # 05 TZ-03: use the contracting entity's current date, not the UTC date.
     effective = holds.entity_date(session, source, uow.now)
@@ -481,8 +467,35 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
     amounts: dict[str, Decimal] = {}
     book_lines: dict[str, dict[str, list[dict[str, Any]]]] = {"OUT": {}, "IN": {}}
     basis_evidence: dict[str, Any] = {}
+    target_digest: str | None = None
     if posted:
         original = bundles.build(session, _uuid(source["combination_group_id"]), uow.now)
+        if retained_transfer:
+            target_basis = bundles.build(session, _uuid(target["combination_group_id"]), uow.now)
+            target_digest = target_basis.sha256()
+            target_header = next(
+                c for c in target_basis.contracts if c.external_id == target["external_id"]
+            )
+            for book in target_basis.books:
+                if target_header.contracting_entity_code not in book.entity_codes:
+                    continue
+                if book.book_code == "LEGACY":
+                    raise _failed(
+                        "target_contract_id",
+                        RULE_TARGET,
+                        "Legacy target transfer basis is unavailable.",
+                    )
+                try:
+                    fixed_boundary_basis(
+                        target_basis,
+                        book_code=book.book_code,
+                        effective_date=effective,
+                        contract_key=str(target["external_id"]),
+                        obligation_keys=tuple(sorted(mods._source_obligations(session, target_id))),
+                        require_fixed_transfer=True,
+                    )
+                except (ValueError, EngineError) as error:
+                    raise _failed("target_contract_id", RULE_TARGET, str(error)) from error
         primary = queries.primary_book(session)
         source_header = next(
             c for c in original.contracts if c.external_id == source["external_id"]
@@ -559,6 +572,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
         questionnaire={
             "regroup_book_lines": book_lines["OUT"],
             "regroup_source_basis": basis_evidence,
+            **({"regroup_target_input_sha256": target_digest} if target_digest else {}),
         }
         if posted
         else None,
@@ -585,6 +599,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
         questionnaire={
             "regroup_book_lines": book_lines["IN"],
             "regroup_source_basis": basis_evidence,
+            **({"regroup_target_input_sha256": target_digest} if target_digest else {}),
         }
         if posted
         else None,

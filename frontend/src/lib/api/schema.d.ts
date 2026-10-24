@@ -1811,11 +1811,10 @@ export interface paths {
     put?: never;
     /**
      * Contracts Regroup
-     * @description Move obligations to another (or a new) contract (04 §16.1; REQ-CON-012; ENGINE_SPEC
-     *     S06-R-27; CTR-17). In release 1.0 the command is taken between two draft contracts: the
-     *     paired ``REGROUPED`` events apply at once and both contracts recompute from inception. With a
-     *     contract that is not a draft, or after a posting, it answers 409 ``invalid-transition``: such
-     *     an obligation is moved by a modification of each contract (04 §16.1 rev 1.234).
+     * @description Move unposted draft lines immediately, or prepare paired modifications for a supported
+     *     fixed-service transfer between existing active contracts in the same entity and functional
+     *     currency. Posted transfers require modification permission and approval before application;
+     *     unsupported destinations, currencies and consideration/progress bases refuse.
      */
     post: operations["contracts_regroup"];
     delete?: never;

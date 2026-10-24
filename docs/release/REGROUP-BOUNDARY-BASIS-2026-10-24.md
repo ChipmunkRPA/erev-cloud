@@ -304,3 +304,31 @@ the fixture), including preview, approval, application, replay and causal report
 lint/types pass. These are preparation safeguards, not complete transfer coverage: public
 after-posting entry remains gated, and foreign-currency, broader consideration/progress and
 new-target transfer implementation remain open. No deployment.
+
+
+## Public fixed-service posted transfers — October 24, 2026
+
+The public regroup command now prepares paired DRAFT modifications when a posted transfer names
+two existing ACTIVE contracts in the same entity/currency. Transaction currency must equal
+functional currency. Source selected obligations and target obligations must satisfy the fixed
+transfer checks, including remaining service; estimates, specialist consideration/payment/cost
+balances, combined/acquired/material-right/agent obligations and other progress methods refuse.
+New/draft destinations remain unavailable after posting. Before-posting draft moves are unchanged.
+Both contract-create and entity-scoped modification-create permission are required. Creation
+appends no REGROUPED events: classify and preview both sides, then submit one spanning approval.
+
+The target's input digest is now retained on both sides and checked with source evidence before
+submission/application. Own pending pair headers are excluded from freshness comparison, while
+other inputs remain. Questionnaire edits preserve server-managed regroup evidence; replacing it
+refuses. The workbench exposes Transfer remaining service for eligible permissions/status, loads
+ACTIVE targets and shows links to both draft modifications after success, without claiming posting.
+The action uses today's date in the contracting entity timezone. Broader progress/consideration,
+foreign-currency and new-target transfers remain development gaps.
+
+Necessary verification: all twelve regroup workflow cases passed after opening the supported
+route. After adding target snapshots/evidence protection, both cross-group and shared-group full
+public workflows passed again without entry-guard bypasses, including permission denial, no-event
+draft creation, preview, approval, application, causal reports and close replay. Thirty-five native/
+pair/freshness cases pass, including target-input changes and immutable evidence. Four drawer
+cases pass, including both modification links and no draft destination for active transfers.
+Backend/frontend types and scoped lint pass; API schema and user guide updated. No deployment.

@@ -2373,6 +2373,18 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
         }
       } else if (data.status === "ACTIVE" || data.status === "COMPLETED") {
         if (
+          !hidden &&
+          data.status === "ACTIVE" &&
+          canCreate &&
+          permissions.includes(MODIFICATION_CREATE_PERMISSION)
+        ) {
+          overflow.push({
+            id: "regroup",
+            label: t("contracts.drawer.regroup.transferTitle"),
+            onSelect: () => setDrawer({ kind: "regroup" }),
+          });
+        }
+        if (
           acceptsModifications(data) &&
           built.has(MODIFICATION_NEW_ROUTE) &&
           me.permissions.includes(MODIFICATION_CREATE_PERMISSION)

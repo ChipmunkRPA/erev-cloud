@@ -203,17 +203,8 @@ def test_regroup_before_posting_reruns_both(k02: K02World) -> None:
     assert "O2" in {str(v["obligation_key"]) for v in target_versions}
 
 
-def test_regroup_after_posting_is_refused(k02: K02World) -> None:
-    """04 §16.1 ``regroup`` (c), rev 1.234; 03 REQ-CON-012 rev 1.136; item
-    REGROUP-AFTER-POSTING-AMOUNT-1. Until the supervisor's ruling of 2026-10-01 this test was
-    ``test_regroup_after_posting_creates_two_modifications`` and expected 201 with the DRAFT pair
-    for ONE spanning request (D-98 140 Q-4) — a STALE EXPECTATION by that ruling. No test had
-    taken such a pair to APPLIED. Measured end to end, the pair moved the remaining allocation of
-    O2's latest version — 95,868.49 of 96,000.00 with 35,901.37 posted, not the remainder at the
-    regroup's date; its ADD row, classified a separate contract, booked O2 a third time with its
-    original service dates; and that contract's activation posted 35,852.19 for service the
-    source had recognised already. The road is withdrawn from release 1.0: after a posting the
-    command is refused before anything is written, whichever contract has posted."""
+def test_regroup_unsupported_posted_destinations_are_refused(k02: K02World) -> None:
+    """Unsupported posted destinations refuse without writing either side."""
     maya = k02.place.author
     # The source is activated and computed so that a subledger line exists (a posting).
     source = booked_contract(k02.place, _two_line_body(k02, "SF-ORD-10002"), activate=False)
@@ -231,14 +222,12 @@ def test_regroup_after_posting_is_refused(k02: K02World) -> None:
     computed(k02.place, draft_group)
     before = _written(k02)
     sentence = (
-        "{external_id} has posted. After a posting an obligation is moved between contracts by a "
-        "modification of each: a removal on the one and an addition on the other, each with its "
-        "own approval."
+        "{external_id} has posted. A retained transfer requires two existing active contracts "
+        "with supported fixed service; moves involving a draft or a new target are unavailable."
     )
 
     for moved_from, moved_to, named in (
         (source_id, draft_target, "SF-ORD-10002"),  # the world of this test until rev 1.30
-        (source_id, posted_target_id, "SF-ORD-10002"),  # measured: active into active
         (draft_source, posted_target_id, "SF-ORD-10004"),  # measured: a draft into active
         (source_id, None, "SF-ORD-10002"),  # into a new contract
     ):
@@ -751,11 +740,9 @@ def test_retained_posted_pair_workflow(
     monkeypatch: pytest.MonkeyPatch,
     shared_group: bool,
 ) -> None:
-    """Exercise the withdrawn path without enabling it at the public entrypoint."""
+    """Public retained transfer: classify, preview, approve and apply both sides atomically."""
     from erev_api.jobs.context import JobRuntime
 
-    monkeypatch.setattr(regroup, "_refuse_after_posting", lambda *args: None)
-    monkeypatch.setattr(regroup, "_refuse_at_once", lambda *args: None)
     source = activated_contract(
         k02.place, booked_contract(k02.place, _two_line_body(k02, "REGROUP-SOURCE"), activate=False)
     )
@@ -784,6 +771,23 @@ def test_retained_posted_pair_workflow(
         assert routed.status_code == 200, routed.text
         decision = approve(k02.app, routed.json()["approval_request_id"], k02.priya)
         assert decision.status_code == 200, decision.text
+    if not shared_group:
+        token = _client(k02, "svc-draft-only", ["contract.read", "contract.create"])
+        untouched = _written(k02)
+        denied = _regrouped_by(
+            k02,
+            token,
+            source_id,
+            {
+                "obligation_keys": ["O2"],
+                "target_contract_id": str(target_id),
+                "comment": "Missing modification permission.",
+            },
+        )
+        assert denied.status_code == 404, (
+            denied.text
+        )  # Entity-scoped permission denial hides the record.
+        assert _written(k02) == untouched
     before_inputs = {
         group: computed(k02.place, group)[0]
         for group in {
@@ -802,6 +806,14 @@ def test_retained_posted_pair_workflow(
     )
     assert created.status_code == 201, created.text
     ids = created.json()["modification_ids"]
+    prepared = k02.place.rows(
+        select(modification).where(modification.c.id.in_([UUID(i) for i in ids]))
+    )
+    assert {row["status"] for row in prepared} == {"DRAFT"}
+    assert len({row["questionnaire"]["regroup_target_input_sha256"] for row in prepared}) == 1
+    assert not _events(k02, source_id, ContractEventType.REGROUPED)
+    assert not _events(k02, target_id, ContractEventType.REGROUPED)
+
     runtime = JobRuntime(clock=clock, keyring=keyring, files=LocalFileStore(app_settings.file_root))
     for identity in ids:
         classified = modification_flows._classify(k02, identity)

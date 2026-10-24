@@ -95,6 +95,10 @@ def require_consistent(rows: Sequence[Mapping[str, Any]], *, primary_book: str) 
         _refuse()
     if canonical_bytes(evidence) != canonical_bytes(questionnaires[1].get("regroup_source_basis")):
         _refuse()
+    targets = [q.get("regroup_target_input_sha256") for q in questionnaires]
+    if any(value is not None for value in targets):
+        if targets[0] != targets[1] or not isinstance(targets[0], str) or len(targets[0]) != 64:
+            _refuse()
     currency = str(source["currency"]).strip()
     scale = 10 ** ISO_4217[currency].minor_unit
     source_lines = _lines(source["lines"], currency, "REMOVE")
@@ -141,3 +145,22 @@ def require_consistent(rows: Sequence[Mapping[str, Any]], *, primary_book: str) 
                     _refuse()
             except (KeyError, ValueError, TypeError, ZeroDivisionError):
                 _refuse()
+
+
+def preserve_evidence(row: Mapping[str, Any], values: dict[str, Any]) -> None:
+    """Classification edits cannot replace or erase server-captured transfer inputs."""
+    if row.get("regroup_id") is None or "questionnaire" not in values:
+        return
+    retained = {
+        k: v for k, v in (row.get("questionnaire") or {}).items() if k.startswith("regroup_")
+    }
+    authored = values["questionnaire"]
+    for key, value in authored.items():
+        if key.startswith("regroup_") and (
+            key not in retained or canonical_bytes(value) != canonical_bytes(retained[key])
+        ):
+            raise Problem(
+                "validation-failed",
+                "Regroup transfer evidence is server-managed; rebuild the pair to change it.",
+            )
+    values["questionnaire"] = {**authored, **retained}

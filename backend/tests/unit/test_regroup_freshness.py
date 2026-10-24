@@ -54,7 +54,7 @@ def test_other_source_inputs_and_current_term_remain_in_the_basis():
         read(original, frozenset({original.contracts[0].modifications[0].modification_key}))
 
 
-@pytest.mark.parametrize("change", [None, "source", "target_books"])
+@pytest.mark.parametrize("change", [None, "source", "target_books", "target_inputs"])
 def test_freshness_entry_reads_current_source_and_target(monkeypatch, change):
     original = continuation()
     source_id, target_id, source_group, target_group = (uuid4() for _ in range(4))
@@ -71,6 +71,9 @@ def test_freshness_entry_reads_current_source_and_target(monkeypatch, change):
     if change == "source":
         # No financial mutation is needed: changing an input identity still needs a review.
         sources[source_group] = replace(original, trigger="DRY_RUN")
+    elif change == "target_inputs":
+        source["questionnaire"]["regroup_target_input_sha256"] = original.sha256()
+        sources[target_group] = replace(original, trigger="DRY_RUN")
     elif change == "target_books":
         sources[target_group] = replace(original, books=())
     monkeypatch.setattr(

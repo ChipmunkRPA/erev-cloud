@@ -22,9 +22,8 @@ review and publish changes without PR accumulation, and do not deploy.
 
 ## Retained split causal reporting — October 24, 2026
 
-Posted-transfer groundwork now includes shared-group two-sided previews and sequential causal
-reporting in all three currency views, with original-evidence reruns. Public regroup entry
-remains gated for unsupported scenarios. See [checkpoint](docs/release/REGROUP-BOUNDARY-BASIS-2026-10-24.md).
+Fixed-service posted transfers now have workbench/API entry, paired preview/approval and causal
+reporting. Both ACTIVE contracts must use functional currency; specialist scenarios remain gated. See [checkpoint](docs/release/REGROUP-BOUNDARY-BASIS-2026-10-24.md).
 
 ## Rated usage entry — October 24, 2026
 
@@ -52,7 +51,7 @@ with unavailable opening amounts explicitly marked. Cross-entity principal POB v
 Historical agent owners now use verified original membership: [checkpoint](docs/release/AGENT-HISTORICAL-OWNERS-2026-10-24.md).
 Principal historical owners now use original membership proof in FIFO, reversals and due-to attribution.
 Cross-performer contracting revenue (different calendars): [sources](docs/release/CONTRACTING-AGENT-SOURCES-2026-10-24.md).
-Performing-entity agent revenue and regrouping remain open.
+Performing-entity agent revenue and specialist regrouping remain open.
 
 ## Acquired POB sources — October 23, 2026
 

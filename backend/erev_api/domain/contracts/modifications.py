@@ -888,6 +888,9 @@ def update_modification(
     if status not in (DRAFT, SUBMITTED, REJECTED):
         raise _invalid(NOT_EDITABLE)
     values = _authored_values(body)
+    from .regroup_pair import preserve_evidence
+
+    preserve_evidence(row, values)
     errors: list[ProblemError] = _termination_errors(
         {**row, **values}, str(current["transaction_currency"]).strip()
     )

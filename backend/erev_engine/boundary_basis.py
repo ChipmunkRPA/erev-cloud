@@ -98,6 +98,19 @@ def fixed_boundary_basis(
         if require_fixed_transfer:
             if any(finding.severity == "ERROR" for finding in state.findings):
                 raise ValueError("Transfer basis has blocking calculation findings")
+            if any(
+                header.noncash_consideration
+                or header.consideration_payable
+                or header.payment_schedule
+                or header.scope_605_35
+                for header in bundle.contracts
+            ) or any(
+                item.event_type in {"COST_INCURRED", "COLLECTIBILITY_ASSESSED"}
+                for item in bundle.events
+            ):
+                raise ValueError(
+                    "Specialist consideration and cost balances need separate transfer treatment"
+                )
             if bundle.estimate_versions:
                 raise ValueError(
                     "Transfer of estimated consideration requires retained member treatment"
