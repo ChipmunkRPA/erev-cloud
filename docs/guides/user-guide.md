@@ -81,8 +81,9 @@ For a posted active contract, choose **Transfer remaining service**. Select an e
 contract in the same entity and currency, choose lines and enter a comment, then choose
 **Prepare paired modifications**. This creates two drafts dated today in the entity timezone;
 it does not post the transfer. Follow the source and target modification links, classify and
-preview both, and submit the pair for one approval. Both sides apply together. Contract creation
-and modification preparation permissions are required. The supported basis is fixed time-based
+preview both, and submit the pair for one approval. Both sides apply together. An ACTIVE target may have fully performed prior fixed service; its
+old allocation is preserved while the incoming line receives the transferred remainder. Contract
+creation and modification preparation permissions are required. The supported basis is fixed time-based
 or unit-based service where transaction and functional currencies match. New/draft destinations,
 foreign currency, estimates, combined obligations, material rights, agents, specialist balances
 and other progress methods remain unsupported and return a validation error. Changes to either

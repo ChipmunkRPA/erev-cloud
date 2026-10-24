@@ -49,6 +49,7 @@ def fixed_boundary_basis(
     contract_key: str,
     obligation_keys: tuple[str, ...],
     require_fixed_transfer: bool = False,
+    require_remaining_service: bool = True,
 ) -> tuple[FixedBoundaryBasis, ...]:
     """Query selected original obligations without using latest-version remainder columns.
 
@@ -58,9 +59,10 @@ def fixed_boundary_basis(
     Select an existing event to measure strictly before it, or a proposed effective date
     to measure after all retained events on that date. The latter creates no source event;
     it is a current-known-input query, not a historical knowledge snapshot.
-    Transfer preparation opts into fixed-component eligibility checks. Analytical queries
-    remain available for other obligations; their fixed component alone does not authorize
-    transferring consideration, progress, FX, or balances.
+    Transfer preparation opts into fixed-component eligibility checks. A receiving contract's
+    existing obligations may be fully performed; only the source must retain movable service.
+    Analytical queries remain available for other obligations; their fixed component alone
+    does not authorize transferring consideration, progress, FX, or balances.
     """
     if (event_key is None) == (effective_date is None):
         raise ValueError("Choose exactly one original event or proposed effective date")
@@ -161,11 +163,16 @@ def fixed_boundary_basis(
                 raise ValueError("The selected obligation has no fixed allocation at the boundary")
             measured = segments.measure(context, state, ob, segment, event)
             if require_fixed_transfer and (
-                measured.remaining_quantity <= 0
-                or segment.a_posted - measured.posted < 0
+                segment.a_posted - measured.posted < 0
                 or (
-                    segment.totals.end_date is not None
-                    and segment.totals.end_date < event.effective_date
+                    require_remaining_service
+                    and (
+                        measured.remaining_quantity <= 0
+                        or (
+                            segment.totals.end_date is not None
+                            and segment.totals.end_date < event.effective_date
+                        )
+                    )
                 )
             ):
                 raise ValueError("The obligation has no transferable remaining service")

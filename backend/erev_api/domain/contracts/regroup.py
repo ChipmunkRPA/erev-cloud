@@ -493,6 +493,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
                         contract_key=str(target["external_id"]),
                         obligation_keys=tuple(sorted(mods._source_obligations(session, target_id))),
                         require_fixed_transfer=True,
+                        require_remaining_service=False,
                     )
                 except (ValueError, EngineError) as error:
                     raise _failed("target_contract_id", RULE_TARGET, str(error)) from error

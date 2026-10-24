@@ -731,7 +731,9 @@ def test_regroup_permission_prd_1_modification_create_alone_does_not_regroup(
     assert _written(k02) == before
 
 
-@pytest.mark.parametrize("shared_group", [False, True])
+@pytest.mark.parametrize(
+    "shared_group,completed_target", [(False, False), (True, False), (False, True)]
+)
 def test_retained_posted_pair_workflow(
     k02: K02World,
     app_settings: Settings,
@@ -739,6 +741,7 @@ def test_retained_posted_pair_workflow(
     clock: FrozenClock,
     monkeypatch: pytest.MonkeyPatch,
     shared_group: bool,
+    completed_target: bool,
 ) -> None:
     """Public retained transfer: classify, preview, approve and apply both sides atomically."""
     from erev_api.jobs.context import JobRuntime
@@ -746,9 +749,10 @@ def test_retained_posted_pair_workflow(
     source = activated_contract(
         k02.place, booked_contract(k02.place, _two_line_body(k02, "REGROUP-SOURCE"), activate=False)
     )
-    target = activated_contract(
-        k02.place, booked_contract(k02.place, _one_line_body(k02, "REGROUP-TARGET"), activate=False)
-    )
+    target_body = _one_line_body(k02, "REGROUP-TARGET")
+    if completed_target:
+        target_body["lines"][0]["end_date"] = "2026-03-31"
+    target = activated_contract(k02.place, booked_contract(k02.place, target_body, activate=False))
     source_id, target_id = (UUID(str(item.contract["id"])) for item in (source, target))
     if shared_group:
         grouped = post(
@@ -861,6 +865,9 @@ def test_retained_posted_pair_workflow(
     assert source_allocations["O2"] == recognized
     assert sum(source_allocations.values()) == Decimal("240000") - remaining
     assert sum(target_allocations.values()) == Decimal("144000") + remaining
+    if completed_target:
+        assert target_allocations["O1"] == Decimal("144000")
+        assert target_allocations["O2"] == remaining
     assert sum(source_allocations.values()) + sum(target_allocations.values()) == Decimal("384000")
     lines_before = len(k02.place.rows(select(subledger_line.c.id)))
     for group_id in {

@@ -332,3 +332,20 @@ draft creation, preview, approval, application, causal reports and close replay.
 pair/freshness cases pass, including target-input changes and immutable evidence. Four drawer
 cases pass, including both modification links and no draft destination for active transfers.
 Backend/frontend types and scoped lint pass; API schema and user guide updated. No deployment.
+
+
+## Receiving contracts with fully performed service — October 24, 2026
+
+Posted transfer preparation now distinguishes source remaining-service requirements from target
+context validation. An existing ACTIVE target may have fully performed fixed obligations or
+service ending before the transfer date. Its existing allocation is not transferred. Source
+obligations still require movable remaining service; negative remaining consideration and all
+other eligibility restrictions remain refusals. Terminated obligations and COMPLETED contract
+status are not newly admitted by this change. The workbench's existing ACTIVE target selection
+uses this capability without an extra option.
+
+Sixteen native boundary cases and three full public transfer scenarios pass (cross-group,
+shared-group and fully performed target service). The completed-target case separately verifies
+that the original target allocation stays 144,000 and the incoming line receives exactly the
+source remainder, along with approval/application, conservation and report replay checks. Scoped
+lint/types pass. User guide updated. No deployment.

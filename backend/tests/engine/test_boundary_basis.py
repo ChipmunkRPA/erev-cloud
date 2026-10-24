@@ -182,3 +182,24 @@ def test_fixed_transfer_refuses_incomplete_native_basis(monkeypatch, changes, re
             obligation_keys=("POB-01",),
             require_fixed_transfer=True,
         )
+
+
+def test_receiving_contract_can_have_fully_performed_fixed_service():
+    from datetime import date
+
+    from tests.engine.s06_modifications.test_s06_prospective import ex_09_a
+
+    value = ex_09_a()
+    kwargs = dict(
+        book_code="ASC606",
+        effective_date=date(2030, 1, 1),
+        contract_key=value.contracts[0].external_id,
+        obligation_keys=("POB-01",),
+        require_fixed_transfer=True,
+    )
+    with pytest.raises(ValueError, match="no transferable remaining service"):
+        fixed_boundary_basis(value, **kwargs)
+    (receiving,) = fixed_boundary_basis(value, **kwargs, require_remaining_service=False)
+    assert receiving.service_end_date < date(2030, 1, 1)
+    assert receiving.remaining_minor == 0
+    assert receiving.recognized_minor == receiving.allocation_minor
