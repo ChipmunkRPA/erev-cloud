@@ -16,6 +16,20 @@ from decimal import Decimal
 from fractions import Fraction
 
 import pytest
+from support.bundles import ENTITY_CODE, entity
+from support.recognition import (
+    CONTRACT_KEY,
+    allocated_state,
+    book_context,
+    estimate_version,
+    event_view,
+    obligation,
+    period_amounts,
+    segment,
+    targets_by_period,
+    usd,
+)
+
 from erev_engine import ENGINE_VERSION
 from erev_engine.bundle import EstimateVersionInput
 from erev_engine.errors import EngineError
@@ -34,19 +48,6 @@ from erev_engine.stages.state import (
     Target,
 )
 from erev_engine.trace import Trace, TraceBuilder, TraceNode, reevaluate
-from support.bundles import ENTITY_CODE, entity
-from support.recognition import (
-    CONTRACT_KEY,
-    allocated_state,
-    book_context,
-    estimate_version,
-    event_view,
-    obligation,
-    period_amounts,
-    segment,
-    targets_by_period,
-    usd,
-)
 
 pytestmark: list[pytest.MarkDecorator] = []
 
@@ -882,3 +883,41 @@ def test_unrated_redemption_usage_preserves_breakage_measurement():
         usd("116000.00"),
     ]
     assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+
+
+def test_shared_breakage_overrides_local_expected_redemptions_by_book():
+    local = _breakage_version(9, JAN_1, rate="0", expected="120000")
+    shared = dataclasses.replace(
+        _breakage_version(1, JAN_1, rate="0", expected="0"),
+        estimate_key="PORTFOLIO:P/BREAKAGE",
+        version_key="PORTFOLIO:P/BREAKAGE@v1",
+        portfolio_member_contract_keys=(CONTRACT_KEY,),
+        portfolio_target_subject_keys=(O_CREDITS,),
+        portfolio_breakage_allocations={
+            "ASC606": {
+                O_CREDITS: {
+                    "entitlement_quantity": "120000",
+                    "breakage_quantity": "24000",
+                    "expected_quantity": "96000",
+                }
+            }
+        },
+    )
+    state, trace = _run(
+        CTX_6, _ex_09_d_state(versions=(local, shared), deliveries=((P1, "24000"),), end=None)
+    )
+    assert targets_by_period(state, O_CREDITS)["FY2026-P01"] == usd("30000")
+    assert any(node.params.get("expected") == "96000" for node in trace.nodes)
+    retired = dataclasses.replace(
+        shared,
+        version_no=2,
+        version_key="PORTFOLIO:P/BREAKAGE@v2",
+        effective_date=P2,
+        portfolio_member_contract_keys=(),
+        portfolio_target_subject_keys=(),
+    )
+    state, _ = _run(
+        CTX_6,
+        _ex_09_d_state(versions=(local, shared, retired), deliveries=((P1, "24000"),), end=None),
+    )
+    assert targets_by_period(state, O_CREDITS)["FY2026-P02"] == usd("24000")

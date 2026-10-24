@@ -153,28 +153,54 @@ def pin_at(
     the greatest (effective date, version number) among the versions whose applying event the
     position admits."""
     prefix = f"{_encode(ob.contract_key)}/"
-    found: EstimateVersionInput | None = None
+    local: list[EstimateVersionInput] = []
+    shared: list[EstimateVersionInput] = []
     for versions in st.estimates.pins.values():
-        for pin in versions:
-            version = pin.version
-            if version.estimate_kind != BREAKAGE_KIND:
-                continue
-            if not version.estimate_key.startswith(prefix):
-                continue
-            if version.obligation_key != ob.obligation_key and (
-                ob.obligation_key not in version.target_obligation_keys
+        admitted = [
+            pin.version
+            for pin in versions
+            if pin.version.estimate_kind == BREAKAGE_KIND
+            and pin.version.effective_date <= d
+            and (position is None or position.admits(pin.event_order_key))
+        ]
+        if not admitted:
+            continue
+        latest = max(admitted, key=lambda v: (v.effective_date, v.version_no))
+        if latest.estimate_key.startswith("PORTFOLIO:"):
+            # Select the latest version before checking scope: a retirement must
+            # not fall back to that portfolio's older, broader shared pin.
+            if (
+                latest.portfolio_member_contract_keys is not None
+                and ob.contract_key in latest.portfolio_member_contract_keys
             ):
-                continue
-            if version.effective_date > d:
-                continue
-            if position is not None and not position.admits(pin.event_order_key):
-                continue
-            if found is None or (version.effective_date, version.version_no) > (
-                found.effective_date,
-                found.version_no,
-            ):
-                found = version
-    return found
+                if (
+                    latest.portfolio_target_subject_keys is None
+                    or ob.subject_key in latest.portfolio_target_subject_keys
+                ):
+                    if (
+                        ob.obligation_key in latest.target_obligation_keys
+                        or latest.obligation_key == ob.obligation_key
+                    ):
+                        shared.append(latest)
+        else:
+            local.extend(
+                v
+                for v in admitted
+                if v.estimate_key.startswith(prefix)
+                and (
+                    v.obligation_key == ob.obligation_key
+                    or ob.obligation_key in v.target_obligation_keys
+                )
+            )
+    if len(shared) > 1:
+        raise _invariant(
+            "Multiple shared breakage estimates target one obligation", ob, rule="S09-R-27"
+        )
+    return (
+        shared[0]
+        if shared
+        else max(local, key=lambda v: (v.effective_date, v.version_no), default=None)
+    )
 
 
 def redeemed_units(
@@ -308,13 +334,13 @@ def target(
     if lapsed is not None:
         mode = EXPIRY
         if pin is not None:
-            rho = _entitlement(ob, pin, quantity)
+            rho = _entitlement(ob, pin, quantity, ctx.book_code)
             unclaimed = max(Fraction(0), 1 - rho)
         params["expired_on"] = lapsed.isoformat()
         params["unclaimed_share"] = rational_param(unclaimed)
     elif pin is not None and _policy(ctx, ob, METHOD_POLICY) == PROPORTIONAL:
         mode = PROPORTIONAL
-        expected, rate = _members(ob, pin)
+        expected, rate = _members(ob, pin, ctx.book_code)
         if expected <= 0:
             raise EngineError(
                 EXPECTED_ZERO,
@@ -322,7 +348,7 @@ def target(
                 subject_key=ob.subject_key,
                 detail={"rule": "S09-R-27", "version_key": pin.version_key},
             )
-        rho = _entitlement(ob, pin, quantity)
+        rho = _entitlement(ob, pin, quantity, ctx.book_code)
         if redeemed > expected:
             findings.append(
                 Finding(
@@ -345,7 +371,9 @@ def target(
     else:
         mode = WHEN_REMOTE
         remote = pin is not None and _remote_attested(ctx, contract, ob, pin)
-        params["rate"] = rational_param(_members(ob, pin)[1] if pin is not None else Fraction(0))
+        params["rate"] = rational_param(
+            _members(ob, pin, ctx.book_code)[1] if pin is not None else Fraction(0)
+        )
         params["remote"] = "true" if remote else "false"
         if pin is not None:
             params["version_key"] = pin.version_key
@@ -365,8 +393,29 @@ def target(
     )
 
 
-def _members(ob: ObligationState, pin: EstimateVersionInput) -> tuple[Fraction, Fraction]:
+def _members(
+    ob: ObligationState, pin: EstimateVersionInput, book: str | None = None
+) -> tuple[Fraction, Fraction]:
     """(R_exp, b) of a ``BREAKAGE`` version; an absent member reads 0 (04 T-CON-13)."""
+    if pin.estimate_key.startswith("PORTFOLIO:"):
+        allocation = (
+            (pin.portfolio_breakage_allocations or {}).get(str(book), {}).get(ob.subject_key)
+        )
+        if allocation is None:
+            raise _invariant(
+                "Shared breakage lacks a frozen member/book allocation", ob, rule="S09-R-27"
+            )
+        try:
+            quantity = Fraction(allocation["entitlement_quantity"])
+            breakage = Fraction(allocation["breakage_quantity"])
+            expected = Fraction(allocation["expected_quantity"])
+            if quantity <= 0 or not 0 <= breakage <= quantity or expected != quantity - breakage:
+                raise ValueError("Invalid shared breakage denominator")
+        except (KeyError, ValueError, ZeroDivisionError) as error:
+            raise _invariant(
+                "Shared breakage quantities do not reconcile", ob, rule="S09-R-27"
+            ) from error
+        return expected, breakage / quantity
     expected = (
         Fraction(0) if pin.expected_quantity is None else money.to_fraction(pin.expected_quantity)
     )
@@ -381,9 +430,11 @@ def _members(ob: ObligationState, pin: EstimateVersionInput) -> tuple[Fraction, 
     return expected, rate
 
 
-def _entitlement(ob: ObligationState, pin: EstimateVersionInput, quantity: Fraction) -> Fraction:
+def _entitlement(
+    ob: ObligationState, pin: EstimateVersionInput, quantity: Fraction, book: str | None = None
+) -> Fraction:
     """ρ = R_exp ÷ Q + b, at most 1 (S09-R-27); above 1 raises ``ESTIMATE_CONSTRAINT_RANGE``."""
-    expected, rate = _members(ob, pin)
+    expected, rate = _members(ob, pin, book)
     rho = expected / quantity + rate
     if rho > 1:
         raise EngineError(
@@ -430,7 +481,7 @@ def emit(
     if part.pin is not None:
         detail = {
             "member": "expected_quantity",
-            "value": money.format_exact(_members(ob, part.pin)[0]),
+            "value": money.format_exact(_members(ob, part.pin, ctx.book_code)[0]),
         }
         sources.append(SourceRef("estimate_version", part.pin.version_key, detail))
     breakage_id = tb.node(

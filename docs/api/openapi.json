@@ -32443,8 +32443,11 @@
       "PortfolioImpactOut": {
         "properties": {
           "basis": {
-            "const": "SHARED_RETURN_DRY_RUN",
             "default": "SHARED_RETURN_DRY_RUN",
+            "enum": [
+              "SHARED_RETURN_DRY_RUN",
+              "SHARED_BREAKAGE_DRY_RUN"
+            ],
             "title": "Basis",
             "type": "string"
           },

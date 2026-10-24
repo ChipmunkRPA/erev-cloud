@@ -20401,9 +20401,9 @@ export interface components {
       /**
        * Basis
        * @default SHARED_RETURN_DRY_RUN
-       * @constant
+       * @enum {string}
        */
-      basis: "SHARED_RETURN_DRY_RUN";
+      basis: "SHARED_RETURN_DRY_RUN" | "SHARED_BREAKAGE_DRY_RUN";
       /**
        * Computed At
        * Format: date-time

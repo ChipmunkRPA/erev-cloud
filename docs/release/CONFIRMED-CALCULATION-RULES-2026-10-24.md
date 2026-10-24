@@ -40,8 +40,32 @@ No deployment.
 
 ## Still to implement
 
-Shared-breakage submission, impact, atomic approval/application and member override;
-effective-date split allocation/application; broader foreign current balances
+Effective-date split allocation/application; broader foreign current balances
 (including nonzero mixed contract assets, ordinary/combined paths and specialist
 balances). These are development work, not unanswered owner choices. This checkpoint
 does not claim whole-system completion.
+
+
+## Shared breakage application — evidence revision 48
+
+Saved SSP allocations now feed read-only impact, submission and atomic approval/application.
+Each original member/obligation and book receives its saved quantity; expected redemptions
+are effective-date rights minus that share. Shared pins override local estimates even when
+local version numbers are higher. Revised scopes do not resurrect older broader shared pins.
+Original per-book rational quantities travel in the computation input and are replayed
+without reallocating the portfolio total inside each member group. Trace sources show the
+member-specific expected redemption quantity.
+
+Submission and approval rebuild the effective-date preview against the original verified
+computation and current population/FX sources. A changed source or missing book prevents
+application. The existing approval content hash, routing, member locks, immutable events
+and atomic group recomputations apply. The UI exposes impact, submit and withdraw for
+breakage, alongside retained allocation review. No financial change occurs when saving
+an allocation or previewing its impact.
+
+Necessary checks: 29 native/source cases, three public portfolio API workflows (including
+explicit and automatic breakage target selection), and two UI impact cases pass. Scoped
+Ruff, mypy, ESLint and frontend TypeScript pass. OpenAPI and generated types are updated.
+The public fixtures cover singleton redemption members; broader combination/loyalty
+populations and empty-population retirement are not claimed as verified by these cases.
+No deployment or overall readiness claim.

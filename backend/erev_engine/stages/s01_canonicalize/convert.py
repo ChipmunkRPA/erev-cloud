@@ -407,15 +407,28 @@ def assert_bundle_order(bundle: InputBundle) -> None:
     _assert_reference_order(bundle)
     _sorted(bundle.estimate_versions, lambda v: (v.estimate_key, v.version_no), "estimates")
     for version in bundle.estimate_versions:
+        allocation = version.portfolio_breakage_allocations
+        if allocation is not None and (
+            (bundle.evidence_revision or 0) < 48
+            or version.estimate_kind != "BREAKAGE"
+            or not version.estimate_key.startswith("PORTFOLIO:")
+            or version.portfolio_member_contract_keys is None
+        ):
+            raise ValueError(
+                "Shared breakage allocations require revision 48 and frozen member scope"
+            )
+        if allocation is not None and {book.book_code for book in bundle.books} - set(allocation):
+            raise ValueError("Save shared breakage allocations for every calculation book")
         targets = version.portfolio_target_subject_keys
         if targets is not None:
             if (
                 bundle.evidence_revision or 0
             ) < 13 or version.portfolio_member_contract_keys is None:
                 raise ValueError("Frozen shared target scope requires revision 13 and member scope")
-            if (
-                not version.estimate_key.startswith("PORTFOLIO:")
-                or version.estimate_kind != "RETURN_RATE"
+            if not version.estimate_key.startswith("PORTFOLIO:") or version.estimate_kind not in (
+                {"RETURN_RATE", "BREAKAGE"}
+                if (bundle.evidence_revision or 0) >= 48
+                else {"RETURN_RATE"}
             ):
                 raise ValueError("Frozen target scope applies to shared return estimates")
             if any(not key for key in targets):
@@ -425,9 +438,10 @@ def assert_bundle_order(bundle: InputBundle) -> None:
         if members is not None:
             if (bundle.evidence_revision or 0) < 12:
                 raise ValueError("Frozen shared member scope requires input revision 12")
-            if (
-                not version.estimate_key.startswith("PORTFOLIO:")
-                or version.estimate_kind != "RETURN_RATE"
+            if not version.estimate_key.startswith("PORTFOLIO:") or version.estimate_kind not in (
+                {"RETURN_RATE", "BREAKAGE"}
+                if (bundle.evidence_revision or 0) >= 48
+                else {"RETURN_RATE"}
             ):
                 raise ValueError(
                     "Frozen shared member scope currently applies to portfolio return estimates"

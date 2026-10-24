@@ -137,7 +137,7 @@ export function PortfolioVersions({
       ) : null}
       {selected &&
       selected !== "new" &&
-      estimate.estimate_kind === "RETURN_RATE" &&
+      ["RETURN_RATE", "BREAKAGE"].includes(estimate.estimate_kind) &&
       ["DRAFT", "SUBMITTED"].includes(selected.status) ? (
         <PortfolioImpact
           key={`${selected.id}:${selected.row_version}:${portfolio.row_version}`}
@@ -500,7 +500,7 @@ function VersionForm({
             {label("discard")}
           </Button>
         ) : null}
-        {editable && version && estimate.estimate_kind === "RETURN_RATE" ? (
+        {editable && version && ["RETURN_RATE", "BREAKAGE"].includes(estimate.estimate_kind) ? (
           <Button
             loading={submit.pending}
             disabledReason={
@@ -517,7 +517,9 @@ function VersionForm({
             {label("submit")}
           </Button>
         ) : null}
-        {writable && version?.status === "SUBMITTED" && estimate.estimate_kind === "RETURN_RATE" ? (
+        {writable &&
+        version?.status === "SUBMITTED" &&
+        ["RETURN_RATE", "BREAKAGE"].includes(estimate.estimate_kind) ? (
           <Button
             loading={withdraw.pending}
             disabledReason={pending ? label("saving") : undefined}

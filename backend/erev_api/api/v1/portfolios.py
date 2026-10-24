@@ -532,14 +532,17 @@ def impact_preview(
     estimate_id: UUID,
     version_id: UUID,
     ctx: ReadContext,
-    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+    deps: Deps,
 ) -> PortfolioImpactOut:
     # Authorization, membership, baseline and native input must see one population.
     with tenant_session(
         ctx.principal.db_context, read_only=True, isolation_level="REPEATABLE READ"
     ) as session:
+        uow = UnitOfWork(
+            ctx=ctx, session=session, clock=deps.clock, keyring=deps.keyring, files=deps.files
+        )
         return portfolio_impact.preview(
-            session, ctx, portfolio_id, estimate_id, version_id, deps.clock.now()
+            session, ctx, portfolio_id, estimate_id, version_id, deps.clock.now(), uow=uow
         )
 
 

@@ -76,3 +76,38 @@ def test_rehashed_wrong_allocation_cannot_replace_frozen_source():
     wrong["allocation"]["shares"][0]["computation_output_sha256"] = "b" * 64
     with pytest.raises(Problem):
         basis.read(wrong)
+
+
+def test_application_keeps_each_groups_share_and_overrides_expected_quantity():
+    from erev_api.domain.contracts.portfolio_breakage_application import native
+    from erev_engine.stages.s01_canonicalize import obligation_subject_key
+
+    shown = preview()
+    version = {
+        "id": shown.version_id,
+        "effective_date": shown.effective_date,
+        "parameters": {"portfolio_total_breakage_quantity": "3"},
+        "portfolio_application_basis": {
+            "portfolio_id": str(shown.portfolio_id),
+            "members": [
+                {
+                    "contract_id": str(s.contract_id),
+                    "contract_key": s.contract_external_id,
+                    "obligation_keys": [s.obligation_key],
+                }
+                for s in shown.shares
+            ],
+            "breakage_allocations": {"ASC606": basis.freeze(shown)},
+        },
+    }
+    for share, expected in zip(shown.shares, ("9", "8"), strict=True):
+        converted = native(version, {share.contract_id: {}})
+        assert converted["native_breakage_allocations"] == {
+            "ASC606": {
+                obligation_subject_key(share.contract_external_id, share.obligation_key): {
+                    "entitlement_quantity": "10",
+                    "breakage_quantity": share.breakage_quantity,
+                    "expected_quantity": expected,
+                }
+            }
+        }

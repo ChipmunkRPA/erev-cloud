@@ -1220,3 +1220,34 @@ def test_breakage_preview_reads_verified_native_redemption_sources(
         )
         == source_id
     )
+    # Save the changed effective-date allocation before the financial workflow.
+    refreshed = get(app, preview_path, world.maya)
+    assert refreshed.status_code == 200, refreshed.text
+    saved = post(
+        app,
+        version.headers["location"] + "/retain-allocation",
+        world.maya,
+        refreshed.json(),
+        if_match=edited.headers["etag"],
+    )
+    assert saved.status_code == 200, saved.text
+    impact = get(app, version.headers["location"] + "/impact-preview", world.maya)
+    assert impact.status_code == 200, impact.text
+    assert impact.json()["basis"] == "SHARED_BREAKAGE_DRY_RUN"
+    submitted = post(
+        app, version.headers["location"] + "/submit", world.maya, {}, if_match=saved.headers["etag"]
+    )
+    assert submitted.status_code == 200, submitted.text
+    from support.reference import approve
+
+    request_id = submitted.json()["approval_request_id"]
+    decision = approve(app, request_id, world.marcus)
+    assert decision.status_code == 200, decision.text
+    applied = get(app, version.headers["location"], world.maya)
+    assert applied.json()["status"] == "APPROVED", applied.text
+    assert (
+        world.place.scalar(
+            select(contract.c.latest_computation_id).where(contract.c.id == booked.contract["id"])
+        )
+        != source_id
+    )

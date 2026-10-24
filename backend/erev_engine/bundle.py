@@ -576,6 +576,10 @@ class EstimateVersionInput:
         default=None, metadata={"canonical_omit_none": True}
     )
 
+    portfolio_breakage_allocations: Mapping[str, Mapping[str, Mapping[str, str]]] | None = field(
+        default=None, metadata={"canonical_omit_none": True}
+    )
+
     def resolved_direction(self) -> str:
         """The element's direction (B3-D16), or the B3-DG-17 default when the producer carried
         none: ``DECREASE`` for kind ``IMPLICIT_PRICE_CONCESSION`` and for a
@@ -621,6 +625,8 @@ class EstimateVersionInput:
             del view["portfolio_member_contract_keys"]
         if self.portfolio_target_subject_keys is None:
             del view["portfolio_target_subject_keys"]
+        if self.portfolio_breakage_allocations is None:
+            del view["portfolio_breakage_allocations"]
         if (
             self.direction is None
             or self.direction == replace(self, direction=None).resolved_direction()

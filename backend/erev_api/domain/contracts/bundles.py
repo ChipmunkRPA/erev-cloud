@@ -193,7 +193,7 @@ FORMAT_VERSION: Final = 1
 # Revision 6 requires explicit combined EAC scope; old retained bundles keep legacy selection.
 # Revision 7 retains original actual/expected hour sources without changing progress amounts.
 # Revision 8 retains agent gross-control closing evidence separately from net revenue attribution.
-EVIDENCE_REVISION: Final = 47
+EVIDENCE_REVISION: Final = 48
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).
@@ -1309,6 +1309,7 @@ def estimate_version_input(
         if weighted
         else (),
         parameters=dict(sorted(parameters.items())),
+        portfolio_breakage_allocations=version.get("native_breakage_allocations"),
         unconstrained_amount=_optional_decimal(version["unconstrained_amount"]),
         most_conservative_amount=_optional_decimal(version["most_conservative_amount"]),
         constrained_amount=_optional_decimal(version["constrained_amount"]),
@@ -1406,14 +1407,29 @@ def _estimate_versions(
                         },
                     )
                 )
-            external_id = shared_return_contract(
-                row,
-                element,
-                contracts=contracts,
-                portfolios=source_portfolios,
-                obligation_keys=obligation_keys,
-                obligation_owners=obligation_owners or {},
-            )
+            if str(element["estimate_kind"]) == "BREAKAGE":
+                from .portfolio_breakage_application import native as native_breakage
+
+                row = native_breakage(row, contracts)
+                target_scope = tuple(
+                    sorted(
+                        {
+                            key
+                            for members in row["native_breakage_allocations"].values()
+                            for key in members
+                        }
+                    )
+                )
+                external_id = min(source_portfolios[0].member_contract_keys)
+            else:
+                external_id = shared_return_contract(
+                    row,
+                    element,
+                    contracts=contracts,
+                    portfolios=source_portfolios,
+                    obligation_keys=obligation_keys,
+                    obligation_owners=obligation_owners or {},
+                )
         elif UUID(str(contract_id)) in contracts:
             external_id = str(contracts[UUID(str(contract_id))]["external_id"])
         else:

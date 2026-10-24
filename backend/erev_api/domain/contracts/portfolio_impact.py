@@ -1,4 +1,4 @@
-"""Read-only native impact calculation for a shared return draft, once per affected group."""
+"""Read-only shared return/breakage impact, once per affected group."""
 
 from dataclasses import replace
 from datetime import datetime
@@ -16,19 +16,21 @@ from erev_api.domain.contracts import (
     bundles,
     computation,
     estimates,
-    portfolio_estimate_versions,
     portfolio_binding,
+    portfolio_estimate_versions,
     portfolios,
     queries,
 )
 from erev_api.domain.contracts.activation import engine_problem
+from erev_api.domain.contracts.events import impact_summary
 from erev_api.problems import Problem
 from erev_api.schemas.estimates import SharedEstimateApplicationBasis
 from erev_api.schemas.portfolios import (
-    PortfolioImpactOut,
     PortfolioImpactGroupOut,
     PortfolioImpactMemberOut,
+    PortfolioImpactOut,
 )
+from erev_api.uow import UnitOfWork
 from erev_engine.currencies import ISO_4217
 from erev_engine.errors import EngineError
 
@@ -40,6 +42,8 @@ def preview(
     estimate_id: UUID,
     version_id: UUID,
     now: datetime,
+    *,
+    uow: UnitOfWork | None = None,
 ) -> PortfolioImpactOut:
     shown = portfolio_estimate_versions.get(session, ctx, portfolio_id, estimate_id, version_id)
     if shown.status not in {"DRAFT", "SUBMITTED"}:
@@ -53,17 +57,23 @@ def preview(
     element = dict(
         session.execute(select(estimate).where(estimate.c.id == estimate_id)).mappings().one()
     )
-    if str(element["estimate_kind"]) != "RETURN_RATE":
-        raise Problem(
-            "validation-failed",
-            "Shared breakage needs frozen member allocations before impact preview.",
-        )
     row = dict(
         session.execute(select(estimate_version).where(estimate_version.c.id == version_id))
         .mappings()
         .one()
     )
-    if row.get("portfolio_application_basis") is not None:
+    if str(element["estimate_kind"]) not in {"RETURN_RATE", "BREAKAGE"}:
+        raise Problem("validation-failed", "This shared estimate kind cannot be applied yet.")
+    is_breakage = str(element["estimate_kind"]) == "BREAKAGE"
+    if is_breakage:
+        from .portfolio_breakage_application import require_fresh
+
+        if uow is None:
+            raise Problem(
+                "validation-failed", "Shared breakage preview needs original file sources."
+            )
+        require_fresh(uow, element, row)
+    if not is_breakage and row.get("portfolio_application_basis") is not None:
         if SharedEstimateApplicationBasis.model_validate(
             row["portfolio_application_basis"]
         ) != SharedEstimateApplicationBasis.model_validate(
@@ -110,6 +120,16 @@ def preview(
             bundle = bundles.build(
                 session, group_id, now, pending, "DRY_RUN", pending_contract_id=representative["id"]
             )
+            if is_breakage:
+                saved_books = set(
+                    (row.get("portfolio_application_basis") or {}).get("breakage_allocations", {})
+                )
+                missing = {b.book_code for b in bundle.books} - saved_books
+                if missing:
+                    raise Problem(
+                        "validation-failed",
+                        "Save shared breakage allocations for books: " + ", ".join(sorted(missing)),
+                    )
             estimate_key = bundles._estimate_key(element, representative["external_id"])
             key = f"{estimate_key}@v{row['version_no']}"
             bundle = replace(
@@ -130,7 +150,7 @@ def preview(
         members = []
         for current in sorted(affected, key=lambda c: c["external_id"]):
             before, after = estimates._balances(session, dict(current), bundle, output)
-            summary = estimates.impact_summary(
+            summary = impact_summary(
                 session, dict(current), bundle, output, pending, computed_at=now
             )
             members.append(
@@ -159,5 +179,9 @@ def preview(
             )
         )
     return PortfolioImpactOut(
-        portfolio_id=portfolio_id, version_id=version_id, computed_at=now, groups=results
+        basis="SHARED_BREAKAGE_DRY_RUN" if is_breakage else "SHARED_RETURN_DRY_RUN",
+        portfolio_id=portfolio_id,
+        version_id=version_id,
+        computed_at=now,
+        groups=results,
     )

@@ -2668,3 +2668,15 @@ no-row reports for foreign singleton acquisitions. See [scope and evidence](ACQU
 Full functional/reporting views remain unfinished: the current-liability historical
 layer versus ratio classification choice is pending, with no substituted display FX
 rate. Multi-member and agent acquisition support remains open.
+
+
+## October 24: confirmed choices and shared breakage application
+
+The owner has resolved historical-layer current-liability classification, shared expected
+redemptions and remaining-SSP split allocation. Revision 47 implements the supported foreign
+acquisition classification; revision 48 connects saved shared breakage allocations to impact,
+submission and atomic approval/application, with shared member overrides and source freshness.
+See [current scope and verification](CONFIRMED-CALCULATION-RULES-2026-10-24.md).
+Earlier pending-choice and draft-only statements are superseded for this implemented scope.
+Effective-date combination splits and broader foreign balances remain development work.
+No deployment, actual-business migration or independent accounting sign-off is required here.

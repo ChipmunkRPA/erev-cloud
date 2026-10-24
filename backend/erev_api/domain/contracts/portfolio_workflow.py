@@ -1,4 +1,4 @@
-"""Shared return approval and atomic member application through the existing approval kernel."""
+"""Shared return/breakage approval and atomic application through the approval kernel."""
 
 from collections.abc import Callable
 from decimal import Decimal
@@ -7,7 +7,8 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from erev_api.approvals import engine as approvals, subjects
+from erev_api.approvals import engine as approvals
+from erev_api.approvals import subjects
 from erev_api.db import transitions
 from erev_api.db.locking import hold_fx_publication
 from erev_api.db.session import system_entity_scope
@@ -16,18 +17,18 @@ from erev_api.domain.contracts import (
     bundles,
     computation,
     estimates,
+    portfolio_binding,
     portfolio_estimate_versions,
     portfolio_impact,
-    portfolio_binding,
     portfolios,
     repo,
 )
 from erev_api.domain.contracts.activation import engine_problem
-from erev_api.events.stream import append_events
 from erev_api.enums import ApprovalSubjectType, ComputationTrigger
+from erev_api.events.stream import append_events
 from erev_api.problems import Problem
-from erev_api.schemas.portfolios import PortfolioImpactOut
 from erev_api.schemas.estimates import EstimateVersionOut
+from erev_api.schemas.portfolios import PortfolioImpactOut
 from erev_api.uow import UnitOfWork
 from erev_engine.canonical import sha256_hex
 from erev_engine.errors import EngineError
@@ -41,8 +42,10 @@ def _lock(
     first = estimates._version_row(session, version_id)
     element = estimates._estimate_row(session, first["estimate_id"])
     portfolio_id = element["portfolio_id"]
-    if portfolio_id is None or str(element["estimate_kind"]) != "RETURN_RATE":
-        raise Problem("validation-failed", "Only shared return estimates can use this workflow.")
+    if portfolio_id is None or str(element["estimate_kind"]) not in {"RETURN_RATE", "BREAKAGE"}:
+        raise Problem(
+            "validation-failed", "Only shared return and breakage estimates can use this workflow."
+        )
     portfolios.get(session, portfolio_id, lock=True)
     portfolios.require_estimate_scope(session, uow.ctx, portfolio_id, "contract.read")
     if prepare:
@@ -81,7 +84,7 @@ def _routing(
         elif rate is not None:
             total += estimates._converted(impact_amount, rate, "USD")
     flags = (
-        frozenset({estimates.ESTIMATE_PL_IMPACT_FLAG})
+        frozenset({subjects.ESTIMATE_PL_IMPACT_FLAG})
         if unknown or total >= estimates.PL_IMPACT_THRESHOLD
         else frozenset()
     )
@@ -135,7 +138,7 @@ def submit(
     if errors:
         raise estimates._failed(errors)
     impact = portfolio_impact.preview(
-        uow.session, uow.ctx, element["portfolio_id"], element["id"], version_id, uow.now
+        uow.session, uow.ctx, element["portfolio_id"], element["id"], version_id, uow.now, uow=uow
     )
     amount, flags = _routing(uow, row, impact)
     with system_entity_scope(uow.session):
@@ -202,7 +205,7 @@ def approve(uow: UnitOfWork, version_id: UUID, request_id: UUID) -> None:
     if refusal:
         raise Problem("invalid-transition", refusal)
     impact = portfolio_impact.preview(
-        uow.session, uow.ctx, element["portfolio_id"], element["id"], version_id, uow.now
+        uow.session, uow.ctx, element["portfolio_id"], element["id"], version_id, uow.now, uow=uow
     )
     amount, flags = _routing(uow, row, impact)
     requested = uow.session.execute(

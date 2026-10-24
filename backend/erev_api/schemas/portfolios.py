@@ -128,7 +128,7 @@ class PortfolioImpactGroupOut(BaseModel):
 
 
 class PortfolioImpactOut(BaseModel):
-    basis: Literal["SHARED_RETURN_DRY_RUN"] = "SHARED_RETURN_DRY_RUN"
+    basis: Literal["SHARED_RETURN_DRY_RUN", "SHARED_BREAKAGE_DRY_RUN"] = "SHARED_RETURN_DRY_RUN"
     portfolio_id: UUID
     version_id: UUID
     computed_at: datetime
