@@ -1816,6 +1816,15 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
 
     assert json.loads(register_rows[0]["combined_reassessment"]) == {"L2-SERVICE": assessment}
     assert register_rows[0]["obligation_key"] == "L1-LEASE"
+    expected_treatments = {
+        "L2-SERVICE": "CUMULATIVE_CATCH_UP"
+        if mode in {"cost_term", "hours_term"}
+        else "PROSPECTIVE"
+    }
+    assert json.loads(register_rows[0]["modification_proposed_treatments"]) == expected_treatments
+    assert json.loads(register_rows[0]["modification_chosen_treatments"]) == expected_treatments
+    assert register_rows[0]["proposed_treatment"] is None
+    assert register_rows[0]["chosen_treatment"] is None
     rerun = post(app, f"/api/v1/report-runs/{register_run['id']}/rerun", world.maya, {})
     assert rerun.status_code == 202, rerun.text
     replay = run_now(world, UUID(rerun.json()["id"]))

@@ -1315,6 +1315,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "tp_component_breakdown": True,
                 "functional_calculation_columns": True,
                 "combined_reassessment_column": True,
+                "modification_treatment_maps": True,
                 "currency_basis": basis,
                 "spot_equivalents": spot_facts,
                 "reporting_currency": target,
@@ -1463,6 +1464,29 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
                     "not journal delta"
                 )
             )
+    if retained.get("modification_treatment_maps"):
+        columns += (
+            Column(
+                "modification_proposed_treatments",
+                "Modification proposed treatments (by obligation, JSON)",
+                "text",
+            ),
+            Column(
+                "modification_chosen_treatments",
+                "Modification chosen treatments (by obligation, JSON)",
+                "text",
+            ),
+        )
+        by_modification = {item.modification_no: item for item in found}
+        for row in rows:
+            item = by_modification[str(row["modification_no"])]
+            # The decision can belong to a combined host absent from the authored
+            # lines. Preserve its exact key; do not infer a member-level decision.
+            for field in ("proposed_treatments", "chosen_treatments"):
+                treatments = getattr(item, field)
+                row[f"modification_{field}"] = (
+                    canonical_bytes(treatments).decode("utf-8") if treatments else None
+                )
     if retained.get("combined_reassessment_column"):
         columns += (
             Column("combined_reassessment", "Combination reassessment (authored JSON)", "text"),

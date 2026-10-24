@@ -2024,3 +2024,17 @@ workflow with status/register/causal report replay; scoped types/lint. Details i
 `COMBINED-UNIT-TERMS-2026-10-24.md`. Divergent terms, start changes, removal/splitting and
 postdated contract-group regrouping remain open. No deployment or independent accounting
 sign-off gate was added.
+
+
+### 2026-10-24 — Modification register complete treatment decisions
+
+New ordinary modification-register runs expose saved proposed and chosen treatment maps
+with their exact obligation identities, including combined-host decisions absent from authored
+member rows. The modification-level columns preserve overrides and unchosen drafts; they do
+not infer member decisions or amounts. Retained flags preserve old-run output. Transaction,
+functional-equivalent and reporting views retain the context.
+
+26 focused unit cases and two populated public workflows (PROSPECTIVE and
+CUMULATIVE_CATCH_UP) pass, including equal-hash report replay; scoped types/lint pass.
+See `MODIFICATION-TREATMENT-CONTEXT-2026-10-24.md`. Remaining shared-breakage application,
+mixed acquired/ordinary reporting and contract-group splitting gaps remain open. No deployment.

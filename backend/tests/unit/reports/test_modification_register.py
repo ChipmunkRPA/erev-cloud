@@ -661,6 +661,7 @@ def test_foreign_equivalents_preserve_originals_round_signed_amounts_and_retain_
                 "sources": [asdict(source)],
                 "currency_view": "reporting",
                 "currency_basis": "spot_equivalent",
+                "modification_treatment_maps": True,
                 "from_date": "2026-09-01",
                 "to_date": "2026-09-30",
                 "reporting_currency": "GBP",
@@ -688,6 +689,8 @@ def test_foreign_equivalents_preserve_originals_round_signed_amounts_and_retain_
     )
     data = register.data_from_inputs(retained)
     row = data.rows[0]
+    assert json.loads(row["modification_proposed_treatments"]) == source.proposed_treatments
+    assert json.loads(row["modification_chosen_treatments"]) == source.chosen_treatments
     assert row["tp_change"] == {"amount": "100.01", "currency": "EUR"}
     assert row["tp_change_functional_equivalent"] == {"amount": "110.01", "currency": "USD"}
     assert row["catch_up_functional_equivalent"] == {"amount": "-11.01", "currency": "USD"}
@@ -699,6 +702,14 @@ def test_foreign_equivalents_preserve_originals_round_signed_amounts_and_retain_
     # Changing the view reuses the pinned original rate; unknown amounts stay empty.
     retained["currency_view"] = "functional"
     functional = register.data_from_inputs(retained)
+    assert (
+        functional.rows[0]["modification_proposed_treatments"]
+        == row["modification_proposed_treatments"]
+    )
+    assert (
+        functional.rows[0]["modification_chosen_treatments"]
+        == row["modification_chosen_treatments"]
+    )
     assert (
         functional.rows[0]["tp_change_functional_equivalent"]
         == row["tp_change_functional_equivalent"]
@@ -794,3 +805,40 @@ def test_reassessment_evidence_is_authored_complete_and_old_runs_keep_their_shap
     assert "combined_reassessment" not in {column.key for column in old.columns}
     retained["sources"][0]["questionnaire"] = {}
     assert register.data_from_inputs(retained).rows[0]["combined_reassessment"] is None
+
+
+@pytest.mark.parametrize("chosen", [{}, {"HOST": "PROSPECTIVE"}, {"HOST": "CUMULATIVE_CATCH_UP"}])
+def test_modification_treatment_maps_preserve_host_identity_and_saved_shape(chosen):
+    import json
+    from dataclasses import asdict
+
+    from erev_engine.canonical import canonical_bytes
+
+    source = _source(proposed_treatments={"HOST": "PROSPECTIVE"}, chosen_treatments=chosen)
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(source)],
+                "currency_view": "transaction",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+            }
+        )
+    )
+    old = register.data_from_inputs(retained)
+    retained["modification_treatment_maps"] = True
+    current = register.data_from_inputs(retained)
+    assert current.control_totals == old.control_totals
+    for before, row in zip(old.rows, current.rows, strict=True):
+        assert json.loads(row["modification_proposed_treatments"]) == {"HOST": "PROSPECTIVE"}
+        assert (
+            json.loads(row["modification_chosen_treatments"])
+            if chosen
+            else row["modification_chosen_treatments"]
+        ) == (chosen or None)
+        assert row["proposed_treatment"] is None
+        assert row["chosen_treatment"] is None
+        assert {key: row[key] for key in before} == before
+        assert "modification_proposed_treatments" not in before
+    assert "modification_proposed_treatments" not in {column.key for column in old.columns}
+    assert register.data_from_inputs(retained) == current
