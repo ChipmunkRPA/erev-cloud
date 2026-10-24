@@ -322,7 +322,7 @@ def _functional_member_balances(
         for item in sums
         if item.measure == "consideration_payable"
     }
-    return functional_member_targets(
+    targets = functional_member_targets(
         ctx,
         fx,
         members=members,
@@ -334,6 +334,12 @@ def _functional_member_balances(
         payable_txn=payable_txn,
         tb=tb,
     )
+
+    if ctx.dated_current_liability:
+        from .current_members import singleton
+
+        targets = (*targets, *singleton(ctx, fx, members, tb))
+    return targets
 
 
 def _order(

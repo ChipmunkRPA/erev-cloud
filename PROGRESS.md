@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [split balance preview](docs/release/COMBINATION-SPLIT-PREVIEW-2026-10-24.md) is in the API/UI; durable application remains open.
+Oct 24: [ordinary current liability](docs/release/ORDINARY-CURRENT-LIABILITY-2026-10-24.md) retains FX layers; combined-member allocation remains open.

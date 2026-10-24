@@ -180,6 +180,15 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
         *position.empty_member_balances(ctx, allocated, tb),  # D-88 L7-5-Q-10 (3)
     )
     receivables = reclass.accounts_receivable(ctx, st, billed, classified.receipts, tb)
+    current = current_split.measure(ctx, st, presentation, tb)
+    if (
+        ctx.dated_current_liability
+        and len(allocated.contracts) == 1
+        and all(ob.opening is None for ob in allocated.obligations)
+    ):
+        from .current_members import singleton
+
+        members = (*members, *singleton(ctx, allocated, current, tb))
     return BalanceState(
         allocated=allocated,
         recognition=st,
@@ -219,7 +228,7 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
             component_contracts={c.key: c.contract_key for c in refunds.components},
             tb=tb,
         ),
-        current_split=current_split.measure(ctx, st, presentation, tb),
+        current_split=current,
         agent_relief=relief.targets,
         customer_consideration=(*listed, *consideration.targets),
     )

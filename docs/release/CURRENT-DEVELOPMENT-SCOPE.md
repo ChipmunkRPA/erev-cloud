@@ -2761,3 +2761,16 @@ A real database API case, two UI cases and 18 native cases pass, plus scoped lin
 OpenAPI freshness. No membership/event changes or deployment. Public preview is connected;
 durable split application, destination posting and official report-history integration are
 still unfinished.
+
+
+### October 24 — ordinary current-liability currency evidence
+
+Revision 50 now publishes dated ordinary-singleton current liability in transaction currency
+and functional current liability from original FIFO/PRO_RATA layers (existing remeasured
+carrying for the monetary override). Reporting reads those nodes and derives noncurrent
+from total minus current. Three new full-native cases verify projection/replay and unchanged
+postings; historical cases also preserve schedules. Existing layer/member cases and the real
+combination API workflow pass; scoped Ruff/mypy pass. No deployment.
+Combination-member current allocation awaits the user's explicit presentation rule. Acquired
+opening baselines keep the separate cutover path; other nonzero maturity/specialist currency
+gaps and durable split integration remain open. See ORDINARY-CURRENT-LIABILITY-2026-10-24.md.

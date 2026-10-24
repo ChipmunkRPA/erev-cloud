@@ -1395,7 +1395,7 @@ def _balances(bundle: InputBundle, st: BalanceState) -> tuple[BalanceOut, ...]:
         columns, trace_nodes = grouped[key]
         columns[f"{target.measure}_txn"] = target.value
         trace_nodes[target.measure] = target.node_id
-        if functional[target.entity] == currency:
+        if functional[target.entity] == currency and not target.measure.endswith("_current"):
             columns[f"{target.measure}_functional"] = target.value
             trace_nodes[f"{target.measure}_functional"] = target.node_id
     for target in st.member_sums:
