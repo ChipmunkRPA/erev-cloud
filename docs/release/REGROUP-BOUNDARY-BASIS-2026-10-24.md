@@ -186,3 +186,24 @@ lint pass. Public after-posting regroup remains gated; per-row preview alignment
 a full paired approval round trip or simultaneous two-sided preview within a shared group.
 Other consideration/progress paths and supported separate-contract transfer treatment remain
 outstanding. No deployment.
+
+
+## Paired preview worker and retained transfer lifecycle
+
+A populated two-contract, two-group retained transfer exposed a worker authorization defect:
+the SYSTEM preview job called the interactive preparer permission helper and returned 404.
+Locking the pair is now separate from interactive authorization. Preview requests authorize
+both contracts before enqueueing; workers lock both groups/contracts/rows and retain pair
+consistency and source-freshness checks without pretending to be a human preparer.
+
+The engineering fixture bypasses only the two public regroup entry guards. Both sides are
+classified and their questions confirmed before either preview, then previewed, submitted in
+one request, independently approved and recomputed. Source O2 retains only the recognized
+allocation; source/target transaction allocations sum to the original 384,000; target receives
+the remaining consideration; repeating both group computations adds no ledger lines.
+
+Necessary verification: that lifecycle, the unchanged public after-posting refusal, and an
+ordinary populated K-02 preview all pass (3 cases); scoped types/lint pass. This is a fixed-price
+seat-service witness across separate groups, not a general release of after-posting regroup.
+Public guards remain. Same-group simultaneous preview, broader consideration/progress paths,
+and separate-contract treatment remain outstanding. No deployment.

@@ -1462,7 +1462,7 @@ def request_preview(uow: UnitOfWork, *, modification_id: UUID) -> JobOut:
     every entity it is bound to (rev 1.319: ``contract.read`` for each; until then the entities
     of her roles), before the row's state is asked, and nothing is deferred."""
     session = uow.session
-    row, _, current = _locked(uow, modification_id)
+    row, current, _ = _locked_subject(uow, modification_id)
     approvals.require_preview_scope(
         uow,
         ApprovalSubjectType.MODIFICATION,
@@ -2071,7 +2071,7 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         # preview and the basis captured after the compute is the exact consumed state.
         peek = _row(session, modification_id)
         if peek.get("regroup_id") is not None:
-            row, current, pair = _locked_subject(uow, modification_id)
+            row, current, pair = _lock_subject_rows(session, modification_id)
             from . import regroup_freshness, regroup_pair
 
             regroup_pair.require_consistent(pair, primary_book=queries.primary_book(session))
@@ -2411,14 +2411,13 @@ def _impact_preview(row: Mapping[str, Any], document: Mapping[str, Any]) -> appr
     )
 
 
-def _locked_subject(
-    uow: UnitOfWork, modification_id: UUID
+def _lock_subject_rows(
+    session: Session, modification_id: UUID
 ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     """D-98 140-A6 REGROUP-R5: discover the subject's rows (one, or the regroup pair), lock the full
     sorted set of their groups and contracts in the kernel order (``lock_groups_then_contracts``;
     DG-KRN-DB-08), then the rows ``FOR UPDATE``, then re-read them under the locks — the caller
     revalidates statuses on the re-read rows. Returns (the subject row, its contract, every row)."""
-    session = uow.session
     contract_ids = sorted(
         {_uuid(r["contract_id"]) for r in modification_rows(session, modification_id)}
     )
@@ -2427,14 +2426,22 @@ def _locked_subject(
         currents = {contract_ids[0]: current}
     else:
         currents = lock_groups_then_contracts(session, contract_ids)
-    for locked_contract in currents.values():
-        _require_prepare(uow, locked_contract)
     pair = [
         _row(session, _uuid(item["id"]), lock=True)
         for item in modification_rows(session, modification_id)
     ]
     row = next(item for item in pair if _uuid(item["id"]) == modification_id)
     return row, currents[_uuid(row["contract_id"])], pair
+
+
+def _locked_subject(
+    uow: UnitOfWork, modification_id: UUID
+) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+    """Authorize every side for an interactive preparation request, after locking."""
+    row, current, pair = _lock_subject_rows(uow.session, modification_id)
+    for contract_id in sorted({_uuid(item["contract_id"]) for item in pair}):
+        _require_prepare(uow, repo.get_contract(uow.session, contract_id))
+    return row, current, pair
 
 
 def submit(

@@ -11,6 +11,24 @@ from uuid import UUID, uuid4
 
 import pytest
 import test_modifications as modification_flows
+from fastapi import FastAPI
+from sqlalchemy import select
+from support.api_clients import access_approver, issued_client
+from support.db import TestDatabase
+from support.factories import (
+    K02World,
+    activated_contract,
+    appended,
+    booked_contract,
+    computed,
+    k02_body,
+    k02_world,
+)
+from support.http import HttpResponse, call
+from support.principals import sign_in
+from support.principals import workspace as signed_in
+from support.reference import approve, assign, fields, post, slug
+
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
@@ -31,23 +49,6 @@ from erev_api.events.payloads import BillingRecordedV1, MoneyIn
 from erev_api.events.stream import EventIn
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
-from fastapi import FastAPI
-from sqlalchemy import select
-from support.api_clients import access_approver, issued_client
-from support.db import TestDatabase
-from support.factories import (
-    K02World,
-    activated_contract,
-    appended,
-    booked_contract,
-    computed,
-    k02_body,
-    k02_world,
-)
-from support.http import HttpResponse, call
-from support.principals import sign_in
-from support.principals import workspace as signed_in
-from support.reference import approve, assign, fields, post, slug
 
 CONTRACTS: Final = "/api/v1/contracts"
 
@@ -739,3 +740,63 @@ def test_regroup_permission_prd_1_modification_create_alone_does_not_regroup(
     assert refused.status_code == 403, refused.text
     assert slug(refused) == "forbidden"
     assert _written(k02) == before
+
+
+def test_retained_posted_pair_workflow(
+    k02: K02World,
+    app_settings: Settings,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise the withdrawn path without enabling it at the public entrypoint."""
+    from erev_api.jobs.context import JobRuntime
+
+    monkeypatch.setattr(regroup, "_refuse_after_posting", lambda *args: None)
+    monkeypatch.setattr(regroup, "_refuse_at_once", lambda *args: None)
+    source = activated_contract(
+        k02.place, booked_contract(k02.place, _two_line_body(k02, "REGROUP-SOURCE"), activate=False)
+    )
+    target = activated_contract(
+        k02.place, booked_contract(k02.place, _one_line_body(k02, "REGROUP-TARGET"), activate=False)
+    )
+    source_id, target_id = (UUID(str(item.contract["id"])) for item in (source, target))
+    created = post(
+        k02.app,
+        f"{CONTRACTS}/{source_id}/regroup",
+        k02.place.author,
+        {
+            "obligation_keys": ["O2"],
+            "target_contract_id": str(target_id),
+            "comment": "Remaining service transfer.",
+        },
+    )
+    assert created.status_code == 201, created.text
+    ids = created.json()["modification_ids"]
+    runtime = JobRuntime(clock=clock, keyring=keyring, files=LocalFileStore(app_settings.file_root))
+    for identity in ids:
+        classified = modification_flows._classify(k02, identity)
+        assert classified["chosen_treatments"], classified
+        modification_flows.confirm_modification_answers(k02.app, identity, k02.place.author)
+    for identity in ids:
+        modification_flows._preview(k02, identity, runtime, confirm_answers=False)
+    modification_flows._applied(k02, ids[0], clock)
+    for identity in ids:
+        assert modification_flows._row(k02, identity)["status"] == "APPLIED"
+    for identity in (source_id, target_id):
+        assert len(_events(k02, identity, ContractEventType.REGROUPED)) == 1
+
+    source_row = modification_flows._row(k02, ids[0])
+    basis = source_row["questionnaire"]["regroup_source_basis"]["ASC606"]["obligations"]["O2"]
+    recognized = Decimal(basis["recognized_minor"]) / 100
+    remaining = Decimal(basis["remaining_minor"]) / 100
+    source_allocations = modification_flows._allocated(k02, source_id)
+    target_allocations = modification_flows._allocated(k02, target_id)
+    assert source_allocations["O2"] == recognized
+    assert sum(source_allocations.values()) == Decimal("240000") - remaining
+    assert sum(target_allocations.values()) == Decimal("144000") + remaining
+    assert sum(source_allocations.values()) + sum(target_allocations.values()) == Decimal("384000")
+    lines_before = len(k02.place.rows(select(subledger_line.c.id)))
+    for item in (source, target):
+        computed(k02.place, UUID(str(item.combination_group["id"])))
+    assert len(k02.place.rows(select(subledger_line.c.id))) == lines_before
