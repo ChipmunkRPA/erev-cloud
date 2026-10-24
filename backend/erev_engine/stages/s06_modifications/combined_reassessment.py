@@ -86,7 +86,11 @@ def continued(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> se
                 or len(changes) != len(ob.combined_component_keys)
                 or {line.obligation_key for line in changes} != set(ob.combined_component_keys)
                 or any(
-                    line.quantity_delta or line.members.get("start_date") is not None
+                    (
+                        line.quantity_delta
+                        and (not ctx.combined_unit_mixed_reassessment or nonunit_terms)
+                    )
+                    or line.members.get("start_date") is not None
                     for line in changes
                 )
                 or any(end is None for end in ends)

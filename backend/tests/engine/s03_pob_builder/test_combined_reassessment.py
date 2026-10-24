@@ -441,3 +441,31 @@ def test_input_term_continuation_preserves_progress_and_consumes_later_original_
         assert reevaluate(transitioned.trace) == {n.id: n.value for n in transitioned.trace.nodes}
     with pytest.raises(ValueError, match="original unit measure"):
         compute(replace(value, evidence_revision=32 if method == "COST_RECOVERY" else 31))
+
+
+@pytest.mark.parametrize("delta, quantity", [("1", 3), ("-0.25", Decimal("1.75")), ("-0.75", None)])
+def test_combined_unit_mixed_term_and_quantity(delta, quantity):
+    value = term_continuation()
+    contract = value.contracts[0]
+    mod = contract.modifications[0]
+    lines = ({**mod.lines[0], "quantity_delta": Decimal(delta)}, mod.lines[1])
+    mod = replace(mod, lines=lines)
+    event = replace(value.events[-1], payload={**value.events[-1].payload, "lines": list(lines)})
+    value = replace(
+        value,
+        evidence_revision=34,
+        contracts=(replace(contract, modifications=(mod,)),),
+        events=(*value.events[:-1], event),
+    )
+    if quantity is None:
+        with pytest.raises(ValueError, match="transferred units"):
+            compute(value)
+        return
+    result = compute(value).books[0]
+    assert result.contract_version.columns["revenue_cum"] == 250_000
+    assert result.contract_version.columns["transaction_price"] == 1_000_000
+    assert Fraction(str(result.obligation_versions[0].columns["quantity"])) == quantity
+    assert result.obligation_versions[0].columns["end_date"] == date(2026, 6, 30)
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    with pytest.raises(ValueError, match="Combined term continuation"):
+        compute(replace(value, evidence_revision=33))

@@ -4865,7 +4865,7 @@
   "modifications.treatment.PROSPECTIVE": "Prospective (ASC 606-10-25-13(a))",
   "modifications.treatment.SEPARATE_CONTRACT": "Separate contract (ASC 606-10-25-12)",
   "modifications.wizard.combined.title": "Reassess combined obligation {host}",
-  "modifications.wizard.combined.help": "Original members: {members}. Confirm again after changing the effective date or lines. For quantity changes, leave dates unchanged. For term changes, include every original member with the same end date on or after the effective date, unchanged start dates and zero quantity change. Review the proposed treatment in classification.",
+  "modifications.wizard.combined.help": "Original members: {members}. Confirm again after changing the effective date or lines. For quantity changes, leave dates unchanged. For term changes, include every original member with the same end date on or after the effective date, unchanged start dates. Quantity changes may accompany unit-based term changes; time, cost and hours methods require zero quantity change. Review the proposed treatment in classification.",
   "modifications.wizard.combined.confirm": "As of this modification’s effective date, all original members continue together, have the same transfer pattern, contain an operating lease, and the nonlease component predominates.",
   "modifications.wizard.error.originalComponentPriceOnly": "Use a price change, or terminate every original member together with REMOVE lines and unchanged dates. For a quantity change, confirm eligible continued combination with unchanged terms. Partial removal and term changes require reassessment.",
   "modifications.wizard.originalComponent": "{key} · Combined into {host}",

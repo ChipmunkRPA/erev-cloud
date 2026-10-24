@@ -1577,7 +1577,16 @@ def test_combined_original_termination_public_workflow(
 
 
 @pytest.mark.parametrize(
-    "mode", ["quantity", "unit_term", "time_term", "cost_term", "hours_term", "recovery_term"]
+    "mode",
+    [
+        "quantity",
+        "unit_term",
+        "mixed_unit_term",
+        "time_term",
+        "cost_term",
+        "hours_term",
+        "recovery_term",
+    ],
 )
 def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files, mode):
     term_change = mode != "quantity"
@@ -1719,9 +1728,13 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
                 {
                     "obligation_key": key,
                     "action": "CHANGE",
-                    "quantity_delta": "0" if term_change else "1",
+                    "quantity_delta": "1"
+                    if (not term_change or mode == "mixed_unit_term") and key == "L1-LEASE"
+                    else "0",
                     "consideration_delta": {
-                        "amount": "0.00" if term_change else "1000.00",
+                        "amount": "1000.00"
+                        if (not term_change or mode == "mixed_unit_term") and key == "L1-LEASE"
+                        else "0.00",
                         "currency": "USD",
                     },
                     **({"end_date": "2028-06-30"} if term_change else {}),
@@ -1765,7 +1778,9 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     )
     assert run["status"] == "SUCCEEDED", run
     assert len(rows) == 1
-    assert rows[0]["allocated_amount"] == usd("108000.00" if term_change else "109000.00")
+    assert rows[0]["allocated_amount"] == usd(
+        "109000.00" if mode in {"quantity", "mixed_unit_term"} else "108000.00"
+    )
     # MONTHLY_EVEN counts eight completed original months before September 10.
     # Remaining 84,000 spreads over 21.7 months; September earns 0.7 / 21.7.
     assert rows[0]["revenue_cum"] == usd(

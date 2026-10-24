@@ -23,10 +23,11 @@ Verification:
   preview, approval, application, status/register/causal reports and equal-hash saved replays.
 - Scoped backend/frontend types and lint pass.
 
-Revision 31 additionally covers TIME_ELAPSED as described below. Cost/hour/progress measures,
-divergent member terms, changed starts, simultaneous quantity
-and term changes, member removal/splitting and combined-contract group reassessment remain
-unfinished. No deployment.
+Revision 31 additionally covers TIME_ELAPSED as described below. Revisions 32–33 add
+cost/hour and cost-recovery terms (see the corresponding release checkpoints). Revision 34
+adds simultaneous unit quantity and term changes below. Divergent member terms, changed
+starts, member removal/splitting and combined-contract group reassessment remain unfinished.
+No deployment.
 
 ## Time-elapsed continuation
 
@@ -49,3 +50,23 @@ the existing MONTHLY_EVEN completed-period convention.
 Seventeen native cases and 21 frontend cases pass, together with the quantity, unit-term
 and time-term public workflows. Scoped types/lint pass. All remaining scope limits above
 still apply. No deployment.
+
+
+## Simultaneous unit quantity and term changes
+
+Evidence revision 34 accepts a TERM_CHANGE that changes original-member quantities along
+with the complete common end date for UNITS_DELIVERED and POINT_IN_TIME combinations.
+Every original member must still appear exactly once, keep its start date, and participate
+in the dated eligibility assessment. Each member must remain positive and retain all units
+already transferred. The engine preserves original SSP identities and applies the native
+PROSPECTIVE boundary; earlier income is unchanged. Time, cost, hours and cost-recovery
+methods still require zero quantity deltas for this term-continuation path.
+
+The wizard admits the same mixed change only for unit-based hosts and explains the distinction.
+Evidence revisions through 33 retain their prior refusal, preserving saved replay behavior.
+
+Necessary verification: 28 native reassessment cases, 21 frontend form/component cases and
+one populated mixed-change public workflow pass. The public workflow increases transaction
+price from 108,000 to 109,000, preserves prior income of 27,000, and verifies status,
+modification-register and causal-analysis saved report hashes after approval/application.
+Scoped types, lint and diff checks pass. No deployment.

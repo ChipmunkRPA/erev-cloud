@@ -280,7 +280,7 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
         group.members.every((key) => selected.some((line) => line.obligationKey.trim() === key)) &&
         selected.every((line) => {
           const quantity = decimalOf(line.quantityChange.trim() || "0");
-          return quantity !== null && isZero(quantity);
+          return quantity !== null && (group.quantityChanges !== false || isZero(quantity));
         }) &&
         effective !== null &&
         ends.every((end) => end !== null && end >= effective) &&

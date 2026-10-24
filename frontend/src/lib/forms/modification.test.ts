@@ -767,6 +767,16 @@ it("requires a complete common-end-date continuation for combined unit terms", (
   expect(buildChange(form, context).body?.questionnaire).toMatchObject({
     combined_reassessment: { O1: { component_keys: ["O1", "LEASE"], decision: "CONTINUE" } },
   });
+  const mixed = { ...form, lines: form.lines.map((line) => ({ ...line, quantityChange: "1" })) };
+  expect(buildChange(mixed, context).body).toBeNull();
+  expect(
+    buildChange(mixed, {
+      ...context,
+      combinedContinuationHosts: [{ host: "O1", members: ["O1", "LEASE"], quantityChanges: true }],
+    }).body?.questionnaire,
+  ).toMatchObject({
+    combined_reassessment: { O1: { decision: "CONTINUE" } },
+  });
   expect(buildChange({ ...form, continuedHosts: [] }, context).body).toBeNull();
   expect(buildChange({ ...form, lines: form.lines.slice(1) }, context).body).toBeNull();
   for (const patch of [

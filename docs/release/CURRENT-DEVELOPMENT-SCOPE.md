@@ -2009,3 +2009,18 @@ basis. Native cases preserve both pre-EAC periods; the public workflow approves 
 combination-wide EAC after original-member costs, computes the prospective target and replays
 the saved status report with the same hash. No recognition rule was changed. See the
 [updated boundary checkpoint](COST-RECOVERY-BOUNDARIES-2026-10-24.md). No deployment.
+
+
+### 2026-10-24 — Combined unit quantity and common-term changes
+
+Evidence revision 34 completes simultaneous original-member quantity and common-end-date
+TERM_CHANGE for native unit combinations, including the authoring wizard. The complete
+original-member assessment, positive member balances, transferred-unit floors and native
+PROSPECTIVE treatment remain enforced. Original SSP identities and prior income are retained;
+older evidence preserves its refusal. Time/cost/hour/recovery term changes remain zero-quantity.
+
+Validation: 28 native cases, 21 frontend cases and one populated public approval/application
+workflow with status/register/causal report replay; scoped types/lint. Details in
+`COMBINED-UNIT-TERMS-2026-10-24.md`. Divergent terms, start changes, removal/splitting and
+postdated contract-group regrouping remain open. No deployment or independent accounting
+sign-off gate was added.
