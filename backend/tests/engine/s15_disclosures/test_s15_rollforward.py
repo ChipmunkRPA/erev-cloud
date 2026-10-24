@@ -830,6 +830,7 @@ def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_s
         )
     ]
     records = NS(
+        acquisition_functional_cutover=False,
         flows=[invoice_flow, credit],
         attribution={invoice_flow.source_key: {SERVICES: 300}, credit.source_key: {SERVICES: -300}},
         fx=NS(billing_attribution_sources=evidence, functional_targets=[]),
@@ -930,6 +931,7 @@ def test_agent_functional_closing_uses_gross_control_targets_not_net_commission(
         functional_currency="USD",
     )
     records = NS(
+        acquisition_functional_cutover=False,
         flows=[billed, released],
         attribution={billed.source_key: {SERVICES: 300}},
         fx=NS(

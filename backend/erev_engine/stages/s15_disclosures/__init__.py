@@ -171,6 +171,7 @@ def run(
     acquisition_cutover_closing: bool = False,
     acquisition_functional_cutover: bool = False,
     acquisition_intercompany_sources: bool = False,
+    mixed_acquisition_rollforward: bool = False,
     mixed_acquisition_closing: bool = False,
     opening_billing_sources: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
@@ -226,6 +227,7 @@ def run(
             acquisition_functional_cutover=acquisition_functional_cutover,
             acquisition_intercompany_sources=acquisition_intercompany_sources,
             mixed_acquisition_closing=mixed_acquisition_closing,
+            mixed_acquisition_rollforward=mixed_acquisition_rollforward,
             opening_billing_sources=opening_billing_sources,
         )
         if opening_billing_sources:

@@ -37,7 +37,8 @@ the contract asset and the unbilled receivable in one view (L4-3-Q-3):
   ``BUSINESS_COMBINATION`` enters the period holding its cutover as ``BUSINESS_COMBINATIONS``, at
   the acquisition-date presented amounts of the stage 07 baselines (billed − revenue). It creates
   no journal line. Periods ending before the latest cutover of the unit hold nothing, and flows on
-  or before it are pre-acquisition (L4-3-Q-7).
+  or before it are pre-acquisition (L4-3-Q-7). Revision 25 replaces that group-wide cutoff
+  for mixed transaction groups with original member cutovers and ordered acquisition entries.
 
 §15.5 names no rollforward node, so none is emitted. Standard library only (DG-ARC-02).
 """
@@ -60,6 +61,7 @@ from erev_engine.stages.s15_disclosures.rpo import period_of
 from erev_engine.stages.state import (
     AllocatedState,
     BookContext,
+    EventView,
     ObligationState,
     PostedIndex,
     ScheduleLineOut,
@@ -214,6 +216,7 @@ class BalanceInputs:
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
     acquisition_intercompany_sources: bool = False  # Revision 20: contracting control sources
+    mixed_acquisition_rollforward: bool = False  # Revision 25: dated mixed transaction flows
     mixed_acquisition_closing: bool = False  # Revision 24: per-obligation transaction cutovers
     opening_billing_sources: bool = False  # Revision 16: original cutover FX attribution
 
@@ -385,10 +388,17 @@ def rollforward_balances(
             )
         if ctx.policies.value(_POL_126, entity=entity, period=period_key) != _WITHIN_POB:
             raise ValueError("Historical obligation openings require FIFO_WITHIN_POB")
+    from . import mixed_acquisition
+
+    mixed = getattr(records, "mixed_acquisition_rollforward", False) and mixed_acquisition.is_mixed(
+        own
+    )
     cutover = _cutover(own)
     lines = {balance: dict.fromkeys(BALANCE_LINES[balance], 0) for balance in BALANCES}
     memo = dict.fromkeys(MEMO_CAUSES, 0)
     functional = view == FUNCTIONAL and calendar.functional_currency != ctx.txn_currency
+    if mixed and not functional:
+        cutover = None
     relief = 0
     if cutover is None or period.end_date >= cutover:
         if functional:
@@ -413,8 +423,17 @@ def rollforward_balances(
                 cutover,
                 lines,
                 classify_pob=opening_obligations is None,
+                events=st.events,
             )
-            memo = _memo(ctx, records, own, period, cutover)
+            if mixed:
+                dates = mixed_acquisition.cutovers(own)
+                for ob in own:
+                    for cause, amount in _memo(
+                        ctx, records, [ob], period, dates.get(ob.subject_key)
+                    ).items():
+                        memo[cause] = memo.get(cause, 0) + amount
+            else:
+                memo = _memo(ctx, records, own, period, cutover)
     if opening is not None:
         for balance in BALANCES:
             lines[balance][OPENING] = opening.get(balance, 0)
@@ -481,6 +500,7 @@ def _transaction(
     lines: dict[str, dict[str, int]],
     *,
     classify_pob: bool = True,
+    events: Sequence[EventView] = (),
 ) -> int:
     """The path attribution in the transaction currency (§15.2.2 ``rollforward_contract``)."""
     start, end = period.start_date, period.end_date
@@ -508,7 +528,18 @@ def _transaction(
         for role in (UNBILLED_RECEIVABLE, CONTRACT_ASSET):
             asset[role] += established[role]
     relief = 0
-    for flow in _period_flows(records.flows, entity, start, end, cutover):
+    from . import mixed_acquisition
+
+    sequence = (
+        mixed_acquisition.items(ctx, records, own, events, entity, start, end)
+        if getattr(records, "mixed_acquisition_rollforward", False)
+        and mixed_acquisition.is_mixed(own)
+        else _period_flows(records.flows, entity, start, end, cutover)
+    )
+    for flow in sequence:
+        if isinstance(flow, mixed_acquisition.Acquisition):
+            mixed_acquisition.enter(flow, layers, asset, lines)
+            continue
         kind = _KINDS[flow.kind]
         if flow.kind == _REVENUE:
             relief += flow.amount
@@ -719,13 +750,26 @@ def _within_obligations(
 ) -> None:
     """POL-126 ``FIFO_WITHIN_POB``: Σ min(opening liability, relief) per obligation, with the
     obligation-attributed billing of stage 10, capped by the liability revenue of the path."""
+    from . import mixed_acquisition
+
+    mixed = getattr(records, "mixed_acquisition_rollforward", False) and mixed_acquisition.is_mixed(
+        own
+    )
+    dates = mixed_acquisition.cutovers(own) if mixed else {}
     subjects = {ob.subject_key for ob in own}
     billed: dict[str, int] = {}
     before: dict[str, int] = {}
     during: dict[str, int] = {}
+    if mixed and opening_obligations is None:
+        for ob in own:
+            baseline = baseline_of(ob)
+            if baseline is not None and baseline.cutover_date < start:
+                billed[ob.subject_key] = baseline.billed_cum
+                before[ob.subject_key] = baseline.revenue_cum
     if (
         records.acquired_pob_opening
         and opening_obligations is None
+        and not mixed
         and cutover is not None
         and cutover < start
     ):
@@ -749,14 +793,16 @@ def _within_obligations(
         when = _entered(flow)
         if flow.entity != entity or when is None or when > end:
             continue
-        if cutover is not None and when <= cutover:
+        if not mixed and cutover is not None and when <= cutover:
             continue
         if flow.kind in ("BILLING", "CREDIT_MEMO"):
             if when < start:
                 for subject, amount in sorted(records.attribution.get(flow.source_key, {}).items()):
-                    if subject in subjects:
+                    if subject in subjects and (subject not in dates or when > dates[subject]):
                         billed[subject] = billed.get(subject, 0) + amount
         elif flow.kind in (_REVENUE, _NEGATIVE_REVENUE) and flow.subject_key in subjects:
+            if flow.subject_key in dates and when <= dates[flow.subject_key]:
+                continue
             signed = flow.amount if flow.kind == _REVENUE else -flow.amount
             found = before if when < start else during
             found[flow.subject_key] = found.get(flow.subject_key, 0) + signed

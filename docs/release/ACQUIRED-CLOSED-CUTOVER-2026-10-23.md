@@ -281,3 +281,28 @@ This does not complete mixed acquisition rollforward increases. `acquisition_flo
 requires explicit acquisition attribution before relaxing its population guard, and closed foreign
 mixed-group cutovers may still lack supplementary FX evidence. Agents, different acquisition dates,
 and recomputed baselines remain open. No deployment.
+
+
+## October 24: mixed transaction rollforward follows original event order
+
+Native evidence revision 25 removes the group-wide acquisition cutoff for mixed transaction
+rollforwards. Ordinary member activity remains in billing/revenue captions. Each acquired member's
+original cutover event inserts its admitted net baseline at that event position, so acquisition
+can settle an existing asset or consume an existing liability before creating a new position.
+BUSINESS_COMBINATIONS records that change in presented balances rather than forcing a gross
+liability increase and leaving ordinary business in OTHER. Pre-cutover acquired activity is
+excluded by original obligation; ordinary members' activity and memo causes remain included.
+
+Both FIFO_WITHIN_CONTRACT and FIFO_WITHIN_POB paths use these histories; POB opening consumption
+seeds acquired baselines only when they precede the period. Authenticated frozen opening inputs
+retain priority. A native two-contract witness (including escaped/colliding identities) covers
+ordinary invoices before/on cutover, acquired net assets/liabilities, both FIFO methods and a
+subsequent-period opening-consumption check. It proves no unexplained OTHER in those cases and
+unchanged posting intents and FX layer movements. The 44 focused mixed/acquired/rollforward cases
+pass with scoped lint/types. Two old functional-capture test doubles now supply their existing
+acquisition_functional_cutover field explicitly.
+
+Foreign functional mixed rollforwards still use their prior path and require further implementation.
+The public report builder also still needs explicit retained group/member acquisition-change sources;
+its population guard has not been removed. No claim of a complete mixed-acquisition report path,
+and no deployment.
