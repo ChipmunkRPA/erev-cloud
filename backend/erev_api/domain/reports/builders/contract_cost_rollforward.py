@@ -10,8 +10,8 @@ entity with one signed money field ``amount`` — the S15-R-17 lines ``OPENING``
 ``entity_code`` as code columns, the labels as attributes. Every line of a cost kind with a cost
 asset in scope is a row (zero rows kept); a kind without an asset has no rows. Movements are signed
 as they enter the carrying amount; ``OPENING`` + Σ movements = ``CLOSING`` per kind. The on-screen
-wide grid is a view-level pivot of these rows (D-98 97). Section 2 "By cost asset" is DEFERRED
-until its own key is ruled.
+wide grid is a view-level pivot of these rows (D-98 97). The optional asset granularity
+uses the original posted subject identity and retains contract and category alongside it.
 
 Source (S15-R-20b; interim per F-RPS ruling Q-2 until CTR-14 persists T-CON-15/16): the T-SL-04
 subledger lines of the two asset roles, read as of the run's ``known_at`` (D-98 96). Per kind,
@@ -38,6 +38,7 @@ default (S15-R-20a).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -134,6 +135,7 @@ class CostMovement:
     in_range: bool
     contract_external_id: str
     period_end: date | None = None
+    asset_key: str | None = None
 
 
 def classify(
@@ -171,6 +173,8 @@ type Lines = dict[str, int]  # LINE_CODES -> minor units, signed
 
 def rollforward(
     movements: Sequence[CostMovement],
+    *,
+    by_asset: bool = False,
 ) -> tuple[dict[tuple[str, str], Lines], dict[str, str]]:
     """The lines per (entity code, cost kind) and the currency per entity: ``OPENING`` from the
     movements before the range, the range movements by line, ``CLOSING`` = ``OPENING`` + Σ
@@ -185,11 +189,18 @@ def rollforward(
                 f"entity {item.entity_code} carries cost assets in {known} and {item.currency}: "
                 "the dataset row (cost_kind, line_code) admits one currency per entity",
             )
-        into = lines.setdefault((item.entity_code, item.cost_kind), dict.fromkeys(LINE_CODES, 0))
+        key = item.asset_key if by_asset else item.cost_kind
+        if not key:
+            raise CostRollforwardRefusal("asset_key", "An original cost asset identity is required")
+        into = lines.setdefault((item.entity_code, key), dict.fromkeys(LINE_CODES, 0))
         into["OPENING" if not item.in_range else item.line_code] += item.amount_minor
     for into in lines.values():
         into["CLOSING"] = into["OPENING"] + sum(into[code] for code in MOVEMENT_LINES)
-    ordered = sorted(lines, key=lambda key: (key[0], COST_KINDS.index(key[1])))
+    ordered = (
+        sorted(lines)
+        if by_asset
+        else sorted(lines, key=lambda key: (key[0], COST_KINDS.index(key[1])))
+    )
     return {key: lines[key] for key in ordered}, dict(sorted(currencies.items()))
 
 
@@ -198,20 +209,36 @@ def _money(minor: int, currency: str) -> dict[str, str]:
 
 
 def dataset_rows(
-    lines: Mapping[tuple[str, str], Lines], currencies: Mapping[str, str]
+    lines: Mapping[tuple[str, str], Lines],
+    currencies: Mapping[str, str],
+    assets: Mapping[tuple[str, str], tuple[str, str]] | None = None,
 ) -> list[dict[str, Any]]:
     """The section 1 rows: one per (entity, cost kind, line code) in entity, E-83 and S15-R-17
     order; ``row_key`` ``<cost_kind>:<line_code>``, prefixed ``<entity>:`` when several entities."""
     entities = sorted({entity for entity, _ in lines})
     prefixed = len(entities) > 1
     rows: list[dict[str, Any]] = []
-    for (entity, cost_kind), found in lines.items():
+    for (entity, group_key), found in lines.items():
+        contract_key, cost_kind = (
+            assets[(entity, group_key)] if assets is not None else ("", group_key)
+        )
         currency = currencies[entity]
         for line_code in LINE_CODES:
             key = f"{cost_kind}:{line_code}"
             rows.append(
                 {
-                    "row_key": f"{entity}:{key}" if prefixed else key,
+                    "row_key": (
+                        json.dumps([entity, group_key, line_code], separators=(",", ":"))
+                        if assets is not None
+                        else f"{entity}:{key}"
+                        if prefixed
+                        else key
+                    ),
+                    **(
+                        {"asset_key": group_key, "contract_external_id": contract_key}
+                        if assets is not None
+                        else {}
+                    ),
                     "section": 1,
                     "entity_code": entity,
                     "cost_kind": cost_kind,
@@ -228,7 +255,7 @@ def dataset_rows(
 def check_key_columns(rows: Sequence[Mapping[str, Any]]) -> None:
     """S15-R-20a shape statement: every row supplies the key columns from their governed sets and
     the key (entity, cost kind, line code) occurs once; otherwise refuse by name."""
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str]] = set()
     for row in rows:
         cost_kind, line_code = str(row.get("cost_kind") or ""), str(row.get("line_code") or "")
         if cost_kind not in COST_KINDS:
@@ -239,7 +266,12 @@ def check_key_columns(rows: Sequence[Mapping[str, Any]]) -> None:
             raise CostRollforwardRefusal(
                 "line_code", f"row {row.get('row_key')!r} carries {line_code!r}"
             )
-        key = (str(row.get("entity_code") or ""), cost_kind, line_code)
+        key = (
+            str(row.get("entity_code") or ""),
+            cost_kind,
+            line_code,
+            str(row.get("asset_key") or ""),
+        )
         if key in seen:
             raise CostRollforwardRefusal(
                 "line_code", f"the key {cost_kind}:{line_code} of entity {key[0]} occurs twice"
@@ -311,6 +343,7 @@ def _movements(
     statement = (
         select(
             subledger_line.c.id,
+            subledger_line.c.subject_key,
             subledger_line.c.entity_id,
             subledger_line.c.account_role,
             subledger_line.c.entry_kind,
@@ -384,6 +417,7 @@ def _movements(
                 in_range=row["period_end_date"] >= range_start[entity_id],
                 contract_external_id=str(row["external_id"]),
                 period_end=row["period_end_date"],
+                asset_key=row.get("subject_key"),
             )
         )
     tie_outs.require_members(params, "subledger_line", consumed)
@@ -429,8 +463,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params=params,
     )
     _check_view(params, found, movements)
-    lines, currencies = rollforward(movements)
-    rows = dataset_rows(lines, currencies)
+    assets = asset_metadata(movements) if params.parameters.get("granularity") == "asset" else None
+    lines, currencies = rollforward(movements, by_asset=assets is not None)
+    rows = dataset_rows(lines, currencies, assets)
     check_key_columns(rows)
     cutoff = tie_outs.cutoff_for(session, params)
     at = {key: (value[-1] if value else None) for key, value in periods.items()}
@@ -472,11 +507,42 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params.binding is None or params.binding.evidence.get(cost_reporting.KEY) is True
     ):
         return cost_reporting.build(
-            uow, params, found, periods, before, movements, closing_balances
+            uow, params, found, periods, before, movements, closing_balances, assets=assets
         )
     return ReportData(
-        columns=COLUMNS,
+        columns=detail_columns(assets),
         rows=tuple(rows),
         control_totals=control_totals(lines, currencies),
         tie_out_results=(cost_tie(lines, currencies, closing_balances),),
     )
+
+
+def detail_columns(
+    assets: Mapping[tuple[str, str], tuple[str, str]] | None,
+) -> tuple[Column, ...]:
+    return (
+        COLUMNS
+        if assets is None
+        else (
+            COLUMNS[0],
+            Column("contract_external_id", "Contract", "text"),
+            Column("asset_key", "Cost asset", "text"),
+            *COLUMNS[1:],
+        )
+    )
+
+
+def asset_metadata(movements: Sequence[CostMovement]) -> dict[tuple[str, str], tuple[str, str]]:
+    assets: dict[tuple[str, str], tuple[str, str]] = {}
+    for item in movements:
+        if not item.asset_key:
+            raise CostRollforwardRefusal(
+                "asset_key", "A posted cost line lacks its original asset identity"
+            )
+        key = (item.entity_code, item.asset_key)
+        identity = (item.contract_external_id, item.cost_kind)
+        if assets.setdefault(key, identity) != identity:
+            raise CostRollforwardRefusal(
+                "asset_key", "Cost asset ownership or category is inconsistent"
+            )
+    return assets

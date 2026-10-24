@@ -2840,3 +2840,10 @@ Functional/reporting cost rollforwards now consume posted functional amounts and
 functional closing carrying, retaining their source choice for reruns. See [cost report sources](COST-REPORT-FUNCTIONAL-SOURCES-2026-10-24.md).
 Transaction views and older bound reports preserve their earlier basis. Remaining specialist
 engine currency limits are unchanged.
+
+
+## 2026-10-24 — cost-asset detail view
+
+Cost rollforward asset granularity now provides original asset and contract identities in all
+three currency views, including category-conserving reporting rounding. See [cost asset detail](COST-ASSET-DETAIL-2026-10-24.md).
+Existing lock snapshots retain category totals; dedicated frozen asset detail remains open.

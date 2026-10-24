@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [cost report sources](docs/release/COST-REPORT-FUNCTIONAL-SOURCES-2026-10-24.md) joins functional postings and carrying.
+Oct 24: [cost asset detail](docs/release/COST-ASSET-DETAIL-2026-10-24.md) adds asset grouping in all currency views.

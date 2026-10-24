@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+
 from erev_api.domain.reports import cost_reporting, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, SourceCollector
 from erev_api.domain.reports.builders.contract_cost_rollforward import CostMovement
@@ -125,3 +126,73 @@ def test_nonzero_opening_cannot_invent_a_rate(monkeypatch):
             [movement(ps[0], "1", in_range=False)],
             [balance(entity, "1")],
         )
+
+
+def test_reporting_currency_separates_assets_and_conserves_endpoint(monkeypatch):
+    from dataclasses import replace
+
+    from erev_api.domain.reports.builders import contract_cost_rollforward as costs
+
+    uow, params, entity, ps, _ = world(monkeypatch)
+    movements = [
+        replace(movement(ps[1], "10.01"), asset_key="C/asset-A"),
+        replace(movement(ps[1], "20.02"), asset_key="C/asset-B"),
+    ]
+    data = cost_reporting.build(
+        uow,
+        params,
+        (entity,),
+        {entity.id: ps[1:2]},
+        {entity.id: ps[0]},
+        movements,
+        [balance(entity, "30.03")],
+        assets=costs.asset_metadata(movements),
+    )
+    closing = [row for row in data.rows if row["line_code"] == "CLOSING"]
+    assert {row["asset_key"] for row in closing} == {"C/asset-A", "C/asset-B"}
+    assert sum(Decimal(row["amount"]["amount"]) for row in closing) == Decimal("90.09")
+    assert all(row["cost_kind"] == "OBTAIN" for row in closing)
+    assert data.tie_out_results[0]["result"] == "PASS"
+
+
+def test_asset_rounding_sums_to_every_category_line(monkeypatch):
+    from dataclasses import replace
+
+    from erev_api.domain.reports.builders import contract_cost_rollforward as costs
+
+    uow, params, entity, ps, _ = world(monkeypatch)
+
+    def rates(*args, rate_type, **kwargs):
+        return reporting_currency.Translation(
+            "GBP",
+            {
+                entity.id: {
+                    "rate": "2.5" if rate_type == "closing" else "1.5",
+                    "base_currency": "USD",
+                }
+            },
+        )
+
+    monkeypatch.setattr(reporting_currency, "rates_for_period", rates)
+    movements = [
+        replace(movement(ps[1], "0.01", kind=kind), asset_key=asset)
+        for kind, asset in [("OBTAIN", "A"), ("OBTAIN", "B"), ("FULFILL", "C")]
+    ]
+    args = (
+        uow,
+        params,
+        (entity,),
+        {entity.id: ps[1:2]},
+        {entity.id: ps[0]},
+        movements,
+        [balance(entity, "0.03")],
+    )
+    summary = cost_reporting.build(*args)
+    detail = cost_reporting.build(*args, assets=costs.asset_metadata(movements))
+    for parent in summary.rows:
+        assert sum(
+            Decimal(row["amount"]["amount"])
+            for row in detail.rows
+            if (row["cost_kind"], row["line_code"]) == (parent["cost_kind"], parent["line_code"])
+        ) == Decimal(parent["amount"]["amount"])
+    assert detail.tie_out_results[0]["result"] == "PASS"

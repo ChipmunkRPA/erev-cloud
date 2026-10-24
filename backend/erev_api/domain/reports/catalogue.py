@@ -2352,6 +2352,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "from_period_key",
             "to_period_key",
             "currency_view",
+            "granularity",
         ),
         sources=(
             "contract_cost_asset",
@@ -2386,6 +2387,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _as_locked("COST_ROLLFORWARD"),
         ),
         tie_outs=("TO_COST_ROLLFORWARD_BALANCES",),
+        overrides={
+            "granularity": {"type": "string", "enum": ["category", "asset"], "default": "category"}
+        },
     ),
     _definition(
         "book_bridge",

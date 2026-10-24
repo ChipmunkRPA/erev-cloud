@@ -1205,3 +1205,16 @@ On termination, acceleration releases the remaining historical carrying amount, 
 the final rounding residue, so the expense and cost-asset balance reconcile. Foreign costs
 involving impairment, impairment reversal, clawback or delayed capitalisation still require
 additional functional measurement and are refused.
+
+
+### Cost rollforward by asset
+
+In **Contract cost rollforward**, select **By category** or **By cost asset** in Granularity.
+The asset view shows the original cost asset identifier, contract, category, opening, additions,
+amortisation, acceleration, impairment/reversal, clawbacks and closing balance. It supports
+transaction, functional and reporting currency. Reporting translation keeps monthly rates and
+allocates rounding within each category so every line sums back to the category view.
+A posted line without an original asset identity is refused instead of being grouped under a
+guessed asset. Saved runs retain the selected granularity. Existing lock datasets contain only
+category totals; asset granularity with a lock ID is explicitly refused. Use a dated report
+for asset detail.

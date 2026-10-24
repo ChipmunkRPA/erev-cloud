@@ -24,19 +24,6 @@ from typing import Any, Final
 from uuid import UUID
 
 import pytest
-from erev_api.auth.keyring import KeyRing
-from erev_api.clock import FrozenClock
-from erev_api.config import Settings
-from erev_api.db.tables import legal_entity, subledger_line, subledger_posting
-from erev_api.domain.reports import framework
-from erev_api.domain.reports.builders import (
-    ReportParams,
-    adoption_bridge,
-    book_bridge,
-)
-from erev_api.files.store import LocalFileStore
-from erev_api.main import create_app
-from erev_api.problems import Problem
 from fastapi import FastAPI
 from sqlalchemy import func, select
 from support.db import TestDatabase
@@ -64,6 +51,20 @@ from support.worlds import (
     onb_s11_modretro_own,
     report_run,
 )
+
+from erev_api.auth.keyring import KeyRing
+from erev_api.clock import FrozenClock
+from erev_api.config import Settings
+from erev_api.db.tables import legal_entity, subledger_line, subledger_posting
+from erev_api.domain.reports import framework
+from erev_api.domain.reports.builders import (
+    ReportParams,
+    adoption_bridge,
+    book_bridge,
+)
+from erev_api.files.store import LocalFileStore
+from erev_api.main import create_app
+from erev_api.problems import Problem
 
 D = Decimal
 COST_LINES: Final = (
@@ -256,6 +257,18 @@ def test_cost_rollforward_k09_k02(
     # each contract's carrying amount at both ends (T-CON-09): K-09 holds none before September
     assert carrying(both, AUGUST_2026) == {K02: D("8005.48")}
     assert carrying(both, SEPTEMBER_2026) == {K02: D("7512.33"), K09: D("6302.63")}
+    detail, asset_rows = report_run(
+        both, "contract_cost_rollforward", {**september, "granularity": "asset"}
+    )
+    assert len({row["asset_key"] for row in asset_rows}) == 2
+    assert {row["contract_external_id"] for row in asset_rows} == {K02, K09}
+    assert len({row["row_key"] for row in asset_rows}) == len(asset_rows)
+    for code in COST_LINES:
+        assert (
+            sum(D(row["amount"]["amount"]) for row in asset_rows if row["line_code"] == code)
+            == combined[code]
+        )
+    assert tie_of(detail, "TO_COST_ROLLFORWARD_BALANCES")["result"] == "PASS"
 
 
 # --- RPT-34 -----------------------------------------------------------------------------------
@@ -313,8 +326,9 @@ def test_adoption_bridge_foreign_functional(
 
     from datetime import timedelta
 
-    from erev_api.db.tables import fx_rate_set
     from support.reference import approve, post
+
+    from erev_api.db.tables import fx_rate_set
 
     for kind in ("average", "closing"):
         # The FX service supplies inverse rows too: supersede the existing pair's set,
@@ -864,9 +878,10 @@ def test_intercompany_pairs_k04(
     # A later approved average changes a fresh report, but all original currency views replay.
     from datetime import timedelta
 
-    from erev_api.db.tables import fx_rate_set
     from support.reference import approve, get, post
     from support.worlds import REPORT_RUN_ID_HEADER, _gbp_rates, run_now
+
+    from erev_api.db.tables import fx_rate_set
 
     set_id = world.place.scalar(
         select(fx_rate_set.c.id).where(fx_rate_set.c.code == "AVM-RATES-AVERAGE")
@@ -971,13 +986,14 @@ def test_balance_aging_chk_010(
 def test_balance_aging_rerun_keeps_versions_after_later_billing(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
 ) -> None:
+    from support.factories import appended, computed
+    from support.reference import get, post
+    from support.worlds import REPORT_RUN_ID_HEADER, run_now
+
     from erev_api.db.tables import contract
     from erev_api.enums import ContractEventType
     from erev_api.events.payloads import BillingRecordedV1
     from erev_api.events.stream import EventIn
-    from support.factories import appended, computed
-    from support.reference import get, post
-    from support.worlds import REPORT_RUN_ID_HEADER, run_now
 
     world = chk_010_position(app, keyring, clock, files)
     parameters = {"entity_codes": [US01], "book": "ASC606", "period_key": "FY2026-P01"}
@@ -1091,13 +1107,14 @@ def test_book_bridge_foreign_revenue_uses_posted_functional_amounts(
 
     # A later posted bill changes the live ending balances, but the original reporting
     # view rebuilds from its retained per-contract amounts and driver facts.
+    from support.factories import appended
+    from support.reference import get, post
+    from support.worlds import REPORT_RUN_ID_HEADER, run_now
+
     from erev_api.db.tables import contract
     from erev_api.enums import ContractEventType
     from erev_api.events.payloads import BillingRecordedV1
     from erev_api.events.stream import EventIn
-    from support.factories import appended
-    from support.reference import get, post
-    from support.worlds import REPORT_RUN_ID_HEADER, run_now
 
     head = world.place.scalar(
         select(contract.c.head_stream_version).where(contract.c.id == k04.contract_id)
@@ -1226,6 +1243,7 @@ def test_cost_rollforward_aligns_separate_calendars(app, keyring, clock, files):
     from support.factories import appended, booked_contract, computed, k02_body, open_periods
     from support.reference import CALENDARS, entity, post
     from support.worlds import K02, commission, resigned, run_now
+
     from erev_api.db.tables import report_run as runs
 
     world = k02_marrowby_commission(app, keyring, clock, files)

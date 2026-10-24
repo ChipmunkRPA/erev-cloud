@@ -6118,6 +6118,8 @@
   "reports.parameters.from_date": "Effective from",
   "reports.parameters.from_period_key": "From",
   "reports.parameters.granularity": "Granularity",
+  "reports.parameters.granularity.category": "By category",
+  "reports.parameters.granularity.asset": "By cost asset",
   "reports.parameters.granularity.MONTH": "Month",
   "reports.parameters.granularity.QUARTER": "Quarter",
   "reports.parameters.granularity.YEAR": "Year",

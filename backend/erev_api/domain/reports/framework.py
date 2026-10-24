@@ -1461,6 +1461,21 @@ def _resolve(
     session = uow.session
     properties: Mapping[str, Any] = schema.get("properties", {})
     parameters = dict(given)
+    if (
+        code == "contract_cost_rollforward"
+        and parameters.get("granularity") == "asset"
+        and parameters.get("period_lock_id")
+    ):
+        raise _invalid(
+            [
+                _finding(
+                    "parameters.granularity",
+                    "Locked cost datasets contain category totals. "
+                    "Run a dated cost-asset view instead.",
+                    RULE_REPORT,
+                )
+            ]
+        )
     errors: list[ProblemError] = []
     defaults = PARAMETER_DEFAULTS.get(code, {})
     for key, spec in properties.items():

@@ -231,7 +231,11 @@ it("labels analytical currency equivalents and sends the selected basis", () => 
     parameters_schema: {
       properties: {
         currency_view: { type: "string", enum: ["transaction", "functional", "reporting"] },
-        currency_basis: { type: "string", enum: ["source", "spot_equivalent", "causal_analysis"], default: "source" },
+        currency_basis: {
+          type: "string",
+          enum: ["source", "spot_equivalent", "causal_analysis"],
+          default: "source",
+        },
       },
     },
   };
@@ -277,4 +281,37 @@ it("close variance exposes retained event attribution choice", () => {
   );
   expect(screen.getByText("By event (additional replay)")).toBeTruthy();
   expect(runParameters(modified, context, values)).toMatchObject(values);
+});
+
+it("cost rollforward offers category and original asset grouping", () => {
+  const modified = {
+    ...definition,
+    code: "contract_cost_rollforward",
+    parameters_schema: {
+      properties: {
+        granularity: {
+          type: "string",
+          enum: ["category", "asset"],
+          default: "category",
+        },
+      },
+    },
+  };
+  const change = vi.fn();
+  render(
+    <ParametersToolbar
+      definition={modified}
+      context={context}
+      values={{}}
+      errors={{}}
+      timeBands={null}
+      onChange={change}
+      onRun={() => {}}
+    />,
+  );
+  fireEvent.click(screen.getByRole("radio", { name: "By cost asset" }));
+  expect(change).toHaveBeenCalledWith("granularity", "asset");
+  expect(runParameters(modified, context, { granularity: "asset" })).toMatchObject({
+    granularity: "asset",
+  });
 });
