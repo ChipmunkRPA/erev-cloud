@@ -784,6 +784,12 @@ def test_retained_posted_pair_workflow(
         assert routed.status_code == 200, routed.text
         decision = approve(k02.app, routed.json()["approval_request_id"], k02.priya)
         assert decision.status_code == 200, decision.text
+    before_inputs = {
+        group: computed(k02.place, group)[0]
+        for group in {
+            modification_flows._group_of(k02, identity) for identity in (source_id, target_id)
+        }
+    }
     created = post(
         k02.app,
         f"{CONTRACTS}/{source_id}/regroup",
@@ -876,6 +882,50 @@ def test_retained_posted_pair_workflow(
                 assert [effect.event_keys for effect in measure.effects] == [
                     (key,) for key in selected
                 ]
+        # Model two valid knowledge cutoffs over the retained paired application input.
+        from dataclasses import replace
+
+        from erev_api.domain.reports.variance_projection import Projection
+        from erev_api.domain.reports.variance_replay import replay_period_money
+        from erev_engine import compute
+
+        before = before_inputs[group_id]
+        cutoff = before.known_at
+        after = replace(
+            retained_input,
+            known_at=cutoff + timedelta(seconds=2),
+            posted=before.posted,
+            group=replace(
+                retained_input.group, previous_stream_heads=before.group.previous_stream_heads
+            ),
+            events=tuple(
+                replace(e, recorded_at=cutoff + timedelta(seconds=1))
+                if e.event_key in selected
+                else e
+                for e in retained_input.events
+            ),
+        )
+        projection = Projection(before, entity.code, "ASC606", period.period_key, "functional")
+        earlier, later = (
+            projection(compute(before)),
+            replace(projection, basis=after)(compute(after)),
+        )
+        replay = replay_period_money(
+            before,
+            after,
+            entity_code=entity.code,
+            book_code="ASC606",
+            period_key=period.period_key,
+            currency_view="functional",
+            earlier_metrics=earlier,
+            later_metrics=later,
+            event_details=True,
+        )
+        assert all(measure.sums_exactly for measure in replay.measures.values())
+        for measure in replay.measures.values():
+            effects = [e for e in measure.effects if e.event_keys]
+            assert [e.event_keys for e in effects] == [(key,) for key in selected]
+            assert {e.driver for e in effects} == {"LATE_EVENT"}
     assert len(k02.place.rows(select(subledger_line.c.id))) == lines_before
 
     if shared_group:

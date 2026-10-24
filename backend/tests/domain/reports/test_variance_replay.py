@@ -1993,3 +1993,33 @@ def test_termination_between_close_cutoffs_reconciles_revenue_and_rpo(kind, view
             assert effects[0].driver == "LATE_EVENT"
             changed.append(effects[0].amount)
         assert any(changed)
+
+
+def test_close_replay_refuses_regroup_without_retained_basis_before_compute():
+    from tests.engine.s06_modifications.test_regroup_future_service import incoming
+
+    source = incoming(revision=37)
+    original = next(event for event in source.events if event.event_type == "REGROUPED")
+    before = replace(source, events=tuple(e for e in source.events if e != original))
+    after = replace(
+        source,
+        known_at=source.known_at + timedelta(days=1),
+        events=(
+            *before.events,
+            replace(original, recorded_at=source.known_at + timedelta(hours=1)),
+        ),
+    )
+
+    def forbidden(*args):
+        pytest.fail("unretained regroup must refuse before executing a counterfactual")
+
+    with pytest.raises(Problem, match="retained after-posting transfer evidence"):
+        replay_events(
+            before,
+            after,
+            earlier_period_end=date(2026, 9, 30),
+            earlier_metrics={},
+            later_metrics={},
+            project=forbidden,
+            engine=forbidden,
+        )

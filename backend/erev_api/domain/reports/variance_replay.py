@@ -26,6 +26,7 @@ from erev_engine.stages.s15_disclosures.variance import (
     decompose,
 )
 
+from .regroup_replay import require_retained_basis
 from .variance_measures import MeasureKey
 from .variance_projection import MEASURES, Projection
 from .variance_reporting import Basis
@@ -58,6 +59,7 @@ _DRIVERS: Final = {
     "OPENING_BALANCE_ESTABLISHED": "NEW_CONTRACT",
     "CONTRACT_AMENDED": "MODIFICATION",
     "CONTRACT_TERMINATED": "MODIFICATION",
+    "REGROUPED": "MODIFICATION",
     "ESTIMATE_CHANGED": "ESTIMATE_CHANGE",
     "MEMO_UPDATED": "OTHER",
 }
@@ -221,6 +223,7 @@ def replay_events(
     """
     validate_contract_basis(before.contracts, after.contracts)
     added = _validate(before, after)
+    require_retained_basis(after, added)
     # Validate every classification before executing any potentially expensive work.
     runs = event_runs(added, earlier_period_end, event_details=event_details)
     expected_before = _metric_values(earlier_metrics)

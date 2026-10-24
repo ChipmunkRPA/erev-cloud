@@ -269,3 +269,18 @@ pass in transaction/functional/reporting views and all saved reruns preserve out
 Transfer rows retain the same pair identity and correct owner/direction; termination rows have
 no fabricated pair. A focused retained-dataset case preserves amounts/control totals and old
 output shape. Scoped lint/types pass. No deployment.
+
+
+## Retained regroup close-variance replay — October 24, 2026
+
+Close-variance replay now recognizes retained after-posting REGROUPED events as modification
+drivers, preserving late-event precedence. It shares causal reporting admission checks: evidence
+revision 37+, contract-owned modification evidence, book transfer lines, source basis, pair identity
+and OUT/IN direction. Inception draft moves without retained evidence refuse before computation.
+
+Two populated transfer workflows (cross-group and shared-group) reconcile every close-replay
+measure and preserve separate event effects. They capture actual pre-transfer inputs and normalize
+posted amounts/previous stream heads to the existing close-replay basis, with explicitly constructed
+knowledge cutoffs. This is not a new public close/lock roundtrip. Twelve causal regression cases and
+seven negative replay guards pass; scoped lint/types pass. Public after-posting regroup remains
+gated for outstanding accounting scenarios. No deployment.
