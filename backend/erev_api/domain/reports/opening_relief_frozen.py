@@ -1,17 +1,16 @@
 """POB opening sources come from the authenticated lock-time balance report binding."""
 
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
-from erev_engine.canonical import sha256_hex
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from erev_api.db.tables import report_run
 from erev_api.domain.reports import disclosure_frozen, tie_outs
 from erev_api.domain.reports.builders import ADAPTER, ReportParams, SourceBinding
-
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import sha256_hex
 
 NATIVE_KEY = "opening_relief_native_snapshots_v1"
 
@@ -50,7 +49,14 @@ class Reader:
         sources = self.cache[key]
         found = sources.balances.get(row.contract_id)
         held = locked.rows.get(row.external_id)
-        if (found is None) != (held is None) or (
+        # The locked balance report omits all-zero rows. Their original version
+        # still proves a zero opening; retain it rather than inventing absence.
+        omitted_zero = (
+            found is not None
+            and held is None
+            and all(found.value(name) == tie_outs.ZERO for name in tie_outs.BALANCE_MEASURES)
+        )
+        if ((found is None) != (held is None) and not omitted_zero) or (
             found is not None
             and held is not None
             and (
@@ -91,6 +97,8 @@ def _sources(
                 report_run.c.report_code == "disclosure_pack",
                 report_run.c.job_id.is_(None),
                 report_run.c.status == "SUCCEEDED",
+                func.coalesce(report_run.c.parameters["currency_view"].astext, "transaction")
+                == "transaction",
             )
         ).mappings()
     )

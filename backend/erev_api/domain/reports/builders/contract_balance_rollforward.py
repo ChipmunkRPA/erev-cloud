@@ -31,7 +31,10 @@ Per member contract and contracting entity over the range:
 - the difference between the path and the presented closing of the unbilled receivable and the
   contract asset is ``RECLASSIFICATIONS`` between the two captions; a difference in their sum, and
   any liability difference, is ``OTHER`` (unexplained; REQ-RPT-006);
-- ``FX_REMEASUREMENT`` and ``BUSINESS_COMBINATIONS`` are 0 in the transaction view.
+- ``FX_REMEASUREMENT`` is 0 in the transaction view. New runs classify authenticated
+  period-end acquired opening balances as ``BUSINESS_COMBINATIONS``. Their original
+  input/output identities and balance nodes are retained for reruns; older bindings
+  keep their original interpretation.
 
 The functional view reads dated engine balance targets and posted functional control flows.
 Billing is valued from retained historical layer creation/settlement amounts and, in ENGINE
@@ -177,6 +180,7 @@ FAMILY_LINES: Final[Mapping[str, str]] = {
     REVENUE: "REVENUE_FROM_PERIOD_BILLINGS",
     RECLASSIFICATION: "RECLASSIFICATIONS",
     FX: "FX_REMEASUREMENT",
+    "ACQUISITION": "BUSINESS_COMBINATIONS",
 }
 # A contract's billing stream (04 E-03): the documents and what voids them.
 DOCUMENT_TYPES: Final = (
@@ -206,6 +210,7 @@ class Flow:
     layer_key: str | None = None
     liability_fx: tuple[tuple[str | None, Decimal], ...] = ()
     asset_fx: bool = False
+    acquisition_balances: tuple[tuple[str, Decimal], ...] = ()
 
 
 def family_of(flow: Flow) -> str:
@@ -261,6 +266,17 @@ def path(
     for flow_index, flow in enumerate(flows):
         family = family_of(flow)
         label = FAMILY_LINES[family]
+        if family == "ACQUISITION":
+            amounts = dict(flow.acquisition_balances)
+            if set(amounts) != set(ROLLFORWARD_BALANCES) or any(v < 0 for v in amounts.values()):
+                raise tie_outs.invalid("currency_view", "Invalid original acquisition balances.")
+            for role, amount in amounts.items():
+                lines[label][role] += amount
+                if role == LIABILITY:
+                    layers.append(["NEW", amount, flow.layer_key])
+                else:
+                    asset[role] += amount
+            continue
         if family == FX:
             if flow.asset_fx:
                 if flow.liability_fx:
@@ -582,13 +598,21 @@ def rollforwards(
             asset_transfers[transfer_key] = asset_transfers.get(transfer_key, ZERO) + amount
         for transfer_key, amount in revenue_sources.items():
             member_transfers[transfer_key] = member_transfers.get(transfer_key, ZERO) + amount
+    acquisitions: dict[tuple[UUID, UUID], list[Entry]] = {}
+    if documents and uow is not None:
+        from ..acquisition_flows import read as acquisition_flows
+
+        acquisitions = acquisition_flows(
+            uow, params, transaction_ends, periods, book_code, functional=functional
+        )
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
         described = closing if closing is not None else opening
         assert described is not None
         key = (contract_key, entity_id)
         entries = sorted(
-            [*posted.get(key, ()), *unposted.get(key, ())], key=lambda entry: entry.order
+            [*posted.get(key, ()), *unposted.get(key, ()), *acquisitions.get(key, ())],
+            key=lambda entry: entry.order,
         )
         lines = path(
             _values(opening),

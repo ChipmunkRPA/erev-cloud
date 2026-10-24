@@ -12,11 +12,12 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+from support import report_specs
+
 from erev_api.domain.reports import catalogue, framework, tie_outs
 from erev_api.domain.reports.builders import contract_balance_rollforward as cbr
 from erev_api.domain.reports.tie_outs import PeriodRef
 from erev_api.enums import SubledgerEntryKind
-from support import report_specs
 
 D = Decimal
 LIABILITY, ASSET, UNBILLED = "contract_liability", "contract_asset", "unbilled_receivable"
@@ -66,6 +67,7 @@ def test_every_entry_kind_has_a_family_and_every_family_a_line() -> None:
         cbr.REVENUE: "REVENUE_FROM_PERIOD_BILLINGS",
         cbr.RECLASSIFICATION: "RECLASSIFICATIONS",
         cbr.FX: "FX_REMEASUREMENT",
+        "ACQUISITION": "BUSINESS_COMBINATIONS",
     }
     assert set(cbr.FAMILY_LINES.values()) <= set(cbr.LINES)
     for kind in SubledgerEntryKind:
@@ -446,3 +448,17 @@ def test_zero_opening_does_not_allow_fx_overdraw_or_unknown_named_sources(layer,
 
     with pytest.raises(Problem):
         cbr.path(NONE, [cbr.Flow(amount, False, cbr.FX, liability_fx=((layer, amount),))], NONE)
+
+
+def test_acquired_balances_are_separate_increases_and_never_range_opening_relief():
+    amounts = {LIABILITY: D(100), ASSET: D(20), UNBILLED: D(30)}
+    acquired = cbr.Flow(D(0), False, "ACQUISITION", acquisition_balances=tuple(amounts.items()))
+    lines = cbr.path(
+        NONE,
+        [acquired, cbr.Flow(D(40), True, cbr.REVENUE)],
+        {LIABILITY: D(60), ASSET: D(20), UNBILLED: D(30)},
+    )
+    assert lines["BUSINESS_COMBINATIONS"] == amounts
+    assert lines["REVENUE_FROM_OPENING"] == NONE
+    assert lines["REVENUE_FROM_PERIOD_BILLINGS"][LIABILITY] == D(-40)
+    assert ties(lines)

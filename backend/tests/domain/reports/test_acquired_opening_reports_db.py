@@ -26,11 +26,12 @@ def app(committed_db, app_settings, clock):
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("locked", [False, True])
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
-    app, keyring, clock, app_settings, monkeypatch
+    app, keyring, clock, app_settings, monkeypatch, locked
 ):
     world = close_run_worlds.eur_receivable(
-        app, keyring, clock, LocalFileStore(app_settings.file_root)
+        app, keyring, clock, LocalFileStore(app_settings.file_root), reporting_currency="EUR"
     )
     existing = world.contracts[close_run_worlds.EUR_CONTRACT]
     # Settle the setup contract's unbilled balance, so this scenario does not
@@ -120,6 +121,42 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         ],
     )
     computed(world.place, UUID(str(acquired.combination_group["id"])))
+    if locked:
+        from datetime import timedelta
+
+        from support import close_runs
+        from support.close_world import periods_closed_before
+        from support.reference import approve
+
+        world = worlds.on_record_clock(world, clock)
+        periods_closed_before(
+            world.place,
+            app,
+            world.maya,
+            entity_id=world.entity_id,
+            before="FY2026-P08",
+            entity_code=worlds.AVM_US,
+        )
+        state = worlds.period_state(world, worlds.AVM_US, "FY2026-P08")
+        started = post(
+            app,
+            f"/api/v1/periods/{state['id']}/start-close",
+            world.maya,
+            {"comment": "Freeze acquired opening sources"},
+            if_match=f'"r{state["row_version"]}"',
+        )
+        assert started.status_code == 200, started.text
+        closed = close_runs.closed(
+            world, monkeypatch, entity_code=worlds.AVM_US, period_key="FY2026-P08"
+        )
+        assert closed["status"] == "SUCCEEDED", str(closed)
+        world = close_run_worlds.journal_and_reconciliations(world, clock, closed)
+        requested = close_run_worlds.request_lock(world)
+        assert requested.status_code == 200, requested.text
+        clock.advance(timedelta(minutes=1))
+        world = worlds.verified(world, clock, "marcus")
+        approved = approve(app, requested.json()["approval_request_id"], world.marcus)
+        assert approved.status_code == 200, approved.text
     worlds.approved_manual_events(
         world.place,
         world.priya,
@@ -131,12 +168,40 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         },
         evidence_file_ids=[],
     )
-    world = worlds.on_record_clock(world, clock)
+    if not locked:
+        world = worlds.on_record_clock(world, clock)
     monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
     for view, currency, amount, relief in (
         ("transaction", "EUR", "10000.00", "5000.00"),
         ("functional", "USD", "11000.00", "5500.00"),
+        ("reporting", "EUR", "9954.75", "4954.95"),
     ):
+        acquired_run, acquired_rows = worlds.report_run(
+            world,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [worlds.AVM_US],
+                "book": "ASC606",
+                "from_period_key": "FY2026-P08",
+                "to_period_key": "FY2026-P08",
+                "currency_view": view,
+            },
+        )
+        by_key = {r["row_key"]: r for r in acquired_rows}
+        increase = "11000.00" if view == "functional" else "10000.00"
+        assert by_key["BUSINESS_COMBINATIONS"]["contract_liability"] == {
+            "currency": currency,
+            "amount": increase,
+        }
+        assert by_key["OTHER"]["contract_liability"]["amount"] == "0.00"
+        repeated = post(app, f"/api/v1/report-runs/{acquired_run['id']}/rerun", world.maya, {})
+        assert repeated.status_code == 202, repeated.text
+        done = worlds.run_now(world, UUID(repeated.json()["id"]))
+        assert done["state"] == "SUCCEEDED", done
+        repeat_id = repeated.headers["x-erev-report-run-id"]
+        data = get(app, f"/api/v1/report-runs/{repeat_id}/data", world.maya, {"limit": "200"})
+        assert data.status_code == 200, data.text
+        assert data.json()["items"] == acquired_rows
         run, rows = worlds.report_run(
             world,
             "revenue_from_opening_liability",

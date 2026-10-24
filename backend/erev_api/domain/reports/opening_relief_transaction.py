@@ -10,12 +10,14 @@ from uuid import UUID
 
 from erev_api.domain.reports import (
     locked_ends,
-    opening_consumption_policy,
-    opening_relief_pob,
-    opening_relief_frozen,
     opening_agent_sources,
-    opening_relief_availability as availability,
+    opening_consumption_policy,
+    opening_relief_frozen,
+    opening_relief_pob,
     tie_outs,
+)
+from erev_api.domain.reports import (
+    opening_relief_availability as availability,
 )
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
@@ -89,6 +91,9 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params=params,
         locked=locked,
     )
+    from .acquisition_flows import read as acquisition_flows
+
+    acquisitions = acquisition_flows(uow, params, selected, periods, book, functional=False)
     # A version identifies the original computation's combination membership;
     # never substitute today's group table for the selected report version.
     groups: dict[tuple[UUID, UUID, str], list[tuple[UUID, UUID]]] = defaultdict(list)
@@ -147,7 +152,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             (
                 (key, entry)
                 for key in members
-                for entry in (*posted.get(key, ()), *documents.get(key, ()))
+                for entry in (
+                    *posted.get(key, ()),
+                    *documents.get(key, ()),
+                    *acquisitions.get(key, ()),
+                )
             ),
             key=lambda pair: (pair[1].order, selected[pair[0]].external_id),
         )

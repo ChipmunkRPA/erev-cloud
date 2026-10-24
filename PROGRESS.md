@@ -260,14 +260,12 @@ keys, version-specific target changes and frozen FX for foreign unit costs. Brea
 combination reassessment remain open. See
 [checkpoint](docs/release/SHARED-TARGET-CHANGES-2026-10-23.md).
 
-## Locked POB opening sources — October 23, 2026
+## Acquired reporting and locked continuation — October 24, 2026
 
-- Transaction POB reports now recover opening obligation nodes from the authenticated lock-time
-  balance report's original version binding and reconcile it to the frozen contract balances.
-  Later contract versions do not replace that opening. Missing original evidence still refuses.
-- Public lock/new-version/report/rerun verification and seven focused cases pass, plus scoped
-  types/lint. Combined contracts, foreign-functional and special attribution remain open.
-- Native frozen-cap checkpoint moved to REPORTING-CHECKPOINTS-2026-10-22.md. No deployment.
+Original cutover balances now enter BUSINESS_COMBINATIONS with retained source evidence.
+Same-entity principal ASC606 close/lock, later income, three currency views and reruns pass.
+Mixed groups, agents, cross-entity and recomputed baselines remain open. See
+[checkpoint](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
 
 ## Aligned range reports across calendars — October 23, 2026
 

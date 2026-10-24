@@ -75,3 +75,25 @@ def test_old_report_bindings_do_not_gain_native_evidence():
     assert old.native is False and collector.evidence == {}
     live = Reader(NS(), NS(binding=None, sources=collector))
     assert live.native is True and collector.evidence[NATIVE_KEY] is True
+
+
+@pytest.mark.parametrize("amount", ["0", "1"])
+def test_frozen_source_accepts_only_proven_zero_rows_omitted_by_lock(amount):
+    from decimal import Decimal
+
+    from erev_api.domain.reports.opening_relief_frozen import FrozenSources, Reader
+
+    row = NS(contract_id=UUID(int=1), entity_id=UUID(int=2), external_id="SETTLED")
+    original = NS(version_id=UUID(int=3), value=lambda name: Decimal(amount))
+    locked = NS(lock_id=UUID(int=4), rows={})
+    reader = Reader(NS())
+    reader.cache[(locked.lock_id, row.entity_id, "ASC606")] = FrozenSources(
+        {row.contract_id: original}, {"source": "authenticated"}
+    )
+    if amount == "0":
+        found, facts = reader.read(row=row, previous=NS(), locked=locked, book="ASC606")
+        assert found is original
+        assert facts["version"] == str(original.version_id)
+    else:
+        with pytest.raises(Problem, match="validation-failed"):
+            reader.read(row=row, previous=NS(), locked=locked, book="ASC606")

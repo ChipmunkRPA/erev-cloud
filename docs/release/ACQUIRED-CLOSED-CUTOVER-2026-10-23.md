@@ -156,3 +156,34 @@ blocker, not a missing sign-off or deployment prerequisite. Fix original acquisi
 flows and their retained evidence in the public transaction/functional/reporting paths;
 then recheck lock approval, September income, frozen opening reads and bound reruns.
 Do not suppress OTHER, weaken reconciliation, or claim this closed-period path is complete.
+
+
+## Public acquisition-period flows and locked continuation — October 24, 2026
+
+The blocker above is fixed for admitted same-entity principal acquisitions using
+OPENING_BALANCES_AT_CUTOVER. A new acquisition flow reads original input/output files from
+the selected contract version, verifies metadata, digests and computation identity, confirms
+that the original engine admitted the opening, and takes each carrying caption from its
+cutover-period trace. It adds those balances to BUSINESS_COMBINATIONS, independently of
+billing and revenue. New acquisition liability layers are not range-opening liability.
+The event key, original hashes, trace nodes, currency and amounts are retained and checked
+on rerun. Historical bindings without the new evidence key preserve their previous behavior.
+Mixed existing/acquired groups, acquired agents and cross-entity attribution still refuse;
+recomputed-baseline acquisitions are not covered by this new cutover-source path.
+
+Two further source-reader defects exposed by the real lock flow are fixed: select the
+transaction disclosure pack explicitly among the three frozen currency variants; and retain
+authenticated all-zero original rows omitted by the locked balance report. Missing nonzero
+balances continue to refuse. Neither fix relaxes a reconciliation or fabricates a balance.
+
+Necessary validation: the database scenario now passes in both open and locked variants.
+It performs an actual August close, journal workflow and lock approval, approves September
+income, then reads August rollforwards and September opening-liability reports in transaction,
+functional and reporting currencies. August shows EUR 10,000 / USD 11,000 acquisition increase,
+zero unexplained liability OTHER, and reporting-currency translation separately. September
+shows EUR 5,000 / USD 5,500 revenue relief; reporting EUR uses the retained closing/average
+rates (opening EUR 9,954.75, relief EUR 4,954.95). Every report's retained rerun reproduces
+all rows. As with the existing close fixtures, preceding empty periods and reconciliation
+review rows are fixture-prepared; opening input is fixture-appended and POL-126 is selected
+by the fixture. This does not establish an acquisition-entry UI or real-business migration.
+Focused path/source checks, scoped types and lint also pass. No deployment or posting change.
