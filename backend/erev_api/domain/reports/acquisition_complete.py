@@ -44,7 +44,6 @@ def read(
         snapshot.get("basis") != "ORIGINAL_NONPOSTING_CUTOVER_EVALUATION"
         or snapshot["currency"] != currency
         or snapshot["minor_unit"] != mu
-        or original_entity.functional_currency != currency
         or set(snapshot["amounts"]) != set(tie_outs.BALANCE_MEASURES)
         or unmeasured not in ({}, {"accounts_receivable": "ERP_MODE_EXTERNAL_BALANCE"})
         or set(snapshot["nodes"]) != set(tie_outs.BALANCE_MEASURES) - set(unmeasured)
@@ -83,6 +82,36 @@ def read(
                 "currency_view", "Original complete acquisition balance source differs."
             )
         amounts[measure] = Decimal(amount) * scale
+    functional = snapshot.get("functional")
+    if original_entity.functional_currency != currency:
+        if (
+            not isinstance(functional, dict)
+            or (bundle.evidence_revision or 0) < 45
+            or (
+                functional.get("currency") != original_entity.functional_currency
+                or functional.get("minor_unit")
+                != bundle.currencies[original_entity.functional_currency].minor_unit
+                or set(functional.get("amounts", {})) != set(functional.get("nodes", {}))
+                or not set(tie_outs.ROLLFORWARD_BALANCES) <= set(functional.get("amounts", {}))
+                or not set(functional.get("amounts", {})) <= set(tie_outs.BALANCE_MEASURES)
+            )
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Original acquisition functional scope differs."
+            )
+        fn_scale = Decimal(10) ** -functional["minor_unit"]
+        for role, amount in functional["amounts"].items():
+            node = nodes.get(functional["nodes"][role])
+            if (
+                type(amount) is not int
+                or node is None
+                or node["measure"] != f"{role}_functional"
+                or node["currency"] != functional["currency"]
+                or Decimal(node["value"]) != Decimal(amount) * fn_scale
+            ):
+                raise tie_outs.invalid(
+                    "currency_view", "Original acquisition functional source differs."
+                )
     return amounts, {
         **snapshot,
         "nodes": sorted(snapshot["nodes"].values()),

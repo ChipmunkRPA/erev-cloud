@@ -2660,3 +2660,11 @@ ordinary balance row exists. This supersedes the no-ordinary-subject restriction
 above for that population. See [implementation and validation](ACQUISITION-COMPLETE-BALANCES-2026-10-24.md).
 Multi-member, agent and foreign-functional acquisition paths remain incomplete;
 old outputs without original observations are not retrospectively filled in.
+
+## October 24: foreign acquisition transaction reports and original FX sources
+
+Revision 45 adds original functional balance sources and unlocks transaction-view
+no-row reports for foreign singleton acquisitions. See [scope and evidence](ACQUISITION-FOREIGN-SOURCES-2026-10-24.md).
+Full functional/reporting views remain unfinished: the current-liability historical
+layer versus ratio classification choice is pending, with no substituted display FX
+rate. Multi-member and agent acquisition support remains open.

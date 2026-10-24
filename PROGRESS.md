@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [complete acquisition balances](docs/release/ACQUISITION-COMPLETE-BALANCES-2026-10-24.md) added for new singleton same-currency computations.
+Oct 24: [foreign acquisition sources](docs/release/ACQUISITION-FOREIGN-SOURCES-2026-10-24.md) added; full functional classification remains pending.

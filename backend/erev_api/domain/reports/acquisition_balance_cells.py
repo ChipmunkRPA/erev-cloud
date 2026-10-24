@@ -108,6 +108,16 @@ def cell(
             "Accounts receivable is ERP-managed: zero is the engine reporting default, "
             "not a confirmed ERP balance."
         )
+    functional = snapshot.get("functional")
+    if functional is not None:
+        scale_fn = Decimal(10) ** -functional["minor_unit"]
+        details.extend(
+            f"Original functional {role}: {Decimal(amount) * scale_fn} {functional['currency']}"
+            for role, amount in sorted(functional["amounts"].items())
+        )
+        details.append(
+            "Functional current/noncurrent classification is not supplied by these balance sources."
+        )
     maturity = snapshot.get("maturity", {})
     details.append(f"Current/noncurrent policy: {maturity.get('policy', 'unavailable')}")
     attribution = maturity.get("asset_attribution")
@@ -139,6 +149,8 @@ def cell(
             f"at {rate['rate']}. Noncurrent equals displayed total less displayed current."
         )
     nodes = set(snapshot["nodes"])
+    if functional is not None:
+        nodes.update(functional["nodes"].values())
     for item in maturity.get("obligations", {}).values():
         nodes.update(item["sources"])
     links = [

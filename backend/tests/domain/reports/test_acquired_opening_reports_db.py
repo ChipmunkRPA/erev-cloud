@@ -38,6 +38,7 @@ def app(committed_db, app_settings, clock):
         (False, False, True, True, False),
         (False, False, True, True, True),
         (False, False, True, True, "complete"),
+        (False, False, True, True, "foreign"),
     ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
@@ -109,8 +110,8 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             keys=[f"FY2026-P{m:02d}" for m in range(1, 10)],
         )
         selected_entities.append("ACQUIRED-PERFORMER")
-    acquired_currency = "USD" if recomputed else "EUR"
-    if recomputed:
+    acquired_currency = "USD" if recomputed and untraced != "foreign" else "EUR"
+    if acquired_currency == "USD":
         close_run_worlds.approved_ssp_version(
             app,
             world.maya,
@@ -238,10 +239,10 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                 (node.id, node.value) for node in output.books[0].trace.nodes
             )
             assert "ACQUIRED-EUR@AVM-US" not in trace.latest
-        if untraced == "complete":
+        if untraced in {"complete", "foreign"}:
             assert output.books[0].acquisition_balance_observations
         world = worlds.on_record_clock(world, clock)
-        if untraced == "complete":
+        if untraced in {"complete", "foreign"}:
             _, before_acquisition = worlds.report_run(
                 world,
                 "contract_balances",
@@ -288,8 +289,9 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             return
         _closed_source_reports(
             world,
+            foreign=untraced == "foreign",
             complete=output.books[0].acquisition_balance_observations
-            if untraced == "complete"
+            if untraced in {"complete", "foreign"}
             else None,
         )
         return
@@ -439,12 +441,17 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         assert rebuilt.json()["items"] == rows
 
 
-def _closed_source_reports(world, complete=None):
-    for view, currency, expected in (
-        ("transaction", "USD", "20000.00"),
-        ("functional", "USD", "20000.00"),
-        ("reporting", "EUR", "18099.55"),
-    ):
+def _closed_source_reports(world, complete=None, foreign=False):
+    views = (
+        (("transaction", "EUR", "20000.00"),)
+        if foreign
+        else (
+            ("transaction", "USD", "20000.00"),
+            ("functional", "USD", "20000.00"),
+            ("reporting", "EUR", "18099.55"),
+        )
+    )
+    for view, currency, expected in views:
         params = {"entity_codes": [worlds.AVM_US], "book": "ASC606", "currency_view": view}
         balance_run, balances = worlds.report_run(
             world,
@@ -484,8 +491,18 @@ def _closed_source_reports(world, complete=None):
                 for measure, amount in snapshot["amounts"].items():
                     assert Decimal(own[measure]["amount"]) == Decimal(amount) / 100
 
-        if view == "reporting":
-            assert "Retained closing FX rate" in str(contribution)
+        if foreign:
+            (original,) = complete
+            assert original["functional"]["currency"] == "USD"
+            assert original["functional"]["amounts"]["contract_liability"] == 2200000
+            assert "Original functional contract_liability: 22000.00 USD" in str(contribution)
+            assert any(
+                "contract_liability_functional" in link["href"]
+                for link in contribution["source_links"]
+            )
+        if view == "reporting" or foreign:
+            if not foreign:
+                assert "Retained closing FX rate" in str(contribution)
             repeated = post(
                 world.app, f"/api/v1/report-runs/{balance_run['id']}/rerun", world.maya, {}
             )

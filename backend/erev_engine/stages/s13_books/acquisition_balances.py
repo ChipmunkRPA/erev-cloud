@@ -3,6 +3,7 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from types import MappingProxyType
+from typing import Any
 
 from erev_engine.errors import EngineError
 from erev_engine.stages import StageSpec
@@ -13,6 +14,7 @@ from erev_engine.stages.s01_canonicalize import (
 from erev_engine.stages.s07_onboarding import baseline_of
 from erev_engine.stages.s10_billing_balances import BalanceState
 from erev_engine.stages.s11_costs_loss import CostLossState
+from erev_engine.stages.s12_fx_entities import FxState
 from erev_engine.stages.state import BookContext, CanonicalBundle, billing_mode_at
 from erev_engine.trace import TraceBuilder
 
@@ -63,7 +65,8 @@ def capture(
     if len(entities) != 1:
         return ()
     entity = next(iter(entities))
-    if ctx.entities[entity].functional_currency != ctx.txn_currency:
+    foreign = ctx.entities[entity].functional_currency != ctx.txn_currency
+    if foreign and (cb.bundle.evidence_revision or 0) < 45:
         return ()
     baselines = [baseline_of(ob) for ob in own]
     if any(b is None or b.method != "RECOMPUTE_FROM_INCEPTION" for b in baselines):
@@ -76,13 +79,18 @@ def capture(
     if period is None or period.period_key <= ctx.horizon[entity]:
         return ()
     evidence = TraceBuilder(engine_version=cb.bundle.engine_version)
-    # Re-evaluate the original financial stages only through costs, retaining all
-    # specialist inputs. No FX, posting, disclosure, or output assembler runs here.
+    # Re-evaluate the original financial stages through costs (and original FX
+    # for a foreign observation), retaining all
+    # specialist inputs. No posting, disclosure, or output assembler runs here.
     # Calendar states, original input and ordinary context are never changed.
     extended = replace(ctx, horizon=MappingProxyType({**ctx.horizon, entity: period.period_key}))
     try:
         _, measured, _ = _run_book(
-            extended, cb, tuple(s for s in stages if s.stage <= "11"), evidence, Memo()
+            extended,
+            cb,
+            tuple(s for s in stages if s.stage <= ("12" if foreign else "11")),
+            evidence,
+            Memo(),
         )
     except EngineError:
         return ()
@@ -122,6 +130,41 @@ def capture(
                 continue
             return ()  # no absent component is silently converted to a zero balance
         amounts[name], links[name] = found[0].value, found[0].node_id
+    functional: dict[str, Any] | None = None
+    if foreign:
+        fx = measured.get("12")
+        if not isinstance(fx, FxState):
+            return ()
+        from erev_engine import _balances, _functional_balances
+
+        try:
+            # Use the ordinary assembler's layer-to-target consistency check,
+            # without publishing its rows into the ordinary output population.
+            _functional_balances(cb.bundle, balances.allocated, fx, _balances(cb.bundle, balances))
+        except EngineError:
+            return ()
+        fn_amounts: dict[str, int] = {}
+        fn_nodes: dict[str, str] = {}
+        for target in fx.functional_member_balances:
+            if (
+                target.subject_key != subject
+                or target.entity != entity
+                or target.period_key != period.period_key
+            ):
+                continue
+            role = target.measure.removesuffix("_functional")
+            if role in fn_amounts or not target.measure.endswith("_functional"):
+                return ()
+            fn_amounts[role], fn_nodes[role] = target.value, target.node_id
+        if not {"contract_liability", "contract_asset", "unbilled_receivable"} <= fn_amounts.keys():
+            return ()
+        currency = ctx.entities[entity].functional_currency
+        functional = {
+            "currency": currency,
+            "minor_unit": ctx.currencies[currency].minor_unit,
+            "amounts": fn_amounts,
+            "nodes": fn_nodes,
+        }
     trace = evidence.build(root_measures={})
     prefix = f"acquisition-cutover/{period.period_key}/"
     names = {
@@ -140,6 +183,8 @@ def capture(
         ),
     )
     tb.merge_evidence(trace)
+    if functional is not None:
+        functional["nodes"] = {name: names[node] for name, node in functional["nodes"].items()}
     return (
         {
             "basis": "ORIGINAL_NONPOSTING_CUTOVER_EVALUATION",
@@ -151,6 +196,7 @@ def capture(
             "minor_unit": ctx.currencies[ctx.txn_currency].minor_unit,
             "amounts": amounts,
             "unmeasured": unmeasured,
+            **({"functional": functional} if functional is not None else {}),
             "nodes": {name: names[node] for name, node in links.items()},
         },
     )
