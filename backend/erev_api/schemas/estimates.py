@@ -238,6 +238,19 @@ class EstimateOut(BaseModel):
     created_at: datetime
 
 
+class SharedEstimateMemberBinding(BaseModel):
+    contract_id: uuid.UUID
+    contract_key: str
+    obligation_ids: list[uuid.UUID]
+    obligation_keys: list[str]
+
+
+class SharedEstimateApplicationBasis(BaseModel):
+    schema_version: Literal[1] = 1
+    portfolio_id: uuid.UUID
+    members: list[SharedEstimateMemberBinding]
+
+
 class EstimateVersionOut(BaseModel):
     """A T-CON-13 version with the 04 §16.14 additions."""
 
@@ -248,6 +261,7 @@ class EstimateVersionOut(BaseModel):
     effective_date: date
     scenarios: list[dict[str, Any]]
     parameters: dict[str, Any]
+    portfolio_application_basis: SharedEstimateApplicationBasis | None = None
     unconstrained_amount: str | None
     most_conservative_amount: str | None
     constrained_amount: str | None

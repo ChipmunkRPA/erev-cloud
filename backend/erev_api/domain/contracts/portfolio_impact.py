@@ -17,6 +17,7 @@ from erev_api.domain.contracts import (
     computation,
     estimates,
     portfolio_estimate_versions,
+    portfolio_binding,
     portfolios,
     queries,
 )
@@ -61,6 +62,13 @@ def preview(
         .mappings()
         .one()
     )
+    if row.get("portfolio_application_basis") is not None:
+        if row["portfolio_application_basis"] != portfolio_binding.capture(
+            session, portfolio_id, element
+        ):
+            raise Problem(
+                "validation-failed", "Member bindings changed. Save the draft again before preview."
+            )
     member_ids = [
         m["contract_id"] for m in session.execute(portfolios.members(portfolio_id)).mappings()
     ]

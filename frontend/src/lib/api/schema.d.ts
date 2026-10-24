@@ -13800,6 +13800,7 @@ export interface components {
       parameters: {
         [key: string]: unknown;
       };
+      portfolio_application_basis?: components["schemas"]["SharedEstimateApplicationBasis"] | null;
       /**
        * Progress Ratio
        * @description EAC: costs incurred to date ÷ expected total costs
@@ -22956,6 +22957,36 @@ export interface components {
        * Format: uuid
        */
       id: string;
+    };
+    /** SharedEstimateApplicationBasis */
+    SharedEstimateApplicationBasis: {
+      /** Members */
+      members: components["schemas"]["SharedEstimateMemberBinding"][];
+      /**
+       * Portfolio Id
+       * Format: uuid
+       */
+      portfolio_id: string;
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+    };
+    /** SharedEstimateMemberBinding */
+    SharedEstimateMemberBinding: {
+      /**
+       * Contract Id
+       * Format: uuid
+       */
+      contract_id: string;
+      /** Contract Key */
+      contract_key: string;
+      /** Obligation Ids */
+      obligation_ids: string[];
+      /** Obligation Keys */
+      obligation_keys: string[];
     };
     /**
      * SignoffRole

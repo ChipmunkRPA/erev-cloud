@@ -140,6 +140,19 @@ export function PortfolioVersions({
           revision={`${selected.row_version}:${portfolio.row_version}`}
         />
       ) : null}
+      {selected && selected !== "new" && selected.portfolio_application_basis ? (
+        <section aria-label={label("bindings")} className="flex flex-col gap-2">
+          <h4 className="text-heading-sm">{label("bindings")}</h4>
+          <p className="text-body-sm text-fg-2">{label("bindingsHelp")}</p>
+          <ul>
+            {selected.portfolio_application_basis.members.map((member) => (
+              <li key={member.contract_id}>
+                {member.contract_key}: {member.obligation_keys.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {selected === null ? null : (
         <VersionForm
           key={selected === "new" ? "new" : `${selected.id}:${selected.row_version}`}

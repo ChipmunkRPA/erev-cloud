@@ -2081,6 +2081,7 @@ def version_outs(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[Es
                     "effective_date": row["effective_date"],
                     "scenarios": values["scenarios"],
                     "parameters": values["parameters"],
+                    "portfolio_application_basis": row.get("portfolio_application_basis"),
                     **{
                         name: None
                         if values[name] is None

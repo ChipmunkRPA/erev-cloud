@@ -3780,6 +3780,11 @@ def estimate_version_content(session: Session, version_id: UUID) -> dict[str, An
             if row["modification_id"] is None
             else {"modification_id": str(row["modification_id"])}
         ),
+        **(
+            {"portfolio_application_basis": row["portfolio_application_basis"]}
+            if row.get("portfolio_application_basis") is not None
+            else {}
+        ),
         **pinned,
     }
 

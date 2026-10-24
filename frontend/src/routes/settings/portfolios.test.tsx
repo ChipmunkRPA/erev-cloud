@@ -522,6 +522,18 @@ it("calculates shared return impact on demand and shows period changes without p
             parameters: {},
             scenarios: [],
             rationale: "Shared returns",
+            portfolio_application_basis: {
+              schema_version: 1,
+              portfolio_id: "p1",
+              members: [
+                {
+                  contract_id: "c1",
+                  contract_key: "BOUND-MEMBER",
+                  obligation_ids: ["o1"],
+                  obligation_keys: ["GOODS"],
+                },
+              ],
+            },
           },
         ],
         next_cursor: null,
@@ -569,6 +581,7 @@ it("calculates shared return impact on demand and shows period changes without p
   fireEvent.click(await screen.findByRole("button", { name: "View version" }));
   const button = await screen.findByRole("button", { name: "Calculate shared impact" });
   expect(reads).toBe(0);
+  expect(screen.getByText("BOUND-MEMBER: GOODS")).toBeTruthy();
   fireEvent.click(button);
   await screen.findByText("-400.00");
   expect(screen.getByText("baseline-version", { exact: false })).toBeTruthy();

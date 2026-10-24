@@ -13471,6 +13471,16 @@
             "title": "Parameters",
             "type": "object"
           },
+          "portfolio_application_basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharedEstimateApplicationBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "progress_ratio": {
             "anyOf": [
               {
@@ -38800,6 +38810,70 @@
           "display_name"
         ],
         "title": "SessionUserOut",
+        "type": "object"
+      },
+      "SharedEstimateApplicationBasis": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/SharedEstimateMemberBinding"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "portfolio_id": {
+            "format": "uuid",
+            "title": "Portfolio Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "portfolio_id",
+          "members"
+        ],
+        "title": "SharedEstimateApplicationBasis",
+        "type": "object"
+      },
+      "SharedEstimateMemberBinding": {
+        "properties": {
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "contract_key": {
+            "title": "Contract Key",
+            "type": "string"
+          },
+          "obligation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Obligation Ids",
+            "type": "array"
+          },
+          "obligation_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Obligation Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "contract_id",
+          "contract_key",
+          "obligation_ids",
+          "obligation_keys"
+        ],
+        "title": "SharedEstimateMemberBinding",
         "type": "object"
       },
       "SignoffRole": {

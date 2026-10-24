@@ -1232,6 +1232,7 @@ def estimate_version_input(
     obligation_keys: Mapping[UUID, str],
     version_keys: Mapping[str, str],
     status: str | None = None,
+    portfolio_member_contract_keys: tuple[str, ...] | None = None,
 ) -> EstimateVersionInput:
     """A T-CON-13 row and its T-CON-12 element as the engine's ``EstimateVersionInput`` (§0.4).
 
@@ -1260,6 +1261,7 @@ def estimate_version_input(
         parameters["allocation_criteria_evidence"] = element["allocation_criteria_evidence"]
     return EstimateVersionInput(
         estimate_key=estimate_key,
+        portfolio_member_contract_keys=portfolio_member_contract_keys,
         estimate_kind=_text_of(element["estimate_kind"]),
         element_code=element_code,
         method=_text_of(element["method"]),
@@ -1344,20 +1346,26 @@ def _estimate_versions(
             )
         ).mappings()
     }
-    members: list[tuple[Mapping[str, Any], Mapping[str, Any], str]] = []
+    members: list[tuple[Mapping[str, Any], Mapping[str, Any], str, tuple[str, ...] | None]] = []
     for row in versions:
         element = elements.get(UUID(str(row["estimate_id"])))
         contract_id = None if element is None else element["contract_id"]
         if element is None:
             raise ValueError("An applied estimate version has no retained definition")
+        scope = None
         if contract_id is None:
             from .portfolio_engine import shared_return_contract
+            from .portfolio_binding import for_group
 
+            source_portfolios = portfolios
+            if row.get("portfolio_application_basis") is not None:
+                element, scope = for_group(row["portfolio_application_basis"], element, contracts)
+                source_portfolios = (PortfolioInput(str(element["portfolio_id"]), scope),)
             external_id = shared_return_contract(
                 row,
                 element,
                 contracts=contracts,
-                portfolios=portfolios,
+                portfolios=source_portfolios,
                 obligation_keys=obligation_keys,
                 obligation_owners=obligation_owners or {},
             )
@@ -1365,10 +1373,10 @@ def _estimate_versions(
             external_id = str(contracts[UUID(str(contract_id))]["external_id"])
         else:
             raise ValueError("An applied estimate belongs to a contract outside the computation")
-        members.append((row, element, external_id))
+        members.append((row, element, external_id, scope))
     keys = {
         str(row["id"]): f"{_estimate_key(element, external_id)}@v{int(row['version_no'])}"
-        for row, element, external_id in members
+        for row, element, external_id, scope in members
     }
     inputs = [
         estimate_version_input(
@@ -1377,8 +1385,9 @@ def _estimate_versions(
             contract_key=external_id,
             obligation_keys=obligation_keys,
             version_keys=keys,
+            portfolio_member_contract_keys=scope,
         )
-        for row, element, external_id in members
+        for row, element, external_id, scope in members
     ]
     return tuple(sorted(inputs, key=lambda item: (item.estimate_key, item.version_no))), keys
 
@@ -3105,6 +3114,17 @@ def _assemble(
         obligation_owners={
             UUID(str(row["id"])): UUID(str(row["contract_id"])) for row in obligation_rows
         },
+    )
+    # Applied version bindings survive changes to current portfolio membership metadata.
+    populations = {p.code: set(p.member_contract_keys) for p in portfolios}
+    for version in estimate_versions:
+        if version.portfolio_member_contract_keys is not None:
+            native_portfolio_code = version.estimate_key.split("/", 1)[0].removeprefix("PORTFOLIO:")
+            populations.setdefault(native_portfolio_code, set()).update(
+                version.portfolio_member_contract_keys
+            )
+    portfolios = tuple(
+        PortfolioInput(code, tuple(sorted(keys))) for code, keys in sorted(populations.items())
     )
     native, native_ids, native_rows = _native_modifications(
         session,

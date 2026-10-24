@@ -385,6 +385,7 @@ estimate_version: Final = Table(
     Column("effective_date", Date(), nullable=False),
     Column("scenarios", JSONB(), nullable=False, server_default=text("'[]'")),
     Column("parameters", JSONB(), nullable=False, server_default=text("'{}'")),
+    Column("portfolio_application_basis", JSONB(none_as_null=True), nullable=True),
     Column("unconstrained_amount", MoneyType(), nullable=True),
     Column("most_conservative_amount", MoneyType(), nullable=True),
     Column("constrained_amount", MoneyType(), nullable=True),

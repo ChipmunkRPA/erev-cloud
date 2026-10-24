@@ -15,7 +15,7 @@ from support.reference import assign, entity, get, holding, post
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import audit_event, contract, legal_entity, obligation
+from erev_api.db.tables import audit_event, contract, legal_entity, obligation, estimate_version
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 
@@ -473,3 +473,66 @@ def test_portfolio_membership_workflow(
         )
         == before_computation
     )
+
+    retained_basis = after_preview["portfolio_application_basis"]
+    assert retained_basis["portfolio_id"] == path.rsplit("/", 1)[-1]
+    assert retained_basis["members"][0]["contract_id"] == contract_id
+    assert retained_basis["members"][0]["obligation_keys"] == [target_key]
+    clock.advance(timedelta(seconds=1))
+    left = post(
+        app,
+        path + "/members/" + contract_id + "/remove",
+        maya,
+        {"rationale": "Retained application scope check"},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert left.status_code == 200, left.text
+    assert (
+        get(app, preview_version.headers["location"], maya).json()["portfolio_application_basis"]
+        == retained_basis
+    )
+    assert get(app, impact_path, maya).status_code == 422
+    from erev_api.db import transitions
+    from sqlalchemy import update
+    from sqlalchemy.exc import DBAPIError
+    from erev_api.domain.contracts import estimates as estimate_service
+
+    saved_id = UUID(preview_version.json()["id"])
+    with tenant_session(context) as session:
+        saved_row = dict(
+            session.execute(select(estimate_version).where(estimate_version.c.id == saved_id))
+            .mappings()
+            .one()
+        )
+        frozen_input = bundles.build(
+            session,
+            source["combination_group_id"],
+            clock.now(),
+            [estimate_service._changed_event(saved_row, None, None)],
+            "DRY_RUN",
+            pending_contract_id=UUID(contract_id),
+        )
+        shared_input = next(
+            v
+            for v in frozen_input.estimate_versions
+            if v.version_key.endswith("TARGETED-RETURNS@v1")
+        )
+        assert shared_input.portfolio_member_contract_keys == (source["external_id"],)
+        assert frozen_input.group.portfolios[0].member_contract_keys == (source["external_id"],)
+        # The real database guard makes the saved application immutable on submission.
+        with session.begin_nested() as status_savepoint:
+            transitions.apply(
+                session,
+                "estimate_version",
+                saved_id,
+                to_status="SUBMITTED",
+                expected_status="DRAFT",
+                set_values={"content_sha256": "0" * 64},
+            )
+            with pytest.raises(DBAPIError, match="EREV-TRN-001"), session.begin_nested():
+                session.execute(
+                    update(estimate_version)
+                    .where(estimate_version.c.id == saved_id)
+                    .values(portfolio_application_basis={})
+                )
+            status_savepoint.rollback()

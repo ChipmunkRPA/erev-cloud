@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id, transitions
 from erev_api.db.tables import estimate, estimate_version
-from erev_api.domain.contracts import estimates, portfolios, portfolio_allocation
+from erev_api.domain.contracts import estimates, portfolios, portfolio_allocation, portfolio_binding
 from erev_api.problems import Problem
 from erev_api.schemas.estimates import EstimateVersionOut
 from erev_api.schemas.portfolios import PortfolioEstimateVersionIn
@@ -131,6 +131,9 @@ def save(
                     "Shared breakage uses a total quantity; do not also enter a rate "
                     "or expected redemption quantity.",
                 )
+        values["portfolio_application_basis"] = portfolio_binding.capture(
+            uow.session, portfolio_id, element
+        )
         if body.rate is not None and not 0 <= values["rate"] <= 1:
             raise Problem(
                 "validation-failed", "A shared estimate rate must be between zero and one."
