@@ -139,3 +139,25 @@ Twelve focused pair checks pass (valid/reordered/read-only, missing side, change
 book/amount/quantity/term, edited primary line, differing source evidence, both sides changed
 against the same source). One ordinary populated public modification workflow still passes
 submission, approval, application and saved reports. Scoped lint/types pass. No deployment.
+
+
+## Source freshness under approval locks
+
+Submission and final approval now reconstruct every enabled source book's proposed-date basis
+and compare the complete canonical snapshot with the retained evidence, after pair consistency
+and while the caller holds source/target group and contract locks. The current target must have
+the same enabled books and transaction currency. Changed original inputs, current terms,
+amounts, quantities or book population require rebuilding and reviewing both sides.
+
+The reconstruction excludes only the pending pair's own modification headers. It refuses when
+an event for either pending modification is already present; accepted source events and every
+other input remain in the calculation. The standard InputBundle.sha256 fingerprint excludes
+known_at, so a later read timestamp alone does not invalidate the source. Snapshot serialization
+is shared with preparation, avoiding divergent field definitions.
+
+26 focused freshness/pair/boundary cases pass, including draft-header/read-time stability,
+changed source terms, applied-event refusal, current-source comparison and incompatible target
+books. Scoped types/lint pass. These tests use native source calculation with stubbed database
+reads for the freshness entry; they do not prove a public post-posting approval round trip.
+Public after-posting regroup remains gated pending other consideration/progress paths and
+complete workflow validation. No deployment.

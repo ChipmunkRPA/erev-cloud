@@ -2439,10 +2439,11 @@ def submit(
     approvals.require_preparer_scope(uow, ApprovalSubjectType.MODIFICATION, modification_id)
     if any(_text(item["status"]) != DRAFT for item in pair):
         raise _invalid(NOT_SUBMITTABLE)
-    from . import regroup_pair
+    from . import regroup_freshness, regroup_pair
 
     if any(item.get("regroup_id") is not None for item in pair):
         regroup_pair.require_consistent(pair, primary_book=queries.primary_book(session))
+        regroup_freshness.require_fresh(uow, pair)
     # Item MOD-LINKED-ESTIMATES-1 (04 §16.10, §16.14 rev 1.210; PRD ERR-87): the estimate
     # versions created inside the modification are approved FIRST. It is the only order the
     # kernel admits — a version's approval appends ESTIMATE_CHANGED, which moves the head this
@@ -3304,10 +3305,11 @@ def _approved(uow: UnitOfWork, modification_id: UUID, approval_request_id: UUID)
     locked = [_row(session, _uuid(row["id"]), lock=True) for row in rows]
     if any(_text(row["status"]) != SUBMITTED for row in locked):
         raise LookupError(f"modification {modification_id} is not submitted")
-    from . import regroup_pair
+    from . import regroup_freshness, regroup_pair
 
     if any(item.get("regroup_id") is not None for item in locked):
         regroup_pair.require_consistent(locked, primary_book=queries.primary_book(session))
+        regroup_freshness.require_fresh(uow, locked)
     approvals.assert_fresh_basis(uow, approval_request_id)
     # The backstop of PRD ERR-87, not the rule: the submission refuses while a linked estimate
     # version is not approved, nothing links to a modification once it is submitted, and an

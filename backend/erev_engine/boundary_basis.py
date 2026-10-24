@@ -13,7 +13,6 @@ from types import MappingProxyType
 
 from erev_engine import ENGINE_VERSION, fold_book, money
 from erev_engine.bundle import InputBundle
-from erev_engine.canonical import sha256_hex
 from erev_engine.stages import s01_canonicalize, s13_books
 from erev_engine.stages.s06_modifications import segments
 from erev_engine.stages.state import EventView
@@ -97,7 +96,7 @@ def fixed_boundary_basis(
         }
         if not set(obligation_keys) <= obligations.keys():
             raise ValueError("Every selected obligation must exist before the original boundary")
-        digest = sha256_hex(bundle)
+        digest = bundle.sha256()
         result = []
         for key in sorted(obligation_keys):
             ob = obligations[key]

@@ -522,30 +522,9 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
                     posted=True,
                     transfer_basis=basis,
                 )
-            basis_evidence[book.book_code] = {
-                "input_sha256": measured[0].input_sha256,
-                "effective_date": effective.isoformat(),
-                "position": "AFTER_RETAINED_EVENTS_ON_DATE",
-                "source_contract": str(source["external_id"]),
-                "obligations": {
-                    item.obligation_key: {
-                        "allocation_exact": str(item.allocation_exact),
-                        "recognized_exact": str(item.recognized_exact),
-                        "remaining_exact": str(item.remaining_exact),
-                        "allocation_minor": item.allocation_minor,
-                        "recognized_minor": item.recognized_minor,
-                        "remaining_minor": item.remaining_minor,
-                        "remaining_quantity": str(item.remaining_quantity),
-                        "service_start_date": None
-                        if item.service_start_date is None
-                        else item.service_start_date.isoformat(),
-                        "service_end_date": None
-                        if item.service_end_date is None
-                        else item.service_end_date.isoformat(),
-                    }
-                    for item in measured
-                },
-            }
+            from .regroup_freshness import snapshot
+
+            basis_evidence[book.book_code] = snapshot(measured)
             if book.book_code == primary:
                 transfer_basis, amounts = basis, book_amounts
         if not transfer_basis:

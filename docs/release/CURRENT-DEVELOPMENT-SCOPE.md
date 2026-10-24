@@ -2117,3 +2117,14 @@ pair cases and one ordinary public approval/application/report workflow pass; sc
 pass. Existing OUT/IN transaction handling remains; public after-posting regroup is still gated
 while source freshness, other components/methods and target compatibility are completed.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Reconstructed source freshness and target book compatibility
+
+Submission/final approval now reconstruct the complete source transfer snapshot under existing
+locks and compare it with retained evidence; target books/currency must match. Only the pending
+pair's own draft headers are removed; existing applied events refuse. Switched boundary evidence
+to the standard bundle hash excluding read-time known_at, preventing timestamp-only staleness.
+26 focused native/pair/freshness cases and scoped types/lint pass. Public after-posting regroup
+remains gated pending remaining consideration/progress support and full workflow validation.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
