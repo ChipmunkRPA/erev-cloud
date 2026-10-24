@@ -2680,3 +2680,13 @@ See [current scope and verification](CONFIRMED-CALCULATION-RULES-2026-10-24.md).
 Earlier pending-choice and draft-only statements are superseded for this implemented scope.
 Effective-date combination splits and broader foreign balances remain development work.
 No deployment, actual-business migration or independent accounting sign-off is required here.
+
+
+## October 24: prospective combination split allocation preview
+
+The native dated boundary query now resolves remaining SSP with original references.
+A public read-only split preview allocates unrecognized consideration to every original
+member and obligation while retaining recognized posted income. It verifies original
+computation evidence, permissions and population and performs no membership changes.
+See [scope, exact witness and remaining application work](COMBINATION-SPLIT-PREVIEW-2026-10-24.md).
+Actual split submission/approval/application and broader populations remain unfinished.

@@ -7002,6 +7002,186 @@
         "title": "CombinationProposalOut",
         "type": "object"
       },
+      "CombinationSplitMemberOut": {
+        "properties": {
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "contract_key": {
+            "title": "Contract Key",
+            "type": "string"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "obligations": {
+            "items": {
+              "$ref": "#/components/schemas/CombinationSplitObligationOut"
+            },
+            "title": "Obligations",
+            "type": "array"
+          },
+          "recognized_minor": {
+            "title": "Recognized Minor",
+            "type": "integer"
+          },
+          "remaining_after_minor": {
+            "title": "Remaining After Minor",
+            "type": "integer"
+          },
+          "remaining_before_minor": {
+            "title": "Remaining Before Minor",
+            "type": "integer"
+          },
+          "remaining_ssp": {
+            "title": "Remaining Ssp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id",
+          "contract_key",
+          "destination",
+          "recognized_minor",
+          "remaining_before_minor",
+          "remaining_after_minor",
+          "remaining_ssp",
+          "obligations"
+        ],
+        "title": "CombinationSplitMemberOut",
+        "type": "object"
+      },
+      "CombinationSplitObligationOut": {
+        "properties": {
+          "obligation_key": {
+            "title": "Obligation Key",
+            "type": "string"
+          },
+          "recognized_minor": {
+            "title": "Recognized Minor",
+            "type": "integer"
+          },
+          "remaining_after_minor": {
+            "title": "Remaining After Minor",
+            "type": "integer"
+          },
+          "remaining_before_minor": {
+            "title": "Remaining Before Minor",
+            "type": "integer"
+          },
+          "remaining_ssp": {
+            "title": "Remaining Ssp",
+            "type": "string"
+          },
+          "ssp_sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Ssp Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "obligation_key",
+          "recognized_minor",
+          "remaining_before_minor",
+          "remaining_after_minor",
+          "remaining_ssp",
+          "ssp_sources"
+        ],
+        "title": "CombinationSplitObligationOut",
+        "type": "object"
+      },
+      "CombinationSplitPreviewOut": {
+        "properties": {
+          "applied": {
+            "const": false,
+            "default": false,
+            "title": "Applied",
+            "type": "boolean"
+          },
+          "basis": {
+            "const": "EFFECTIVE_DATE_REMAINING_SSP",
+            "default": "EFFECTIVE_DATE_REMAINING_SSP",
+            "title": "Basis",
+            "type": "string"
+          },
+          "book_code": {
+            "title": "Book Code",
+            "type": "string"
+          },
+          "boundary_position": {
+            "title": "Boundary Position",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "currency_minor_unit": {
+            "title": "Currency Minor Unit",
+            "type": "integer"
+          },
+          "effective_date": {
+            "format": "date",
+            "title": "Effective Date",
+            "type": "string"
+          },
+          "group_id": {
+            "format": "uuid",
+            "title": "Group Id",
+            "type": "string"
+          },
+          "input_sha256": {
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/CombinationSplitMemberOut"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "output_sha256": {
+            "title": "Output Sha256",
+            "type": "string"
+          },
+          "recognized_minor": {
+            "title": "Recognized Minor",
+            "type": "integer"
+          },
+          "source_computation_id": {
+            "format": "uuid",
+            "title": "Source Computation Id",
+            "type": "string"
+          },
+          "unrecognized_minor": {
+            "title": "Unrecognized Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group_id",
+          "source_computation_id",
+          "input_sha256",
+          "output_sha256",
+          "book_code",
+          "currency",
+          "effective_date",
+          "boundary_position",
+          "recognized_minor",
+          "unrecognized_minor",
+          "currency_minor_unit",
+          "members"
+        ],
+        "title": "CombinationSplitPreviewOut",
+        "type": "object"
+      },
       "CombinationStatus": {
         "description": "E-95 ``combination_status`` (04 §3.4).",
         "enum": [
@@ -55800,6 +55980,141 @@
           "API-R-28 Contracts"
         ],
         "x-erev-permission": "contract.create"
+      }
+    },
+    "/api/v1/combination-groups/{group_id}/split-preview": {
+      "get": {
+        "operationId": "combination_groups_split_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effective_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Effective Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "leave_contract_ids",
+            "required": true,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Leave Contract Ids",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "book_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Book Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CombinationSplitPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Split Preview",
+        "tags": [
+          "API-R-28 Contracts"
+        ],
+        "x-erev-permission": "contract.read"
       }
     },
     "/api/v1/combination-groups/{group_id}/submit": {

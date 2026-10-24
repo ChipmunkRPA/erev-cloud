@@ -10,6 +10,7 @@ REQ-CON-010, REQ-CON-019; BUILD_SPEC CTR-8. Reads need ``contract.read``; comman
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated, Final
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -35,13 +36,15 @@ from erev_api.api.lists import (
 )
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
+from erev_api.db.session import tenant_session
 from erev_api.db.tables import combination_group, exception_item
-from erev_api.domain.contracts import combination, queries
+from erev_api.domain.contracts import combination, combination_split, queries
 from erev_api.enums import CombinationStatus
 from erev_api.schemas.combinations import (
     CombinationGroupCreateIn,
     CombinationGroupDetailOut,
     CombinationGroupSubmitIn,
+    CombinationSplitPreviewOut,
     CombinationSuggestionOut,
     SuggestionDismissIn,
 )
@@ -237,3 +240,28 @@ def combination_suggestions_dismiss(
         return combination.dismiss_suggestion(uow, item_id=item_id, body=body)
 
     return run_command(cmd, deps, handle)
+
+
+@router.get(
+    "/combination-groups/{group_id}/split-preview",
+    operation_id="combination_groups_split_preview",
+    response_model=CombinationSplitPreviewOut,
+    responses=problem_responses(*_READ_PROBLEMS, "not-found", "validation-failed"),
+)
+def split_preview(
+    group_id: uuid.UUID,
+    effective_date: date,
+    leave_contract_ids: Annotated[list[uuid.UUID], Query(min_length=1, max_length=100)],
+    ctx: ReadContext,
+    deps: Deps,
+    book_code: str | None = None,
+) -> CombinationSplitPreviewOut:
+    with tenant_session(
+        ctx.principal.db_context, read_only=True, isolation_level="REPEATABLE READ"
+    ) as session:
+        uow = UnitOfWork(
+            ctx=ctx, session=session, clock=deps.clock, keyring=deps.keyring, files=deps.files
+        )
+        return combination_split.preview(
+            uow, group_id, effective_date, leave_contract_ids, book_code
+        )

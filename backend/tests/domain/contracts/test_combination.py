@@ -431,6 +431,27 @@ def test_combination_by_approved_command_reruns_group(seats: SeatWorld) -> None:
         )
         assert (Decimal(posted_now), Decimal(posted_total)) == (difference, total), contract_id
 
+    # Prospective split preview preserves the combined source and posts no events.
+    before_events = [_last_event(seats, key)["id"] for key in (first, second)]
+    split_path = f"{GROUPS}/{group_id}/split-preview"
+    split_params = {
+        "effective_date": "2026-09-16",
+        "leave_contract_ids": str(second),
+        "book_code": "ASC606",
+    }
+    preview = get(seats.app, split_path, seats.place.author, params=split_params)
+    assert preview.status_code == 200, preview.text
+    split = preview.json()
+    assert split["applied"] is False
+    assert split["source_computation_id"] == str(latest)
+    assert split["recognized_minor"] + split["unrecognized_minor"] == 15_600_000
+    assert sum(m["remaining_after_minor"] for m in split["members"]) == split["unrecognized_minor"]
+    assert {m["contract_id"] for m in split["members"]} == {str(first), str(second)}
+    assert all(m["obligations"][0]["ssp_sources"] for m in split["members"])
+    assert get(seats.app, split_path, seats.place.author, params=split_params).json() == split
+    assert [_last_event(seats, key)["id"] for key in (first, second)] == before_events
+    assert _current_group(seats, first) == _current_group(seats, second) == group_id
+
 
 def test_proposal_author_cannot_approve_through_a_delegate(
     seats: SeatWorld, clock: FrozenClock

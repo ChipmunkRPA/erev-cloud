@@ -124,3 +124,40 @@ class SuggestionDismissIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     rationale: Rationale
+
+
+class CombinationSplitObligationOut(BaseModel):
+    obligation_key: str
+    recognized_minor: int
+    remaining_before_minor: int
+    remaining_after_minor: int
+    remaining_ssp: str
+    ssp_sources: list[dict[str, object]]
+
+
+class CombinationSplitMemberOut(BaseModel):
+    contract_id: uuid.UUID
+    contract_key: str
+    destination: str
+    recognized_minor: int
+    remaining_before_minor: int
+    remaining_after_minor: int
+    remaining_ssp: str
+    obligations: list[CombinationSplitObligationOut]
+
+
+class CombinationSplitPreviewOut(BaseModel):
+    basis: Literal["EFFECTIVE_DATE_REMAINING_SSP"] = "EFFECTIVE_DATE_REMAINING_SSP"
+    applied: Literal[False] = False
+    group_id: uuid.UUID
+    source_computation_id: uuid.UUID
+    input_sha256: str
+    output_sha256: str
+    book_code: str
+    currency: str
+    effective_date: date
+    boundary_position: str
+    recognized_minor: int
+    unrecognized_minor: int
+    currency_minor_unit: int
+    members: list[CombinationSplitMemberOut]

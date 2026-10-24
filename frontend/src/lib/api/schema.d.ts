@@ -1386,6 +1386,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/combination-groups/{group_id}/split-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Split Preview */
+    get: operations["combination_groups_split_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/combination-groups/{group_id}/submit": {
     parameters: {
       query?: never;
@@ -11406,6 +11423,93 @@ export interface components {
        */
       judgement_record_id: string;
       status: components["schemas"]["JudgementStatus"];
+    };
+    /** CombinationSplitMemberOut */
+    CombinationSplitMemberOut: {
+      /**
+       * Contract Id
+       * Format: uuid
+       */
+      contract_id: string;
+      /** Contract Key */
+      contract_key: string;
+      /** Destination */
+      destination: string;
+      /** Obligations */
+      obligations: components["schemas"]["CombinationSplitObligationOut"][];
+      /** Recognized Minor */
+      recognized_minor: number;
+      /** Remaining After Minor */
+      remaining_after_minor: number;
+      /** Remaining Before Minor */
+      remaining_before_minor: number;
+      /** Remaining Ssp */
+      remaining_ssp: string;
+    };
+    /** CombinationSplitObligationOut */
+    CombinationSplitObligationOut: {
+      /** Obligation Key */
+      obligation_key: string;
+      /** Recognized Minor */
+      recognized_minor: number;
+      /** Remaining After Minor */
+      remaining_after_minor: number;
+      /** Remaining Before Minor */
+      remaining_before_minor: number;
+      /** Remaining Ssp */
+      remaining_ssp: string;
+      /** Ssp Sources */
+      ssp_sources: {
+        [key: string]: unknown;
+      }[];
+    };
+    /** CombinationSplitPreviewOut */
+    CombinationSplitPreviewOut: {
+      /**
+       * Applied
+       * @default false
+       * @constant
+       */
+      applied: false;
+      /**
+       * Basis
+       * @default EFFECTIVE_DATE_REMAINING_SSP
+       * @constant
+       */
+      basis: "EFFECTIVE_DATE_REMAINING_SSP";
+      /** Book Code */
+      book_code: string;
+      /** Boundary Position */
+      boundary_position: string;
+      /** Currency */
+      currency: string;
+      /** Currency Minor Unit */
+      currency_minor_unit: number;
+      /**
+       * Effective Date
+       * Format: date
+       */
+      effective_date: string;
+      /**
+       * Group Id
+       * Format: uuid
+       */
+      group_id: string;
+      /** Input Sha256 */
+      input_sha256: string;
+      /** Members */
+      members: components["schemas"]["CombinationSplitMemberOut"][];
+      /** Output Sha256 */
+      output_sha256: string;
+      /** Recognized Minor */
+      recognized_minor: number;
+      /**
+       * Source Computation Id
+       * Format: uuid
+       */
+      source_computation_id: string;
+      /** Unrecognized Minor */
+      unrecognized_minor: number;
     };
     /**
      * CombinationStatus
@@ -31342,6 +31446,72 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  combination_groups_split_preview: {
+    parameters: {
+      query: {
+        effective_date: string;
+        leave_contract_ids: string[];
+        book_code?: string | null;
+      };
+      header?: never;
+      path: {
+        group_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CombinationSplitPreviewOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;

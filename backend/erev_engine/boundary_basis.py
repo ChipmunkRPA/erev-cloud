@@ -13,9 +13,9 @@ from types import MappingProxyType
 
 from erev_engine import ENGINE_VERSION, fold_book, money
 from erev_engine.bundle import InputBundle
-from erev_engine.stages import s01_canonicalize, s13_books
-from erev_engine.stages.s06_modifications import segments
-from erev_engine.stages.state import EventView
+from erev_engine.stages import s01_canonicalize, s02_contract_identification, s13_books
+from erev_engine.stages.s06_modifications import segments, weights
+from erev_engine.stages.state import EventView, Finding
 from erev_engine.trace import SourceRef, TraceBuilder
 
 
@@ -38,6 +38,8 @@ class FixedBoundaryBasis:
     remaining_quantity: Fraction
     service_start_date: date | None
     service_end_date: date | None
+    remaining_ssp: Fraction | None = None
+    remaining_ssp_sources: tuple[SourceRef, ...] = ()
 
 
 def fixed_boundary_basis(
@@ -47,9 +49,10 @@ def fixed_boundary_basis(
     event_key: str | None = None,
     effective_date: date | None = None,
     contract_key: str,
-    obligation_keys: tuple[str, ...],
+    obligation_keys: tuple[str, ...] | None,
     require_fixed_transfer: bool = False,
     require_remaining_service: bool = True,
+    resolve_remaining_ssp: bool = False,
 ) -> tuple[FixedBoundaryBasis, ...]:
     """Query selected original obligations without using latest-version remainder columns.
 
@@ -59,6 +62,9 @@ def fixed_boundary_basis(
     Select an existing event to measure strictly before it, or a proposed effective date
     to measure after all retained events on that date. The latter creates no source event;
     it is a current-known-input query, not a historical knowledge snapshot.
+    ``obligation_keys=None`` selects every original obligation of the named contract.
+    ``resolve_remaining_ssp`` resolves dated remaining-service weights and source references
+    using the native prospective-allocation rules, rather than a saved inception weight.
     Transfer preparation opts into fixed-component eligibility checks. A receiving contract's
     existing obligations may be fully performed; only the source must retain movable service.
     Analytical queries remain available for other obligations; their fixed component alone
@@ -66,7 +72,9 @@ def fixed_boundary_basis(
     """
     if (event_key is None) == (effective_date is None):
         raise ValueError("Choose exactly one original event or proposed effective date")
-    if not obligation_keys or len(set(obligation_keys)) != len(obligation_keys):
+    if obligation_keys is not None and (
+        not obligation_keys or len(set(obligation_keys)) != len(obligation_keys)
+    ):
         raise ValueError("Select a nonempty, unique boundary obligation population")
     books = [book for book in bundle.books if book.book_code == book_code]
     if len(books) != 1:
@@ -120,8 +128,19 @@ def fixed_boundary_basis(
         obligations = {
             ob.obligation_key: ob for ob in state.obligations if ob.contract_key == contract_key
         }
+        if not obligations:
+            raise ValueError("The boundary contract has no original obligations")
+        if obligation_keys is None:
+            obligation_keys = tuple(sorted(obligations))
         if not set(obligation_keys) <= obligations.keys():
             raise ValueError("Every selected obligation must exist before the original boundary")
+        identified = (
+            s02_contract_identification.run(
+                context, canonical, TraceBuilder(engine_version=ENGINE_VERSION), deposits=False
+            )
+            if resolve_remaining_ssp
+            else None
+        )
         digest = bundle.sha256()
         result = []
         for key in sorted(obligation_keys):
@@ -176,6 +195,20 @@ def fixed_boundary_basis(
                 )
             ):
                 raise ValueError("The obligation has no transferable remaining service")
+            remaining_ssp = None
+            ssp_sources: tuple[SourceRef, ...] = ()
+            if identified is not None:
+                if measured.progress == 1:
+                    remaining_ssp = Fraction(0)
+                else:
+                    findings: list[Finding] = []
+                    weight = weights.existing(
+                        context, identified, ob, measured, (), event, None, findings, state=state
+                    )
+                    if weight is None or any(f.severity == "ERROR" for f in findings):
+                        raise ValueError("Remaining service lacks a valid effective-date SSP")
+                    remaining_ssp = weight.value
+                    ssp_sources = weight.sources
             result.append(
                 FixedBoundaryBasis(
                     input_sha256=digest,
@@ -195,6 +228,8 @@ def fixed_boundary_basis(
                     remaining_quantity=measured.remaining_quantity,
                     service_start_date=segment.totals.start_date,
                     service_end_date=segment.totals.end_date,
+                    remaining_ssp=remaining_ssp,
+                    remaining_ssp_sources=ssp_sources,
                 )
             )
         return tuple(result)
