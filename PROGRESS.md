@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [member current liability](docs/release/MEMBER-CURRENT-LIABILITY-2026-10-24.md) allocates original carrying in both currencies.
+Oct 24: [split application](docs/release/SPLIT-APPLICATION-2026-10-24.md) adds dated approval and atomic recomputation.

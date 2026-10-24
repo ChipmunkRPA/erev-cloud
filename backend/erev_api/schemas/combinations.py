@@ -54,6 +54,9 @@ class CombinationGroupSubmitIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    split_effective_date: date | None = None
+    split_input_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    split_output_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     comment: Memo | None = None
     reason_code: ReasonCode | None = None
     leave_contract_ids: list[uuid.UUID] | None = Field(default=None, min_length=1, max_length=100)
@@ -63,6 +66,7 @@ class CombinationProposalOut(BaseModel):
     """The pending proposal of a group: the ``COMBINATION`` judgement record that records it."""
 
     action: Literal["JOIN", "LEAVE"]
+    split_effective_date: date | None = None
     contract_ids: list[uuid.UUID] = Field(
         description="The contracts of the proposal the caller reads (REQ-PLT-012)"
     )
@@ -74,6 +78,12 @@ class CombinationProposalOut(BaseModel):
     )
     judgement_record_id: uuid.UUID
     status: JudgementStatus
+
+
+class CombinationSplitHistoryOut(BaseModel):
+    event_id: uuid.UUID
+    effective_date: date
+    destinations: dict[str, str]
 
 
 class CombinationGroupDetailOut(BaseModel):
@@ -101,6 +111,7 @@ class CombinationGroupDetailOut(BaseModel):
         )
     )
     proposal: CombinationProposalOut | None
+    effective_splits: list[CombinationSplitHistoryOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

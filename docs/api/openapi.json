@@ -6762,6 +6762,13 @@
             ],
             "title": "Dirty Since"
           },
+          "effective_splits": {
+            "items": {
+              "$ref": "#/components/schemas/CombinationSplitHistoryOut"
+            },
+            "title": "Effective Splits",
+            "type": "array"
+          },
           "head_computation_id": {
             "anyOf": [
               {
@@ -6953,6 +6960,42 @@
                 "type": "null"
               }
             ]
+          },
+          "split_effective_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split Effective Date"
+          },
+          "split_input_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split Input Sha256"
+          },
+          "split_output_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split Output Sha256"
           }
         },
         "title": "CombinationGroupSubmitIn",
@@ -6987,6 +7030,18 @@
             "format": "uuid",
             "title": "Judgement Record Id",
             "type": "string"
+          },
+          "split_effective_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split Effective Date"
           },
           "status": {
             "$ref": "#/components/schemas/JudgementStatus"
@@ -7079,6 +7134,34 @@
           "rows"
         ],
         "title": "CombinationSplitBalancesOut",
+        "type": "object"
+      },
+      "CombinationSplitHistoryOut": {
+        "properties": {
+          "destinations": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Destinations",
+            "type": "object"
+          },
+          "effective_date": {
+            "format": "date",
+            "title": "Effective Date",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "effective_date",
+          "destinations"
+        ],
+        "title": "CombinationSplitHistoryOut",
         "type": "object"
       },
       "CombinationSplitMemberOut": {

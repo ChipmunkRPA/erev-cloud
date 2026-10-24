@@ -7,13 +7,16 @@ import { Field } from "../../../components/form/Field";
 import { MultiSelect } from "../../../components/form/MultiSelect";
 import { Button } from "../../../components/ui/Button";
 import { Drawer } from "../../../components/ui/Drawer";
+import { useAccess } from "../../../lib/access";
+import { useCommand } from "../../../lib/api/commands";
+import { useNoAnswer, useToast } from "../../../components/feedback/Toast";
 import { ApiProblem } from "../../../lib/api/problems";
 import { readJson, type Contract } from "../../../lib/api/queries/contracts";
 import { queryKey } from "../../../lib/api/query-keys";
 import type { components } from "../../../lib/api/schema";
 import { formatMoney, parseDateInput } from "../../../lib/format";
 import { t } from "../../../lib/i18n/t";
-import { SelectField } from "./common";
+import { SelectField, useRefreshRecord } from "./common";
 
 const label = (key: string) => t(`contracts.drawer.split.${key}`);
 type Preview = components["schemas"]["CombinationSplitPreviewOut"];
@@ -38,6 +41,12 @@ export function CombinationSplitDrawer({
   readonly onClose: () => void;
 }) {
   const path = `/api/v1/combination-groups/${contract.combination_group.id}`;
+  const command = useCommand<Group>({ method: "POST", path: `${path}/submit` });
+  const refresh = useRefreshRecord();
+  const access = useAccess();
+  const toast = useToast();
+  const noAnswer = useNoAnswer();
+  const [rationale, setRationale] = useState("");
   const [date, setDate] = useState("");
   const [balanceDate, setBalanceDate] = useState("");
   const [book, setBook] = useState<string | null>("ASC606");
@@ -49,11 +58,12 @@ export function CombinationSplitDrawer({
       const group = (await readJson<Group>(path)).data;
       if (group.member_count !== group.member_contract_ids.length)
         throw new Error("incomplete population");
-      return Promise.all(
+      const contracts = await Promise.all(
         group.member_contract_ids.map(
           async (id) => (await readJson<Contract>(`/api/v1/contracts/${id}`)).data,
         ),
       );
+      return { contracts, group };
     },
     retry: false,
   });
@@ -80,13 +90,21 @@ export function CombinationSplitDrawer({
     (balanceDate.trim() === "" || (parsedBalance.ok && parsedBalance.value >= parsed.value)) &&
     book !== null &&
     leaving.length > 0 &&
-    leaving.every((id) => members.data.some((m) => m.id === id));
+    leaving.every((id) => members.data.contracts.some((m) => m.id === id));
   const result = request && !preview.isFetching && !preview.isError ? preview.data : undefined;
-  const error = members.error ?? preview.error;
+  const error = command.problem ?? members.error ?? preview.error;
   return (
     <Drawer open title={label("title")} subtitle={contract.external_id} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <p>{label("help")}</p>
+        {(members.data?.group.effective_splits ?? []).map((split) => (
+          <p key={split.event_id}>
+            {split.effective_date}:{" "}
+            {Object.entries(split.destinations)
+              .map(([member, destination]) => `${member} → ${destination}`)
+              .join("; ")}
+          </p>
+        ))}
         {members.isPending ? <p role="status">{label("loading")}</p> : null}
         {error instanceof ApiProblem ? (
           <RefusalBanner problem={error} />
@@ -139,7 +157,10 @@ export function CombinationSplitDrawer({
             <MultiSelect
               control={control}
               values={leaving}
-              options={(members.data ?? []).map((m) => ({ value: m.id, label: m.external_id }))}
+              options={(members.data?.contracts ?? []).map((m) => ({
+                value: m.id,
+                label: m.external_id,
+              }))}
               onChange={(value) => {
                 setLeaving(value);
                 setRequest(null);
@@ -253,6 +274,46 @@ export function CombinationSplitDrawer({
                 ))}
               </details>
             ))}
+            <Field label={label("rationale")} name="split-rationale">
+              {(control) => (
+                <textarea
+                  id={control.id}
+                  value={rationale}
+                  onChange={(event) => setRationale(event.target.value)}
+                  maxLength={4000}
+                  className="rounded border p-2"
+                />
+              )}
+            </Field>
+            <Button
+              loading={command.pending}
+              disabledReason={
+                rationale.trim().length >= 10 &&
+                !members.data?.group.proposal &&
+                members.data?.contracts.every((member) =>
+                  access.holds("contract.create", member.contracting_entity),
+                )
+                  ? undefined
+                  : label("submitRequired")
+              }
+              onClick={async () => {
+                if (!result || rationale.trim().length < 10 || command.pending) return;
+                const outcome = await command.submit({
+                  split_effective_date: result.effective_date,
+                  leave_contract_ids: [...leaving].sort(),
+                  split_input_sha256: result.input_sha256,
+                  split_output_sha256: result.output_sha256,
+                  comment: rationale.trim(),
+                });
+                if (outcome.kind === "succeeded") {
+                  await refresh();
+                  toast.show({ tone: "positive", message: label("submitted") });
+                  onClose();
+                } else if (outcome.kind === "network-error") noAnswer();
+              }}
+            >
+              {label("submit")}
+            </Button>
             <details>
               <summary>{label("evidence")}</summary>
               <p className="break-all">{result.source_computation_id}</p>

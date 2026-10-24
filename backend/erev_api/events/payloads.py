@@ -523,6 +523,9 @@ class ManualAdjustmentAppliedV1(EventPayload):
 
 
 class CombinationChangedV1(EventPayload):
+    prospective_split_destinations: dict[str, str] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     combination_group_id: UUID
     action: Literal["JOIN", "LEAVE"]
     criterion: Criterion | None = None

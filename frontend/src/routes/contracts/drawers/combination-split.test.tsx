@@ -121,3 +121,55 @@ it("does not offer a partial authorized population for split preview", async () 
       .getAttribute("aria-disabled"),
   ).toBe("true");
 });
+
+it("submits the reviewed source and rationale through the approval command", async () => {
+  let submitted: unknown = null;
+  server.use(
+    http.get(apiUrl(`${path}/split-preview`), () =>
+      HttpResponse.json({
+        book_code: "ASC606",
+        currency: "USD",
+        currency_minor_unit: 2,
+        effective_date: "2026-09-16",
+        recognized_minor: 10000,
+        unrecognized_minor: 20000,
+        source_computation_id: "source",
+        input_sha256: "a".repeat(64),
+        output_sha256: "b".repeat(64),
+        members: [],
+        balance_preview: null,
+      }),
+    ),
+    http.post(apiUrl(`${path}/submit`), async ({ request }) => {
+      expect(request.headers.get("Idempotency-Key")).toBeTruthy();
+      submitted = await request.json();
+      return HttpResponse.json({ approval_request_id: "approval" });
+    }),
+  );
+  serve();
+  await waitFor(() => expect(screen.queryByText("Loading combination members…")).toBeNull());
+  const input = screen.getByRole("combobox", { name: "Members leaving the combination" });
+  fireEvent.focus(input);
+  fireEvent.keyDown(input, { key: "ArrowDown" });
+  fireEvent.mouseDown(await screen.findByRole("option", { name: "MEMBER-B" }));
+  fireEvent.change(screen.getByLabelText("Split effective date"), {
+    target: { value: "09/16/2026" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Calculate split allocation" }));
+  const submit = await screen.findByRole("button", { name: "Submit split for approval" });
+  expect(submit.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.change(screen.getByLabelText("Split rationale"), {
+    target: { value: "Separate future performance." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Submit split for approval" }));
+  await waitFor(() =>
+    expect(submitted).toEqual({
+      split_effective_date: "2026-09-16",
+      leave_contract_ids: ["b"],
+      split_input_sha256: "a".repeat(64),
+      split_output_sha256: "b".repeat(64),
+      comment: "Separate future performance.",
+    }),
+  );
+  expect(await screen.findByText("Split submitted for approval.")).toBeTruthy();
+});

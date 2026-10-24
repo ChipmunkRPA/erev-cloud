@@ -102,8 +102,13 @@ unbilled receivables separately for each destination and entity. Use a common ac
 period end on or after the split date. These hypothetical balances are in transaction
 currency; they retain original receipts/billing and do not net different destinations.
 Changing this date also clears the old result.
-The complete combination must be readable. This is a read-only preview: split submission,
-approval and effective-date application are not available yet.
+The complete combination must be readable. Enter a split rationale and choose **Submit split
+for approval**; submission requires contract creation permission for every member entity.
+An independent approver applies the dated split through the combination approval request.
+The reviewed source must remain current. Application preserves earlier income and the original
+calculation history, and recomputes all active books atomically. Unsupported methods or foreign
+currency splits are refused before submission. The drawer lists applied split history; later
+splits use membership at the chosen effective date.
 
 A contract moves through the statuses `DRAFT`, `PENDING_REVIEW`, `ACTIVE`, `COMPLETED`, `TERMINATED` and `VOIDED`; a document that fails the contract criteria is `NOT_A_CONTRACT`. The API under `/api/v1/contracts`:
 

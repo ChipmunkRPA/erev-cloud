@@ -64,11 +64,28 @@ def preview(
         raise Problem(
             "validation-failed", "The source computation differs from the current population."
         )
+    from erev_engine import ENGINE_VERSION
+    from erev_engine.combination_membership import membership_at
+    from erev_engine.stages import s01_canonicalize
+    from erev_engine.trace import TraceBuilder
+
+    canonical = s01_canonicalize.run(original.bundle, TraceBuilder(engine_version=ENGINE_VERSION))
+    current = membership_at(
+        original.bundle.group.group_key,
+        canonical.contracts,
+        canonical.events,
+        effective_date=effective_date,
+    )
+    source_groups = {current[m["external_id"]] for m in members if m["id"] in leaving}
+    if len(source_groups) != 1:
+        raise Problem("validation-failed", "Select leaving members from one effective combination.")
+    source_group = next(iter(source_groups))
+    selected = [m for m in members if current[m["external_id"]] == source_group]
+    if len(selected) < 2:
+        raise Problem("validation-failed", "A singleton cannot be split again.")
     destinations = {
-        m["external_id"]: f"SINGLETON:{m['external_id']}"
-        if m["id"] in leaving
-        else str(group["code"])
-        for m in members
+        m["external_id"]: f"SINGLETON:{m['external_id']}" if m["id"] in leaving else source_group
+        for m in selected
     }
     try:
         plan = prepare(

@@ -2809,3 +2809,10 @@ The owner has selected proportional carrying-amount allocation for member curren
 Revision 54 implements proportional member carrying allocation in transaction and functional currency for ordinary combinations. Functional totals retain the original release sequence and FX layers; member weights use original functional carrying. Current plus noncurrent equals each member total, with deterministic rounding and replayable input nodes. Same-currency split destinations allocate within their effective populations. See [member current liability](MEMBER-CURRENT-LIABILITY-2026-10-24.md).
 
 This supersedes the earlier “implementation outstanding” checkpoint for ordinary combinations. Acquired/mixed opening populations, inconsistent monetary-layer policies, foreign split continuation and the durable split application workflow remain open. Thirty-two focused cases, the final eight-case carrying check and the existing real-database combination workflow passed; no deployment.
+
+
+## 2026-10-24 — effective split application
+
+See [split application](SPLIT-APPLICATION-2026-10-24.md). Supported same-currency splits now
+submit, approve and apply atomically, with dated membership and original history retained.
+Foreign-currency layer continuation and unsupported specialist methods remain open.

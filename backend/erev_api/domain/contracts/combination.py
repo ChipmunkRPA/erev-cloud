@@ -44,7 +44,6 @@ from datetime import date
 from typing import Any, Final, Literal
 from uuid import UUID
 
-from erev_engine.canonical import sha256_hex
 from sqlalchemy import ColumnElement, Select, and_, exists, func, insert, or_, select, update
 from sqlalchemy.orm import Session
 
@@ -65,6 +64,7 @@ from erev_api.db.tables import (
     combination_group,
     combination_group_member,
     contract,
+    contract_event,
     customer,
     exception_item,
     judgement_record,
@@ -116,6 +116,7 @@ from erev_api.schemas.combinations import (
 from erev_api.schemas.common import RefOut
 from erev_api.schemas.judgements import JudgementCreateIn
 from erev_api.uow import UnitOfWork
+from erev_engine.canonical import sha256_hex
 
 __all__ = [
     "CREATE_PERMISSION",
@@ -192,6 +193,7 @@ class _Proposal:
     action: Literal["JOIN", "LEAVE"]
     contract_ids: tuple[UUID, ...]
     status: JudgementStatus
+    split_effective_date: date | None = None
 
 
 def _stamps(uow: UnitOfWork) -> dict[str, Any]:
@@ -640,6 +642,11 @@ def _proposal(session: Session, group_id: UUID, *, lock: bool = False) -> _Propo
         action=action,
         contract_ids=tuple(UUID(str(value)) for value in questionnaire.get("contract_ids", ())),
         status=JudgementStatus(_text(row["status"])),
+        split_effective_date=(
+            date.fromisoformat(questionnaire["prospective_split"]["effective_date"])
+            if questionnaire.get("prospective_split")
+            else None
+        ),
     )
 
 
@@ -651,6 +658,7 @@ def _record_proposal(
     contract_rows: Sequence[Mapping[str, Any]],
     criterion: str | None,
     rationale: str,
+    extra: Mapping[str, Any] | None = None,
 ) -> UUID:
     ids = _ordered([UUID(str(row["id"])) for row in contract_rows])
     external_ids = sorted(str(row["external_id"]) for row in contract_rows)
@@ -668,6 +676,7 @@ def _record_proposal(
             rationale=rationale,
             codification_refs=[] if codification is None else [codification],
             questionnaire={
+                **(extra or {}),
                 "action": action,
                 "contract_ids": [str(value) for value in ids],
                 **({} if criterion is None else {"criterion": criterion}),
@@ -785,6 +794,12 @@ def submit_group(
     branch; the branch then locks every group it touches in one ascending id order (the target
     included), the proposal record between, then the contracts — and re-checks the status, the
     proposal and the membership under the locks."""
+    if body.split_effective_date is not None:
+        from .combination_split_commands import submit
+
+        return submit(uow, group_id, body)
+    if body.split_input_sha256 is not None or body.split_output_sha256 is not None:
+        raise Problem("validation-failed", "Split source hashes require a split effective date.")
     session = uow.session
     preview = repo.read_group(session, group_id)  # 404 for a group the session does not read
     status = _text(preview["status"])
@@ -830,6 +845,23 @@ def submit_group(
         and not preview["is_singleton"]
         and body.leave_contract_ids is not None
     ):
+        if (
+            session.execute(
+                select(contract_event.c.id)
+                .where(
+                    contract_event.c.contract_id.in_(
+                        select(contract.c.id).where(contract.c.combination_group_id == group_id)
+                    ),
+                    contract_event.c.payload["prospective_split_destinations"].astext.is_not(None),
+                )
+                .limit(1)
+            ).first()
+            is not None
+        ):
+            raise Problem(
+                "validation-failed",
+                "This history contains effective splits; use the prospective split workflow.",
+            )
         if body.reason_code is None or body.reason_code.value != LEAVE_REASON:
             raise _failed(
                 [
@@ -988,7 +1020,11 @@ def _system_unit(uow: UnitOfWork, preparer: UUID | None) -> UnitOfWork:
 
 
 def _change(
-    system: UnitOfWork, contract_row: Mapping[str, Any], payload: CombinationChangedV1
+    system: UnitOfWork,
+    contract_row: Mapping[str, Any],
+    payload: CombinationChangedV1,
+    *,
+    effective_date: date | None = None,
 ) -> Mapping[str, Any]:
     session = system.session
     zone = session.execute(
@@ -1003,7 +1039,7 @@ def _change(
         events=[
             EventIn(
                 event_type=ContractEventType.COMBINATION_CHANGED,
-                effective_date=to_entity_date(system.now, str(zone)),
+                effective_date=effective_date or to_entity_date(system.now, str(zone)),
                 payload=payload,
             )
         ],
@@ -1206,6 +1242,11 @@ def apply_combination(uow: UnitOfWork, group_id: UUID, approval_request_id: UUID
             raise Problem("invalid-transition", refused[0].message, errors=refused)
     _review(uow, proposal.record_id, approval_request_id)
     system = _system_unit(uow, request.preparer_id)
+    if proposal.split_effective_date is not None:
+        from .combination_split_commands import apply
+
+        apply(uow, system, group_id, proposal.record_id, rows)
+        return
     if proposal.action == "JOIN":
         for row in rows:
             event = _change(
@@ -1427,10 +1468,36 @@ def group_outs(
                 dirty_since=row["dirty_since"],
                 member_contract_ids=shown,
                 member_count=member_count,
+                effective_splits=(
+                    [
+                        {
+                            "event_id": event.id,
+                            "effective_date": event.effective_date,
+                            "destinations": event.payload["prospective_split_destinations"],
+                        }
+                        for event in session.execute(
+                            select(
+                                contract_event.c.id,
+                                contract_event.c.effective_date,
+                                contract_event.c.payload,
+                            )
+                            .where(
+                                contract_event.c.contract_id.in_(shown),
+                                contract_event.c.payload[
+                                    "prospective_split_destinations"
+                                ].astext.is_not(None),
+                            )
+                            .order_by(contract_event.c.effective_date, contract_event.c.record_seq)
+                        )
+                    ]
+                    if member_count == len(shown)
+                    else []
+                ),
                 proposal=None
                 if proposal is None
                 else CombinationProposalOut(
                     action=proposal.action,
+                    split_effective_date=proposal.split_effective_date,
                     contract_ids=[value for value in proposal.contract_ids if value in proposed],
                     contract_count=len(proposal.contract_ids),
                     judgement_record_id=proposal.record_id,

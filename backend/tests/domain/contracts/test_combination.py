@@ -1355,3 +1355,98 @@ def test_combined_aging_retains_billing_owner_and_member_adjustments(seats: Seat
     assert "Member allocation adjustment" in [
         column["header"] for column in repeated.json()["columns"]
     ]
+
+
+@pytest.mark.parametrize("changed_basis", [False, True])
+def test_prospective_split_approval_retains_original_envelope(
+    seats: SeatWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    changed_basis: bool,
+) -> None:
+    first, second, group_id = _combine(seats)
+    path = f"{GROUPS}/{group_id}"
+    response = get(
+        seats.app,
+        path + "/split-preview",
+        seats.place.author,
+        params={
+            "effective_date": "2026-09-16",
+            "leave_contract_ids": str(second),
+            "book_code": "ASC606",
+        },
+    )
+    assert response.status_code == 200, response.text
+    preview = response.json()
+    before = [_last_event(seats, key)["id"] for key in (first, second)]
+    body = {
+        "split_effective_date": "2026-09-16",
+        "leave_contract_ids": [str(second)],
+        "split_input_sha256": preview["input_sha256"],
+        "split_output_sha256": preview["output_sha256"],
+        "comment": "Separate future performance from the effective modification date.",
+    }
+    stale = post(
+        seats.app, path + "/submit", seats.place.author, {**body, "split_input_sha256": "0" * 64}
+    )
+    assert stale.status_code == 412, stale.text
+    submitted = post(seats.app, path + "/submit", seats.place.author, body)
+    assert submitted.status_code == 200, submitted.text
+    pending = submitted.json()
+    assert pending["proposal"]["split_effective_date"] == "2026-09-16"
+    assert [_last_event(seats, key)["id"] for key in (first, second)] == before
+    refused = approve(seats.app, pending["approval_request_id"], seats.place.author)
+    assert refused.status_code in (403, 422), refused.text
+    if changed_basis:
+        from erev_api.domain.contracts import combination_split_commands
+
+        # Model a changed accounting basis discovered after the candidate compute.
+        # The approval transaction must roll back its event, posting and new head.
+        monkeypatch.setattr(combination_split_commands, "_plans", lambda *args, **kwargs: {})
+    approved = approve(seats.app, pending["approval_request_id"], seats.marcus)
+    if changed_basis:
+        assert approved.status_code == 412, approved.text
+        assert [_last_event(seats, key)["id"] for key in (first, second)] == before
+        shown = get(seats.app, path, seats.place.author).json()
+        assert shown["head_computation_id"] == preview["source_computation_id"]
+        assert shown["proposal"]["status"] == "SUBMITTED"
+        return
+    assert approved.status_code == 200, approved.text
+    shown = get(seats.app, path, seats.place.author).json()
+    assert shown["proposal"] is None
+    assert shown["head_computation_id"] != preview["source_computation_id"]
+    assert shown["dirty_since"] is None
+    assert _current_group(seats, first) == _current_group(seats, second) == group_id
+    events = [_last_event(seats, key) for key in (first, second)]
+    split = next(e for e in events if "prospective_split_destinations" in e["payload"])
+    assert split["effective_date"] == date(2026, 9, 16)
+    assert split["origin"] == "SYSTEM"
+    assert len(set(split["payload"]["prospective_split_destinations"].values())) == 2
+    assert shown["effective_splits"] == [
+        {
+            "event_id": str(split["id"]),
+            "effective_date": "2026-09-16",
+            "destinations": split["payload"]["prospective_split_destinations"],
+        }
+    ]
+    corrected = post(
+        seats.app,
+        path + "/submit",
+        seats.place.author,
+        {
+            "leave_contract_ids": [str(second)],
+            "reason_code": "DATA_CORRECTION",
+            "comment": RATIONALE,
+        },
+    )
+    assert corrected.status_code == 422, corrected.text
+    again = get(
+        seats.app,
+        path + "/split-preview",
+        seats.place.author,
+        params={
+            "effective_date": "2026-09-17",
+            "leave_contract_ids": str(second),
+            "book_code": "ASC606",
+        },
+    )
+    assert again.status_code == 422, again.text

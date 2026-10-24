@@ -11325,6 +11325,8 @@ export interface components {
       criterion: string | null;
       /** Dirty Since */
       dirty_since: string | null;
+      /** Effective Splits */
+      effective_splits?: components["schemas"]["CombinationSplitHistoryOut"][];
       /** Head Computation Id */
       head_computation_id: string | null;
       /**
@@ -11396,6 +11398,12 @@ export interface components {
       /** Leave Contract Ids */
       leave_contract_ids?: string[] | null;
       reason_code?: components["schemas"]["ReasonCode"] | null;
+      /** Split Effective Date */
+      split_effective_date?: string | null;
+      /** Split Input Sha256 */
+      split_input_sha256?: string | null;
+      /** Split Output Sha256 */
+      split_output_sha256?: string | null;
     };
     /**
      * CombinationProposalOut
@@ -11422,6 +11430,8 @@ export interface components {
        * Format: uuid
        */
       judgement_record_id: string;
+      /** Split Effective Date */
+      split_effective_date?: string | null;
       status: components["schemas"]["JudgementStatus"];
     };
     /** CombinationSplitBalanceRowOut */
@@ -11458,6 +11468,23 @@ export interface components {
       preview_input_sha256: string;
       /** Rows */
       rows: components["schemas"]["CombinationSplitBalanceRowOut"][];
+    };
+    /** CombinationSplitHistoryOut */
+    CombinationSplitHistoryOut: {
+      /** Destinations */
+      destinations: {
+        [key: string]: string;
+      };
+      /**
+       * Effective Date
+       * Format: date
+       */
+      effective_date: string;
+      /**
+       * Event Id
+       * Format: uuid
+       */
+      event_id: string;
     };
     /** CombinationSplitMemberOut */
     CombinationSplitMemberOut: {
