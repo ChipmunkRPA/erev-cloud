@@ -116,7 +116,15 @@ def _apply(point: LedgerPoint, event: EventView) -> LedgerPoint | None:
             amount = _required(event, "amount")
             return replace(point, costs_cum=point.costs_cum + amount, last_event_key=key)
         case "PROGRESS_RECORDED":
-            ratio = _required(event, "cumulative_progress_ratio")
+            ratio = payload_fraction(event.payload, "cumulative_progress_ratio")
+            if ratio is None:
+                if event.payload.get("measure") != "LABOUR_HOURS":
+                    ratio = _required(event, "cumulative_progress_ratio")
+                else:
+                    # Hours are measured against the approved EAC in S09; they do
+                    # not supply an independent output-percentage observation.
+                    _required(event, "hours_to_date")
+                    ratio = point.output_ratio
             hours = payload_fraction(event.payload, "hours_to_date")
             return replace(
                 point,

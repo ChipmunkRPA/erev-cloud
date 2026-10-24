@@ -355,10 +355,18 @@ class DeliveryRecordedV1(EventPayload):
 
 class ProgressRecordedV1(EventPayload):
     obligation_key: Key
-    cumulative_progress_ratio: Ratio
+    cumulative_progress_ratio: Ratio | None = None
     measure: Literal["OUTPUT_PERCENT", "LABOUR_HOURS"]
     hours_to_date: NonNegativeDecimal | None = None
     hours_scope: Literal["COMBINATION", "MEMBERS"] | None = None
+
+    @model_validator(mode="after")
+    def _measure_inputs(self) -> Self:
+        if self.measure == "OUTPUT_PERCENT" and self.cumulative_progress_ratio is None:
+            raise ValueError("cumulative_progress_ratio is required for OUTPUT_PERCENT")
+        if self.measure == "LABOUR_HOURS" and self.hours_to_date is None:
+            raise ValueError("hours_to_date is required for LABOUR_HOURS")
+        return self
 
 
 class MilestoneAchievedV1(EventPayload):

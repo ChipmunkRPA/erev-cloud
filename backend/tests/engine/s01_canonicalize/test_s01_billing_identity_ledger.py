@@ -229,3 +229,30 @@ def test_legacy_template_world_ignores_a_status_update() -> None:
         for i in keyed.posting_intents
         for line in i.lines
     )
+
+
+def test_hour_reading_without_ratio_preserves_output_observation() -> None:
+    output = event_view(
+        C1,
+        1,
+        "PROGRESS_RECORDED",
+        JAN_5,
+        {
+            "obligation_key": "L1",
+            "measure": "OUTPUT_PERCENT",
+            "cumulative_progress_ratio": Fraction(1, 4),
+        },
+        obligation_keys=["L1"],
+    )
+    hours = event_view(
+        C1,
+        2,
+        "PROGRESS_RECORDED",
+        JAN_10,
+        {"obligation_key": "L1", "measure": "LABOUR_HOURS", "hours_to_date": Fraction(150)},
+        obligation_keys=["L1"],
+    )
+    built = ledger.build((output, hours), {}, frozenset())
+    point = built.ledger.at(ledger.subject_of(hours))
+    assert point.hours_cum == 150
+    assert point.output_ratio == Fraction(1, 4)

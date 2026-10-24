@@ -222,3 +222,27 @@ def test_memo_updated_presence_set_round_trips_and_older_form_has_none() -> None
     assert older.named is None
     with pytest.raises(ValidationError):
         payloads.MemoUpdatedV1(obligation_key="POB #1", named=("memo_9",))  # type: ignore[arg-type]
+
+
+def test_progress_requires_only_its_measure_input() -> None:
+    hours = payloads.ProgressRecordedV1.model_validate(
+        {"obligation_key": "O1", "measure": "LABOUR_HOURS", "hours_to_date": "0"}
+    )
+    assert hours.cumulative_progress_ratio is None
+    assert hours.hours_to_date == "0"
+    for measure, field in (
+        ("LABOUR_HOURS", "hours_to_date"),
+        ("OUTPUT_PERCENT", "cumulative_progress_ratio"),
+    ):
+        with pytest.raises(ValidationError, match=field):
+            payloads.ProgressRecordedV1.model_validate({"obligation_key": "O1", "measure": measure})
+    assert (
+        payloads.ProgressRecordedV1.model_validate(
+            {
+                "obligation_key": "O1",
+                "measure": "OUTPUT_PERCENT",
+                "cumulative_progress_ratio": "0.25",
+            }
+        ).cumulative_progress_ratio
+        == "0.25"
+    )

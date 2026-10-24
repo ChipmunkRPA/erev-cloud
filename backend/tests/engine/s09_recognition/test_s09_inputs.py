@@ -323,11 +323,20 @@ def test_ex_09_c_waste() -> None:
 # --- S09-R-15: labour hours (REQ-REC-008) --------------------------------------------------------
 
 
-def test_s09_r15_labour_hours() -> None:
+@pytest.mark.parametrize("include_ratio", [True, False])
+def test_s09_r15_labour_hours(include_ratio: bool) -> None:
     v1, v2 = _eac(1, START, hours="600"), _eac(2, date(2026, 2, 28), hours="650")
     e1, e2 = _estimate_event(3, v1), _estimate_event(5, v2)
     events = [e1, _hours(4, date(2026, 1, 31), "150", "0.25"), e2]
     events.append(_hours(6, date(2026, 2, 28), "450", "0.692307692307692308"))
+    if not include_ratio:
+        events = [
+            dataclasses.replace(
+                ev,
+                payload={k: v for k, v in ev.payload.items() if k != "cumulative_progress_ratio"},
+            )
+            for ev in events
+        ]
     ob = _c2c("120000", method="LABOUR_HOURS")
     state, trace = _run(
         CTX, allocated_state([ob], events=events, estimates=_pins((v1, e1), (v2, e2)))

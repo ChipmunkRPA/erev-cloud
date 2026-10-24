@@ -37,3 +37,21 @@ Necessary validation:
 Broader combined quantity/term/partial-removal reassessment, special opening-source reporting,
 shared-estimate application and release-candidate checks remain open. Whole-combination
 termination has separate native evidence; its populated public verification remains open.
+
+
+## Measure-specific entry completion
+
+The event drawer no longer asks for an output percentage when recording LABOUR_HOURS.
+API and CSV event payload validation allow the ratio to be absent for hours, require actual
+hours (including explicit zero), and continue to require a ratio for OUTPUT_PERCENT. Member
+batches carry only their original hour observations and explicit scope. The canonical ledger
+accepts these hour-only records without replacing a prior output-percentage observation;
+recognition uses actual hours divided by the approved expected hours. Previously supplied
+ratios remain readable, preserving historical ledger behavior.
+
+Necessary verification: 55 payload/ledger/input-measure cases and all 15 event-drawer cases
+pass. The native witness has the same 30,000 and 83,076.92 cumulative revenue with and without
+supplied ratios. Scoped backend/frontend type and lint checks pass; regenerated OpenAPI/types
+have no diff (the event payload is generic in that API schema). No database migration or
+deployment. Public database approval/report replay was verified for the preceding scoped-hours
+feature; it was not rerun for this input simplification.

@@ -579,6 +579,7 @@ it("submits complete original-member cumulative hours as one approval batch", as
   const { drawer } = await open("progress", false, true);
   attachCostEvidence(drawer);
   select(drawer, /^Measure/, "Labour hours");
+  expect(within(drawer).queryByLabelText(/^Cumulative progress/)).toBeNull();
   select(drawer, /^Cumulative hour coverage/, "Each original member (enter all members)");
   type(drawer, /^Cumulative hours — O1/, "100.25");
   fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
@@ -586,6 +587,8 @@ it("submits complete original-member cumulative hours as one approval batch", as
   type(drawer, /^Cumulative hours — ORIGINAL/, "0");
   fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
   await waitFor(() => expect(captured).toHaveLength(1));
+  const body = captured[0] as { events: { payload: Record<string, unknown> }[] };
+  expect(body.events.every((event) => !("cumulative_progress_ratio" in event.payload))).toBe(true);
   expect(captured[0]).toMatchObject({
     events: [
       { obligation_key: "O1", payload: { hours_to_date: "100.25", hours_scope: "MEMBERS" } },

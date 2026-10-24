@@ -209,7 +209,7 @@ export function buildEvents(
       if (form.measure === null) {
         errors.measure = choose;
       }
-      if (ratio === null) {
+      if (form.measure === "OUTPUT_PERCENT" && ratio === null) {
         errors.progress = t("contracts.drawer.event.percentError");
       }
       const hours = form.hours.trim() === "" ? null : decimalText(form.hours);
@@ -232,10 +232,12 @@ export function buildEvents(
           obligation_key: reading.key,
           payload: {
             obligation_key: reading.key,
-            cumulative_progress_ratio: ratio,
+            ...(form.measure === "OUTPUT_PERCENT" ? { cumulative_progress_ratio: ratio } : {}),
             measure: form.measure,
             hours_to_date: form.measure === "LABOUR_HOURS" ? reading.hours : null,
-            ...(form.measure === "LABOUR_HOURS" && form.hoursScope !== null
+            ...(form.measure === "LABOUR_HOURS" &&
+            combinedKeys.length > 0 &&
+            form.hoursScope !== null
               ? { hours_scope: form.hoursScope }
               : {}),
           },
@@ -897,16 +899,18 @@ export function RecordEventDrawer({
               onChange={(value) => set("measure", value)}
               error={shown("measure") ?? server("measure")}
             />
-            <TextField
-              name="event-progress"
-              label={t("contracts.drawer.event.progress")}
-              required
-              width="money"
-              inputMode="decimal"
-              value={form.progress}
-              onChange={(value) => set("progress", value)}
-              error={shown("progress") ?? server("progress")}
-            />
+            {!labourHours ? (
+              <TextField
+                name="event-progress"
+                label={t("contracts.drawer.event.progress")}
+                required
+                width="money"
+                inputMode="decimal"
+                value={form.progress}
+                onChange={(value) => set("progress", value)}
+                error={shown("progress") ?? server("progress")}
+              />
+            ) : null}
             {labourHours ? (
               <>
                 {combinedKeys.length > 0 ? (
