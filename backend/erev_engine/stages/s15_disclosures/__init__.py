@@ -169,6 +169,7 @@ def run(
     capture_agent_control: bool = False,
     acquired_pob_opening: bool = False,
     capture_recomputed_acquisition: bool = False,
+    capture_acquisition_maturity: bool = False,
     recomputed_acquisition_cutover: bool = False,
     acquisition_cutover_closing: bool = False,
     acquisition_functional_cutover: bool = False,
@@ -288,6 +289,7 @@ def run(
                     ),
                     functional=row.view == FUNCTIONAL and row.currency != ctx.txn_currency,
                     capture_agent_control=capture_agent_control,
+                    maturity_recognition=recognition if capture_acquisition_maturity else None,
                 ),
             )
             for row in balance_rows

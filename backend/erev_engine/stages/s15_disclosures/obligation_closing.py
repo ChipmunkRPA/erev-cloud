@@ -4,6 +4,7 @@ from typing import Any
 
 from erev_engine.bundle import PeriodInput
 from erev_engine.stages.s07_onboarding import baseline_of
+from erev_engine.stages.s09_recognition import RecognitionState
 from erev_engine.stages.state import AllocatedState, BookContext
 
 from .acquisition_sources import intercompany_enabled
@@ -19,6 +20,7 @@ def capture(
     *,
     functional: bool,
     capture_agent_control: bool = False,
+    maturity_recognition: RecognitionState | None = None,
 ) -> dict[str, Any]:
     def unavailable(reason: str) -> dict[str, Any]:
         return {"status": "UNAVAILABLE", "reason": reason}
@@ -199,6 +201,14 @@ def capture(
             if right is not None:
                 result["obligations"][subject]["right_class"] = right
                 result["obligations"][subject]["right_class_rule"] = "S10-R-21"
+    if recomputed and maturity_recognition is not None:
+        from .acquisition_maturity import capture as capture_maturity
+
+        maturity = capture_maturity(
+            ctx, maturity_recognition, entity, period.period_key, period.end_date, set(recomputed)
+        )
+        for subject, detail in maturity.items():
+            result["obligations"][subject]["maturity"] = detail
     for ob in own:
         if ob.performing_entity != entity and intercompany_enabled(records, ob):
             result["obligations"][ob.subject_key]["relief_basis"] = "CONTRACTING_ENTITY_CONTROL"

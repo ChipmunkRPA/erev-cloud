@@ -292,3 +292,53 @@ def test_closed_recomputed_asset_keeps_original_class_without_posting(right):
         assert row.lines[role]["BUSINESS_COMBINATIONS"] == row.lines[role]["CLOSING"] == 2000000
         assert row.lines[other]["CLOSING"] == row.lines["CONTRACT_LIABILITY"]["CLOSING"] == 0
         assert all(lines["OTHER"] == 0 for lines in row.lines.values())
+
+
+@pytest.mark.parametrize("units", [False, True])
+@pytest.mark.parametrize("policy", ["EXPECTED_TIMING_12_MONTHS", "NONE"])
+def test_recomputed_cutover_retains_original_maturity_without_financial_changes(units, policy):
+    from support.onboarding_worlds import template
+
+    events = []
+    if units:
+        events.append(
+            bundles.event(
+                w.CONTRACT,
+                4,
+                "DELIVERY_RECORDED",
+                date(2025, 12, 15),
+                {"obligation_key": w.OBLIGATION, "quantity": Decimal("0.5"), "trigger": "DELIVERY"},
+                obligation_keys=[w.OBLIGATION],
+            )
+        )
+    value = w.chk_121(
+        as_of=w.CUTOVER,
+        extra=events,
+        books=("ASC606",),
+        policies={
+            "onboarding.method": "RECOMPUTE_FROM_INCEPTION",
+            "balance.current_noncurrent": policy,
+        },
+    )
+    if units:
+        value = replace(value, pob_template_versions=(template("TPL-RATABLE", "UNITS_DELIVERED"),))
+    old = erev_engine.compute(replace(value, evidence_revision=41)).books[0]
+    book = erev_engine.compute(replace(value, evidence_revision=42)).books[0]
+    assert book.posting_intents == old.posting_intents == ()
+    assert book.schedules == old.schedules
+    assert book.balances == old.balances
+    assert book.obligation_versions == old.obligation_versions
+    nodes = {node.id for node in book.trace.nodes}
+    for before, row in zip(old.disclosure_rollforwards, book.disclosure_rollforwards, strict=True):
+        assert row.lines == before.lines
+        assert "maturity" not in before.obligation_closing["obligations"][w.SUBJECT]
+        maturity = row.obligation_closing["obligations"][w.SUBJECT]["maturity"]
+        assert maturity["policy"] == policy
+        assert maturity["as_of"] == "2025-12-31"
+        assert maturity["horizon"] == "2026-12-31"
+        assert maturity["revenue"] == 12000000
+        assert maturity["expected_relief"] == 12000000
+        assert maturity["asset_current_eligible"] is True
+        assert maturity["deterministic"] is (not units)
+        assert set(maturity["sources"]) <= nodes
+        assert f"revenue_cum:{w.SUBJECT}:FY2025-P12" in maturity["sources"]

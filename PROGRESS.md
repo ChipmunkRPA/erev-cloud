@@ -278,3 +278,5 @@ groups, agents and recomputed baselines remain open. See
 - Public combined monetary rows equal separate runs and reruns match; mixed-date guards and
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
+
+Oct 24: rev42 retains original acquired-cutover maturity inputs; 26 focused cases pass. Public fallback integration remains open.

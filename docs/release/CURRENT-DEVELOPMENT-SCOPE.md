@@ -2568,3 +2568,23 @@ The public builders do not yet call this adapter: acquisition movements and all 
 closing, monthly and balance-comparison reads must adopt it together, with a retained-source
 marker and locked-end precedence. Enabling only the movement would create a false OTHER
 residual. Public end-to-end integration remains unfinished; no deployment or readiness claim.
+
+
+## October 24: original maturity inputs at recomputed cutovers
+
+Evidence revision 42 retains the original S10-R-24/S10-R-25 per-obligation maturity
+inputs alongside recomputed acquisition closing evidence: the pinned split policy,
+12-month horizon, deterministic flag, cutover cumulative revenue, fixed allocation,
+expected relief, asset-current eligibility and original revenue/schedule node IDs.
+The capture calls the existing stage-10 relief evaluator with the retained cutover
+observations; it does not add posting, schedule or balance targets. Earlier input
+revisions retain their prior output shape.
+
+Four added native cases cover time-elapsed and units-delivered recognition under
+EXPECTED_TIMING_12_MONTHS and NONE. They verify actual cutover revenue and expected
+relief, complete source-node links, unchanged posting intents/schedules/balances/
+obligation versions, and unchanged balance captions. All 26 recomputed acquisition
+cases pass; scoped Ruff and mypy pass. This closes the missing original per-POB
+maturity-input evidence, not public report integration or multi-POB net asset
+attribution. Public endpoints must consume balances and maturity together before
+enabling the fallback. No deployment or production-readiness claim.
