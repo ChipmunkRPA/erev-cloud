@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: rev42 retains original acquired-cutover maturity inputs; 26 focused cases pass. Public fallback integration remains open.
+Oct 24: native acquired-cutover balances/maturity now feed public reports and retained reruns; supported singleton sources verified in 3 currency views.

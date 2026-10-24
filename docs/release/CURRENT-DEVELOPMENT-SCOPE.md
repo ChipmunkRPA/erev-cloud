@@ -2588,3 +2588,39 @@ cases pass; scoped Ruff and mypy pass. This closes the missing original per-POB
 maturity-input evidence, not public report integration or multi-POB net asset
 attribution. Public endpoints must consume balances and maturity together before
 enabling the fallback. No deployment or production-readiness claim.
+
+
+## October 24: native acquired-cutover sources connected to public balances
+
+Public contract balances and balance rollforwards now read missing ordinary period nodes
+from the original singleton principal recomputed acquisition snapshot. A shared evidence
+loader authenticates the persisted input/output objects, file metadata, hashes and version
+binding. The balance reader applies original maturity inputs for current liability/asset;
+ambiguous multi-POB current-asset netting is refused instead of inventing an allocation.
+The same endpoint reader serves opening, closing, intermediate monthly and comparison
+reads. Later ordinary measurements take precedence; otherwise the original cutover
+observation carries forward with its actual source period retained. Locked endpoints
+continue to use their frozen datasets before any fallback is considered.
+
+Acquisition movements use the matching native amount and retain original billed/revenue
+trace sources; cell explanations link to those real source nodes. New binding markers
+retain balance and movement source methods, snapshots and hashes; older bindings keep
+their former reads. Same-currency functional views reuse those amounts, while reporting
+currency retains separate period-average movements and closing-rate balances. Catalogue
+metadata and migration 0346 document the new evidence sources and source-selection rules.
+
+Verification: a persisted native input fixture with the cutover outside its posting
+horizon and no ordinary cutover liability node exercises the public balance/rollforward
+reports in transaction, functional and reporting views. It proves a 20,000 USD liability
+and current portion, zero noncurrent portion, 18,099.55 EUR closing versus 18,181.82 EUR
+acquisition movement, -82.27 EUR translation, zero OTHER, passing balance comparison,
+real calculation links and identical retained reruns. A later transaction endpoint carries
+the original observation forward. This fixture is not proof of creating an actual lock.
+Separately, the existing real locked recomputed-report scenario and ordinary foreign
+acquisition-report scenario passed. Six focused adapter tests and scoped Ruff/mypy pass.
+
+This enables the supported source-backed public path; it does not reconstruct a missing
+native snapshot from an older revision or a later computation that no longer carries the
+cutover snapshot. Groups requiring member allocation, mixed current-asset netting,
+foreign-functional recomputation, and contracts with no ordinary subject trace at all
+remain outside this path. No deployment or overall production-readiness claim.

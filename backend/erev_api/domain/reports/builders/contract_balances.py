@@ -93,6 +93,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     balances = tie_outs.balances_at(
         session,
+        uow=uow,
         entity_ids=params.entity_ids,
         book_code=book_code,
         period_keys=at,
@@ -204,6 +205,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         cutoff=cutoff,
         params=params,
         contract_id=contract_id,
+        uow=uow,
         documents=False,  # CTL-030 compares the CLOSING line: no flow of the path is read
         functional=view in {"functional", "reporting"},
         locked=ends,

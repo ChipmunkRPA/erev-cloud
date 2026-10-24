@@ -136,3 +136,37 @@ def test_cutover_adapter_rejects_inconsistent_native_sources():
     with pytest.raises(Problem) as refused:
         read(value, output)
     assert "sources do not reconcile" in refused.value.errors[0].message
+
+
+@pytest.mark.parametrize("unconditional", [False, True])
+def test_original_current_parts_use_retained_maturity(unconditional):
+    value, _ = original("100000", unconditional)
+    value = replace(value, evidence_revision=42)
+    output = json.loads(canonical_bytes(compute(value)))
+    result = acquisition_native.single_member_cutover(
+        value,
+        output,
+        member=w.CONTRACT,
+        book="ASC606",
+        entity=w.ENTITY,
+        period=PERIOD,
+        functional=False,
+        include_current=True,
+    )
+    assert result is not None
+    amounts, snapshot = result
+    assert amounts["contract_liability_current"] == 0
+    assert amounts["contract_asset_current"] == (0 if unconditional else Decimal("20000"))
+    assert snapshot["maturity"]["obligations"][w.SUBJECT]["expected_relief"] == 12000000
+    old = replace(value, evidence_revision=41)
+    with pytest.raises(Problem):
+        acquisition_native.single_member_cutover(
+            old,
+            json.loads(canonical_bytes(compute(old))),
+            member=w.CONTRACT,
+            book="ASC606",
+            entity=w.ENTITY,
+            period=PERIOD,
+            functional=False,
+            include_current=True,
+        )

@@ -27,18 +27,19 @@ def app(committed_db, app_settings, clock):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "locked,cross_entity,recomputed",
+    "locked,cross_entity,recomputed,closed_source",
     [
-        (False, False, False),
-        (True, False, False),
-        (False, True, False),
-        (True, True, False),
-        (False, False, True),
-        (True, False, True),
+        (False, False, False, False),
+        (True, False, False, False),
+        (False, True, False, False),
+        (True, True, False, False),
+        (False, False, True, False),
+        (True, False, True, False),
+        (False, False, True, True),
     ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
-    app, keyring, clock, app_settings, monkeypatch, locked, cross_entity, recomputed
+    app, keyring, clock, app_settings, monkeypatch, locked, cross_entity, recomputed, closed_source
 ):
     if cross_entity:
         monkeypatch.setattr(
@@ -117,7 +118,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             "customer_id": str(existing.contract["customer_id"]),
             "contracting_entity_code": worlds.AVM_US,
             "transaction_currency": acquired_currency,
-            "inception_date": "2026-08-01",
+            "inception_date": "2026-07-01" if closed_source else "2026-08-01",
             "lines": [
                 {
                     "obligation_key": "O1",
@@ -175,6 +176,52 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             )
         ],
     )
+    if closed_source:
+        # Retained legacy calculation fixture: the native input excludes the cutover
+        # from its posting horizon. This is not a test of creating an actual lock.
+        from dataclasses import replace
+
+        from erev_api.domain.contracts import bundles as inputs
+
+        build = inputs.build
+
+        def closed_input(*args, **kwargs):
+            value = build(*args, **kwargs)
+            return replace(
+                value,
+                entities=tuple(
+                    replace(
+                        entity,
+                        periods=tuple(
+                            replace(
+                                period,
+                                states=tuple(
+                                    (
+                                        book,
+                                        "closed" if period.period_key == "FY2026-P08" else "future",
+                                    )
+                                    for book, _ in period.states
+                                ),
+                            )
+                            if period.period_key >= "FY2026-P08"
+                            else period
+                            for period in entity.periods
+                        ),
+                    )
+                    for entity in value.entities
+                ),
+            )
+
+        with monkeypatch.context() as patch:
+            patch.setattr(inputs, "build", closed_input)
+            _, output, _ = computed(world.place, UUID(str(acquired.combination_group["id"])))
+        assert not any(
+            node.id == "contract_liability:ACQUIRED-EUR@AVM-US:FY2026-P08"
+            for node in output.books[0].trace.nodes
+        )
+        world = worlds.on_record_clock(world, clock)
+        _closed_source_reports(world)
+        return
     computed(world.place, UUID(str(acquired.combination_group["id"])))
     if locked:
         from datetime import timedelta
@@ -319,3 +366,80 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         rebuilt = get(app, f"/api/v1/report-runs/{run_id}/data", world.maya, {"limit": "200"})
         assert rebuilt.status_code == 200, rebuilt.text
         assert rebuilt.json()["items"] == rows
+
+
+def _closed_source_reports(world):
+    for view, currency, expected in (
+        ("transaction", "USD", "20000.00"),
+        ("functional", "USD", "20000.00"),
+        ("reporting", "EUR", "18099.55"),
+    ):
+        params = {"entity_codes": [worlds.AVM_US], "book": "ASC606", "currency_view": view}
+        _, balances = worlds.report_run(
+            world,
+            "contract_balances",
+            {
+                **params,
+                "period_key": "FY2026-P08",
+            },
+        )
+        own = next(
+            row for row in balances if row["row_key"] == f"contract:ACQUIRED-EUR:{worlds.AVM_US}"
+        )
+        assert own["contract_liability"] == {"currency": currency, "amount": expected}
+        assert own["contract_liability_current"] == own["contract_liability"]
+        assert own["contract_liability_noncurrent"]["amount"] == "0.00"
+        if view == "transaction":
+            _, later = worlds.report_run(
+                world,
+                "contract_balances",
+                {
+                    **params,
+                    "period_key": "FY2026-P09",
+                },
+            )
+            retained = next(row for row in later if row["row_key"] == own["row_key"])
+            assert retained["contract_liability"] == own["contract_liability"]
+        run, rows = worlds.report_run(
+            world,
+            "contract_balance_rollforward",
+            {
+                **params,
+                "from_period_key": "FY2026-P08",
+                "to_period_key": "FY2026-P08",
+            },
+        )
+        own = next(
+            row for row in rows if row["row_key"] == f"contract:ACQUIRED-EUR:{worlds.AVM_US}"
+        )
+        assert own["closing"] == {"currency": currency, "amount": expected}
+        assert own["business_combinations"] == {
+            "currency": currency,
+            "amount": "18181.82" if view == "reporting" else expected,
+        }
+        if view == "reporting":
+            assert own["translation"]["amount"] == "-82.27"
+        assert own["other"]["amount"] == "0.00"
+        checks = {item["code"]: item["result"] for item in run["tie_out_results"]}
+        assert checks["TO_BALANCES_EQ_ROLLFORWARD"] == "PASS"
+        explained = get(
+            world.app,
+            f"/api/v1/explain/report-runs/{run['id']}/cell",
+            world.maya,
+            params={"row_key": own["row_key"], "column_key": "business_combinations"},
+        )
+        assert explained.status_code == 200, explained.text
+        contribution = explained.json()["contributors"]["items"][0]
+        assert any("/trace/" in link["href"] for link in contribution["source_links"])
+        repeated = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+        assert repeated.status_code == 202, repeated.text
+        done = worlds.run_now(world, UUID(repeated.json()["id"]))
+        assert done["state"] == "SUCCEEDED", done
+        data = get(
+            world.app,
+            f"/api/v1/report-runs/{repeated.headers['x-erev-report-run-id']}/data",
+            world.maya,
+            {"limit": "200"},
+        )
+        assert data.status_code == 200, data.text
+        assert data.json()["items"] == rows

@@ -48,8 +48,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Final, Protocol
 from uuid import UUID
 
-from erev_engine.currencies import ISO_4217
-from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
 from sqlalchemy import (
     ColumnElement,
     Select,
@@ -88,6 +86,9 @@ from erev_api.domain.reports import journal_history
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.explain import store
 from erev_api.problems import Problem, ProblemError
+from erev_api.uow import UnitOfWork
+from erev_engine.currencies import ISO_4217
+from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
 
 TO_WATERFALL_EQ_JE_REVENUE: Final = "TO_WATERFALL_EQ_JE_REVENUE"
 TO_ROLLFORWARD_EQ_GL: Final = "TO_ROLLFORWARD_EQ_GL"
@@ -1228,6 +1229,7 @@ def balances_at(
     params: ReportParams | None = None,
     traces: dict[UUID, TracedBalances] | None = None,
     locked_ends: LockedEnds | None = None,
+    uow: UnitOfWork | None = None,
 ) -> tuple[BalanceRow, ...]:
     """Balances at the end of each entity's period of ``period_keys`` (None: zero balances). With
     ``params`` (a report build) the versions are ``versions_for`` — bound ids under a bound run,
@@ -1342,6 +1344,20 @@ def balances_at(
                     stored=row,
                     version_id=version_id,
                 )
+                if uow is not None and params is not None:
+                    from .acquisition_balances import read as acquisition_balances
+
+                    acquired = acquisition_balances(
+                        uow,
+                        params,
+                        row=row,
+                        entity=code,
+                        period=at,
+                        book=book_code,
+                        traced=traces[version_id],
+                    )
+                    if acquired is not None:
+                        values.update(acquired)
             except BalanceUnreadable as refused:
                 unreadable.extend(refused.errors)  # S15-R-07a: every member named, none served
                 continue

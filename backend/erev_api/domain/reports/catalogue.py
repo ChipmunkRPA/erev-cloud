@@ -438,6 +438,17 @@ def _definition(
     if code == "revenue_from_opening_liability":
         for key, values in OPENING_POB_IPE.items():
             definition.ipe_logic[key].extend(values)
+    if code in {"contract_balances", "contract_balance_rollforward"}:
+        for source in ("computation_evidence", "file_object", "contract_event", "calc_trace"):
+            if source not in definition.ipe_logic["source_tables"]:
+                definition.ipe_logic["source_tables"].append(source)
+        definition.ipe_logic["filters"].append(
+            "acquisition_cutover_balances_v1 and acquisition_native_cutover_sources_v1 "
+            "read missing ordinary cutover amounts from authenticated original singleton "
+            "principal recomputed acquisition snapshots; original maturity inputs determine "
+            "current parts; mixed current-asset netting requires original attribution; "
+            "locked endpoints and bindings without these markers retain their original sources"
+        )
     return definition
 
 

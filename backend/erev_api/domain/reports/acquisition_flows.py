@@ -5,8 +5,6 @@ balance, not an invoice or current-period revenue. Read its original computation
 input and output together; never infer the increase from an unexplained residual.
 """
 
-import hashlib
-import json
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
@@ -15,24 +13,18 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from erev_api.db.tables import (
-    computation_evidence,
-    contract_computation,
-    contract_event,
-    contract_version,
-)
-from erev_api.domain.reports import tie_outs
+from erev_api.db.tables import contract_event
+from erev_api.domain.reports import acquisition_evidence, acquisition_native, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import Entry, Flow
-from erev_api.files.store import open_file
 from erev_api.uow import UnitOfWork
-from erev_engine import upgrade
 from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
 from erev_engine.stages.state import PolicyResolver
 
 KEY = "acquisition_rollforward_sources_v1"
 FAMILY = "ACQUISITION"
 RECOMPUTED_KEY = "acquisition_recomputed_sources_v1"
+NATIVE_KEY = "acquisition_native_cutover_sources_v1"
 
 
 def read(
@@ -47,6 +39,7 @@ def read(
     if params.binding is not None and KEY not in params.binding.evidence:
         return {}  # Historical runs retain their original interpretation.
     allow_recomputed = params.binding is None or bool(params.binding.evidence.get(RECOMPUTED_KEY))
+    allow_native = params.binding is None or bool(params.binding.evidence.get(NATIVE_KEY))
     admitted_methods = {"OPENING_BALANCES_AT_CUTOVER"}
     if allow_recomputed:
         admitted_methods.add("RECOMPUTE_FROM_INCEPTION")
@@ -69,63 +62,7 @@ def read(
         if not selected_periods:
             continue
         if row.version_id not in cached:
-            source = (
-                uow.session.execute(
-                    select(
-                        computation_evidence,
-                        contract_computation.c.input_sha256.label("version_input"),
-                        contract_version.c.output_sha256.label("version_output"),
-                    )
-                    .join(
-                        contract_version,
-                        contract_version.c.contract_computation_id
-                        == computation_evidence.c.contract_computation_id,
-                    )
-                    .join(
-                        contract_computation,
-                        contract_computation.c.id == computation_evidence.c.contract_computation_id,
-                    )
-                    .where(
-                        contract_version.c.id == row.version_id,
-                        contract_version.c.book_code == book,
-                    )
-                )
-                .mappings()
-                .one_or_none()
-            )
-            if source is None:
-                raise tie_outs.invalid(
-                    "currency_view", "Acquisition requires original computation evidence."
-                )
-            data = {}
-            for kind in ("input", "output"):
-                metadata, stream = open_file(
-                    uow.session, source[f"{kind}_file_id"], files=uow.files, keyring=uow.keyring
-                )
-                with stream:
-                    content = stream.read()
-                digest = hashlib.sha256(content).hexdigest()
-                if (
-                    metadata["sha256"] != digest
-                    or source[f"{kind}_file_sha256"] != digest
-                    or metadata["size_bytes"] != len(content)
-                    or metadata["media_type"] != "application/json"
-                    or metadata["purpose"] != f"COMPUTATION_{kind.upper()}"
-                ):
-                    raise tie_outs.invalid("currency_view", "Acquisition evidence digest differs.")
-                data[kind] = content
-            bundle = upgrade.decode_input(data["input"])
-            output = json.loads(data["output"])
-            if (
-                bundle.sha256() != source["input_sha256"]
-                or source["version_input"] != source["input_sha256"]
-                or source["output_sha256"] != source["version_output"]
-                or output["input_sha256"] != source["input_sha256"]
-                or output["engine_version"] != bundle.engine_version
-                or hashlib.sha256(data["output"]).hexdigest() != source["version_output"]
-            ):
-                raise tie_outs.invalid("currency_view", "Acquisition computation identity differs.")
-            cached[row.version_id] = (bundle, output, source)
+            cached[row.version_id] = acquisition_evidence.load(uow, row.version_id, book)
         bundle, output, source = cached[row.version_id]
         original_book = next(b for b in bundle.books if b.book_code == book)
         voided = {e.supersedes_event_key for e in bundle.events if e.event_type == "EVENT_VOIDED"}
@@ -191,20 +128,46 @@ def read(
         entity = next(e for e in bundle.entities if e.code == row.entity_code)
         foreign = functional and entity.functional_currency != row.currency
         currency = entity.functional_currency if functional else row.currency
-        amounts = {}
+        identities = [
+            f"{role}{'_functional' if foreign else ''}:{subject}:{period.key}"
+            for role in tie_outs.ROLLFORWARD_BALANCES
+        ]
+        native = None
+        if (
+            allow_native
+            and method.value == "RECOMPUTE_FROM_INCEPTION"
+            and not any(identity in nodes for identity in identities)
+        ):
+            native = acquisition_native.single_member_cutover(
+                bundle,
+                output,
+                member=row.external_id,
+                book=book,
+                entity=row.entity_code,
+                period=period,
+                functional=functional,
+            )
+        amounts: dict[str, Decimal] = {}
         inputs = []
-        for role in tie_outs.ROLLFORWARD_BALANCES:
-            identity = f"{role}{'_functional' if foreign else ''}:{subject}:{period.key}"
-            node = nodes.get(identity)
-            if node is None or node["currency"] != currency:
-                raise tie_outs.invalid(
-                    "currency_view", "Acquisition lacks original cutover balance evidence."
-                )
-            amount = Decimal(node["value"])
-            if not amount.is_finite() or amount < 0:
-                raise tie_outs.invalid("currency_view", "Acquisition carrying balance is invalid.")
-            amounts[role] = amount
-            inputs.append(identity)
+        if native is not None:
+            amounts, snapshot = native
+            if snapshot["currency"] != currency:
+                raise tie_outs.invalid("currency_view", "Acquisition native currency differs.")
+            inputs = snapshot["nodes"]
+        else:
+            for role, identity in zip(tie_outs.ROLLFORWARD_BALANCES, identities, strict=True):
+                node = nodes.get(identity)
+                if node is None or node["currency"] != currency:
+                    raise tie_outs.invalid(
+                        "currency_view", "Acquisition lacks original cutover balance evidence."
+                    )
+                amount = Decimal(node["value"])
+                if not amount.is_finite() or amount < 0:
+                    raise tie_outs.invalid(
+                        "currency_view", "Acquisition carrying balance is invalid."
+                    )
+                amounts[role] = amount
+                inputs.append(identity)
         identity = f"{row.version_id}:{row.contract_id}:{row.entity_id}:{period.key}"
         captured[identity] = {
             "event_key": event.event_key,
@@ -214,6 +177,8 @@ def read(
             "nodes": inputs,
             "amounts": {k: str(v) for k, v in amounts.items()},
         }
+        if native is not None:
+            captured[identity]["native_cutover"] = native[1]
         result[key] = [
             Entry(
                 (cutover, -1, event.event_key),
@@ -232,4 +197,6 @@ def read(
     tie_outs.record_evidence(params, KEY, captured)
     if allow_recomputed:
         tie_outs.record_evidence(params, RECOMPUTED_KEY, True)
+    if allow_native:
+        tie_outs.record_evidence(params, NATIVE_KEY, True)
     return result

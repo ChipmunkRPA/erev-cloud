@@ -410,6 +410,7 @@ def rollforwards(
     traces: dict[UUID, TracedBalances] = {}
     opening_rows = tie_outs.balances_at(
         session,
+        uow=uow,
         entity_ids=entity_ids,
         book_code=book_code,
         period_keys=before,
@@ -421,6 +422,7 @@ def rollforwards(
     )
     closing_rows = tie_outs.balances_at(
         session,
+        uow=uow,
         entity_ids=entity_ids,
         book_code=book_code,
         period_keys=closing_at,
@@ -464,6 +466,7 @@ def rollforwards(
                 else:
                     rows = tie_outs.balances_at(
                         session,
+                        uow=uow,
                         entity_ids=(entity_id,),
                         book_code=book_code,
                         period_keys={entity_id: period},
@@ -2087,6 +2090,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
     closing_balances = tie_outs.balances_at(
         session,
+        uow=uow,
         entity_ids=params.entity_ids,
         book_code=book_code,
         period_keys={key: (value[-1] if value else None) for key, value in periods.items()},

@@ -28,6 +28,7 @@ def single_member_cutover(
     entity: str,
     period: tie_outs.PeriodRef,
     functional: bool,
+    include_current: bool = False,
 ) -> tuple[dict[str, Decimal], dict[str, Any]] | None:
     """Read an unambiguous member's original acquisition, without allocating group netting.
 
@@ -157,7 +158,14 @@ def single_member_cutover(
         "nodes": sorted(sources),
         "amounts": raw,
     }
-    return {role.lower(): Decimal(amount) * scale for role, amount in raw.items()}, snapshot
+    amounts = {role.lower(): Decimal(amount) * scale for role, amount in raw.items()}
+    if include_current:
+        from .acquisition_maturity import current_parts
+
+        parts, maturity = current_parts(bundle, original_books[0], row, obligations, nodes, period)
+        amounts.update({role: Decimal(amount) * scale for role, amount in parts.items()})
+        snapshot["maturity"] = maturity
+    return amounts, snapshot
 
 
 def read(

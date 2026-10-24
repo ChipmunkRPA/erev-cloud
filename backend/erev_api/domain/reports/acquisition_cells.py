@@ -136,7 +136,10 @@ def cell(
                 ]
             )
             for node in original["nodes"]:
-                if node.split(":", 1)[0] in {measure, f"{measure}_functional"}:
+                if original.get("native_cutover") is not None or node.split(":", 1)[0] in {
+                    measure,
+                    f"{measure}_functional",
+                }:
                     links.append(
                         {
                             "label": f"Original acquisition calculation · {node}",
