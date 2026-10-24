@@ -3785,13 +3785,14 @@ def estimate_version_content(session: Session, version_id: UUID) -> dict[str, An
 
 
 def estimate_version_entities(session: Session, version_id: UUID) -> SubjectEntities:
-    """The legal entities an ``ESTIMATE_VERSION`` request is bound to (R-25; D-100 supersedes [J]
-    L5-2-Q-4): the group of the element's contract (T-CON-12 ``contract_id``;
-    ``contract_group_entities`` — the approval recomputes it). A portfolio-scoped element
-    (``portfolio_id``; its versions are built by CTR-13) names contracts of any entity, so it
-    spans every entity until that item states its members."""
+    """Resolve the same population pinned in the estimate approval content.
+
+    Shared estimates cover historical members and the current members' combination groups.
+    Unrelated tenant entities do not require approval authority. Empty or unreadable
+    populations never become tenant-level subjects that any scoped holder could approve.
+    """
     row = session.execute(
-        select(estimate.c.contract_id)
+        select(estimate.c.contract_id, estimate.c.portfolio_id)
         .select_from(
             estimate_version.join(
                 estimate,
@@ -3805,9 +3806,22 @@ def estimate_version_entities(session: Session, version_id: UUID) -> SubjectEnti
     ).one_or_none()
     if row is None:
         raise Problem("not-found")
-    if row.contract_id is None:
+    if row.contract_id is not None:
+        return contract_group_entities(session, [UUID(str(row.contract_id))])
+    if row.portfolio_id is None:
         return ALL_ENTITIES
-    return contract_group_entities(session, [UUID(str(row.contract_id))])
+    basis = _portfolio_estimate_basis(session, UUID(str(row.portfolio_id)))["portfolio_basis"]
+    wanted = {UUID(member["contract_id"]) for member in basis["members"]}
+    if not wanted:
+        return ALL_ENTITIES
+    owners = session.execute(
+        select(contract.c.id, contract.c.contracting_entity_id).where(
+            contract.c.id.in_(sorted(wanted))
+        )
+    ).all()
+    if {UUID(str(owner.id)) for owner in owners} != wanted:
+        raise SubjectNotVisible("Portfolio approval entities are not fully visible")
+    return SubjectEntities(frozenset(UUID(str(owner.contracting_entity_id)) for owner in owners))
 
 
 JOURNAL_RUN_OBJECT: Final = "journal_run"

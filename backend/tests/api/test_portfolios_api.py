@@ -356,6 +356,15 @@ def test_portfolio_membership_workflow(
     context = DbContext(tenant_id=world.place.tenant_id, user_id=None, entity_scope="*")
     with tenant_session(context) as session:
         before_basis = subjects.estimate_version_content(session, UUID(saved_total.json()["id"]))
+        approval_entities = subjects.estimate_version_entities(
+            session, UUID(saved_total.json()["id"])
+        )
+        original_entity = session.scalar(
+            select(contract.c.contracting_entity_id).where(contract.c.id == UUID(contract_id))
+        )
+        assert approval_entities.ids == frozenset({original_entity})
+        assert not approval_entities.all_entities
+        assert not approval_entities.covered_by(frozenset({UUID(other_entity["id"])}))
     basis = before_basis["portfolio_basis"]
     assert basis["precedence"] == "SHARED_OVERRIDES_LOCAL"
     assert basis["breakage_allocation"] == "TOTAL_BY_SSP"

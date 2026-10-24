@@ -64,3 +64,46 @@ def test_population_and_ssp_computation_are_bound(monkeypatch):
 def test_hidden_member_is_not_silently_dropped(monkeypatch):
     with pytest.raises(subjects.SubjectNotVisible):
         basis(monkeypatch, hidden=True)
+
+
+def test_shared_approval_names_affected_entities_not_whole_tenant(monkeypatch):
+    from unittest.mock import Mock
+
+    session = Mock()
+    session.execute.side_effect = [
+        NS(one_or_none=lambda: NS(contract_id=None, portfolio_id=P)),
+        NS(all=lambda: [NS(id=A, contracting_entity_id=A), NS(id=B, contracting_entity_id=B)]),
+    ]
+    monkeypatch.setattr(
+        subjects,
+        "_portfolio_estimate_basis",
+        lambda *_: {
+            "portfolio_basis": {"members": [{"contract_id": str(A)}, {"contract_id": str(B)}]}
+        },
+    )
+    entities = subjects.estimate_version_entities(session, C)
+    assert entities.ids == frozenset({A, B})
+    assert entities.covered_by(frozenset({A, B}))
+    assert not entities.covered_by(frozenset({A}))
+    assert not entities.touched_by(frozenset({C}))
+
+
+@pytest.mark.parametrize("empty", [True, False])
+def test_shared_approval_never_drops_unreadable_population(monkeypatch, empty):
+    from unittest.mock import Mock
+
+    session = Mock()
+    session.execute.side_effect = [
+        NS(one_or_none=lambda: NS(contract_id=None, portfolio_id=P)),
+        NS(all=lambda: []),
+    ]
+    monkeypatch.setattr(
+        subjects,
+        "_portfolio_estimate_basis",
+        lambda *_: {"portfolio_basis": {"members": [] if empty else [{"contract_id": str(A)}]}},
+    )
+    if empty:
+        assert subjects.estimate_version_entities(session, C) == subjects.ALL_ENTITIES
+    else:
+        with pytest.raises(subjects.SubjectNotVisible):
+            subjects.estimate_version_entities(session, C)
