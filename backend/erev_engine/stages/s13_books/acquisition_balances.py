@@ -145,7 +145,24 @@ def capture(
             return ()
         fn_amounts: dict[str, int] = {}
         fn_nodes: dict[str, str] = {}
-        for target in fx.functional_member_balances:
+        functional_targets = fx.functional_member_balances
+        if (cb.bundle.evidence_revision or 0) >= 52:
+            from erev_engine.stages.s12_fx_entities.current_assets import measure
+
+            # This capture has already verified a single acquired member and a
+            # recomputed inception baseline. Its group current asset is its own.
+            currents = tuple(
+                replace(target, subject_key=subject)
+                for target in balances.current_split
+                if target.measure == "contract_asset_current"
+            )
+            functional_targets = (
+                *functional_targets,
+                *measure(
+                    extended, fx, currents, functional_targets, evidence, acquired_cutover=True
+                ),
+            )
+        for target in functional_targets:
             if (
                 target.subject_key != subject
                 or target.entity != entity

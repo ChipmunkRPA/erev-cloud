@@ -357,3 +357,129 @@ def test_complete_nonposting_observation_retains_all_balances_without_posting():
             event_key=opening.event_key,
         )
     assert "source differs" in refused.value.errors[0].message
+
+
+@pytest.mark.parametrize("unconditional,long_lived", [(False, False), (True, False), (False, True)])
+def test_foreign_cutover_current_asset_retains_original_functional_amount(
+    unconditional, long_lived
+):
+    from erev_engine.bundle import FxRateInput
+    from erev_engine.trace import reevaluate
+
+    value, _ = original("100000", unconditional)
+    inception = w.CUTOVER.replace(day=1)
+    value = replace(
+        value,
+        group=replace(value.group, inception_date=inception),
+        contracts=tuple(replace(c, inception_date=inception) for c in value.contracts),
+        events=tuple(
+            replace(e, effective_date=inception, payload={**e.payload, "issue_date": inception})
+            if e.event_type == "BILLING_RECORDED"
+            else e
+            for e in value.events
+        ),
+    )
+    if long_lived:
+        from datetime import date
+
+        from support.cpc_worlds import line
+
+        events = []
+        for event in value.events:
+            payload = dict(event.payload)
+            if event.event_type == "CONTRACT_BOOKED":
+                payload["lines"] = [
+                    *payload["lines"],
+                    line(
+                        "L2-LONG",
+                        "SUB-24M",
+                        "1",
+                        "240000.00",
+                        start=w.INCEPTION,
+                        end=date(2027, 12, 31),
+                    ),
+                ]
+                event = replace(event, obligation_keys=(w.OBLIGATION, "L2-LONG"))
+            elif event.event_type == "OPENING_BALANCE_ESTABLISHED":
+                payload["obligations"] = [
+                    *payload["obligations"],
+                    {
+                        **payload["obligations"][0],
+                        "obligation_key": "L2-LONG",
+                    },
+                ]
+                event = replace(event, obligation_keys=(w.OBLIGATION, "L2-LONG"))
+            events.append(replace(event, payload=payload))
+        extended = bundles.entity(start=w.INCEPTION, months=36, books=("ASC606",))
+        original_entity = value.entities[0]
+        value = replace(
+            value,
+            events=tuple(events),
+            entities=(
+                replace(
+                    original_entity,
+                    periods=(
+                        *original_entity.periods,
+                        *(
+                            replace(p, states=(("ASC606", "future"),))
+                            for p in extended.periods
+                            if p.fiscal_year == 2027
+                        ),
+                    ),
+                ),
+            ),
+        )
+    entity = replace(value.entities[0], functional_currency="EUR")
+    rates = tuple(
+        FxRateInput(
+            f"USD-EUR-{kind}-{period.period_key}",
+            "approved-original-rates",
+            kind,
+            "USD",
+            "EUR",
+            period.start_date if kind == "spot" else period.end_date,
+            None if kind == "spot" else period.period_key,
+            Decimal("0.8") if kind != "closing" else Decimal("0.9"),
+        )
+        for kind in ("average", "closing", "spot")
+        for period in entity.periods
+    )
+    value = replace(
+        value,
+        evidence_revision=52,
+        entities=(entity,),
+        currencies=bundles.currencies("USD", "EUR"),
+        fx_rates=rates,
+    )
+    result = compute(value)
+    output = result.books[0]
+    prior = compute(replace(value, evidence_revision=51)).books[0]
+    assert output.posting_intents == prior.posting_intents
+    assert output.schedules == prior.schedules
+    assert output.balances == prior.balances
+    (snapshot,) = output.acquisition_balance_observations
+    functional = snapshot["functional"]
+    expected = 0 if unconditional else 1800000
+    assert functional["amounts"]["contract_asset_current"] == expected
+    assert functional["amounts"]["contract_asset"] == (9000000 if long_lived else expected)
+    node = functional["nodes"]["contract_asset_current"]
+    assert Decimal(reevaluate(output.trace)[node]) == Decimal(expected) / 100
+    assert (
+        "contract_asset_current"
+        not in prior.acquisition_balance_observations[0]["functional"]["amounts"]
+    )
+
+    from erev_api.domain.reports.acquisition_complete import read as read_complete
+
+    opening = next(e for e in value.events if e.event_type == "OPENING_BALANCE_ESTABLISHED")
+    readback = read_complete(
+        value,
+        json.loads(canonical_bytes(result)),
+        member=w.CONTRACT,
+        entity=w.ENTITY,
+        book="ASC606",
+        period=PERIOD,
+        event_key=opening.event_key,
+    )
+    assert readback is not None
+    assert readback[1]["functional"]["amounts"]["contract_asset_current"] == expected

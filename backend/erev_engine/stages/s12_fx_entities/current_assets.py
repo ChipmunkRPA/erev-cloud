@@ -20,8 +20,10 @@ def measure(
     members: Sequence[Target],
     totals: Sequence[Target],
     trace: TraceBuilder,
+    *,
+    acquired_cutover: bool = False,
 ) -> tuple[Target, ...]:
-    if any(ob.opening is not None for ob in fx.allocated.obligations):
+    if not acquired_cutover and any(ob.opening is not None for ob in fx.allocated.obligations):
         return ()
     periods = {
         entity: tuple(p.period_key for p in view.periods) for entity, view in ctx.entities.items()

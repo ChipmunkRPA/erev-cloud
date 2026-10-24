@@ -1,4 +1,6 @@
-# eRev Cloud: supervisor decisions
+# eRev Cloud: historical design decisions
+
+Current owner instructions and [goal](00-GOAL.md) supersede historical scope, licensing, approval and release requirements below. See [current development scope](release/CURRENT-DEVELOPMENT-SCOPE.md) for accepted choices and implementation limits.
 
 | Field | Value |
 |---|---|
@@ -30,7 +32,7 @@ Supervisor documents, read-only for the build loop:
 
 ## 1. Product
 
-- **D-01 Open and complete.** MIT licence. There are no premium tiers and no licence keys. Legacy premium database functions become standard audited features:
+- **D-01 Public and noncommercial.** PolyForm Noncommercial License 1.0.0 (supersedes the original MIT proposal). There are no premium tiers and no licence keys. Legacy premium database functions become standard audited features:
   - backup/restore → tenant snapshot and restore to a sandbox;
   - reset → reset a sandbox tenant only;
   - append-from-another → import a legacy database;

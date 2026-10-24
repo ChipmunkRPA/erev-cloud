@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [member current assets](docs/release/CURRENT-ASSET-CURRENCY-2026-10-24.md) retain original FX attribution; combined current liability remains open.
+Oct 24: [acquired current assets](docs/release/ACQUIRED-CURRENT-ASSET-2026-10-24.md) retain original FX; combined current liability remains open.

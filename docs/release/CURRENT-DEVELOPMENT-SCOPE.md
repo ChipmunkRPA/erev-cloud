@@ -2788,3 +2788,10 @@ in the checked cases. No deployment.
 Acquired baselines keep their separate path; combined current liability still awaits the
 member-allocation choice. Specialist currency gaps and durable split application remain
 open. See CURRENT-ASSET-CURRENCY-2026-10-24.md.
+
+
+## October 24, 2026 — acquired current assets and goal alignment
+
+[Acquired current asset checkpoint](ACQUIRED-CURRENT-ASSET-2026-10-24.md): revision 52 supplies original functional current assets for the supported nonposting single-member recomputed acquisition cutover. Mixed maturity retains a separately reconciling noncurrent amount; journals and income schedules are unchanged. Seventeen focused tests and scoped static checks passed. Remaining combination and specialist limits are unchanged.
+
+[Goal](../00-GOAL.md) now records the owner's current scope and noncommercial license, replacing historical MIT, deployment, full-control and independent-signoff requirements. This checkpoint does not claim the whole repository is complete.
