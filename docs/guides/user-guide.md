@@ -365,8 +365,10 @@ For a live draft, choose `currency_view: functional` for original functional amo
 `transaction` remains the default. Reporting-currency cost rows use monthly average rates for
 movements and closing rates for endpoints, with separate Currency translation and Translation
 rounding rows. The original functional carrying check remains visible in the control totals. The saved pack and
-its reruns retain the selected basis. A lock retains its original transaction-currency sources
-and cannot be relabelled as a functional- or reporting-currency pack.
+its reruns retain the selected basis. New ASC606/IFRS15 locks retain a complete pack for each
+of transaction, functional and reporting currency at the same cutoff. Select `currency_view`
+with `period_lock_id` to read that saved pack; reruns use its original snapshots and rates.
+Older locks without the selected view are refused instead of recomputing current sources.
 Choose `JSON`, `XLSX` or `PDF`. This currently produces a draft for a period that was open
 at the selected source time. To use a locked source, pass its `period_lock_id` as described
 below; a non-open live period is refused. New successful lock approvals save frozen evidence.

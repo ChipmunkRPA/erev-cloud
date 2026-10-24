@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select
 
 from erev_api.controls.evidence import RunRefType, record_execution
 from erev_api.db import new_id
@@ -162,6 +162,9 @@ def _finish(
 
 def publish(uow: UnitOfWork, lock_id: UUID, captured: Mapping[str, Any]) -> UUID:
     """Save real source identities, parent artifact and seven immutable snapshots atomically."""
+    view = str(captured.get("currency_view", "transaction"))
+    if view not in {"transaction", "functional", "reporting"}:
+        raise Problem("validation-failed", "Unknown disclosure capture currency.")
     lock = (
         uow.session.execute(
             select(period_lock).where(
@@ -191,7 +194,14 @@ def publish(uow: UnitOfWork, lock_id: UUID, captured: Mapping[str, Any]) -> UUID
     if (
         uow.session.scalar(
             select(disclosure_snapshot.c.id)
+            .join(
+                report_run,
+                (report_run.c.id == disclosure_snapshot.c.report_run_id)
+                & (report_run.c.tenant_id == disclosure_snapshot.c.tenant_id),
+            )
             .where(
+                func.coalesce(report_run.c.parameters["currency_view"].astext, "transaction")
+                == view,
                 disclosure_snapshot.c.tenant_id == uow.principal.tenant_id,
                 disclosure_snapshot.c.period_lock_id == lock_id,
             )
@@ -219,6 +229,7 @@ def publish(uow: UnitOfWork, lock_id: UUID, captured: Mapping[str, Any]) -> UUID
         period_key=selected_period.key,
         known_at=cutoff,
         quarter=captured["quarter"],
+        currency_view=view,
     )
     if [item["key"] for item in captured["children"]] != [item.key for item in planned]:
         raise Problem("validation-failed", "Disclosure source capture plan differs.")
@@ -239,6 +250,8 @@ def publish(uow: UnitOfWork, lock_id: UUID, captured: Mapping[str, Any]) -> UUID
             "known_at_basis": "historical",
             "period_lock_id": str(lock_id),
         }
+        if view != "transaction":
+            parent_parameters["currency_view"] = view
         parent = _start(
             uow,
             code="disclosure_pack",
@@ -369,3 +382,23 @@ def publish(uow: UnitOfWork, lock_id: UUID, captured: Mapping[str, Any]) -> UUID
             },
         )
         return UUID(str(parent["id"]))
+
+
+def publish_all(uow: UnitOfWork, lock_id: UUID, variants: Mapping[str, Any]) -> dict[str, UUID]:
+    """Publish all currencies atomically; no subset can survive a failed variant."""
+    from .snapshot_views import VIEWS
+
+    if set(variants) != set(VIEWS) or any(
+        not isinstance(variants[view], Mapping)
+        or variants[view].get("currency_view", "transaction") != view
+        for view in VIEWS
+    ):
+        raise Problem(
+            "validation-failed", "Disclosure currency capture is incomplete or inconsistent."
+        )
+    if len(canonical_bytes(variants)) > MAX_PAYLOAD_BYTES:
+        raise Problem(
+            "validation-failed", "Combined disclosure currencies exceed the retained input limit."
+        )
+    with uow.savepoint():
+        return {view: publish(uow, lock_id, variants[view]) for view in VIEWS}

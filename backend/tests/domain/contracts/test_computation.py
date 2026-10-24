@@ -5492,7 +5492,8 @@ def test_disclosure_children_attach_once_and_survive_retry(
             disclosure_freeze.capture(uow, freeze_scope, quarter=True)
         assert refused_capture.value.slug == "forbidden"
         with freeze.system_unit(uow) as reader:
-            frozen_inputs = disclosure_freeze.capture(reader, freeze_scope, quarter=True)
+            frozen_variants = disclosure_freeze.capture_all(reader, freeze_scope, quarter=True)
+            frozen_inputs = frozen_variants["transaction"]
             with pytest.raises(Problem) as ordinary_policy:
                 disclosure_expedients.capture(
                     reader, entity_id=world.entity_id, book="ASC606", known_at=parent["known_at"]
@@ -5621,6 +5622,52 @@ def test_disclosure_children_attach_once_and_survive_retry(
         assert selected.status_code == 200, selected.text
         assert len(selected.json()["items"]) == expected
 
+    # Historical locks cannot relabel their transaction evidence as another basis.
+    for view in ("functional", "reporting"):
+        refused = post(
+            world.app,
+            "/api/v1/report-runs",
+            actor,
+            {
+                "report_code": "disclosure_pack",
+                "output_format": "JSON",
+                "parameters": {"period_lock_id": str(lock_values["id"]), "currency_view": view},
+            },
+        )
+        assert refused.status_code == 422, refused.text
+
+    from uuid import uuid4
+
+    with world.place.uow() as uow:
+        all_lock = {**lock_values, "id": uuid4(), "created_at": uow.now}
+        uow.session.execute(insert(period_lock).values(**all_lock))
+        count_before = uow.session.scalar(select(func.count()).select_from(report_run))
+        damaged = copy.deepcopy(frozen_variants)
+        damaged["reporting"]["children"][-1]["output_sha256"] = "f" * 64
+        with pytest.raises(Problem):
+            disclosure_lock.publish_all(uow, all_lock["id"], damaged)
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == count_before
+        all_ids = disclosure_lock.publish_all(uow, all_lock["id"], frozen_variants)
+        all_parents = {
+            view: dict(
+                uow.session.execute(select(report_run).where(report_run.c.id == identity))
+                .mappings()
+                .one()
+            )
+            for view, identity in all_ids.items()
+        }
+        assert (
+            len(
+                {
+                    identity
+                    for row in all_parents.values()
+                    for identity in row["disclosure_snapshot_ids"]
+                }
+            )
+            == 21
+        )
+        uow.commit()
+
     # Frozen exports rebuild from E-65. Child output files and current policy/builders are not read.
     from erev_api.domain.reports import disclosure_frozen
 
@@ -5639,7 +5686,9 @@ def test_disclosure_children_attach_once_and_survive_retry(
         with pytest.raises(Problem):
             disclosure_frozen.read(uow.session, bad_attached)
 
-    def finish_frozen(response: Any) -> Mapping[str, Any]:
+    def finish_frozen(
+        response: Any, expected_parent: Mapping[str, Any] = frozen_parent
+    ) -> Mapping[str, Any]:
         assert response.status_code == 202, response.text
         identity = UUID(response.headers["X-Erev-Report-Run-Id"])
         job_id = UUID(response.json()["id"])
@@ -5663,7 +5712,7 @@ def test_disclosure_children_attach_once_and_survive_retry(
             )
             assert built["status"] == "SUCCEEDED", built["problem"]
             assert built["source_binding"] is None
-            assert built["disclosure_snapshot_ids"] == frozen_parent["disclosure_snapshot_ids"]
+            assert built["disclosure_snapshot_ids"] == expected_parent["disclosure_snapshot_ids"]
         return built
 
     for output_format in ("JSON", "XLSX", "PDF"):
@@ -5714,8 +5763,31 @@ def test_disclosure_children_attach_once_and_survive_retry(
         post(world.app, f"/api/v1/report-runs/{frozen_parent_id}/rerun", actor, {})
     )
     assert repeated_lock["output_sha256"] == frozen_parent["output_sha256"]
+    for view, retained in all_parents.items():
+        built = finish_frozen(
+            post(
+                world.app,
+                "/api/v1/report-runs",
+                actor,
+                {
+                    "report_code": "disclosure_pack",
+                    "output_format": "JSON",
+                    "parameters": {
+                        "period_lock_id": str(all_lock["id"]),
+                        "quarter": True,
+                        **({"currency_view": view} if view != "transaction" else {}),
+                    },
+                },
+            ),
+            retained,
+        )
+        assert built["output_sha256"] == retained["output_sha256"]
+        repeated = finish_frozen(
+            post(world.app, f"/api/v1/report-runs/{built['id']}/rerun", actor, {}), retained
+        )
+        assert repeated["output_sha256"] == retained["output_sha256"]
     with world.place.uow() as uow:
-        assert uow.session.scalar(select(func.count()).select_from(disclosure_snapshot)) == 21
+        assert uow.session.scalar(select(func.count()).select_from(disclosure_snapshot)) == 42
 
 
 def test_forecast_event_capture_is_atomic_and_immutable(

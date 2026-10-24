@@ -4,6 +4,13 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Multi-currency locked disclosure packs — October 24, 2026
+
+New ASC606/IFRS15 close approvals retain all three currency packs atomically at one cutoff.
+The viewer and public report APIs read the selected original snapshots; historical locks
+without that view refuse explicitly. See [checkpoint](LOCKED-DISCLOSURE-CURRENCIES-2026-10-24.md).
+This supersedes the currency-lock gap in the earlier disclosure checkpoints below.
+
 ## Reporting-currency disclosure packs — October 24, 2026
 
 Live packs now admit reporting currency across all nine children. Contract costs translate

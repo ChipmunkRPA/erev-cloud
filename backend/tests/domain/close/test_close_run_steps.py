@@ -1238,19 +1238,24 @@ def test_lock_marks_lock_step(
             disclosure_snapshot.c.period_lock_id == lock["id"],
         ),
     )
-    assert len(disclosure_rows) == 7
+    assert len(disclosure_rows) == 21
     parent_ids = {row["report_run_id"] for row in disclosure_rows}
-    assert len(parent_ids) == 1
-    (disclosure_parent,) = _rows(
+    assert len(parent_ids) == 3
+    disclosure_parents = _rows(
         world.tenant_id,
         select(report_run).where(
             report_run.c.id.in_(parent_ids),
         ),
     )
-    assert disclosure_parent["status"] == "SUCCEEDED"
-    assert disclosure_parent["period_lock_id"] == lock["id"]
-    assert len(disclosure_parent["child_report_run_ids"]) == 16
-    assert disclosure_parent["job_id"] is None
+    assert {
+        row["parameters"].get("currency_view", "transaction") for row in disclosure_parents
+    } == {"transaction", "functional", "reporting"}
+    for disclosure_parent in disclosure_parents:
+        assert disclosure_parent["status"] == "SUCCEEDED"
+        assert disclosure_parent["period_lock_id"] == lock["id"]
+        assert len(disclosure_parent["child_report_run_ids"]) == 16
+        assert len(disclosure_parent["disclosure_snapshot_ids"]) == 7
+        assert disclosure_parent["job_id"] is None
 
     # BS4-D-04: an unchanged dataset is the run's file; a changed one is a file of its own
     snapshots = _rows(
@@ -1265,7 +1270,10 @@ def test_lock_marks_lock_step(
         for row in snapshots
         if str(row["file_sha256"]) != frozen[str(row["snapshot_kind"])]
     }
-    assert moved == {"JE_POPULATION"}
+    # Close retains currency bundles; the earlier run exported single-view datasets.
+    from erev_api.domain.reports.snapshot_views import KINDS as CURRENCY_KINDS
+
+    assert moved == {"JE_POPULATION", *CURRENCY_KINDS}
     for row in snapshots:
         kind = str(row["snapshot_kind"])
         if kind in moved:

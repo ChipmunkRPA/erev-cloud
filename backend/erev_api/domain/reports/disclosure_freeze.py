@@ -24,7 +24,13 @@ from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 
-def capture(uow: UnitOfWork, scope: snapshots.SnapshotScope, *, quarter: bool) -> dict[str, Any]:
+def capture(
+    uow: UnitOfWork,
+    scope: snapshots.SnapshotScope,
+    *,
+    quarter: bool,
+    currency_view: str = "transaction",
+) -> dict[str, Any]:
     """Use one existing SYSTEM reader and never enqueue jobs or widen the supplied cutoff."""
     if (
         uow.principal.kind is not PrincipalKind.SYSTEM
@@ -52,6 +58,7 @@ def capture(uow: UnitOfWork, scope: snapshots.SnapshotScope, *, quarter: bool) -
         period_key=period.key,
         known_at=scope.known_at,
         quarter=quarter,
+        currency_view=currency_view,
     )
     policies = disclosure_expedients.capture_for_lock(
         uow, entity_id=entity.id, book=scope.book_code, known_at=scope.known_at
@@ -127,6 +134,7 @@ def capture(uow: UnitOfWork, scope: snapshots.SnapshotScope, *, quarter: bool) -
         children.append(child)
     return {
         "schema_version": 1,
+        **({"currency_view": currency_view} if currency_view != "transaction" else {}),
         "tenant_id": str(uow.principal.tenant_id),
         "entity_id": str(entity.id),
         "entity_code": entity.code,
@@ -139,3 +147,17 @@ def capture(uow: UnitOfWork, scope: snapshots.SnapshotScope, *, quarter: bool) -
         "policies": policies,
         "policy_sha256": sha256_hex(policies),
     }
+
+
+def capture_all(
+    uow: UnitOfWork, scope: snapshots.SnapshotScope, *, quarter: bool
+) -> dict[str, Any]:
+    """Capture every currency from the same held read-only source transaction."""
+    from .snapshot_views import VIEWS
+
+    variants = {view: capture(uow, scope, quarter=quarter, currency_view=view) for view in VIEWS}
+    if len(canonical_bytes(variants)) > MAX_PAYLOAD_BYTES:
+        raise Problem(
+            "validation-failed", "Combined disclosure currencies exceed the retained input limit."
+        )
+    return variants

@@ -897,9 +897,9 @@ def test_render_locked_csv_serves_the_guarded_export_and_its_manifest_names_that
     assert manifest["sha256"] == sha256 and manifest["row_count"] == 2
 
 
-def test_disclosure_currency_cannot_relabel_transaction_lock_sources() -> None:
+def test_disclosure_selectors_allow_explicit_retained_currency() -> None:
     properties = DEFINITIONS_BY_CODE["disclosure_pack"].parameters_schema["properties"]
-    for view in ("transaction", "functional"):
+    for view in ("transaction", "functional", "reporting"):
         selected, errors = locked.reconcile_selectors(
             {"period_lock_id": str(LOCK), "currency_view": view},
             SCOPE,
@@ -908,7 +908,4 @@ def test_disclosure_currency_cannot_relabel_transaction_lock_sources() -> None:
             disclosure=True,
         )
         assert selected["currency_view"] == view
-        if view == "functional":
-            assert set(_findings(errors)) == {"parameters.currency_view"}
-        else:
-            assert not errors
+        assert not errors

@@ -343,6 +343,7 @@ export function datasetLock(context: ReportContext): NonNullable<Period["current
 
 export function supportsLockedCurrency(definition: ReportDefinition): boolean {
   return [
+    "disclosure_pack",
     "balance_aging",
     "revenue_waterfall",
     "contract_balances",

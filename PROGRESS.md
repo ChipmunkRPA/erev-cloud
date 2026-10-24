@@ -22,9 +22,9 @@ review and publish changes without PR accumulation, and do not deploy.
 
 ## Multi-currency disclosure packs — October 24, 2026
 
-Live packs propagate functional/reporting currency across all nine children and retained replay.
-Cost reporting uses monthly FX with separate translation/rounding and original carrying checks.
-See [checkpoint](docs/release/REPORTING-DISCLOSURE-2026-10-24.md). Locked sources retain their basis.
+Live and newly locked packs support all three currencies, retained rates and same-source reruns.
+Lock publication is atomic; older locks cannot invent missing views. See
+[checkpoint](docs/release/LOCKED-DISCLOSURE-CURRENCIES-2026-10-24.md).
 
 ## Combined actual hours and termination — October 23, 2026
 

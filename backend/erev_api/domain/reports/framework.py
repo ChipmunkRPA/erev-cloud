@@ -2957,7 +2957,7 @@ def _consistent_with_lock() -> Any:
     parameters = report_run.c.parameters
     admitted = pg_array([literal(key) for key in sorted(locked.ADMITTED_KEYS)])
     disclosure_admitted = pg_array(
-        [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"quarter"})]
+        [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"quarter", "currency_view"})]
     )
     from erev_api.domain.reports import snapshot_views
 
@@ -2980,7 +2980,13 @@ def _consistent_with_lock() -> Any:
         and_(
             report_run.c.report_code == "disclosure_pack",
             parameters.op("-")(disclosure_admitted) == cast(literal("{}"), JSONB),
-            func.jsonb_typeof(parameters["quarter"]) == "boolean",
+            or_(
+                ~parameters.has_key("quarter"),
+                func.jsonb_typeof(parameters["quarter"]) == "boolean",
+            ),
+            func.coalesce(parameters["currency_view"].astext, "transaction").in_(
+                snapshot_views.VIEWS
+            ),
         ),
     )
     period_selectors = [

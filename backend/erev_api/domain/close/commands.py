@@ -2335,7 +2335,7 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
             raise freeze.artefact_refused(scope, str(refused)) from refused
         disclosure_inputs = None
         if scope.book_code in {"ASC606", "IFRS15"}:
-            disclosure_inputs = disclosure_freeze.capture(
+            disclosure_inputs = disclosure_freeze.capture_all(
                 reader,
                 SnapshotScope(
                     entity_id=scope.entity_id,
@@ -2392,7 +2392,7 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
         snapshots.write_lock_snapshots(uow, lock_id, datasets)
         if disclosure_inputs is not None:
             with uow.as_system():
-                disclosure_lock.publish(uow, lock_id, disclosure_inputs)
+                disclosure_lock.publish_all(uow, lock_id, disclosure_inputs)
         # BS4-D-03 (BUILD_SPEC CLO-20): the LOCK step of the period's latest succeeded close run is
         # marked in this transaction, so a decision that is refused below, or answered 409 and
         # decided again, leaves that step PENDING.

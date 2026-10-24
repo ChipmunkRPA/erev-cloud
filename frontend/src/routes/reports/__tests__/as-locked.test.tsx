@@ -951,24 +951,27 @@ it("disclosure uses its lock cutoff and saved quarter inputs instead of the glob
   expect(runParameters(definition, context, { quarter: "false" }).quarter).toBe(false);
 });
 
-it("retained currency views are sent without widening the frozen period scope", () => {
-  const definition = definitionOf("contract_balances");
-  const context = {
-    entity: LOCK.entity_code,
-    book: LOCK.book_code,
-    periodKey: LOCK.period_key,
-    periods: PERIODS,
-    snapshot: LOCK.id,
-    knownAt: null,
-    currencyView: "functional",
-  };
-  expect(runParameters(definition, context, {}).currency_view).toBe("functional");
-  const parameters = runParameters(definition, context, {
-    currency_view: "reporting",
-    contract_external_id: "ignored",
-    from_period_key: "OTHER",
-  });
-  expect(parameters.currency_view).toBe("reporting");
-  expect(parameters.period_key).toBe(LOCK.period_key);
-  expect(parameters).not.toHaveProperty("contract_external_id");
-});
+it.each(["contract_balances", "disclosure_pack"])(
+  "%s retained currency views preserve the frozen period scope",
+  (code) => {
+    const definition = definitionOf(code);
+    const context = {
+      entity: LOCK.entity_code,
+      book: LOCK.book_code,
+      periodKey: LOCK.period_key,
+      periods: PERIODS,
+      snapshot: LOCK.id,
+      knownAt: null,
+      currencyView: "functional",
+    };
+    expect(runParameters(definition, context, {}).currency_view).toBe("functional");
+    const parameters = runParameters(definition, context, {
+      currency_view: "reporting",
+      contract_external_id: "ignored",
+      from_period_key: "OTHER",
+    });
+    expect(parameters.currency_view).toBe("reporting");
+    expect(parameters.period_key).toBe(LOCK.period_key);
+    expect(parameters).not.toHaveProperty("contract_external_id");
+  },
+);

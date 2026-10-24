@@ -10,7 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import disclosure_snapshot, period_lock, report_run
@@ -73,13 +73,23 @@ def _read(session: Session, run: Mapping[str, Any], *, allow_unattached: bool) -
             select(disclosure_snapshot).where(
                 disclosure_snapshot.c.tenant_id == run["tenant_id"],
                 disclosure_snapshot.c.period_lock_id == scope.lock_id,
+                disclosure_snapshot.c.report_run_id.in_(
+                    select(report_run.c.id).where(
+                        report_run.c.tenant_id == run["tenant_id"],
+                        func.coalesce(
+                            report_run.c.parameters["currency_view"].astext, "transaction"
+                        )
+                        == run["parameters"].get("currency_view", "transaction"),
+                    )
+                ),
             )
         ).mappings()
     )
     kinds = [kind.value for kind in disclosure_snapshots.KINDS]
     if len(rows) != 7 or {row["disclosure_kind"] for row in rows} != set(kinds):
         raise Problem(
-            "validation-failed", "The lock does not hold seven complete disclosure snapshots."
+            "validation-failed",
+            "The lock lacks seven complete disclosure snapshots for the requested currency.",
         )
     by_kind = {row["disclosure_kind"]: row for row in rows}
     rows = [by_kind[kind] for kind in kinds]
