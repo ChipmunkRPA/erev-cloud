@@ -1832,3 +1832,76 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     replay = run_now(world, UUID(rerun.json()["id"]))
     assert replay["state"] == "SUCCEEDED", replay
     assert replay["result"]["output_sha256_equal"] is True
+
+    if mode == "recovery_term":
+        # A first EAC approved after the modification must retain its prospective base.
+        head = world.place.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == lease.contract_id)
+        )
+        later_cost = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/events",
+            world.maya,
+            {
+                "events": [
+                    {
+                        "event_type": "COST_INCURRED",
+                        "effective_date": "2026-09-11",
+                        "obligation_key": "L1-LEASE",
+                        "payload": {
+                            "obligation_key": "L1-LEASE",
+                            "purpose": "PROGRESS_INPUT",
+                            "amount": {"amount": "100.00", "currency": "USD"},
+                        },
+                    }
+                ],
+                "evidence_file_ids": [evidence_file(app, world.maya)],
+            },
+            if_match=f'"s{head}"',
+        )
+        assert later_cost.status_code == 201, later_cost.text
+        accepted = approve(app, later_cost.json()["approval_request_id"], world.priya)
+        assert accepted.status_code == 200, accepted.text
+        element = post(
+            app,
+            f"/api/v1/contracts/{lease.contract_id}/estimates",
+            world.maya,
+            {
+                "estimate_kind": "EAC",
+                "element_code": "FIRST-EAC",
+                "method": "COST_BUILDUP",
+                "obligation_key": "L2-SERVICE",
+                "allocation_target": "CONTRACT",
+            },
+        )
+        assert element.status_code == 201, element.text
+        estimate_version_approved(
+            app,
+            world.maya,
+            world.priya,
+            element.json()["id"],
+            {
+                "effective_date": "2026-09-12",
+                "expected_total_amount": "1000",
+                "parameters": {"eac_scope": "COMBINATION"},
+                "rationale": "First complete EAC after the approved common-term modification.",
+            },
+        )
+        clock.advance(STEP)
+        transitioned_run, transitioned_rows = report_run(
+            world,
+            "latest_contract_status",
+            {
+                "entity_codes": [AVM_US],
+                "book": "ASC606",
+                "as_of": "2026-09-30",
+                "contract_external_id": BR06_EXTERNAL_ID,
+            },
+        )
+        # 300 preserved + (108,000 - 300) * (400 - 300) / (1,000 - 300).
+        assert transitioned_rows[0]["revenue_cum"] == usd("15685.71")
+        rerun = post(app, f"/api/v1/report-runs/{transitioned_run['id']}/rerun", world.maya, {})
+        assert rerun.status_code == 202, rerun.text
+        replay = run_now(world, UUID(rerun.json()["id"]))
+        assert replay["state"] == "SUCCEEDED", replay
+        assert replay["result"]["output_sha256_equal"] is True

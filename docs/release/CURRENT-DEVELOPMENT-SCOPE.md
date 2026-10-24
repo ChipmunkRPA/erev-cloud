@@ -2001,3 +2001,11 @@ reach the wizard and approval/application/report replay. Both no-EAC and existin
 cases preserve prior periods and enforce the allocation cap. See
 [checkpoint and remaining transition coverage](COST-RECOVERY-BOUNDARIES-2026-10-24.md).
 This supersedes the earlier blanket cost-recovery boundary refusal. No deployment.
+
+## October 24: first EAC after cost-recovery term changes — verified
+
+The existing transition correctly uses the approved modification's prospective or cumulative
+basis. Native cases preserve both pre-EAC periods; the public workflow approves the first
+combination-wide EAC after original-member costs, computes the prospective target and replays
+the saved status report with the same hash. No recognition rule was changed. See the
+[updated boundary checkpoint](COST-RECOVERY-BOUNDARIES-2026-10-24.md). No deployment.

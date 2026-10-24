@@ -400,5 +400,44 @@ def test_input_term_continuation_preserves_progress_and_consumes_later_original_
         assert capped.contract_version.columns["revenue_cum"] == 1_000_000
         assert january(capped) == january(original_output)
         assert reevaluate(capped.trace) == {n.id: n.value for n in capped.trace.nodes}
+        # First EAC after a prior boundary uses that boundary's treatment basis.
+        # Prospective: 300 + (10,000 - 300) * (400 - 300) / (1,000 - 300).
+        # Cumulative catch-up: 10,000 * 400 / 1,000.
+        pins = tuple(
+            replace(pin, effective_date=date(2026, 3, 1)) for pin in scenario().estimate_versions
+        )
+        pin_events = tuple(
+            replace(
+                bundles.event(
+                    CONTRACT,
+                    12 + index,
+                    "ESTIMATE_CHANGED",
+                    pin.effective_date,
+                    {"estimate_version_id": pin.version_key},
+                ),
+                estimate_version_key=pin.version_key,
+            )
+            for index, pin in enumerate(pins)
+        )
+        transitioned = compute(
+            replace(
+                value,
+                estimate_versions=pins,
+                events=(*value.events, later, *pin_events),
+            )
+        ).books[0]
+        expected = 168_571 if treatment == "PROSPECTIVE" else 400_000
+        assert transitioned.contract_version.columns["revenue_cum"] == expected
+        assert january(transitioned) == january(original_output)
+
+        def february(book):
+            return [
+                (s.schedule_kind, s.line_type, s.amount, s.cumulative_amount)
+                for s in book.schedules
+                if s.period_key == "FY2026-P02"
+            ]
+
+        assert february(transitioned) == february(after)
+        assert reevaluate(transitioned.trace) == {n.id: n.value for n in transitioned.trace.nodes}
     with pytest.raises(ValueError, match="original unit measure"):
         compute(replace(value, evidence_revision=32 if method == "COST_RECOVERY" else 31))
