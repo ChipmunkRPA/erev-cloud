@@ -39,6 +39,7 @@ def app(committed_db, app_settings, clock):
         (False, False, True, True, True),
         (False, False, True, True, "complete"),
         (False, False, True, True, "foreign"),
+        (False, False, True, True, "group"),
     ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
@@ -110,7 +111,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             keys=[f"FY2026-P{m:02d}" for m in range(1, 10)],
         )
         selected_entities.append("ACQUIRED-PERFORMER")
-    acquired_currency = "USD" if recomputed and untraced != "foreign" else "EUR"
+    acquired_currency = "USD" if recomputed and untraced not in {"foreign", "group"} else "EUR"
     if acquired_currency == "USD":
         close_run_worlds.approved_ssp_version(
             app,
@@ -123,71 +124,77 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                 close_run_worlds.point_entry(close_run_worlds.EUR_HOURS, "100", currency="USD")
             ],
         )
-    acquired = booked_contract(
-        world.place,
-        {
-            "external_id": "ACQUIRED-EUR",
-            "customer_id": str(existing.contract["customer_id"]),
-            "contracting_entity_code": worlds.AVM_US,
-            "transaction_currency": acquired_currency,
-            "inception_date": "2026-07-01" if closed_source and not untraced else "2026-08-01",
-            "lines": [
-                {
-                    "obligation_key": "O1",
-                    "product_code": close_run_worlds.EUR_HOURS,
-                    **({"performing_entity_code": "ACQUIRED-PERFORMER"} if cross_entity else {}),
-                    "quantity": "200",
-                    "total_price": {"amount": "20000.00", "currency": acquired_currency},
-                    "unit_price": "100.00",
-                    "start_date": "2026-08-01",
-                    "end_date": "2026-12-31",
-                }
-            ],
-        },
-        activate=True,
-    )
+    acquired_body = {
+        "external_id": "ACQUIRED-EUR",
+        "customer_id": str(existing.contract["customer_id"]),
+        "contracting_entity_code": worlds.AVM_US,
+        "transaction_currency": acquired_currency,
+        "inception_date": "2026-07-01" if closed_source and not untraced else "2026-08-01",
+        "lines": [
+            {
+                "obligation_key": "O1",
+                "product_code": close_run_worlds.EUR_HOURS,
+                **({"performing_entity_code": "ACQUIRED-PERFORMER"} if cross_entity else {}),
+                "quantity": "200",
+                "total_price": {"amount": "20000.00", "currency": acquired_currency},
+                "unit_price": "100.00",
+                "start_date": "2026-08-01",
+                "end_date": "2026-12-31",
+            }
+        ],
+    }
+    acquired = booked_contract(world.place, acquired_body, activate=True)
 
     def money(amount):
         return {"amount": amount, "currency": acquired_currency}
 
-    appended(
-        world.place,
-        UUID(str(acquired.contract["id"])),
-        2,
-        [
-            EventIn(
-                event_type=ContractEventType.OPENING_BALANCE_ESTABLISHED,
-                effective_date=date(2026, 8, 31),
-                payload=OpeningBalanceEstablishedV3.model_validate(
-                    {
-                        "reason": "BUSINESS_COMBINATION",
-                        "cutover_date": "2026-08-31",
-                        "onboarding_method": "RECOMPUTE_FROM_INCEPTION"
-                        if recomputed
-                        else "OPENING_BALANCES_AT_CUTOVER",
-                        "fair_value_contract_liability": money("10000"),
-                        "obligations": [
-                            {
-                                "obligation_key": "O1",
-                                "delivered_quantity_cum": "100",
-                                "ssp_delivered_cum": "10000",
-                                "remaining_quantity": "100",
-                                "remaining_ssp": "10000",
-                                "revenue_cum": money("10000"),
-                                "billed_cum": money("20000"),
-                                "catch_up_cum": money("0"),
-                                "pre_standard_revenue_cum": money("0"),
-                                "remaining_allocation": money("10000"),
-                                "remaining_billing": money("0"),
-                                "position_obligation": money("10000"),
-                                "netting_reclass_amount": money("0"),
-                            }
-                        ],
-                    }
-                ),
-            )
-        ],
-    )
+    def append_acquisition(contract_id):
+        appended(
+            world.place,
+            contract_id,
+            2,
+            [
+                EventIn(
+                    event_type=ContractEventType.OPENING_BALANCE_ESTABLISHED,
+                    effective_date=date(2026, 8, 31),
+                    payload=OpeningBalanceEstablishedV3.model_validate(
+                        {
+                            "reason": "BUSINESS_COMBINATION",
+                            "cutover_date": "2026-08-31",
+                            "onboarding_method": "RECOMPUTE_FROM_INCEPTION"
+                            if recomputed
+                            else "OPENING_BALANCES_AT_CUTOVER",
+                            "fair_value_contract_liability": money("10000"),
+                            "obligations": [
+                                {
+                                    "obligation_key": "O1",
+                                    "delivered_quantity_cum": "100",
+                                    "ssp_delivered_cum": "10000",
+                                    "remaining_quantity": "100",
+                                    "remaining_ssp": "10000",
+                                    "revenue_cum": money("10000"),
+                                    "billed_cum": money("20000"),
+                                    "catch_up_cum": money("0"),
+                                    "pre_standard_revenue_cum": money("0"),
+                                    "remaining_allocation": money("10000"),
+                                    "remaining_billing": money("0"),
+                                    "position_obligation": money("10000"),
+                                    "netting_reclass_amount": money("0"),
+                                }
+                            ],
+                        }
+                    ),
+                )
+            ],
+        )
+
+    append_acquisition(UUID(str(acquired.contract["id"])))
+    second = None
+    if untraced == "group":
+        second = booked_contract(
+            world.place, {**acquired_body, "external_id": "ACQUIRED-SECOND"}, activate=True
+        )
+        append_acquisition(UUID(str(second.contract["id"])))
     if closed_source:
         # Retained legacy calculation fixture: the native input excludes the cutover
         # from its posting horizon. This is not a test of creating an actual lock.
@@ -227,7 +234,29 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
 
         with monkeypatch.context() as patch:
             patch.setattr(inputs, "build", closed_input)
-            _, output, _ = computed(world.place, UUID(str(acquired.combination_group["id"])))
+            group_id = UUID(str(acquired.combination_group["id"]))
+            if second is not None:
+                from support.reference import approve
+
+                proposal = post(
+                    app,
+                    "/api/v1/combination-groups",
+                    world.maya,
+                    {
+                        "contract_ids": [str(acquired.contract["id"]), str(second.contract["id"])],
+                        "criterion": "606-10-25-9(b)",
+                        "rationale": "One acquired package.",
+                    },
+                )
+                assert proposal.status_code == 201, proposal.text
+                group_id = UUID(proposal.json()["id"])
+                submitted = post(
+                    app, f"/api/v1/combination-groups/{group_id}/submit", world.maya, {}
+                )
+                assert submitted.status_code == 200, submitted.text
+                approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+                assert approved.status_code == 200, approved.text
+            _, output, _ = computed(world.place, group_id)
         assert not any(
             node.id == "contract_liability:ACQUIRED-EUR@AVM-US:FY2026-P08"
             for node in output.books[0].trace.nodes
@@ -286,6 +315,9 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                 assert "no persisted member balance row" in str(finished), finished
                 assert "ACQUIRED-EUR" in str(finished), finished
                 assert "FY2026-P08" in str(finished), finished
+            return
+        if second is not None:
+            _closed_group_reports(world, output.books[0].acquisition_balance_observations)
             return
         _closed_source_reports(
             world,
@@ -674,3 +706,76 @@ def _settled_report(world, code, parameters):
     rows = get(world.app, f"/api/v1/report-runs/{run_id}/data", world.maya, {"limit": "200"})
     assert shown.status_code == rows.status_code == 200
     return shown.json(), rows.json()["items"]
+
+
+def _closed_group_reports(world, snapshots):
+    assert len(snapshots) == 2
+    members = {"ACQUIRED-EUR", "ACQUIRED-SECOND"}
+    for view, currency, amount in (
+        ("transaction", "EUR", "20000.00"),
+        ("functional", "USD", "22000.00"),
+        ("reporting", "EUR", "19909.50"),
+    ):
+        params = {"entity_codes": [worlds.AVM_US], "book": "ASC606", "currency_view": view}
+        for code, timing in (
+            ("contract_balances", {"period_key": "FY2026-P08"}),
+            (
+                "contract_balance_rollforward",
+                {"from_period_key": "FY2026-P08", "to_period_key": "FY2026-P08"},
+            ),
+        ):
+            run, rows = worlds.report_run(world, code, {**params, **timing})
+            selected = [
+                row
+                for row in rows
+                if row["row_key"] in {f"contract:{member}:{worlds.AVM_US}" for member in members}
+            ]
+            assert len(selected) == 2
+            column = "contract_liability_current" if code == "contract_balances" else "closing"
+            explanations = {}
+            for row in selected:
+                assert row[column] == {"amount": amount, "currency": currency}
+                if code == "contract_balance_rollforward":
+                    assert row["other"]["amount"] == "0.00"
+                explained = get(
+                    world.app,
+                    f"/api/v1/explain/report-runs/{run['id']}/cell",
+                    world.maya,
+                    params={
+                        "row_key": row["row_key"],
+                        "column_key": column
+                        if code == "contract_balances"
+                        else "business_combinations",
+                    },
+                )
+                assert explained.status_code == 200, explained.text
+                explanations[row["row_key"]] = explained.json()
+                if code == "contract_balances":
+                    assert "complete acquisition group" in str(explained.json())
+            if code == "contract_balance_rollforward":
+                assert {check["code"]: check["result"] for check in run["tie_out_results"]}[
+                    "TO_BALANCES_EQ_ROLLFORWARD"
+                ] == "PASS"
+            repeated = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+            assert repeated.status_code == 202, repeated.text
+            again = worlds.run_now(world, UUID(repeated.json()["id"]))
+            assert again["state"] == "SUCCEEDED", again
+            rerun_id = repeated.headers[worlds.REPORT_RUN_ID_HEADER]
+            retained = get(world.app, f"/api/v1/report-runs/{rerun_id}", world.maya)
+            assert retained.status_code == 200, retained.text
+            assert retained.json()["output"]["sha256"] == run["output"]["sha256"]
+            for row_key, original in explanations.items():
+                explanation = get(
+                    world.app,
+                    f"/api/v1/explain/report-runs/{rerun_id}/cell",
+                    world.maya,
+                    params={
+                        "row_key": row_key,
+                        "column_key": column
+                        if code == "contract_balances"
+                        else "business_combinations",
+                    },
+                )
+                assert explanation.status_code == 200, explanation.text
+                assert explanation.json()["value"] == original["value"]
+                assert explanation.json()["contributors"] == original["contributors"]

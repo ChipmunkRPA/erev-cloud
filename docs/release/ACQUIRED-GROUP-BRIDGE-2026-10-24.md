@@ -23,3 +23,19 @@ bridge conservation, following-period continuity and retained-input rerun equali
 the native engine and actual report readers/bridge with database access substituted; they do
 not establish an HTTP/database workflow pass. Scoped lint/types and diff checks pass.
 No deployment; pending mixed ordinary/acquired presentation policy is unchanged.
+
+## Populated report workflow verification
+
+The local PostgreSQL/HTTP/worker scenario now passes with two acquired contracts combined
+through proposal, submission and approval. Its retained-input fixture excludes the cutover
+from the computation horizon; this is not a new production lock or migration operation.
+The engine produces two complete cutover observations and no ordinary cutover member rows.
+
+Both contract balances and contract-balance rollforward succeed in transaction, functional
+and reporting currency. Each member's balance, zero OTHER, rollforward balance tie-out,
+shared-source explanation and source links are read through public endpoints. All six report
+runs are rerun from their retained inputs: output SHA-256 and both members' explained values
+and contributors match. The existing singleton foreign-cutover workflow also passes (two
+populated scenarios total). Scoped lint and diff checks pass; local PostgreSQL stopped.
+This supersedes the earlier HTTP/database verification limitation for this scenario only.
+No deployment or overall completion claim.

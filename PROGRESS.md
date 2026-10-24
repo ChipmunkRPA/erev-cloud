@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: acquired-group reports retain layer owners and avoid duplicate boundary transfers; targeted checks pass. See CURRENT-DEVELOPMENT-SCOPE. No deployment.
+Oct 24: public multi-member acquisition reports and six retained reruns pass in three currency views. See CURRENT-DEVELOPMENT-SCOPE. No deployment.

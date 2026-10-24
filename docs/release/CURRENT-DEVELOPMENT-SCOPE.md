@@ -2987,3 +2987,12 @@ included at the acquisition boundary. Cell explanations distinguish shared layer
 amounts. Twenty-four targeted checks and four expanded continuity/rerun cases pass; see
 [checkpoint](ACQUIRED-GROUP-BRIDGE-2026-10-24.md). Older ownerless shared observations explicitly
 refuse the bridge. No deployment; mixed ordinary/acquired flow policy remains pending.
+
+
+### 2026-10-24 — Populated multi-member acquisition report workflow
+
+Approved combination, computation, both public report jobs in three currency views, cell
+explanations and six retained-input reruns now pass against local PostgreSQL. Rerun output
+hashes and member contributor details match; the existing singleton foreign scenario also
+passes. See [evidence](ACQUIRED-GROUP-BRIDGE-2026-10-24.md). The closed cutover is a retained-input
+fixture, not an actual lock workflow. Local PostgreSQL stopped; no deployment.
