@@ -1088,6 +1088,7 @@ def _events(
     obligation_keys: Mapping[UUID, str],
     known_at: datetime,
     pending_contract_id: UUID | None,
+    pending_contract_ids: Sequence[UUID] | None = None,
     ssp_version_keys: Mapping[str, str] | None = None,
     estimate_version_keys: Mapping[str, str] | None = None,
     native_modification_ids: frozenset[str] = frozenset(),
@@ -1159,14 +1160,24 @@ def _events(
                 manual_adjustment_key=adjustment_key,
             )
         )
+    if pending_contract_ids is not None and len(pending_contract_ids) != len(pending):
+        raise ValueError("each pending event needs exactly one contract")
     if pending:
-        if pending_contract_id is None:
-            raise ValueError("pending events need the contract they are appended to")
-        target = contracts[pending_contract_id]
-        external_id = str(target["external_id"])
-        head = int(target["head_stream_version"])
+        owners = pending_contract_ids
+        if owners is None:
+            if pending_contract_id is None:
+                raise ValueError("pending events need the contract they are appended to")
+            owners = [pending_contract_id] * len(pending)
+        heads = {
+            identity: int(target["head_stream_version"]) for identity, target in contracts.items()
+        }
         next_seq = max((int(row["record_seq"]) for row in rows), default=0) + 1
-        for offset, event in enumerate(pending, start=1):
+        for offset, (owner, event) in enumerate(zip(owners, pending, strict=True), start=1):
+            if owner not in contracts:
+                raise ValueError("pending event contract is outside the combination group")
+            external_id = str(contracts[owner]["external_id"])
+            heads[owner] += 1
+            version = heads[owner]
             pending_payload, pending_key = _adjustment_payload(
                 event.event_type.value,
                 engine_payload(payload_json(event.payload)),
@@ -1180,9 +1191,9 @@ def _events(
             )
             found.append(
                 EventInput(
-                    event_key=_event_key(external_id, head + offset),
+                    event_key=_event_key(external_id, version),
                     contract_key=external_id,
-                    stream_version=head + offset,
+                    stream_version=version,
                     event_type=event.event_type.value,
                     # the version ``stream`` appends at (stream.py; D-98 cand. 127, Codex 0533 F2)
                     schema_version=LATEST_SCHEMA_VERSION[event.event_type],
@@ -1202,7 +1213,7 @@ def _events(
                         event.event_type.value,
                         payload,
                         native_modification_ids,
-                        event=_event_key(external_id, head + offset),
+                        event=_event_key(external_id, version),
                     ),
                     estimate_version_key=None
                     if event.estimate_version_id is None
@@ -3107,6 +3118,7 @@ def build(
     trigger: ComputationTrigger | str = ComputationTrigger.COMMAND,
     *,
     pending_contract_id: UUID | None = None,
+    pending_contract_ids: Sequence[UUID] | None = None,
     cutoff: datetime | None = None,
     pending_modifications: Sequence[Mapping[str, Any]] = (),
 ) -> InputBundle:
@@ -3117,7 +3129,9 @@ def build(
     ``CONTRACT_AMENDED`` in ``pending_events``).
 
     404 ``not-found`` when the group is not visible. ``pending_events`` are appended to
-    ``pending_contract_id`` after its head, recorded at the cutoff. The bundle's ``known_at`` is
+    ``pending_contract_id`` after its head, recorded at the cutoff. For a multi-contract
+    preview, ``pending_contract_ids`` assigns one owner per event in application order; each
+    owner advances its own stream while record order remains global. The bundle's ``known_at`` is
     ``record_cutoff(session, known_at)``, or ``cutoff`` when a caller names one.
 
     The bundle is read under the tenant's scope whoever calls and whatever scope the transaction
@@ -3133,6 +3147,7 @@ def build(
             pending_events,
             trigger,
             pending_contract_id=pending_contract_id,
+            pending_contract_ids=pending_contract_ids,
             cutoff=cutoff,
             pending_modifications=pending_modifications,
         )
@@ -3146,6 +3161,7 @@ def _assemble(
     trigger: ComputationTrigger | str,
     *,
     pending_contract_id: UUID | None,
+    pending_contract_ids: Sequence[UUID] | None = None,
     cutoff: datetime | None,
     pending_modifications: Sequence[Mapping[str, Any]],
 ) -> InputBundle:
@@ -3203,6 +3219,7 @@ def _assemble(
         obligation_keys=obligation_keys,
         known_at=known_at,
         pending_contract_id=pending_contract_id,
+        pending_contract_ids=pending_contract_ids,
         ssp_version_keys=ssp_version_keys,
         estimate_version_keys=estimate_keys,
         native_modification_ids=native_ids,

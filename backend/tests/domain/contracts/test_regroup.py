@@ -742,12 +742,14 @@ def test_regroup_permission_prd_1_modification_create_alone_does_not_regroup(
     assert _written(k02) == before
 
 
+@pytest.mark.parametrize("shared_group", [False, True])
 def test_retained_posted_pair_workflow(
     k02: K02World,
     app_settings: Settings,
     keyring: KeyRing,
     clock: FrozenClock,
     monkeypatch: pytest.MonkeyPatch,
+    shared_group: bool,
 ) -> None:
     """Exercise the withdrawn path without enabling it at the public entrypoint."""
     from erev_api.jobs.context import JobRuntime
@@ -761,6 +763,27 @@ def test_retained_posted_pair_workflow(
         k02.place, booked_contract(k02.place, _one_line_body(k02, "REGROUP-TARGET"), activate=False)
     )
     source_id, target_id = (UUID(str(item.contract["id"])) for item in (source, target))
+    if shared_group:
+        grouped = post(
+            k02.app,
+            "/api/v1/combination-groups",
+            k02.place.author,
+            {
+                "contract_ids": [str(source_id), str(target_id)],
+                "criterion": "606-10-25-9(a)",
+                "rationale": "One deal.",
+            },
+        )
+        assert grouped.status_code == 201, grouped.text
+        routed = post(
+            k02.app,
+            f"/api/v1/combination-groups/{grouped.json()['id']}/submit",
+            k02.place.author,
+            {"comment": "Combine."},
+        )
+        assert routed.status_code == 200, routed.text
+        decision = approve(k02.app, routed.json()["approval_request_id"], k02.priya)
+        assert decision.status_code == 200, decision.text
     created = post(
         k02.app,
         f"{CONTRACTS}/{source_id}/regroup",
@@ -778,8 +801,33 @@ def test_retained_posted_pair_workflow(
         classified = modification_flows._classify(k02, identity)
         assert classified["chosen_treatments"], classified
         modification_flows.confirm_modification_answers(k02.app, identity, k02.place.author)
+    # Inspect real dry-run results; do not replace either engine calculation.
+    preview_results = []
+    original_dry_run = modification_flows.modifications.dry_run_summary
+
+    def capture_preview(*args, **kwargs):
+        result = original_dry_run(*args, **kwargs)
+        preview_results.append(result)
+        return result
+
+    monkeypatch.setattr(modification_flows.modifications, "dry_run_summary", capture_preview)
     for identity in ids:
         modification_flows._preview(k02, identity, runtime, confirm_answers=False)
+    if shared_group:
+        assert len(preview_results) == 2
+        for preview_bundle, preview_output, _ in preview_results:
+            boundaries = [
+                event for event in preview_bundle.events if event.event_type == "REGROUPED"
+            ]
+            assert [(event.contract_key, event.payload["direction"]) for event in boundaries] == [
+                ("REGROUP-SOURCE", "OUT"),
+                ("REGROUP-TARGET", "IN"),
+            ]
+            book = next(item for item in preview_output.books if item.book_code == "ASC606")
+            assert (
+                sum(item.columns["allocated_amount"] for item in book.obligation_versions)
+                == 38400000
+            )
     modification_flows._applied(k02, ids[0], clock)
     for identity in ids:
         assert modification_flows._row(k02, identity)["status"] == "APPLIED"
@@ -797,6 +845,8 @@ def test_retained_posted_pair_workflow(
     assert sum(target_allocations.values()) == Decimal("144000") + remaining
     assert sum(source_allocations.values()) + sum(target_allocations.values()) == Decimal("384000")
     lines_before = len(k02.place.rows(select(subledger_line.c.id)))
-    for item in (source, target):
-        computed(k02.place, UUID(str(item.combination_group["id"])))
+    for group_id in {
+        modification_flows._group_of(k02, identity) for identity in (source_id, target_id)
+    }:
+        computed(k02.place, group_id)
     assert len(k02.place.rows(select(subledger_line.c.id))) == lines_before

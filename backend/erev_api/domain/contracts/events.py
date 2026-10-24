@@ -132,12 +132,6 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from erev_engine import billing_identity
-from erev_engine.bundle import InputBundle, OutputBundle
-from erev_engine.currencies import ISO_4217
-from erev_engine.errors import EngineError
-from erev_engine.money import format_exact, minor_to_decimal
-from erev_engine.stages.s01_canonicalize import contract_subject_key
 from pydantic import ValidationError
 from sqlalchemy import Select, and_, any_, insert, or_, select
 from sqlalchemy.orm import Session
@@ -236,6 +230,12 @@ from erev_api.schemas.events import (
     SubmissionCreatedOut,
     SubmissionWithdrawIn,
 )
+from erev_engine import billing_identity
+from erev_engine.bundle import InputBundle, OutputBundle
+from erev_engine.currencies import ISO_4217
+from erev_engine.errors import EngineError
+from erev_engine.money import format_exact, minor_to_decimal
+from erev_engine.stages.s01_canonicalize import contract_subject_key
 
 if TYPE_CHECKING:
     from erev_api.jobs.context import JobContext
@@ -2948,6 +2948,7 @@ def dry_run_summary(
     pending: Sequence[EventIn],
     *,
     pending_contract_id: UUID,
+    pending_contract_ids: Sequence[UUID] | None = None,
     pending_modifications: Sequence[Mapping[str, Any]] = (),
     engine: computation.Engine | None = None,
     summarise: bool = True,
@@ -2969,6 +2970,7 @@ def dry_run_summary(
         pending,
         DRY_RUN,
         pending_contract_id=pending_contract_id,
+        pending_contract_ids=pending_contract_ids,
         pending_modifications=pending_modifications,
     )
     run = engine if engine is not None else computation.default_engine()

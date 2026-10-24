@@ -133,3 +133,45 @@ def test_opening_method_is_explicit_and_old_payloads_keep_identical_json():
         payloads.parse_payload(
             OPENING, 3, {**original, "onboarding_method": "RECOMPUTE_FROM_INCEPTION"}
         )
+
+
+def test_pending_pair_advances_each_contract_stream_in_application_order():
+    first, second = uuid4(), uuid4()
+    event = EventIn(
+        event_type=ACTIVATED,
+        effective_date=CUTOVER,
+        payload=payloads.parse_payload(
+            ACTIVATED, 1, {"checklist": [{"code": "ACT", "passed": True}]}
+        ),
+    )
+    contracts = {
+        first: {"external_id": "SOURCE", "head_stream_version": 8},
+        second: {"external_id": "TARGET", "head_stream_version": 3},
+    }
+    found = bundles._events(
+        [],
+        [event, event, event],
+        contracts=contracts,
+        obligation_keys={},
+        known_at=KNOWN_AT,
+        pending_contract_id=None,
+        pending_contract_ids=[first, second, first],
+    )
+    assert [(item.contract_key, item.stream_version, item.record_seq) for item in found] == [
+        ("SOURCE", 9, 1),
+        ("TARGET", 4, 2),
+        ("SOURCE", 10, 3),
+    ]
+    import pytest
+
+    for owners in ([first], [first, uuid4(), first]):
+        with pytest.raises(ValueError):
+            bundles._events(
+                [],
+                [event, event, event],
+                contracts=contracts,
+                obligation_keys={},
+                known_at=KNOWN_AT,
+                pending_contract_id=None,
+                pending_contract_ids=owners,
+            )

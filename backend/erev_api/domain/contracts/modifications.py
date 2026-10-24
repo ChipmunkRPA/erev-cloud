@@ -2104,14 +2104,26 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                 if unknown:
                     raise _failed(*unknown)
                 event = _preview_event(row, pair)
+                preview_rows = [row]
+                if row.get("regroup_id") is not None and all(
+                    repo.get_contract(session, _uuid(item["contract_id"]))["combination_group_id"]
+                    == current["combination_group_id"]
+                    for item in pair
+                ):
+                    # Application appends OUT before IN and computes the shared group once.
+                    preview_rows = sorted(
+                        pair, key=lambda item: item["kind"] != "REMOVE_OBLIGATION"
+                    )
+                preview_events = [_preview_event(item, pair) for item in preview_rows]
                 bundle, output, maybe = dry_run_summary(
                     session,
                     current,
                     uow.now,
-                    [event],
+                    preview_events,
                     uow=uow,
                     pending_contract_id=_uuid(current["id"]),
-                    pending_modifications=(row,),
+                    pending_contract_ids=[_uuid(item["contract_id"]) for item in preview_rows],
+                    pending_modifications=preview_rows,
                 )
                 assert maybe is not None  # a dry run with an applying event summarises
                 event_key, nodes = _candidate_nodes(session, bundle, output, current)

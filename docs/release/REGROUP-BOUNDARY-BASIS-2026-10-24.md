@@ -207,3 +207,26 @@ ordinary populated K-02 preview all pass (3 cases); scoped types/lint pass. This
 seat-service witness across separate groups, not a general release of after-posting regroup.
 Public guards remain. Same-group simultaneous preview, broader consideration/progress paths,
 and separate-contract treatment remain outstanding. No deployment.
+
+
+## Shared-group two-sided transfer preview
+
+The bundle builder and common dry-run path now accept an ordered contract owner for each
+pending event. Each contract advances its own stream version; record sequence follows the
+complete application order. Missing owners, count mismatches and owners outside the group are
+refused. Existing single-contract callers retain their original behavior.
+
+A retained regroup preview whose two contracts share a group now includes both modification
+headers and both REGROUPED events, OUT then IN, matching approval's append order before one
+group computation. Each row still displays its own contract's impact and retains its own
+boundary provenance. Cross-group transfers continue to preview each affected group separately.
+
+The populated engineering lifecycle covers both separate and shared groups. For each side of
+the shared-group preview it inspects the real input/output: both OUT and IN are present, in
+order, and total allocation is 384,000. Approval preserves that total, leaves the source's
+recognized allocation intact, and repeated computation adds no ledger entries. Public
+post-posting entry guards are bypassed only in the fixture and remain in production code;
+this does not enable unsupported consideration/progress or separate-contract treatments.
+
+Necessary verification: 3 populated workflow/ordinary-preview cases and 7 focused event/preview
+cases pass, along with scoped types/lint. No deployment.
