@@ -27,19 +27,29 @@ def app(committed_db, app_settings, clock):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "locked,cross_entity,recomputed,closed_source",
+    "locked,cross_entity,recomputed,closed_source,untraced",
     [
-        (False, False, False, False),
-        (True, False, False, False),
-        (False, True, False, False),
-        (True, True, False, False),
-        (False, False, True, False),
-        (True, False, True, False),
-        (False, False, True, True),
+        (False, False, False, False, False),
+        (True, False, False, False, False),
+        (False, True, False, False, False),
+        (True, True, False, False, False),
+        (False, False, True, False, False),
+        (True, False, True, False, False),
+        (False, False, True, True, False),
+        (False, False, True, True, True),
     ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
-    app, keyring, clock, app_settings, monkeypatch, locked, cross_entity, recomputed, closed_source
+    app,
+    keyring,
+    clock,
+    app_settings,
+    monkeypatch,
+    locked,
+    cross_entity,
+    recomputed,
+    closed_source,
+    untraced,
 ):
     if cross_entity:
         monkeypatch.setattr(
@@ -118,7 +128,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             "customer_id": str(existing.contract["customer_id"]),
             "contracting_entity_code": worlds.AVM_US,
             "transaction_currency": acquired_currency,
-            "inception_date": "2026-07-01" if closed_source else "2026-08-01",
+            "inception_date": "2026-07-01" if closed_source and not untraced else "2026-08-01",
             "lines": [
                 {
                     "obligation_key": "O1",
@@ -219,7 +229,44 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             node.id == "contract_liability:ACQUIRED-EUR@AVM-US:FY2026-P08"
             for node in output.books[0].trace.nodes
         )
+        if untraced:
+            from erev_api.domain.reports import tie_outs
+
+            trace = tie_outs.traced_balances(
+                (node.id, node.value) for node in output.books[0].trace.nodes
+            )
+            assert "ACQUIRED-EUR@AVM-US" not in trace.latest
         world = worlds.on_record_clock(world, clock)
+        if untraced:
+            for code, period_params in (
+                ("contract_balances", {"period_key": "FY2026-P08"}),
+                (
+                    "contract_balance_rollforward",
+                    {"from_period_key": "FY2026-P08", "to_period_key": "FY2026-P08"},
+                ),
+            ):
+                started = post(
+                    world.app,
+                    "/api/v1/report-runs",
+                    world.maya,
+                    {
+                        "report_code": code,
+                        "output_format": "JSON",
+                        "parameters": {
+                            "entity_codes": [worlds.AVM_US],
+                            "book": "ASC606",
+                            "currency_view": "transaction",
+                            **period_params,
+                        },
+                    },
+                )
+                assert started.status_code == 202, started.text
+                finished = _settled_refusal(world, UUID(started.json()["id"]))
+                assert finished["state"] == "FAILED", finished
+                assert "no persisted member balance row" in str(finished), finished
+                assert "ACQUIRED-EUR" in str(finished), finished
+                assert "FY2026-P08" in str(finished), finished
+            return
         _closed_source_reports(world)
         return
     computed(world.place, UUID(str(acquired.combination_group["id"])))
@@ -443,3 +490,25 @@ def _closed_source_reports(world):
         )
         assert data.status_code == 200, data.text
         assert data.json()["items"] == rows
+
+
+def _settled_refusal(world, job_id):
+    from sqlalchemy import select
+
+    from erev_api.db.session import DbContext, tenant_session
+    from erev_api.db.tables import job
+    from erev_api.jobs.registry import run_job
+
+    state = worlds.run_now(world, job_id)
+    if state["state"] not in ("SUCCEEDED", "FAILED"):
+        context = DbContext(tenant_id=world.tenant_id, user_id=None, entity_scope="*")
+        with tenant_session(context) as session:
+            task_id = session.execute(
+                select(job.c.procrastinate_job_id).where(job.c.id == job_id)
+            ).scalar_one()
+            session.execute(worlds._TASK_FETCHED, {"id": task_id})
+        run_job(job_id, world.tenant_id, attempt=2, runtime=world.runtime)
+        shown = get(world.app, f"/api/v1/jobs/{job_id}", world.maya)
+        assert shown.status_code == 200, shown.text
+        state = shown.json()
+    return state

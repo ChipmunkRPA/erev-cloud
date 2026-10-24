@@ -1304,6 +1304,19 @@ def balances_at(
     if contract_id is not None:
         statement = statement.where(contract_version_balance.c.contract_id == contract_id)
     rows = [dict(row) for row in session.execute(statement).mappings()]
+    if uow is not None and params is not None:
+        from .acquisition_population import require_rows
+
+        require_rows(
+            uow,
+            params,
+            entity_ids=entity_ids,
+            book=book_code,
+            periods=period_keys,
+            cutoff=cutoff,
+            contract_id=contract_id,
+            locked_ends=locked_ends,
+        )
     if traces is None:
         traces = {}
     found: list[BalanceRow] = []
