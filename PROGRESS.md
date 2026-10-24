@@ -218,9 +218,9 @@ Mixed groups, agents and recomputed baselines remain unfinished.
   immutability. Necessary checks cover populated copy, open-period computation, late events,
   load evidence, source close-gate independence and populated reset. Updated old test evidence
   inventories for existing computation/audit commit records, retaining source business-row checks.
-- This does not add a one-click refresh from the latest production state: the current reset UI
-  still offers its original seed or empty. That owner-requested workflow remains to be completed.
-  Reporting foreign modification attribution and final candidate verification also remain open.
+- Latest-production refresh is complete (LATEST reset); see the October 22 checkpoint in
+  LIMITS-1.0.md. Modification attribution uses the implemented sequential causal analysis.
+  Final candidate verification remains open.
 
 ## Outstanding release verification
 

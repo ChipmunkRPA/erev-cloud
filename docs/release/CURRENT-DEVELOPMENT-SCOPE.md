@@ -1891,18 +1891,21 @@ replacement for the full scope above.
 - The next shared-breakage implementation needs effective-date SSP/entitlement sources, frozen
   per-member allocations in the submitted version, approval freshness over those sources,
   atomic member application and native member pins overriding local estimates. The current
-  `portfolio_preview` reads latest obligation versions; copying its result into an approval
-  would freeze the wrong temporal basis after later modifications. Determine the expected
-  redemption denominator before enabling impact or postings; the earlier question remains open.
-- Cross-entity agents require both net-source and contracting-control support. Removing only
-  the same-entity filter in `opening_agent_sources.read` is insufficient: the intercompany
-  reader accepts principal due-to proofs, while the POB calculation separately checks the
-  performing entity and agent eligibility. Retain net totals and complete source sets without
-  manufacturing layer allocations.
+  effective-date preview is now implemented and verified through the public API, using original
+  computation identities and exact dated SSP/entitlements (see SHARED-TARGET-CHANGES-2026-10-23.md).
+  Frozen application allocations and the expected redemption denominator remain open; preview
+  completion alone does not enable impact, approval or postings.
+- Cross-entity agents now have revision-21 contracting-entity revenue/control sources and
+  revision-22 contracting-calendar handling. PERFORMING_ENTITY revenue still needs the supplier
+  payable ownership decision and implementation. Retain net totals and complete source sets
+  without manufacturing layer allocations; the contracting path does not prove that other policy.
 - Mixed acquired/existing groups still refuse in `acquisition_flows.read`. Current acquisition
   evidence reads the original member cutover balance and requires every group member to have
   the same acquired baseline. Removing the membership guard alone could relabel ordinary
-  prior business as acquisition. An explicit acquisition-only amount source is needed first.
+  prior business as acquisition. Native revisions 25–27 now retain signed group changes and
+  original transaction/FX sources; acquisition_native reads and reconciles them, and the report
+  path accepts signed changes. Public group/member presentation and source integration remain
+  open; see ACQUIRED-CLOSED-CUTOVER-2026-10-23.md.
 
 Effective-date combination reassessment remains a separate authorized feature: quantity, term
 or partial-removal changes must preserve earlier grouping and recognized revenue. The existing

@@ -176,9 +176,11 @@ Prior saved source revisions retain their original behavior.
   immutability. Necessary checks cover populated copy, open-period computation, late events,
   load evidence, source close-gate independence and populated reset. Updated old test evidence
   inventories for existing computation/audit commit records, retaining source business-row checks.
-- This does not add a one-click refresh from the latest production state: the current reset UI
-  still offers its original seed or empty. That owner-requested workflow remains to be completed.
-  Reporting foreign modification attribution and final candidate verification also remain open.
+- Latest-production refresh is implemented by the subsequent LATEST reset workflow, including
+  fresh source access checks, editable successor loading and failure isolation. See the
+  October 22 latest-production checkpoint in LIMITS-1.0.md; this is no longer an open feature.
+  Final candidate verification remains open; modification attribution uses the implemented
+  owner-selected sequential causal analysis described in CURRENT-DEVELOPMENT-SCOPE.md.
 
 
 ## Multi-currency tie-out display completeness — October 22, 2026

@@ -902,6 +902,7 @@ function SandboxView({ me, tenantId, tenantName }: ViewProps) {
       {confirming ? (
         <ResetDialog
           knownAt={knownAt}
+          hasProductionSource={own?.source_tenant_id != null}
           onClose={() => {
             setConfirming(false);
           }}
@@ -918,6 +919,7 @@ function SandboxView({ me, tenantId, tenantName }: ViewProps) {
 type ResetMode = "SNAPSHOT" | "EMPTY" | "LATEST";
 
 interface ResetDialogProps {
+  readonly hasProductionSource: boolean;
   /** `source_known_at` of the sandbox: the copy a reset can go back to, null in an empty sandbox. */
   readonly knownAt: string | null;
   readonly onClose: () => void;
@@ -925,7 +927,7 @@ interface ResetDialogProps {
 }
 
 /** §9.7 "Reset sandbox" (SCR-LTH-12; SB-R-05): a confirmation with a reason; ACT-51 step-up. */
-function ResetDialog({ knownAt, onClose, onStarted }: ResetDialogProps) {
+function ResetDialog({ knownAt, hasProductionSource, onClose, onStarted }: ResetDialogProps) {
   const formId = useId();
   const [mode, setMode] = useState<ResetMode>(knownAt === null ? "EMPTY" : "SNAPSHOT");
   const [reason, setReason] = useState("");
@@ -989,7 +991,9 @@ function ResetDialog({ knownAt, onClose, onStarted }: ResetDialogProps) {
                       }),
                     },
                   ]),
-              { value: "LATEST" as const, label: t("settings.sandbox.reset.mode.latest") },
+              ...(hasProductionSource
+                ? [{ value: "LATEST" as const, label: t("settings.sandbox.reset.mode.latest") }]
+                : []),
               { value: "EMPTY" as const, label: t("settings.sandbox.reset.mode.empty") },
             ]}
             value={mode}
