@@ -102,6 +102,7 @@ from erev_api.db.tables import (
     period_state,
     pob_template,
     pob_template_version,
+    portfolio_member,
     product,
     registry_version,
     related_party_group,
@@ -140,6 +141,7 @@ from erev_engine.bundle import (
     EventInput,
     FxRateInput,
     GroupInput,
+    PortfolioInput,
     InputBundle,
     JudgementInput,
     MappingRuleInput,
@@ -842,6 +844,37 @@ def _members(session: Session, group_id: UUID, known_at: datetime) -> list[dict[
         .order_by(contract.c.external_id)
     )
     return [dict(row) for row in session.execute(statement).mappings()]
+
+
+def portfolio_inputs(
+    session: Session, contracts: Mapping[UUID, Mapping[str, Any]], known_at: datetime
+) -> tuple[PortfolioInput, ...]:
+    """Retain this computation group's shared-estimate memberships at its record cutoff.
+
+    Use the immutable portfolio ID as its native code. Renaming a display code must not
+    rename an applied estimate or rewrite a historical input. These are group-local
+    members, not the whole population used to freeze a cross-group allocation.
+    """
+    if not contracts:
+        return ()
+    rows = session.execute(
+        select(portfolio_member.c.portfolio_id, portfolio_member.c.contract_id).where(
+            portfolio_member.c.contract_id.in_(sorted(contracts)),
+            portfolio_member.c.valid_from_known_at <= known_at,
+            or_(
+                portfolio_member.c.valid_to_known_at.is_(None),
+                portfolio_member.c.valid_to_known_at > known_at,
+            ),
+        )
+    )
+    populations: dict[str, set[str]] = {}
+    for row in rows:
+        member = contracts[UUID(str(row.contract_id))]
+        populations.setdefault(str(row.portfolio_id), set()).add(str(member["external_id"]))
+    return tuple(
+        PortfolioInput(code=code, member_contract_keys=tuple(sorted(members)))
+        for code, members in sorted(populations.items())
+    )
 
 
 def _stored_events(
@@ -3266,7 +3299,7 @@ def _assemble(
             criterion=group["criterion"],
             previous_stream_heads=previous_heads,
             products=products,
-            portfolios=(),
+            portfolios=portfolio_inputs(session, contracts, known_at),
         ),
         contracts=headers,
         events=events,

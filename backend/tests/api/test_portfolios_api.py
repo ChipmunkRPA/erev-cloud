@@ -377,3 +377,34 @@ def test_portfolio_membership_workflow(
         after_basis = subjects.estimate_version_content(session, UUID(saved_total.json()["id"]))
     assert after_basis != before_basis
     assert len(after_basis["portfolio_basis"]["memberships"]) == len(basis["memberships"]) + 1
+
+    # Membership snapshots use the requested record cutoff, including removed/rejoined history.
+    from erev_api.domain.contracts import bundles
+
+    history = after_basis["portfolio_basis"]["memberships"]
+    from datetime import datetime
+
+    first_join = min(datetime.fromisoformat(m["valid_from_known_at"]) for m in history)
+    removed = min(
+        datetime.fromisoformat(m["valid_to_known_at"]) for m in history if m["valid_to_known_at"]
+    )
+    latest_join = max(datetime.fromisoformat(m["valid_from_known_at"]) for m in history)
+    with tenant_session(context) as session:
+        source = dict(
+            session.execute(select(contract).where(contract.c.id == UUID(contract_id)))
+            .mappings()
+            .one()
+        )
+        population = {UUID(contract_id): source}
+        assert (
+            bundles.portfolio_inputs(session, population, first_join - timedelta(microseconds=1))
+            == ()
+        )
+        first_snapshot = bundles.portfolio_inputs(session, population, first_join)
+        assert len(first_snapshot) == 1
+        assert first_snapshot[0].code == path.rsplit("/", 1)[-1]
+        assert first_snapshot[0].member_contract_keys == (source["external_id"],)
+        assert bundles.portfolio_inputs(session, population, removed) == ()
+        assert bundles.portfolio_inputs(session, population, latest_join) == first_snapshot
+        built = bundles.build(session, source["combination_group_id"], latest_join, [], "DRY_RUN")
+        assert built.group.portfolios == first_snapshot
