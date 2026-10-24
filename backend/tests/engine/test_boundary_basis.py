@@ -82,3 +82,43 @@ def test_time_basis_uses_service_before_effective_date_not_latest_remaining():
     assert basis.recognized_minor == 38356
     assert basis.remaining_minor == 961644
     assert basis.remaining_exact + basis.recognized_exact == basis.allocation_exact
+
+
+def test_proposed_date_includes_accepted_same_day_boundary_and_retains_current_terms():
+    value = continuation()
+    before = query(value)[0]
+    at = fixed_boundary_basis(
+        value,
+        book_code="ASC606",
+        effective_date=value.events[-1].effective_date,
+        contract_key=value.contracts[0].external_id,
+        obligation_keys=("SERVICE",),
+    )[0]
+    assert before.allocation_minor == 1_000_000
+    assert at.allocation_minor == 1_100_000
+    assert at.recognized_minor == before.recognized_minor == 250_000
+    assert at.remaining_minor == 850_000
+    assert at.remaining_quantity == Fraction(5, 2)
+    assert at.boundary_event_key is None
+    assert at.boundary_position == "AFTER_RETAINED_EVENTS_ON_DATE"
+    assert at.service_start_date is not None
+    assert at.service_end_date is not None
+    assert at.input_sha256 == before.input_sha256
+
+
+@pytest.mark.parametrize("both", [False, True])
+def test_boundary_query_requires_exactly_one_position(both):
+    value = continuation()
+    kwargs = (
+        {"event_key": value.events[-1].event_key, "effective_date": value.events[-1].effective_date}
+        if both
+        else {}
+    )
+    with pytest.raises(ValueError, match="exactly one"):
+        fixed_boundary_basis(
+            value,
+            book_code="ASC606",
+            contract_key=value.contracts[0].external_id,
+            obligation_keys=("SERVICE",),
+            **kwargs,
+        )

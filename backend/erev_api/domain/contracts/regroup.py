@@ -47,11 +47,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any, Final
 from uuid import UUID
 
-from erev_engine.errors import EngineError
 from sqlalchemy import and_, insert, select
 from sqlalchemy.orm import Session
 
@@ -75,6 +74,9 @@ from erev_api.events.stream import append_events
 from erev_api.problems import Problem, ProblemError
 from erev_api.schemas.modifications import RegroupIn, RegroupOut
 from erev_api.uow import UnitOfWork
+from erev_engine import money
+from erev_engine.boundary_basis import FixedBoundaryBasis, fixed_boundary_basis
+from erev_engine.errors import EngineError
 
 __all__ = ["regroup"]
 
@@ -302,6 +304,7 @@ def _move_lines(
     currency: str,
     external_id: str,
     posted: bool,
+    transfer_basis: Mapping[str, FixedBoundaryBasis] | None = None,
 ) -> list[dict[str, Any]]:
     """The REMOVE / ADD lines of the pair (S06-R-27; D-98 140-A6 REGROUP-R4): terms from the
     source's bound booking line — a key without one refuses by name; the consideration is the
@@ -316,8 +319,38 @@ def _move_lines(
                 RULE_TARGET,
                 TERMS_MISSING.format(external_id=external_id, key=key),
             )
+        quantity = Decimal(str(source.get("quantity", "0")))
+        start, end = source.get("start_date"), source.get("end_date")
         if posted:
+            if transfer_basis is None or key not in transfer_basis:
+                raise _failed("obligation_keys", RULE_TARGET, "A dated transfer basis is required.")
+            basis = transfer_basis[key]
+            if (
+                basis.obligation_key != key
+                or basis.currency != currency
+                or basis.contract_key != external_id
+            ):
+                raise _failed("obligation_keys", RULE_TARGET, "Transfer basis identity differs.")
+            if basis.remaining_minor < 0 or basis.remaining_quantity <= 0:
+                raise _failed(
+                    "obligation_keys",
+                    RULE_TARGET,
+                    "Transfer needs positive remaining service and nonnegative consideration.",
+                )
+            scaled = basis.remaining_quantity * 10**18
+            if scaled.denominator != 1:
+                raise _failed(
+                    "obligation_keys",
+                    RULE_TARGET,
+                    "Remaining quantity exceeds supported exact precision.",
+                )
+            with localcontext(money.DECIMAL_CONTEXT):
+                quantity = Decimal(scaled.numerator) / Decimal(10**18)
             amount = amounts[key]
+            start = max(
+                basis.effective_date, basis.service_start_date or basis.effective_date
+            ).isoformat()
+            end = None if basis.service_end_date is None else basis.service_end_date.isoformat()
         else:
             price = source.get("total_price") or {}
             amount = Decimal(str(price.get("amount", "0")))
@@ -326,10 +359,10 @@ def _move_lines(
                 "obligation_key": key,
                 "action": action,
                 "product_code": source.get("product_code"),
-                "quantity_delta": _signed_text(Decimal(str(source.get("quantity", "0"))), sign),
+                "quantity_delta": _signed_text(quantity, sign),
                 "consideration_delta": {"amount": _signed_text(amount, sign), "currency": currency},
-                "start_date": source.get("start_date"),
-                "end_date": source.get("end_date"),
+                "start_date": start,
+                "end_date": end,
                 "stratification": source.get("stratification"),
                 "selling_entity_code": source.get("performing_entity_code"),
                 "account_codes": source.get("account_overrides"),
@@ -441,20 +474,26 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
         _refuse_at_once(target)
     # From here ``posted`` is false: the after-posting branches below are the withdrawn road.
     currency = str(source["transaction_currency"]).strip()
-    amounts = (
-        _remaining(
-            session,
-            source,
-            keys,
-            book_code=queries.primary_book(session),
-            cutoff=bundles.record_cutoff(session, uow.now),
-        )
-        if posted
-        else {}
-    )
-    # 05 TZ-03: the contracting entity's current date (source and target share the entity), not
-    # the UTC date of ``uow.now``.
+    # 05 TZ-03: use the contracting entity's current date, not the UTC date.
     effective = holds.entity_date(session, source, uow.now)
+    transfer_basis: dict[str, FixedBoundaryBasis] = {}
+    amounts: dict[str, Decimal] = {}
+    if posted:
+        original = bundles.build(session, _uuid(source["combination_group_id"]), uow.now)
+        measured = fixed_boundary_basis(
+            original,
+            book_code=queries.primary_book(session),
+            effective_date=effective,
+            contract_key=str(source["external_id"]),
+            obligation_keys=tuple(keys),
+        )
+        transfer_basis = {item.obligation_key: item for item in measured}
+        scale = 10 ** original.currencies[currency].minor_unit
+        with localcontext(money.DECIMAL_CONTEXT):
+            amounts = {
+                item.obligation_key: Decimal(item.remaining_minor) / Decimal(scale)
+                for item in measured
+            }
     regroup_id = new_id()
     status = ModificationStatus.DRAFT if posted else ModificationStatus.APPLIED
     out_id = _insert_row(
@@ -470,6 +509,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             currency=currency,
             external_id=str(source["external_id"]),
             posted=posted,
+            transfer_basis=transfer_basis,
         ),
         effective_date=effective,
         regroup_id=regroup_id,
@@ -489,6 +529,7 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
             currency=currency,
             external_id=str(source["external_id"]),
             posted=posted,
+            transfer_basis=transfer_basis,
         ),
         effective_date=effective,
         regroup_id=regroup_id,

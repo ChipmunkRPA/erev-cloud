@@ -39,3 +39,27 @@ old behavior for replay. Seven focused cases cover both treatments, old revision
 later starts, expired terms, trace replay and the existing before-posting move. Scoped types/lint
 pass. Public after-posting regroup remains refused: dated amounts and quantities, all relevant
 components/books, paired approval and atomic transfer still require integration. No deployment.
+
+
+## Proposed-date basis and transfer lines
+
+The fixed-basis query now also accepts a proposed effective date, mutually exclusive with an
+original event key. It folds all already retained boundaries through that date and measures
+before a prospective new command positioned after the retained records on the date. The
+internal query marker is not appended or persisted; output explicitly has no original boundary
+event key and labels its position AFTER_RETAINED_EVENTS_ON_DATE. Original-event queries
+retain BEFORE_RETAINED_EVENT. Both include the segment's current service dates and original
+input digest. These are current-known-input calculations, not historical knowledge snapshots.
+
+The withdrawn posted regroup branch now reads this dated basis from assembled original input
+instead of calling the latest-version remainder reader. REMOVE/ADD line construction uses
+remaining quantity, fixed remaining minor-unit consideration, and current segment end date;
+service starts at the later of the current start and effective transfer date. It requires matching
+source/obligation/currency identity and representable positive remaining quantity. The original
+booking remains intact. Before-posting draft moves keep their prior behavior.
+
+Fifteen focused cases pass, including same-day accepted quantity changes, date/event selection,
+exact original-source reconciliation and paired remaining-unit/current-term line serialization.
+Scoped types/lint pass. This does not reopen the public after-posting command: other consideration
+components, multi-book transfer amounts and paired approval/application still need integration.
+No deployment.

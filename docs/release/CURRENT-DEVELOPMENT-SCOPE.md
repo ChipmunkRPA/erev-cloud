@@ -2070,3 +2070,14 @@ older evidence replay remain unchanged. Seven focused cases and scoped type/lint
 This resolves target-side backdated service in the native path; the public after-posting command
 still requires dated amount/quantity and paired atomic workflow integration before reopening.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Proposed-date regroup amounts and remaining-unit lines
+
+Extended native fixed boundary evidence to proposed effective dates after retained same-day
+events, explicitly distinguished from original event positions. Current service dates are retained.
+The withdrawn posted branch now assembles original input for this query; paired line construction
+uses the dated remaining units/amount and current term rather than original booked quantity/end.
+15 focused cases and scoped type/lint checks pass. Public after-posting regroup remains disabled
+pending other consideration components, multi-book amounts and atomic paired approval/application.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
