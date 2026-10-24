@@ -554,6 +554,7 @@ def _stage_call(
             capture_agent_control=(cb.bundle.evidence_revision or 0) >= 8,
             acquired_pob_opening=(cb.bundle.evidence_revision or 0) >= 14,
             acquisition_cutover_closing=(cb.bundle.evidence_revision or 0) >= 15,
+            opening_billing_sources=(cb.bundle.evidence_revision or 0) >= 16,
             frozen_openings=cb.bundle.disclosure_openings or (),
         )
     if spec.stage == "02" and spec.entry is s02_contract_identification.run:
@@ -573,6 +574,11 @@ def _stage_call(
             source = costs_view(ctx, state)
             identified = None if published is None else published.get("02")
             source = _bind_deposit_flows(ctx, source, identified)  # L6-5, FX-CHK-084-B
+        if spec.entry is s12_fx_entities.run:
+            return lambda: spec.entry(
+                ctx, source, tb, rates=cb.fx,
+                capture_opening_attribution=(cb.bundle.evidence_revision or 0) >= 16,
+            )
         return lambda: spec.entry(ctx, source, tb, rates=cb.fx)
     if spec.stage == "14":
         if spec.entry is s14_posting.run and not hasattr(state, "costs"):

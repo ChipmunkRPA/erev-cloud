@@ -30,7 +30,7 @@ def capture(
     if acquired:
         if not getattr(records, "acquired_pob_opening", False):
             return unavailable("Original principal, same-entity sources are required.")
-        if functional:
+        if functional and not getattr(records, "opening_billing_sources", False):
             return unavailable("Original acquisition closing sources are unavailable in this view.")
         if agents:
             return unavailable("Acquired agents require original gross/net baseline attribution.")
@@ -64,8 +64,9 @@ def capture(
     sources: dict[str, set[str]] = {subject: set() for subject in subjects}
     documents: dict[tuple[str, str], int] = {}
     for subject, baseline in baselines.items():
-        billed[subject] = baseline.billed_cum
-        revenue[subject] = baseline.revenue_cum
+        if not functional:
+            billed[subject] = baseline.billed_cum
+            revenue[subject] = baseline.revenue_cum
         sources[subject].add(baseline.node_id)
     for flow in records.flows:
         when = _entered(flow)
@@ -73,7 +74,7 @@ def capture(
             flow.entity != entity
             or when is None
             or when > period.end_date
-            or (cutover is not None and when <= cutover)
+            or (not functional and cutover is not None and when <= cutover)
         ):
             continue
         if flow.kind in {"BILLING", "CREDIT_MEMO"}:

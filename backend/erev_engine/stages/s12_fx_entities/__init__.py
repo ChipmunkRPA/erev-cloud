@@ -169,7 +169,12 @@ class _Dated:
 
 
 def run(
-    ctx: BookContext, st: FxSource, tb: TraceBuilder, *, rates: RateIndex | None = None
+    ctx: BookContext,
+    st: FxSource,
+    tb: TraceBuilder,
+    *,
+    rates: RateIndex | None = None,
+    capture_opening_attribution: bool = False,
 ) -> FxState:
     """Layers, functional targets and remeasurements of one book (ENGINE_SPEC_B §12.2)."""
     flows = st.fx_flows
@@ -216,6 +221,10 @@ def run(
                     book.billing_attribution[source] = {
                         name: (amount, source_nodes[name]) for name, amount in shares.items()
                     }
+        if capture_opening_attribution:
+            from .opening_attribution import bind
+
+            bind(book, allocated, flows.control)
         pairs = PairBook(ctx, allocated, rates, book)
         try:
             result = _measure(book, pairs, allocated.inception_date, flows, _attributions(st))

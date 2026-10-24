@@ -210,6 +210,7 @@ class BalanceInputs:
     fx: FxState | None = None  # stage 12 state, for the functional view
     acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
+    opening_billing_sources: bool = False  # Revision 16: original cutover FX attribution
 
 
 @dataclass(frozen=True, slots=True)

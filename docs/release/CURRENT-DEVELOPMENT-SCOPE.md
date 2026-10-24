@@ -4,6 +4,15 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Acquired functional sources — October 23, 2026
+
+Revision 16 connects original cutover billing attribution and actual FX amounts to native
+functional POB classification, closing eligibility and the API source reader; journals remain
+unchanged. See [checkpoint](ACQUIRED-FUNCTIONAL-SOURCES-2026-10-23.md) for tested boundaries.
+Public acquired report/lock workflows and mixed-sign/special histories remain open; older
+blanket foreign-source limitations below are partially superseded.
+
+
 ## Closed acquisition cutover — October 23, 2026
 
 Revision 15 uses complete original baselines for native transaction closing at an exact

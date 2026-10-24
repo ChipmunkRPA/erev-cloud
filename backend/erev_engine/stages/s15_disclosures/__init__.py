@@ -169,6 +169,7 @@ def run(
     capture_agent_control: bool = False,
     acquired_pob_opening: bool = False,
     acquisition_cutover_closing: bool = False,
+    opening_billing_sources: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
     """RPO, exemptions, time bands, the narrative dataset, the waterfall, the RPO rollforward, the
@@ -219,7 +220,14 @@ def run(
             balances_rollforward.balance_inputs(ctx, balances, fx, intents, posted),
             acquired_pob_opening=acquired_pob_opening,
             acquisition_cutover_closing=acquisition_cutover_closing,
+            opening_billing_sources=opening_billing_sources,
         )
+        if opening_billing_sources:
+            attribution = {key: dict(shares) for key, shares in records.attribution.items()}
+            for item in fx.billing_attribution_sources:
+                if item.source_key.endswith("/opening_billed_cum"):
+                    attribution.setdefault(item.source_key, {})[item.subject_key] = item.amount_txn
+            records = replace(records, attribution=attribution)
         for entity in entities:
             key = rpo.period_of(ctx, entity, found.as_of)
             balance_rows.append(

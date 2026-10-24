@@ -38,13 +38,14 @@ with unavailable opening amounts explicitly marked. Cross-entity principal POB v
 [due-to sources](docs/release/INTERCOMPANY-POB-OPENING-2026-10-23.md).
 Cross-entity agents and historical-group outsiders remain open. No deployment.
 
-## Acquired POB baseline — October 23, 2026
+## Acquired POB sources — October 23, 2026
 
-Revision 14 restores original cutover baselines to native transaction POB eligibility and closing
-source snapshots without changing journals. 37 focused cases pass; see
-[checkpoint](docs/release/ACQUIRED-POB-BASELINE-2026-10-23.md). Foreign-functional, recomputed and
-public acquired-report/locked-history paths remain open. Revision 15 fixes native group closing
-at an exact closed cutover; 32 focused checks pass ([checkpoint](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md)).
+[Revision 14](docs/release/ACQUIRED-POB-BASELINE-2026-10-23.md) restores native transaction baselines;
+[revision 15](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md) fixes exact closed-cutover group balances.
+[Revision 16](docs/release/ACQUIRED-FUNCTIONAL-SOURCES-2026-10-23.md) connects original cutover FX
+to functional POB classification, closing sources and the report reader. Journals remain unchanged.
+35 targeted cases pass. Public acquired report/lock workflows, mixed-sign allocation and broader
+special histories remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 

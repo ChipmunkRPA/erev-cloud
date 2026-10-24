@@ -22,7 +22,11 @@ def read(
 ) -> tuple[Decimal, Decimal, list[str]]:
     documents = {}
     prefix = "billing_document_attributed@"
-    all_documents = [node for identity, node in nodes.items() if identity.startswith(prefix)]
+    all_documents = [
+        node
+        for identity, node in nodes.items()
+        if identity.startswith((prefix, "billing_opening_attributed@"))
+    ]
     if not all_documents:
         raise tie_outs.invalid(
             "currency_view", "Functional POB billing sources require recomputation."
@@ -32,7 +36,7 @@ def read(
     ]
     partitioned = {node.params["document_key"] for node in line_nodes}
     all_documents = [
-        node for node in all_documents if node.id.split(":")[0][len(prefix) :] not in partitioned
+        node for node in all_documents if node.id.split(":")[0].split("@", 1)[1] not in partitioned
     ]
     all_documents.extend(line_nodes)
     for node in all_documents:

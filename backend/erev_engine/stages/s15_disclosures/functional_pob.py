@@ -43,7 +43,7 @@ def classify(
         if any(
             ob.performing_entity != entity
             or ob.principal_agent.value != "PRINCIPAL"
-            or ob.opening is not None
+            or (ob.opening is not None and not records.opening_billing_sources)
             for ob in own
         ):
             fail("functional POB classification requires original principal opening sources")
