@@ -190,3 +190,25 @@ def test_combined_rti_guard_checks_the_original_lease_pricing():
     )
     with pytest.raises(EngineError, match="RTI_EXPEDIENT_NOT_APPLICABLE"):
         compute(value)
+
+
+@pytest.mark.parametrize("usage_method", [False, True], ids=["ratable", "usage"])
+def test_original_member_royalty_statement_cannot_disappear(usage_method):
+    value = usage_world()
+    value = replace(
+        value,
+        pob_template_versions=value.pob_template_versions
+        if usage_method
+        else example().pob_template_versions,
+        events=tuple(
+            replace(event, payload={**event.payload, "is_royalty_statement": True})
+            if event.event_type == "USAGE_REPORTED"
+            else event
+            for event in value.events
+        ),
+    )
+    # Before this guard, two original statements of 100 and 200 silently produced only
+    # 100 of realised consideration on the ratable combined host. Approval must refuse
+    # while member correction/coverage semantics are not implemented.
+    with pytest.raises(EngineError, match="member-specific correction"):
+        compute(value)

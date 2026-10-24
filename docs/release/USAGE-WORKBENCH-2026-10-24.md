@@ -49,3 +49,23 @@ Necessary verification: a rendered drawer submission preserves the explicit stat
 original entered decimal quantities/rated amounts and period; pure checks prove flag separation,
 early-date refusal and ROYALTY action availability. Adjacent drawer tests, TypeScript and scoped
 ESLint pass. No backend code changed and no additional backend lifecycle coverage is claimed.
+
+
+## Original-member royalty omission — October 24 correctness fix
+
+A complete native calculation reproduced a silent source loss: SERVICE and LEASE each carried
+an original royalty statement (100 and 200) for January, but a combined ratable SERVICE host
+priced only 100 of realised consideration. Its original lease statement was ignored. Treating
+both statements as one period's latest record would also be incorrect source handling.
+
+Until explicit member/whole-combination scope and member-specific correction/accrual replacement
+are implemented, stage 04 refuses an admitted royalty statement naming a non-host original
+combined member. The refusal carries the original event and combined subject identities. It
+applies to ratable and usage hosts before a partial result can be published; ordinary combined
+usage and RTI paths remain available. Future statements outside the pricing date/order cutoff
+are not prematurely admitted. Existing saved reports are not rewritten.
+
+Eight focused native cases pass, including the two omission refusals and six existing ordinary
+combined usage/RTI cases. Scoped lint and types pass. This is an interim source-completeness
+fix, not completion of combined royalties. The owner was asked whether to adopt explicit
+COMBINATION/MEMBERS scope, as already used for EAC and actual hours. No answer is inferred.

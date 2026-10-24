@@ -9,7 +9,9 @@ LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfini
 The workbench now exposes Record usage with metric, decimal quantity, rated amount and usage
 period. Ordinary usage permits original combined members. Record royalty statement explicitly
 marks the payload and targets current obligations; original-member royalty aggregation remains
-unimplemented. Preview and independent manual-event approval reuse the existing API. See [checkpoint](USAGE-WORKBENCH-2026-10-24.md).
+unimplemented. Native computation now refuses non-host original-member royalty statements
+instead of silently omitting them; explicit scope/correction handling is pending. Preview and
+independent manual-event approval reuse the existing API. See [checkpoint](USAGE-WORKBENCH-2026-10-24.md).
 This closes the ordinary rated-usage entry gap, not shared breakage or combination reassessment.
 
 ## Contract costs across aligned calendars — October 24, 2026

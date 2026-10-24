@@ -132,6 +132,31 @@ def realised(
     for ob in st.obligations:
         method = ob.recognition_method
         contract = ob.contract_key
+        if ob.lessor_judgement_keys:
+            # The single-obligation royalty reader cannot yet keep corrections and accrual
+            # replacement separate for original combined members. Never silently drop a
+            # member's statement or interpret it as a correction of its combined host.
+            for event in measure_events:
+                if (
+                    royalties.is_statement(event)
+                    and event.contract_key == contract
+                    and event.effective_date <= at
+                    and (before is None or event.order_key < before.order_key)
+                    and any(
+                        member.obligation_key != ob.obligation_key
+                        and royalties.names_obligation(
+                            event, contract, member.obligation_key, member.subject_key
+                        )
+                        for member in ob.members
+                    )
+                ):
+                    raise EngineError(
+                        "ENGINE_INVARIANT_VIOLATED",
+                        "Combined original-member royalty statements require explicit source "
+                        "scope and member-specific correction handling; they cannot be omitted.",
+                        detail={"event_key": event.event_key},
+                        subject_key=ob.subject_key,
+                    )
         if method in (RecognitionMethod.RIGHT_TO_INVOICE, RecognitionMethod.USAGE):
             # ENC-6 (S04-R-06; S09-R-01, S09-R-02): the realised amounts of the PERIOD_VC component
             # from the one source rule stage 09 recognises (``erev_engine.usage``, DG-ENG-07): the

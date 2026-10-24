@@ -1132,3 +1132,5 @@ for usage. For ordinary rated usage choose **Record usage**. For a royalty state
 `is_royalty_statement: true` through the same preview and independent approval flow. Royalty
 statements target current obligation keys; merged-away original components are not offered
 because the royalty calculation does not yet aggregate those original component sources.
+An admitted royalty statement naming a merged-away member also refuses native computation
+until that source-handling path is implemented; it must not silently omit the statement.
