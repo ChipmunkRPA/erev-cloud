@@ -3,7 +3,7 @@
 
 One row ``contract:<external id>:<entity code>`` per member contract and contracting entity of each
 group's latest version known at the run, with the labelled balances at the end of ``period_key``
-(``tie_outs.balances_at``): contract liability (current and noncurrent), contract asset (current),
+(``tie_outs.balances_at``): contract liability and contract asset (current and noncurrent),
 unbilled receivable, accounts receivable, refund liability (its own column, never netted, POL-127),
 return asset, deposit liability, customer incentive asset, consideration payable, contract cost
 assets and loss provision. Without ``include_zero`` a contract with every balance 0 is omitted.
@@ -46,12 +46,14 @@ from erev_api.uow import UnitOfWork
 
 CODE: Final = "contract_balances"
 TOTAL_PREFIX: Final = "TOTAL:"
-MEASURE_COLUMNS: Final = (
+ASSET_MATURITY: Final = "contract_asset_noncurrent_v1"
+MEASURE_COLUMNS: Final[tuple[tuple[str, str], ...]] = (
     ("contract_liability", "Contract liability"),
     ("contract_liability_current", "Contract liability, current"),
     ("contract_liability_noncurrent", "Contract liability, noncurrent"),
     ("contract_asset", "Contract asset"),
     ("contract_asset_current", "Contract asset, current"),
+    ("contract_asset_noncurrent", "Contract asset, noncurrent"),
     ("unbilled_receivable", "Unbilled receivable"),
     ("accounts_receivable", "Accounts receivable"),
     ("refund_liability", "Refund liability"),
@@ -64,18 +66,34 @@ MEASURE_COLUMNS: Final = (
 )
 
 
-def _values(get: Any) -> dict[str, Decimal]:
+def _values(get: Any, *, asset_noncurrent: bool = False) -> dict[str, Decimal]:
     values = {
-        name: get(name) for name, _ in MEASURE_COLUMNS if name != "contract_liability_noncurrent"
+        name: get(name)
+        for name, _ in MEASURE_COLUMNS
+        if name not in {"contract_liability_noncurrent", "contract_asset_noncurrent"}
     }
     values["contract_liability_noncurrent"] = (
         values["contract_liability"] - values["contract_liability_current"]
     )
+    if asset_noncurrent:
+        # Subtract displayed, already translated balances: independently translating
+        # the remainder can break total = current + noncurrent by one minor unit.
+        values["contract_asset_noncurrent"] = (
+            values["contract_asset"] - values["contract_asset_current"]
+        )
     return values
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
+    asset_noncurrent = params.binding is None or bool(params.binding.evidence.get(ASSET_MATURITY))
+    if asset_noncurrent:
+        tie_outs.record_evidence(params, ASSET_MATURITY, True)
+    measures = tuple(
+        item
+        for item in MEASURE_COLUMNS
+        if asset_noncurrent or item[0] != "contract_asset_noncurrent"
+    )
     book_code = tie_outs.book_of(session, params)
     found = tie_outs.entities(session, params.entity_ids, params=params)
     found_calendars = tie_outs.calendars(session, found, params=params)
@@ -132,7 +150,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     rows: list[dict[str, Any]] = []
     totals: dict[str, dict[str, Decimal]] = {}
     for row in balances:
-        values = _values(row.value)
+        values = _values(row.value, asset_noncurrent=asset_noncurrent)
         if not include_zero and all(amount == 0 for amount in values.values()):
             continue
         rows.append(
@@ -180,13 +198,13 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             if translation is not None
             else ()
         ),
-        *(Column(name, header, "money") for name, header in MEASURE_COLUMNS),
+        *(Column(name, header, "money") for name, header in measures),
     )
     control: dict[str, Any] = {
         name: tie_outs.by_currency(
             {code: values.get(name, ZERO) for code, values in totals.items()}
         )
-        for name, _ in MEASURE_COLUMNS
+        for name, _ in measures
     }
     periods = {key: (() if value is None else (value,)) for key, value in at.items()}
     before = {

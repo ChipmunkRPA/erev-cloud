@@ -132,6 +132,7 @@ KEY_COLUMNS: Final[Mapping[str, KeySpec]] = {
             "contract_liability_noncurrent",
             "contract_asset",
             "contract_asset_current",
+            "contract_asset_noncurrent",
             "unbilled_receivable",
             "accounts_receivable",
             "refund_liability",

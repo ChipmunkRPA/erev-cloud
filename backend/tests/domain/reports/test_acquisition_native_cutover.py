@@ -251,6 +251,10 @@ def test_mixed_maturity_reads_original_asset_attribution(policy, current):
     amounts, snapshot = result
     assert amounts["contract_asset"] == Decimal("100000")
     assert amounts["contract_asset_current"] == Decimal(current)
+    from erev_api.domain.reports.builders.contract_balances import _values
+
+    displayed = _values(lambda key: amounts.get(key, Decimal(0)), asset_noncurrent=True)
+    assert displayed["contract_asset_noncurrent"] == Decimal("100000") - Decimal(current)
     attribution = snapshot["maturity"]["asset_attribution"]
     assert attribution["policy"] == policy
     assert sum(item["contract_asset"] for item in attribution["parts"].values()) == 10000000

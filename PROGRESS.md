@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [acquisition mixed maturity](docs/release/ACQUISITION-ASSET-MATURITY-2026-10-24.md) works; absent balance rows and breakage application remain open.
+Oct 24: [asset maturity columns](docs/release/CONTRACT-ASSET-NONCURRENT-2026-10-24.md) added; absent balance rows and breakage application remain open.

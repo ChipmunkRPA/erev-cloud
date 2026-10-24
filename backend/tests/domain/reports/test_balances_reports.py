@@ -197,10 +197,17 @@ def test_contract_balances_k01_k03(world: ReportWorld) -> None:
         )
         assert row["contract_liability"] == usd(liability)  # WLD-X-03
         assert (row["contract_asset"], row["unbilled_receivable"]) == (usd("0.00"), usd("0.00"))
+        assert row["contract_asset_noncurrent"] == usd("0.00")
+        assert keyed(rows)["TOTAL:USD"]["contract_asset_noncurrent"] == usd("0.00")
+        assert run["control_totals"]["contract_asset_noncurrent"] == {"USD": "0.00"}
         assert row["refund_liability"] == usd("0.00")  # its own column, never netted (POL-127)
         assert run["control_totals"]["contract_liability"] == {"USD": liability}
         assert tie(run, tie_outs.TO_BALANCES_EQ_ROLLFORWARD)["result"] == "PASS"
         assert tie(run, tie_outs.TO_ROLLFORWARD_EQ_GL)["result"] == "NOT_APPLICABLE"
+        started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+        assert started.status_code == 202, started.text
+        finished = run_now(world, UUID(started.json()["id"]))
+        assert finished["state"] == "SUCCEEDED", finished
 
 
 @pytest.mark.slow
