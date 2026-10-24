@@ -41,7 +41,20 @@ pass, plus scoped lint/types. Cases cover increases/reductions, dated complete a
 refusal of transferred-unit removal or retrospective treatment, later price changes, original
 SSP stratification, preserved prior income and trace reevaluation.
 
-Remaining work: public authoring UI and populated API approval/application acceptance; term
+Remaining work: populated API approval/application acceptance; term
 changes; complete member removal/splitting; non-unit measures; lease-predominant combinations;
 combined-contract group reassessment outside this component path. No claim that the entire
 reassessment feature is finished. No deployment.
+
+## Authoring UI checkpoint
+
+The modification wizard now offers explicit continuation confirmation for combined in-scope
+unit obligations. It sends the complete original population, effective date and eligibility
+facts with quantity changes. Editing the date, kind or lines clears confirmation. Reopening
+the change form requires reconfirmation before saving those quantity edits. Draft saves
+preserve unrelated questionnaire answers and remove stale reassessment entries.
+
+Nineteen focused form/component cases pass, including actual checkbox submission, clearing
+on date change, refusal without confirmation, unchanged price-change payloads and refusal
+of term edits/removals. Frontend types and scoped lint pass. This does not replace populated
+API approval/application acceptance or enable the remaining reassessment paths above.

@@ -75,6 +75,10 @@ export interface ChangeContext {
   readonly obligations: readonly ObligationFacts[];
   /** Retained originals; general scope edits require a complete termination group. */
   readonly priceOnlyObligationKeys?: readonly string[];
+  readonly combinedUnitHosts?: readonly {
+    readonly host: string;
+    readonly members: readonly string[];
+  }[];
   readonly combinedObligationMembers?: readonly (readonly string[])[];
 }
 
@@ -125,6 +129,7 @@ export interface ChangeLine {
 }
 
 export interface ChangeForm {
+  readonly continuedHosts?: readonly string[];
   readonly kind: ModificationKind | null;
   readonly reference: string;
   readonly effectiveDate: string;
@@ -260,6 +265,24 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
   const known = new Set(context.obligations.map((item) => item.key));
   const priceOnly = new Set(context.priceOnlyObligationKeys ?? []);
   for (const key of priceOnly) known.add(key);
+  const continuations = (context.combinedUnitHosts ?? []).filter(
+    (group) =>
+      form.kind === "QUANTITY_CHANGE" &&
+      form.continuedHosts?.includes(group.host) &&
+      form.lines.some(
+        (line) =>
+          group.members.includes(line.obligationKey.trim()) &&
+          decimalOf(line.quantityChange.trim()) !== null &&
+          !isZero(line.quantityChange.trim()),
+      ) &&
+      form.lines
+        .filter((line) => group.members.includes(line.obligationKey.trim()))
+        .every(
+          (line) =>
+            line.action === "CHANGE" && line.startDate.trim() === "" && line.endDate.trim() === "",
+        ),
+  );
+  const continuedKeys = new Set(continuations.flatMap((group) => group.members));
   const completeTerminations = new Set<string>();
   if (form.kind === "TERMINATION") {
     for (const members of context.combinedObligationMembers ?? []) {
@@ -341,7 +364,10 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
       } else if (
         line.action !== "ADD" &&
         !completeTerminations.has(key) &&
+        !continuedKeys.has(key) &&
         (priceOnly.has(key) ||
+          (form.kind === "QUANTITY_CHANGE" &&
+            context.combinedUnitHosts?.some((group) => group.members.includes(key))) ||
           (form.kind === "TERMINATION" &&
             context.combinedObligationMembers?.some((members) => members.includes(key))))
       ) {
@@ -414,6 +440,25 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
       effective_date: header.effectiveDate,
       rationale: form.rationale.trim() === "" ? null : form.rationale.trim(),
       lines,
+      ...(continuations.length === 0
+        ? {}
+        : {
+            questionnaire: {
+              combined_reassessment: Object.fromEntries(
+                continuations.map((group) => [
+                  group.host,
+                  {
+                    decision: "CONTINUE",
+                    effective_date: header.effectiveDate,
+                    component_keys: [...group.members],
+                    same_transfer_pattern: true,
+                    operating_lease: true,
+                    nonlease_predominates: true,
+                  },
+                ]),
+              ),
+            },
+          }),
       ...(priceChangeAmount === null ? {} : { price_change_amount: priceChangeAmount }),
       ...(form.kind === "TERMINATION" && terminationRefund !== null
         ? {

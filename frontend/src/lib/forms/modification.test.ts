@@ -696,3 +696,52 @@ it("accepts only a complete original-member termination and preserves both amoun
     expect(buildChange({ ...form, lines }, context).body).toBeNull();
   }
 });
+
+it("requires explicit continuation and sends the complete dated original population", () => {
+  const context = {
+    ...CONTEXT,
+    priceOnlyObligationKeys: ["LEASE"],
+    combinedUnitHosts: [{ host: "O1", members: ["O1", "LEASE"] }],
+  };
+  const form = {
+    ...emptyChange("l1", "QUANTITY_CHANGE"),
+    reference: "CONTINUE-1",
+    effectiveDate: "2026-10-01",
+    lines: [
+      {
+        ...emptyChangeLine("l1"),
+        action: "CHANGE" as const,
+        obligationKey: "LEASE",
+        quantityChange: "1",
+      },
+    ],
+  };
+  expect(buildChange(form, context).body).toBeNull();
+  const confirmed = { ...form, continuedHosts: ["O1"] };
+  expect(buildChange(confirmed, context).body?.questionnaire).toEqual({
+    combined_reassessment: {
+      O1: {
+        decision: "CONTINUE",
+        effective_date: "2026-10-01",
+        component_keys: ["O1", "LEASE"],
+        same_transfer_pattern: true,
+        operating_lease: true,
+        nonlease_predominates: true,
+      },
+    },
+  });
+  for (const patch of [{ endDate: "2027-10-01" }, { action: "REMOVE" as const }]) {
+    expect(
+      buildChange(
+        { ...confirmed, lines: form.lines.map((line) => ({ ...line, ...patch })) },
+        context,
+      ).body,
+    ).toBeNull();
+  }
+  expect(
+    buildChange(
+      { ...form, lines: form.lines.map((line) => ({ ...line, obligationKey: "O1" })) },
+      context,
+    ).body,
+  ).toBeNull();
+});

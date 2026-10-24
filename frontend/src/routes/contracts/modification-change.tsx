@@ -410,7 +410,11 @@ function GeneralForm({
   useEffect(() => onDirty(dirty), [dirty, onDirty]);
 
   const set = <K extends keyof ChangeForm>(name: K, value: ChangeForm[K]) => {
-    setForm((current) => ({ ...current, [name]: value }));
+    setForm((current) => ({
+      ...current,
+      ...(name === "effectiveDate" || name === "kind" ? { continuedHosts: [] } : {}),
+      [name]: value,
+    }));
     setCleared((current) => [...current, name]);
   };
   const setFormatError = (name: string, message: string | null) =>
@@ -424,6 +428,7 @@ function GeneralForm({
     }
     setForm((current) => ({
       ...current,
+      continuedHosts: [],
       lines: current.lines.map((line) =>
         line.id === lineId ? { ...line, ...changeLinePatch(column, value) } : line,
       ),
@@ -437,7 +442,11 @@ function GeneralForm({
   const addLine = () => {
     lineIds.current += 1;
     const id = `l${String(lineIds.current)}`;
-    setForm((current) => ({ ...current, lines: [...current.lines, emptyChangeLine(id)] }));
+    setForm((current) => ({
+      ...current,
+      continuedHosts: [],
+      lines: [...current.lines, emptyChangeLine(id)],
+    }));
     pendingFocus.current = fieldId(changeLineField(id, "action"));
   };
   const removeLine = (lineId: string) => {
@@ -449,6 +458,7 @@ function GeneralForm({
         : fieldId(changeLineField(neighbour.id, "action"));
     setForm((current) => ({
       ...current,
+      continuedHosts: [],
       lines: current.lines.filter((line) => line.id !== lineId),
     }));
     setFormatErrors((current) =>
@@ -634,6 +644,39 @@ function GeneralForm({
       </div>
       {priceChange ? null : (
         <div inert={busy}>
+          {form.kind === "QUANTITY_CHANGE"
+            ? (context.combinedUnitHosts ?? [])
+                .filter((group) =>
+                  form.lines.some((line) => group.members.includes(line.obligationKey.trim())),
+                )
+                .map((group) => (
+                  <fieldset key={group.host}>
+                    <legend>
+                      {t("modifications.wizard.combined.title", { host: group.host })}
+                    </legend>
+                    <p>
+                      {t("modifications.wizard.combined.help", {
+                        members: group.members.join(", "),
+                      })}
+                    </p>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={form.continuedHosts?.includes(group.host) ?? false}
+                        onChange={(event) =>
+                          set(
+                            "continuedHosts",
+                            event.target.checked
+                              ? [...(form.continuedHosts ?? []), group.host]
+                              : (form.continuedHosts ?? []).filter((host) => host !== group.host),
+                          )
+                        }
+                      />
+                      {t("modifications.wizard.combined.confirm")}
+                    </label>
+                  </fieldset>
+                ))
+            : null}
           <LineEditor<ChangeLine>
             title={t("modifications.wizard.change.lines.title")}
             countLabel={(count, formatted) =>

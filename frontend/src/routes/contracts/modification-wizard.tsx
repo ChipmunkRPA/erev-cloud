@@ -289,6 +289,17 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
         currency: contract.data.transaction_currency,
         obligations: facts,
         priceOnlyObligationKeys: [...originals.keys()],
+        combinedUnitHosts: obligations.data
+          .filter(
+            (item) =>
+              item.scope_flag === "IN_SCOPE_606" &&
+              ["UNITS_DELIVERED", "POINT_IN_TIME"].includes(item.recognition_method) &&
+              (item.combined_component_keys?.length ?? 0) > 0,
+          )
+          .map((item) => ({
+            host: item.obligation_key,
+            members: item.combined_component_keys ?? [],
+          })),
         combinedObligationMembers: obligations.data
           .map((item) => item.combined_component_keys ?? [])
           .filter((keys) => keys.length > 0),
@@ -1643,6 +1654,7 @@ function DraftChange({
           lines: body.lines,
           price_change_amount: body.price_change_amount ?? null,
           termination: body.termination ?? null,
+          questionnaire: { ...row.questionnaire, combined_reassessment: {}, ...body.questionnaire },
         } satisfies ModificationUpdateBody)
       }
     />
