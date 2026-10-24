@@ -115,12 +115,30 @@ def cell(
             f"Original functional {role}: {Decimal(amount) * scale_fn} {functional['currency']}"
             for role, amount in sorted(functional["amounts"].items())
         )
+        shared = functional.get("shared_liability_members")
+        if shared is not None:
+            details.append(
+                "The following FX layers belong to the complete acquisition group, "
+                "not separately to this member. Member current liability is allocated "
+                "by functional liability carrying amount; original layer ownership is retained."
+            )
+            for member in shared:
+                member_current = Decimal(member["functional_amounts"]["contract_liability_current"])
+                details.append(
+                    f"Group member {member['member']}: liability "
+                    f"{Decimal(member['functional_amounts']['contract_liability']) * scale_fn} "
+                    f"{functional['currency']}; current "
+                    f"{member_current * scale_fn} "
+                    f"{functional['currency']}."
+                )
         classification = functional.get("liability_current")
         if classification is None:
             details.append("Functional current liability classification is unavailable.")
         else:
             details.append(
-                f"Current liability follows original {classification['policy']} layer release."
+                f"{'Group current' if shared is not None else 'Current'} liability "
+                "follows original "
+                f"{classification['policy']} layer release."
             )
             for part in classification["allocations"]:
                 details.append(

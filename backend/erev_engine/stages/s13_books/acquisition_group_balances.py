@@ -133,6 +133,11 @@ def capture_members(
                 "functional_carrying": layer.fn_carrying,
                 "movements": [
                     {
+                        **(
+                            {"owner_contract": move.contract_key}
+                            if (cb.bundle.evidence_revision or 0) >= 63
+                            else {}
+                        ),
                         "kind": move.movement_kind,
                         "effective_date": move.effective_date.isoformat(),
                         "amount_txn": move.amount_txn,

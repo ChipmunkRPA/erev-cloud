@@ -579,7 +579,7 @@ def test_combined_closed_cutover_retains_each_member_and_shared_layers(
         )
     value = replace(
         value,
-        evidence_revision=62,
+        evidence_revision=63,
         contracts=tuple(sorted((*value.contracts, second), key=lambda c: c.external_id)),
         group=replace(
             value.group,
@@ -618,12 +618,12 @@ def test_combined_closed_cutover_retains_each_member_and_shared_layers(
     document = json.loads(canonical_bytes(result))
     # Exercise the actual rollforward acquisition reader with original native output;
     # only the database candidate lookup and authenticated file loader are substituted.
-    from datetime import UTC, datetime
+    from datetime import UTC, date, datetime
     from types import SimpleNamespace
     from unittest.mock import Mock
 
     from erev_api.domain.reports import acquisition_flows
-    from erev_api.domain.reports.builders import ReportParams
+    from erev_api.domain.reports.builders import ReportParams, SourceCollector
 
     rows = {
         (UUID(int=i + 10), UUID(int=1)): tie_outs.BalanceRow(
@@ -652,7 +652,12 @@ def test_combined_closed_cutover_retains_each_member_and_shared_layers(
         ),
     )
     params = ReportParams(
-        "contract_balance_rollforward", 1, {}, (UUID(int=1),), datetime(2026, 1, 1, tzinfo=UTC)
+        "contract_balance_rollforward",
+        1,
+        {},
+        (UUID(int=1),),
+        datetime(2026, 1, 1, tzinfo=UTC),
+        sources=SourceCollector(),
     )
     for functional_view in (False, True):
         flows = acquisition_flows.read(
@@ -671,6 +676,127 @@ def test_combined_closed_cutover_retains_each_member_and_shared_layers(
             liability
             == Decimal(functional_total if foreign and functional_view else expected_total) / 100
         )
+    if foreign:
+        from erev_api.domain.reports import acquisition_functional, combined_liability_bridge
+        from erev_api.domain.reports.builders.contract_balance_rollforward import (
+            ContractRollforward,
+            path,
+        )
+
+        functional_rows = {}
+        items = []
+        for key, row in rows.items():
+            snapshot = next(
+                s
+                for s in document["books"][0]["acquisition_balance_observations"]
+                if s["member"] == row.external_id
+            )
+            params.sources.evidence[
+                f"acquisition_cutover_balances_v1:{row.version_id}:{row.contract_id}:{row.entity_id}:{PERIOD.key}"
+            ] = {"snapshot": snapshot}
+            fn = snapshot["functional"]
+            values = {name: Decimal(amount) / 100 for name, amount in fn["amounts"].items()}
+            projected = replace(row, currency="EUR", values=values)
+            functional_rows[key] = projected
+            lines = path({}, [entry.flow for entry in flows[key]], values)
+            items.append(
+                ContractRollforward(
+                    row.contract_id,
+                    row.external_id,
+                    None,
+                    row.entity_id,
+                    row.entity_code,
+                    "EUR",
+                    lines,
+                    {PERIOD.id: lines},
+                )
+            )
+        assert sum(
+            acquisition_functional.liability_carrying(params, row, PERIOD)
+            for row in functional_rows.values()
+        ) == Decimal(0 if asset_balance else 208000)
+        session.execute.return_value.mappings.return_value.all.return_value = []
+        monkeypatch.setattr(combined_liability_bridge.store, "load_trace", lambda *_: output.trace)
+        adjusted = combined_liability_bridge.apply(
+            session,
+            params,
+            items,
+            opening=(),
+            closing=tuple(functional_rows.values()),
+            before={UUID(int=1): None},
+            periods={UUID(int=1): (PERIOD,)},
+            monthly={(UUID(int=1), PERIOD.id): functional_rows},
+            transfers={},
+            foreign_members=frozenset(rows),
+            opening_relief={},
+            liability_relief={},
+        )
+        for item in adjusted:
+            assert item.lines["OTHER"]["contract_liability"] == 0
+            assert item.lines["RECLASSIFICATIONS"]["contract_liability"] == 0
+            assert item.period_lines[PERIOD.id] == item.lines
+        if not asset_balance:
+            assert any(
+                Decimal(v) != 0
+                for v in params.sources.evidence["acquisition_member_bridge_boundary_v1"].values()
+            )
+
+        params.sources.record_cutoff(params.known_at)
+        bound = replace(params, sources=None, binding=params.sources.binding(row_keys=[]))
+        repeated = combined_liability_bridge.apply(
+            session,
+            bound,
+            items,
+            opening=(),
+            closing=tuple(functional_rows.values()),
+            before={UUID(int=1): None},
+            periods={UUID(int=1): (PERIOD,)},
+            monthly={(UUID(int=1), PERIOD.id): functional_rows},
+            transfers={},
+            foreign_members=frozenset(rows),
+            opening_relief={},
+            liability_relief={},
+        )
+        assert repeated == adjusted
+
+        # Carrying the observation into the next month does not introduce a new
+        # acquisition or a presentation transfer at the report boundary.
+        later = replace(
+            PERIOD, id=UUID(int=2), key="FY2026-P01", start=date(2026, 1, 1), end=date(2026, 1, 31)
+        )
+        for row in functional_rows.values():
+            old_key = (
+                f"acquisition_cutover_balances_v1:{row.version_id}:"
+                f"{row.contract_id}:{row.entity_id}:{PERIOD.key}"
+            )
+            params.sources.evidence[old_key.rsplit(":", 1)[0] + ":" + later.key] = (
+                params.sources.evidence[old_key]
+            )
+        continuing = []
+        for item in items:
+            row = functional_rows[item.contract_id, item.entity_id]
+            lines = path(row.values, [], row.values)
+            continuing.append(replace(item, lines=lines, period_lines={later.id: lines}))
+        later_result = combined_liability_bridge.apply(
+            session,
+            params,
+            continuing,
+            opening=tuple(functional_rows.values()),
+            closing=tuple(functional_rows.values()),
+            before={UUID(int=1): PERIOD},
+            periods={UUID(int=1): (later,)},
+            monthly={(UUID(int=1), later.id): functional_rows},
+            transfers={},
+            foreign_members=frozenset(rows),
+            opening_relief={},
+            liability_relief={},
+        )
+        assert all(
+            item.lines["OTHER"]["contract_liability"] == 0
+            and item.lines["RECLASSIFICATIONS"]["contract_liability"] == 0
+            for item in later_result
+        )
+
     for snapshot in snapshots:
         own = snapshot["member"]
         opening = next(

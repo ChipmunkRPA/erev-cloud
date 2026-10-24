@@ -191,6 +191,11 @@ def read(
                 native = (
                     values,
                     {
+                        **(
+                            {"members": observation["members"]}
+                            if (bundle.evidence_revision or 0) >= 63 and "members" in observation
+                            else {}
+                        ),
                         "basis": observation["basis"],
                         "currency": fn["currency"],
                         "period_key": observation["period_key"],

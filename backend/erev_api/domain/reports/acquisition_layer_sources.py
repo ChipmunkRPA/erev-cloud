@@ -107,6 +107,22 @@ def verify(
                 "currency_view", "Original acquisition liability layer population differs."
             )
         keys.add(key)
+        if (bundle.evidence_revision or 0) >= 63 and snapshot.get("members"):
+            owners = {move.get("owner_contract") for move in layer["movements"]}
+            creates = [
+                move for move in layer["movements"] if move["kind"] == "LIABILITY_LAYER_CREATED"
+            ]
+            event_owners = {
+                event.contract_key
+                for event in bundle.events
+                if any(event.event_key == move["source_key"] for move in creates)
+            }
+            if (
+                len(owners) != 1
+                or not owners <= set(snapshot["members"])
+                or (event_owners and owners != event_owners)
+            ):
+                raise tie_outs.invalid("currency_view", "Original acquisition layer owner differs.")
         txn, carrying = 0, 0
         for move in layer["movements"]:
             node = nodes.get(move["node"])

@@ -2977,3 +2977,13 @@ focused checks and four expanded net-position/reader cases pass. See
 [scope and evidence](ACQUIRED-GROUP-CUTOVER-BALANCES-2026-10-24.md). Mixed ordinary/acquired
 change presentation awaits owner selection; agent/cross-entity cutover observations remain open.
 No deployment or new policy inference.
+
+
+### 2026-10-24 — Shared acquisition layer ownership and bridge boundary
+
+Revision 63 retains original layer owners for multi-member cutover observations, avoids
+counting shared group carrying once per member, and removes the presentation offset already
+included at the acquisition boundary. Cell explanations distinguish shared layers from member
+amounts. Twenty-four targeted checks and four expanded continuity/rerun cases pass; see
+[checkpoint](ACQUIRED-GROUP-BRIDGE-2026-10-24.md). Older ownerless shared observations explicitly
+refuse the bridge. No deployment; mixed ordinary/acquired flow policy remains pending.

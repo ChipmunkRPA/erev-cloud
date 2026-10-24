@@ -144,6 +144,31 @@ def apply(
         cache[key] = value
         return value
 
+    boundary_key = "acquisition_member_bridge_boundary_v1"
+    use_boundary = params.binding is None or boundary_key in params.binding.evidence
+    retained = (
+        params.binding.evidence
+        if params.binding is not None
+        else params.sources.evidence
+        if params.sources is not None
+        else {}
+    )
+    boundary_facts: dict[str, str] = {}
+
+    def acquisition_boundary(
+        row: tie_outs.BalanceRow | None, period: tie_outs.PeriodRef
+    ) -> Decimal:
+        if row is None or not use_boundary:
+            return ZERO
+        identity = f"{row.version_id}:{row.contract_id}:{row.entity_id}:{period.key}"
+        original = retained.get("acquisition_rollforward_sources_v1", {}).get(identity)
+        if original is None or len(original.get("native_cutover", {}).get("members", ())) < 2:
+            return ZERO
+        source = replace(row, values={**row.values, ROLE: Decimal(original["amounts"][ROLE])})
+        amount = bridge(source, period)
+        boundary_facts[identity] = str(amount)
+        return amount
+
     opening_map = {(row.contract_id, row.entity_id): row for row in opening}
     closing_map = {(row.contract_id, row.entity_id): row for row in closing}
     output = []
@@ -161,9 +186,11 @@ def apply(
         last = closing_map.get(key)
         last_key = (item.entity_id, None if last is None else last.version_id, "closing")
         conservation[last_key] = conservation.get(last_key, ZERO) + ending
+        boundaries = {p.id: acquisition_boundary(last, p) for p in periods[item.entity_id]}
         total = (
             ending
             - initial
+            - sum(boundaries.values(), ZERO)
             + sum(
                 (
                     value
@@ -212,7 +239,7 @@ def apply(
         for period in periods[item.entity_id]:
             if period.id not in item.period_lines:
                 continue
-            cumulative += transfers.get((*key, period.id), ZERO)
+            cumulative += transfers.get((*key, period.id), ZERO) - boundaries[period.id]
             month = monthly[(item.entity_id, period.id)].get(key)
             at = bridge(month, period)
             month_key = (item.entity_id, None if month is None else month.version_id, period.key)
@@ -267,6 +294,10 @@ def apply(
         raise tie_outs.invalid(
             "currency_view", "Member liability bridge differs from retained evidence."
         )
+    if use_boundary:
+        if params.binding is not None and params.binding.evidence[boundary_key] != boundary_facts:
+            raise tie_outs.invalid("currency_view", "Acquisition member bridge boundary differs.")
+        tie_outs.record_evidence(params, boundary_key, boundary_facts)
     tie_outs.require_members(params, "combined_liability_movement", consumed)
     tie_outs.record_members(params, "combined_liability_movement", consumed)
     tie_outs.record_evidence(params, evidence_key, evidence)

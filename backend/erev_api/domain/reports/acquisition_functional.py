@@ -61,7 +61,7 @@ def project(
 def liability_carrying(
     params: ReportParams, row: tie_outs.BalanceRow, at: tie_outs.PeriodRef
 ) -> Decimal | None:
-    """Original open layers supply a singleton's source side of the member bridge."""
+    """Original layer ownership supplies the source side of the member bridge."""
     evidence = (
         params.binding.evidence
         if params.binding is not None
@@ -80,8 +80,21 @@ def liability_carrying(
         return None
     if functional["currency"] != row.currency:
         raise tie_outs.invalid("currency_view", "Original liability layer currency differs.")
+    layers = functional["liability_layers"]
+    if functional.get("shared_liability_members") is not None:
+        selected = []
+        members = original["snapshot"].get("members", [])
+        for layer in layers:
+            owners = {move.get("owner_contract") for move in layer["movements"]}
+            if len(owners) != 1 or not owners <= set(members):
+                raise tie_outs.invalid(
+                    "currency_view", "Shared liability layer owner is unavailable."
+                )
+            if owners == {row.external_id}:
+                selected.append(layer)
+        layers = selected
     scale = Decimal(10) ** -functional["minor_unit"]
     return sum(
-        (Decimal(layer["functional_carrying"]) * scale for layer in functional["liability_layers"]),
+        (Decimal(layer["functional_carrying"]) * scale for layer in layers),
         Decimal(0),
     )
