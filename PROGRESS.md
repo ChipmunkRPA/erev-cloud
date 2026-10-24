@@ -44,8 +44,7 @@ Cross-entity agents and historical-group outsiders remain open. No deployment.
 [revision 15](docs/release/ACQUIRED-CLOSED-CUTOVER-2026-10-23.md) fixes exact closed-cutover group balances.
 [Revision 16](docs/release/ACQUIRED-FUNCTIONAL-SOURCES-2026-10-23.md) connects original cutover FX
 to functional POB classification, closing sources and the report reader. Journals remain unchanged.
-35 targeted cases pass. Public acquired report/lock workflows, mixed-sign allocation and broader
-special histories remain open.
+35 targeted cases pass. Public acquisition entry/report workflows and mixed-sign allocation remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 
@@ -250,8 +249,8 @@ Current outstanding implementation and verification gaps remain in
 Shared overrides local; breakage totals use SSP allocation; combination changes require effective-date
 reassessment. Shared return-rate drafts now support frozen bindings, impact previews, independent
 approval, atomic application/recomputation, effective-date exits and onboarding by common target
-keys, version-specific target changes and frozen FX for foreign unit costs. Other shared kinds
-and combination reassessment remain open. See
+keys, version-specific target changes and frozen FX for foreign unit costs. Foreign SSP breakage previews now retain direct effective-date FX sources; application and
+combination reassessment remain open. See
 [checkpoint](docs/release/SHARED-TARGET-CHANGES-2026-10-23.md).
 
 ## Locked POB opening sources — October 23, 2026

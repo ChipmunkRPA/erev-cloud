@@ -32094,6 +32094,16 @@
           "ssp": {
             "title": "Ssp",
             "type": "string"
+          },
+          "ssp_conversion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioSspConversionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -32667,6 +32677,82 @@
           "updated_at"
         ],
         "title": "PortfolioOut",
+        "type": "object"
+      },
+      "PortfolioSspConversionOut": {
+        "properties": {
+          "converted_ssp": {
+            "title": "Converted Ssp",
+            "type": "string"
+          },
+          "effective_date": {
+            "format": "date",
+            "title": "Effective Date",
+            "type": "string"
+          },
+          "original_ssp": {
+            "title": "Original Ssp",
+            "type": "string"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": "string"
+          },
+          "rate_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Date"
+          },
+          "rate_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Key"
+          },
+          "rate_version_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Version Key"
+          },
+          "source_currency": {
+            "title": "Source Currency",
+            "type": "string"
+          },
+          "target_currency": {
+            "title": "Target Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "original_ssp",
+          "source_currency",
+          "target_currency",
+          "converted_ssp",
+          "rate",
+          "effective_date",
+          "rate_key",
+          "rate_version_key",
+          "rate_date"
+        ],
+        "title": "PortfolioSspConversionOut",
         "type": "object"
       },
       "PositionOut": {

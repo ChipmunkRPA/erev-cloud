@@ -1,6 +1,6 @@
 """Named shared-estimate populations and record-time membership commands."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -70,6 +70,18 @@ class PortfolioEstimateVersionIn(EstimateVersionCreateIn):
     judgement_record_id: None = None
 
 
+class PortfolioSspConversionOut(BaseModel):
+    original_ssp: str
+    source_currency: str
+    target_currency: str
+    converted_ssp: str
+    rate: str
+    effective_date: date
+    rate_key: str | None
+    rate_version_key: str | None
+    rate_date: date | None
+
+
 class PortfolioBreakageShareOut(BaseModel):
     contract_id: UUID
     contract_external_id: str
@@ -77,6 +89,7 @@ class PortfolioBreakageShareOut(BaseModel):
     obligation_id: UUID
     obligation_key: str
     ssp: str
+    ssp_conversion: PortfolioSspConversionOut | None = None
     entitlement_quantity: str
     breakage_quantity: str
 

@@ -478,6 +478,17 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
             obligation_id: "o1",
             obligation_key: "POINTS",
             ssp: "100",
+            ssp_conversion: {
+              original_ssp: "80",
+              source_currency: "GBP",
+              target_currency: "USD",
+              converted_ssp: "100",
+              rate: "1.25",
+              effective_date: "2026-10-01",
+              rate_key: "GBP-USD-SPOT",
+              rate_version_key: "fx-v1",
+              rate_date: "2026-09-30",
+            },
             entitlement_quantity: "10",
             breakage_quantity: "3",
           },
@@ -492,6 +503,9 @@ it("previews saved shared breakage sources and clears obsolete shares on a refus
   expect(reads).toBe(0);
   fireEvent.click(button);
   await screen.findByText("retained-source-1");
+  expect(screen.getByText("SSP currency conversion")).toBeTruthy();
+  expect(screen.getByText(/80 GBP.*1.25.*100.*USD/)).toBeTruthy();
+  expect(screen.getByText(/GBP-USD-SPOT.*fx-v1.*2026-09-30/)).toBeTruthy();
   expect(screen.getByText(/Allocated \/ shared total: 9 \/ 9/)).toBeTruthy();
   refuse = true;
   fireEvent.click(button);

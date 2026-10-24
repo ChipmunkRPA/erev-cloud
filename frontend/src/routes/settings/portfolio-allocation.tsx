@@ -66,7 +66,32 @@ export function PortfolioAllocation({
                   <tr key={`${share.contract_id}:${share.obligation_id}`}>
                     <td className="p-2">{share.contract_external_id}</td>
                     <td className="p-2">{share.obligation_key}</td>
-                    <td className="p-2">{share.ssp}</td>
+                    <td className="p-2">
+                      {share.ssp} {preview.data.currency}
+                      {share.ssp_conversion ? (
+                        <details>
+                          <summary>{label("conversion")}</summary>
+                          <p>
+                            {share.ssp_conversion.original_ssp}{" "}
+                            {share.ssp_conversion.source_currency}
+                            {" × "}
+                            {share.ssp_conversion.rate}
+                            {" = "}
+                            {share.ssp} {share.ssp_conversion.target_currency}
+                          </p>
+                          <p>
+                            {label("effectiveDate")}: {share.ssp_conversion.effective_date}
+                          </p>
+                          <p>
+                            {label("rateSource")}: {share.ssp_conversion.rate_key}
+                            {" · "}
+                            {share.ssp_conversion.rate_version_key}
+                            {" · "}
+                            {share.ssp_conversion.rate_date}
+                          </p>
+                        </details>
+                      ) : null}
+                    </td>
                     <td className="p-2">{share.entitlement_quantity}</td>
                     <td className="p-2">{share.breakage_quantity}</td>
                     <td className="p-2">{share.contract_version_id}</td>

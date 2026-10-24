@@ -20262,6 +20262,7 @@ export interface components {
       obligation_key: string;
       /** Ssp */
       ssp: string;
+      ssp_conversion?: components["schemas"]["PortfolioSspConversionOut"] | null;
     };
     /**
      * PortfolioEstimateIn
@@ -20480,6 +20481,30 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+    };
+    /** PortfolioSspConversionOut */
+    PortfolioSspConversionOut: {
+      /** Converted Ssp */
+      converted_ssp: string;
+      /**
+       * Effective Date
+       * Format: date
+       */
+      effective_date: string;
+      /** Original Ssp */
+      original_ssp: string;
+      /** Rate */
+      rate: string;
+      /** Rate Date */
+      rate_date: string | null;
+      /** Rate Key */
+      rate_key: string | null;
+      /** Rate Version Key */
+      rate_version_key: string | null;
+      /** Source Currency */
+      source_currency: string;
+      /** Target Currency */
+      target_currency: string;
     };
     /**
      * PositionOut

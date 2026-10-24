@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import combination_group, contract, material_right, obligation_version
 from erev_api.domain.contracts import (
+    bundles,
     portfolio_allocation,
+    portfolio_ssp_fx,
     portfolio_estimate_versions,
     portfolios,
     queries,
@@ -41,6 +43,8 @@ def preview(
     book = book_code or queries.primary_book(session)
     sources = []
     weights = []
+    conversions = {}
+    rate_sets = {}
     for member in members:
         current = (
             session.execute(select(contract).where(contract.c.id == member["contract_id"]))
@@ -97,18 +101,23 @@ def preview(
                 "Every member must have a retained redemption or loyalty obligation.",
             )
         for row in eligible:
-            if str(row["txn_currency"]).strip() != version.currency:
-                raise Problem(
-                    "validation-failed",
-                    "SSP preview needs weights in the shared estimate currency; "
-                    "cross-currency weight conversion is not yet available.",
-                )
             key = f"{current['external_id']}/{row['obligation_key']}"
             ssp = Decimal(
                 row["original_ssp_selected"]
                 if row["modification_boundary_no"] == 0
                 else row["remaining_ssp"]
             )
+            currency = str(row["txn_currency"]).strip()
+            if currency != version.currency:
+                if currency not in rate_sets:
+                    rate_sets[currency] = bundles.fx_rate_inputs(
+                        session, {currency, version.currency}, None
+                    )
+                conversion = portfolio_ssp_fx.convert(
+                    ssp, currency, version.currency, version.effective_date, rate_sets[currency]
+                )
+                conversions[key] = conversion
+                ssp = Decimal(conversion.converted_ssp)
             quantity = Decimal(row["quantity"])
             weights.append(portfolio_allocation.Basis(key, ssp, quantity))
             sources.append((key, current, row, ssp, quantity))
@@ -133,6 +142,7 @@ def preview(
                 obligation_id=row["obligation_id"],
                 obligation_key=row["obligation_key"],
                 ssp=str(ssp),
+                ssp_conversion=conversions.get(key),
                 entitlement_quantity=str(quantity),
                 breakage_quantity=shares[key],
             )
