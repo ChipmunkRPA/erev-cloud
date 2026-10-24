@@ -69,6 +69,14 @@ Sign-in is `/sign-in` (password, then the authenticator code); a person who belo
 
 Routes `/contracts` (list with filters, saved views and quick lists), the draft contract form at `/contracts/new` and `/contracts/:contractId/edit`, and the contract workbench `/contracts/:contractId` with its tabs `/contracts/:contractId/obligations`, `/contracts/:contractId/estimates`, `/contracts/:contractId/schedules`, `/contracts/:contractId/billing`, `/contracts/:contractId/journals`, `/contracts/:contractId/modifications` and `/contracts/:contractId/history`. The Estimates tab lists the contract's estimated elements; a version of an element is prepared in a drawer with its impact preview, submitted for approval and, while it waits, withdrawn. The Modifications tab lists the contract's modifications; a new one is prepared in the five steps of the wizard at `/contracts/:contractId/modifications/new` (change, questionnaire, treatment, impact preview, submission), and one that is no longer a draft is read at `/contracts/:contractId/modifications/:modificationId`. The History tab shows the contract's activity (changes, approvals and, under "Calculations", the system's computations), its versions with a field-by-field comparison of two of them and, for a holder of `audit.read`, its audit trail. The API below serves the same data.
 
+To split an unposted draft into a new contract, open its workbench action menu and choose
+**Move lines to a new draft**. Select the original obligation lines, enter a comment, and choose
+**Move lines**. The new draft uses the same customer, entity and currency and retains the moved
+lines' booking terms; both contracts are recalculated. Find the new draft in the contracts list.
+The action requires contract-creation permission. If the contract is no longer eligible, the
+server refuses the move and the drawer keeps the selection and comment. This drawer creates a
+new target; the existing-target API flow is not exposed here. Posted transfers remain unavailable.
+
 A contract moves through the statuses `DRAFT`, `PENDING_REVIEW`, `ACTIVE`, `COMPLETED`, `TERMINATED` and `VOIDED`; a document that fails the contract criteria is `NOT_A_CONTRACT`. The API under `/api/v1/contracts`:
 
 - Create a draft with `POST /api/v1/contracts` and replace it with `POST /api/v1/contracts/{contract_id}/replace-draft`; `GET …/activation-checklist` shows what activation still needs; `POST …/submit-activation` sends the contract for approval (subject `CONTRACT_ACTIVATION`), and the approver must be someone other than the submitter.

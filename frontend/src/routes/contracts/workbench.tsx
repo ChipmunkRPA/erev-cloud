@@ -147,6 +147,7 @@ import { useBuiltPaths } from "../settings/index";
 import { requestNumber, useRefreshRecord } from "./drawers/common";
 import { EstimatesTab } from "./estimates";
 import { CombineDrawer, DismissSuggestionModal } from "./drawers/combine";
+import { RegroupDrawer } from "./drawers/regroup";
 import { DistinctReviewDrawer } from "./drawers/distinct-review";
 import { LessorAssessmentDrawer } from "./drawers/lessor-assessment";
 import { DocumentsDrawer } from "./drawers/documents";
@@ -1404,6 +1405,7 @@ type OpenDrawer =
   | { readonly kind: "release"; readonly holdId?: string | undefined }
   | { readonly kind: "memos"; readonly obligationKey?: string | undefined }
   | { readonly kind: "combine" }
+  | { readonly kind: "regroup" }
   | { readonly kind: "documents" }
   | { readonly kind: "dismiss"; readonly suggestion: CombinationSuggestion };
 
@@ -2345,6 +2347,11 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
             });
           }
           overflow.push({
+            id: "regroup",
+            label: t("contracts.drawer.regroup.title"),
+            onSelect: () => setDrawer({ kind: "regroup" }),
+          });
+          overflow.push({
             id: "combine",
             label: t("contracts.drawer.combine.title"),
             onSelect: () => setDrawer({ kind: "combine" }),
@@ -3247,6 +3254,8 @@ function WorkbenchDrawer({
           onClose={onClose}
         />
       );
+    case "regroup":
+      return <RegroupDrawer contract={contract} obligations={obligations} onClose={onClose} />;
     case "combine":
       return <CombineDrawer contract={contract} onClose={onClose} />;
     case "documents":

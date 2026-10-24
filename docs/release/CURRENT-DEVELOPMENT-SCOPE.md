@@ -2256,3 +2256,18 @@ endpoints; final RPO is zero and the nonzero termination contribution retains it
 These are consistent retained-input close-cutoff replays, not a new public close/lock round trip.
 Twelve modification causal cases also pass after sharing the classifier; scoped lint/types pass.
 No deployment.
+
+
+## Draft split workbench entry — October 24, 2026
+
+Added a permission-gated action on the writable DRAFT workbench to move selected original
+obligation keys to a new draft through the existing regroup command. The drawer explains the
+new target and retained booking terms, requires selected keys/comment, uses the shared idempotent
+command hook, refreshes contract/obligation/list queries on success, and preserves entered values
+on server refusal. It does not bypass backend posting/status eligibility or enable after-posting
+transfers. Existing-target selection remains available only through the API.
+
+Necessary verification: two component command cases pass for exact body/idempotency and a real-
+shaped 409 refusal with preserved inputs; frontend type checking and scoped lint pass. This is
+component/service-contract evidence, not full browser-to-live-API acceptance. User guide updated.
+No backend calculation change and no deployment.
