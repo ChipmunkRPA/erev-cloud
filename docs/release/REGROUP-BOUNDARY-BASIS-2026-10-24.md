@@ -284,3 +284,23 @@ posted amounts/previous stream heads to the existing close-replay basis, with ex
 knowledge cutoffs. This is not a new public close/lock roundtrip. Twelve causal regression cases and
 seven negative replay guards pass; scoped lint/types pass. Public after-posting regroup remains
 gated for outstanding accounting scenarios. No deployment.
+
+
+## Fixed transfer preparation eligibility — October 24, 2026
+
+The retained after-posting preparation branch now explicitly requests fixed-transfer eligibility
+when measuring source amounts. It refuses blocking native findings, inputs carrying estimate
+versions, selected combined/acquired/material-right/variable-consideration obligations, agents
+and cross-entity performance, unsupported progress methods, non-fixed allocation segments,
+terminated obligations and exhausted/negative remaining service. These scenarios need their
+complete transfer treatment; the fixed component alone must not create draft financial commands.
+Value/engine failures are translated into a field validation response before either pair row is
+inserted. Analytical boundary queries keep their existing broader fixed-component behavior.
+
+Fifteen native boundary cases pass, including actual combined-host refusal, preservation of plain
+fixed service amounts and targeted native-state eligibility cases. Both populated retained-pair
+workflows still pass (cross-group and shared-group, with public entry guards bypassed only in
+the fixture), including preview, approval, application, replay and causal report checks. Scoped
+lint/types pass. These are preparation safeguards, not complete transfer coverage: public
+after-posting entry remains gated, and foreign-currency, broader consideration/progress and
+new-target transfer implementation remain open. No deployment.

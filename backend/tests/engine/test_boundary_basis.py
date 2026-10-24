@@ -122,3 +122,63 @@ def test_boundary_query_requires_exactly_one_position(both):
             obligation_keys=("SERVICE",),
             **kwargs,
         )
+
+
+def test_fixed_transfer_admission_preserves_plain_service_amounts():
+    from tests.engine.s06_modifications.test_s06_prospective import ex_09_a
+
+    value = ex_09_a()
+    kwargs = dict(
+        book_code="ASC606",
+        event_key=value.events[-1].event_key,
+        contract_key=value.contracts[0].external_id,
+        obligation_keys=("POB-01",),
+    )
+    assert fixed_boundary_basis(
+        value, **kwargs, require_fixed_transfer=True
+    ) == fixed_boundary_basis(value, **kwargs)
+
+
+def test_combined_member_basis_is_analytical_not_a_complete_transfer_basis():
+    value = continuation()
+    assert query(value)
+    with pytest.raises(ValueError, match="Combined obligations"):
+        query(value, require_fixed_transfer=True)
+
+
+@pytest.mark.parametrize(
+    "changes,reason",
+    [
+        ({"is_vc_line": True}, "variable consideration"),
+        ({"principal_agent": "AGENT"}, "Agent and cross-entity"),
+        ({"performing_entity": "OTHER"}, "Agent and cross-entity"),
+        ({"recognition_method": "COST_TO_COST"}, "progress basis"),
+    ],
+)
+def test_fixed_transfer_refuses_incomplete_native_basis(monkeypatch, changes, reason):
+    import erev_engine.boundary_basis as module
+    from tests.engine.s06_modifications.test_s06_prospective import ex_09_a
+
+    value = ex_09_a()
+    native_fold = module.fold_book
+
+    def fold(*args, **kwargs):
+        state = native_fold(*args, **kwargs)
+        return replace(
+            state,
+            obligations=tuple(
+                replace(ob, **changes) if ob.obligation_key == "POB-01" else ob
+                for ob in state.obligations
+            ),
+        )
+
+    monkeypatch.setattr(module, "fold_book", fold)
+    with pytest.raises(ValueError, match=reason):
+        fixed_boundary_basis(
+            value,
+            book_code="ASC606",
+            event_key=value.events[-1].event_key,
+            contract_key=value.contracts[0].external_id,
+            obligation_keys=("POB-01",),
+            require_fixed_transfer=True,
+        )

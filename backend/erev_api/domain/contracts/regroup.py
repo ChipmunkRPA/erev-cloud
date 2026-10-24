@@ -496,13 +496,17 @@ def regroup(uow: UnitOfWork, *, contract_id: UUID, body: RegroupIn) -> RegroupOu
                     RULE_TARGET,
                     "Legacy-book transfers need separate retained recognition evidence.",
                 )
-            measured = fixed_boundary_basis(
-                original,
-                book_code=book.book_code,
-                effective_date=effective,
-                contract_key=str(source["external_id"]),
-                obligation_keys=tuple(keys),
-            )
+            try:
+                measured = fixed_boundary_basis(
+                    original,
+                    book_code=book.book_code,
+                    effective_date=effective,
+                    contract_key=str(source["external_id"]),
+                    obligation_keys=tuple(keys),
+                    require_fixed_transfer=True,
+                )
+            except (ValueError, EngineError) as error:
+                raise _failed("obligation_keys", RULE_TARGET, str(error)) from error
             basis = {item.obligation_key: item for item in measured}
             scale = 10 ** original.currencies[currency].minor_unit
             with localcontext(money.DECIMAL_CONTEXT):

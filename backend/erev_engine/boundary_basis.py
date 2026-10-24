@@ -48,6 +48,7 @@ def fixed_boundary_basis(
     effective_date: date | None = None,
     contract_key: str,
     obligation_keys: tuple[str, ...],
+    require_fixed_transfer: bool = False,
 ) -> tuple[FixedBoundaryBasis, ...]:
     """Query selected original obligations without using latest-version remainder columns.
 
@@ -57,6 +58,9 @@ def fixed_boundary_basis(
     Select an existing event to measure strictly before it, or a proposed effective date
     to measure after all retained events on that date. The latter creates no source event;
     it is a current-known-input query, not a historical knowledge snapshot.
+    Transfer preparation opts into fixed-component eligibility checks. Analytical queries
+    remain available for other obligations; their fixed component alone does not authorize
+    transferring consideration, progress, FX, or balances.
     """
     if (event_key is None) == (effective_date is None):
         raise ValueError("Choose exactly one original event or proposed effective date")
@@ -91,6 +95,13 @@ def fixed_boundary_basis(
                 source=SourceRef("source_record", "query:fixed-boundary"),
             )
             position = "AFTER_RETAINED_EVENTS_ON_DATE"
+        if require_fixed_transfer:
+            if any(finding.severity == "ERROR" for finding in state.findings):
+                raise ValueError("Transfer basis has blocking calculation findings")
+            if bundle.estimate_versions:
+                raise ValueError(
+                    "Transfer of estimated consideration requires retained member treatment"
+                )
         obligations = {
             ob.obligation_key: ob for ob in state.obligations if ob.contract_key == contract_key
         }
@@ -102,10 +113,49 @@ def fixed_boundary_basis(
             ob = obligations[key]
             if ob.scope_flag != "IN_SCOPE_606":
                 raise ValueError("Boundary allocation evidence requires in-scope obligations")
+            if require_fixed_transfer:
+                if ob.combined_component_keys:
+                    raise ValueError("Combined obligations require member-level transfer treatment")
+                if ob.opening is not None:
+                    raise ValueError(
+                        "Acquired obligations require retained opening transfer treatment"
+                    )
+                if ob.material_right is not None or ob.is_vc_line:
+                    raise ValueError(
+                        "Material rights and variable consideration need separate transfer bases"
+                    )
+                if (
+                    ob.principal_agent != "PRINCIPAL"
+                    or ob.performing_entity != ob.contracting_entity
+                ):
+                    raise ValueError(
+                        "Agent and cross-entity obligations need separate transfer bases"
+                    )
+                if ob.recognition_method not in {"TIME_ELAPSED", "UNITS_DELIVERED"}:
+                    raise ValueError(
+                        "This recognition method requires its own transfer progress basis"
+                    )
+                if any(segment.component != "FIXED" for segment in ob.segments):
+                    raise ValueError(
+                        "A fixed transfer basis cannot omit other consideration components"
+                    )
+                if ob.terminated_on is not None and ob.terminated_on <= event.effective_date:
+                    raise ValueError(
+                        "Terminated obligations have no transferable remaining service"
+                    )
             segment = segments.in_force(state, ob, event)
             if segment is None:
                 raise ValueError("The selected obligation has no fixed allocation at the boundary")
             measured = segments.measure(context, state, ob, segment, event)
+            if require_fixed_transfer and (
+                measured.remaining_quantity <= 0
+                or segment.a_posted - measured.posted < 0
+                or (
+                    segment.totals.end_date is not None
+                    and segment.totals.end_date < event.effective_date
+                )
+            ):
+                raise ValueError("The obligation has no transferable remaining service")
             result.append(
                 FixedBoundaryBasis(
                     input_sha256=digest,
