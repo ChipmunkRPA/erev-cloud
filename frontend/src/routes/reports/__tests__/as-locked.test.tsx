@@ -479,6 +479,7 @@ async function expectAsLockedByDefault(code: string, periods: readonly Period[])
     "contract_balance_rollforward",
     "rpo_rollforward",
     "disaggregation",
+    "contract_cost_rollforward",
   ].includes(definition.code);
   expect(fields.filter((field) => !unavailable(field)).map((field) => field.id)).toEqual(
     currency ? ["field-p-currency_view"] : [],

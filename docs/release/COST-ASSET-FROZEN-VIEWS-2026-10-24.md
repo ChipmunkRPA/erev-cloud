@@ -15,3 +15,12 @@ CSV export scenario, plus currency codec and relock checks. Scoped lint and type
 Stale relock fixture headers were aligned with existing noncurrent contract asset and RPO eligibility columns.
 No deployment or accounting posting changes. Foreign cost impairment, reversal, clawback,
 delayed capitalisation and foreign split-layer allocation remain separate unfinished work.
+
+## Locked viewer controls — follow-up
+
+The report viewer now exposes currency and category/asset selection for locked cost rollforwards
+and carries both selectors into the submitted run. Previously the backend supported these
+variants but the UI disabled them and omitted granularity. Period/range and other filters remain
+frozen. The viewer explains that old locks may lack a requested variant; the backend retains
+its explicit refusal without live fallback. One hundred toolbar/as-locked UI cases pass, along
+with TypeScript and scoped ESLint. This closes the UI-to-frozen-report selection gap.

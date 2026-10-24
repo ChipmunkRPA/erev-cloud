@@ -2891,3 +2891,11 @@ contracts, preserving older entries and complete-population access guards. See
 [checkpoint](SPLIT-HISTORY-NAVIGATION-2026-10-24.md). Four focused UI cases, lint and types pass.
 Foreign split-layer allocation and functional impairment policy remain unanswered; this change
 does not decide them. No deployment.
+
+
+### 2026-10-24 — Locked cost report selection in the viewer
+
+Closed the frontend gap for retained cost currency and category/asset variants: both controls
+remain usable under a lock and both parameters reach the report run, while the source period
+and other filters remain fixed. One hundred focused UI cases, scoped lint and types pass.
+See [checkpoint](COST-ASSET-FROZEN-VIEWS-2026-10-24.md). No deployment.

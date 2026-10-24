@@ -20,7 +20,12 @@ import { periodLabel } from "../../../lib/api/queries/tenant";
 import { formatDate, NO_VALUE } from "../../../lib/format";
 import { hasMessage, t } from "../../../lib/i18n/t";
 import { TextField } from "../../contracts/drawers/common";
-import { parameterKeys, supportsLockedCurrency, type ReportContext } from "./specs";
+import {
+  parameterKeys,
+  supportsLockedCurrency,
+  supportsLockedCostGranularity,
+  type ReportContext,
+} from "./specs";
 import { CloseLockParameter } from "./CloseLockParameter";
 import { MigrationParameter } from "./MigrationParameter";
 import { LegacyPositions } from "./LegacyPositions";
@@ -337,7 +342,10 @@ export function ParametersToolbar({
             const options = enumOf(definition, key).map((item) => ({
               value: item,
               label: choiceLabel(key, item),
-              disabledReason: unavailable,
+              disabledReason:
+                key === "granularity" && supportsLockedCostGranularity(definition)
+                  ? undefined
+                  : unavailable,
             }));
             return options.length < 2 ? null : (
               <SegmentedControl
@@ -479,9 +487,11 @@ export function ParametersToolbar({
     <>
       {toolbar}
       <p id={noteId} className="text-body-sm text-fg-2">
-        {supportsLockedCurrency(definition)
-          ? t("reports.asLocked.currencyParameters")
-          : unavailable}
+        {supportsLockedCostGranularity(definition)
+          ? t("reports.asLocked.costParameters")
+          : supportsLockedCurrency(definition)
+            ? t("reports.asLocked.currencyParameters")
+            : unavailable}
       </p>
     </>
   ) : (

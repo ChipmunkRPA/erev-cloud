@@ -344,6 +344,7 @@ export function datasetLock(context: ReportContext): NonNullable<Period["current
 export function supportsLockedCurrency(definition: ReportDefinition): boolean {
   return [
     "disclosure_pack",
+    "contract_cost_rollforward",
     "balance_aging",
     "revenue_waterfall",
     "contract_balances",
@@ -352,6 +353,14 @@ export function supportsLockedCurrency(definition: ReportDefinition): boolean {
     "rpo_rollforward",
     "disaggregation",
   ].includes(definition.code);
+}
+
+/** Cost locks retain category and original-asset variants at the same frozen cutoff. */
+export function supportsLockedCostGranularity(definition: ReportDefinition): boolean {
+  return (
+    definition.code === "contract_cost_rollforward" &&
+    Object.hasOwn(properties(definition), "granularity")
+  );
 }
 
 /**
@@ -468,6 +477,10 @@ export function runParameters(
       if (view) parameters.currency_view = view;
     }
 
+    if (supportsLockedCostGranularity(definition)) {
+      const granularity = values.granularity;
+      if (granularity) parameters.granularity = granularity;
+    }
     if (definition.code === "disclosure_pack") {
       parameters.quarter = values.quarter !== "false";
     }

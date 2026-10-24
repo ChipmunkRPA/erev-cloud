@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [split history navigation](docs/release/SPLIT-HISTORY-NAVIGATION-2026-10-24.md) adds dated destination groups and original-member links.
+Oct 24: [locked cost report controls](docs/release/COST-ASSET-FROZEN-VIEWS-2026-10-24.md) connects currency and asset-detail selection to frozen runs.

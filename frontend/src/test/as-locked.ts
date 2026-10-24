@@ -177,9 +177,14 @@ export function asLockedFindings(
     "contract_balance_rollforward",
     "rpo_rollforward",
     "disaggregation",
+    "contract_cost_rollforward",
   ].includes(code);
   for (const key of Object.keys(given).sort()) {
-    if (!AS_LOCKED.admitted_keys.includes(key) && !(currencyViews && key === "currency_view")) {
+    if (
+      !AS_LOCKED.admitted_keys.includes(key) &&
+      !(currencyViews && key === "currency_view") &&
+      !(code === "contract_cost_rollforward" && key === "granularity")
+    ) {
       refuse(key, said(messages.not_a_lock_selector, { key, kind, lock: lock.id }));
     }
   }
@@ -189,6 +194,13 @@ export function asLockedFindings(
     !["transaction", "functional", "reporting"].includes(String(given.currency_view))
   ) {
     refuse("currency_view", "Choose transaction, functional or reporting currency.");
+  }
+  if (
+    code === "contract_cost_rollforward" &&
+    Object.hasOwn(given, "granularity") &&
+    !["category", "asset"].includes(String(given.granularity))
+  ) {
+    refuse("granularity", "Choose category or asset granularity.");
   }
   if (Object.hasOwn(given, "entity_codes")) {
     const codes = Array.isArray(given.entity_codes) ? given.entity_codes.map(String) : [];

@@ -315,3 +315,72 @@ it("cost rollforward offers category and original asset grouping", () => {
     granularity: "asset",
   });
 });
+
+it("locked cost views submit retained granularity and currency without changing frozen filters", () => {
+  const modified = {
+    ...definition,
+    code: "contract_cost_rollforward",
+    parameters_schema: {
+      properties: {
+        entity_codes: { type: "array" },
+        book: { type: "string" },
+        period_lock_id: { type: "string" },
+        from_period_key: { type: "string" },
+        to_period_key: { type: "string" },
+        granularity: { type: "string", enum: ["category", "asset"], default: "category" },
+        currency_view: { type: "string", enum: ["transaction", "functional", "reporting"] },
+      },
+    },
+  };
+  const locked: ReportContext = {
+    ...context,
+    periodKey: "FY2026-P09",
+    snapshot: "cost-lock",
+    currencyView: "reporting",
+    periods: [
+      {
+        period: {
+          period_key: "FY2026-P09",
+          start_date: "2026-09-01",
+          end_date: "2026-09-30",
+          name: "Sep 2026",
+        },
+        dataset_lock: { id: "cost-lock" },
+      },
+    ] as unknown as ReportContext["periods"],
+  };
+  const submit = vi.fn();
+  function Form() {
+    const [values, setValues] = useState<Record<string, string>>({ from_period_key: "OTHER" });
+    return (
+      <ParametersToolbar
+        definition={modified}
+        context={locked}
+        values={values}
+        errors={{}}
+        timeBands={null}
+        unavailable="Frozen filters"
+        onChange={(key, value) => setValues((old) => ({ ...old, [key]: value }))}
+        onRun={() => submit(runParameters(modified, locked, values))}
+      />
+    );
+  }
+  render(<Form />);
+  fireEvent.click(screen.getByRole("radio", { name: "By cost asset" }));
+  expect(screen.getByRole("radio", { name: "By cost asset" }).getAttribute("aria-checked")).toBe(
+    "true",
+  );
+  const currency = screen.getByRole("combobox", { name: "Currency view" });
+  expect(currency.getAttribute("aria-disabled")).not.toBe("true");
+  expect(currency.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Run report" }));
+  expect(submit).toHaveBeenCalledWith({
+    entity_codes: ["US"],
+    book: "ASC606",
+    period_lock_id: "cost-lock",
+    from_period_key: "FY2026-P09",
+    to_period_key: "FY2026-P09",
+    currency_view: "reporting",
+    granularity: "asset",
+  });
+});
