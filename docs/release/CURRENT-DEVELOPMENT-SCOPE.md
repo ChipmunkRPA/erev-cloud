@@ -2802,3 +2802,10 @@ open. See CURRENT-ASSET-CURRENCY-2026-10-24.md.
 Revision 53 now calculates same-currency fixed-service destination balances and close-pass reclasses inside ordinary computation. Earlier periods and revenue recognition remain intact; envelope totals sum independent destination balances. See [split netting checkpoint](SPLIT-NETTING-2026-10-24.md). Native calculation and close support are implemented; durable split submit/approve/apply, destination-history navigation and foreign/specialist continuation remain unfinished.
 
 The owner has selected proportional carrying-amount allocation for member current contract liability, with current plus noncurrent equal to each member's total. The earlier “awaiting choice” limitation is superseded; implementation is outstanding, not blocked on user input.
+
+
+## October 24, 2026 — owner-selected member current-liability allocation
+
+Revision 54 implements proportional member carrying allocation in transaction and functional currency for ordinary combinations. Functional totals retain the original release sequence and FX layers; member weights use original functional carrying. Current plus noncurrent equals each member total, with deterministic rounding and replayable input nodes. Same-currency split destinations allocate within their effective populations. See [member current liability](MEMBER-CURRENT-LIABILITY-2026-10-24.md).
+
+This supersedes the earlier “implementation outstanding” checkpoint for ordinary combinations. Acquired/mixed opening populations, inconsistent monetary-layer policies, foreign split continuation and the durable split application workflow remain open. Thirty-two focused cases, the final eight-case carrying check and the existing real-database combination workflow passed; no deployment.

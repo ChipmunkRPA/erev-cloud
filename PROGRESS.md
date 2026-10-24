@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [effective split netting](docs/release/SPLIT-NETTING-2026-10-24.md) feeds close; member current-liability allocation rule is agreed.
+Oct 24: [member current liability](docs/release/MEMBER-CURRENT-LIABILITY-2026-10-24.md) allocates original carrying in both currencies.

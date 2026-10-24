@@ -65,7 +65,12 @@ def _relief_12(
 
 
 def measure(
-    ctx: BookContext, recognition: RecognitionState, presentation: Presentation, tb: TraceBuilder
+    ctx: BookContext,
+    recognition: RecognitionState,
+    presentation: Presentation,
+    tb: TraceBuilder,
+    *,
+    destination_currents: list[Target] | None = None,
 ) -> tuple[Target, ...]:
     """The current parts ``contract_liability_current``, ``contract_asset_current`` and
     ``unbilled_receivable_current`` per (group, contracting entity) and period end (§10.2.8;
@@ -171,6 +176,17 @@ def measure(
                             },
                             narrative_key="pos.current_split",
                         )
+                        if destination_currents is not None:
+                            from dataclasses import replace
+
+                            destination_currents.append(
+                                replace(
+                                    target,
+                                    measure="contract_liability_current",
+                                    value=value,
+                                    node_id=node,
+                                )
+                            )
                         current_parts.append(value)
                         current_nodes.append(node)
                     nodes["contract_liability_current"] = (

@@ -180,8 +180,18 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
         *position.empty_member_balances(ctx, allocated, tb),  # D-88 L7-5-Q-10 (3)
     )
     receivables = reclass.accounts_receivable(ctx, st, billed, classified.receipts, tb)
-    current = current_split.measure(ctx, st, presentation, tb)
-    if (
+    destination_currents: list[Target] = []
+    current = current_split.measure(
+        ctx, st, presentation, tb, destination_currents=destination_currents
+    )
+    if ctx.member_current_liability and all(ob.opening is None for ob in allocated.obligations):
+        from .current_members import allocate
+
+        members = (
+            *members,
+            *allocate(ctx, allocated, presentation, current, destination_currents, tb),
+        )
+    elif (
         ctx.dated_current_liability
         and len(allocated.contracts) == 1
         and all(ob.opening is None for ob in allocated.obligations)

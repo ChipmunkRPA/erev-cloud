@@ -105,7 +105,7 @@ def test_destination_balance_requires_dated_scope(day, message):
 
 @pytest.mark.parametrize("billing_date", [date(2026, 8, 1), date(2026, 10, 1)])
 def test_full_compute_nets_effective_destinations_and_posts_reconciling_reclasses(billing_date):
-    value = replace(billed_split(), evidence_revision=53)
+    value = replace(billed_split(), evidence_revision=54)
     value = replace(
         value,
         events=tuple(
@@ -150,9 +150,14 @@ def test_full_compute_nets_effective_destinations_and_posts_reconciling_reclasse
     intents = (*current.posting_intents, *close.posting_intents)
     previous = compute(replace(value, evidence_revision=52)).books[0]
     assert current.schedules == previous.schedules
-    assert [r for r in current.balances if r.period_key < "FY2026-P09"] == [
-        r for r in previous.balances if r.period_key < "FY2026-P09"
-    ]
+    # Revision 54 adds current-member evidence; prior balance amounts stay unchanged.
+    earlier = {
+        (r.subject_key, r.period_key): r for r in previous.balances if r.period_key < "FY2026-P09"
+    }
+    for row in current.balances:
+        if row.period_key < "FY2026-P09":
+            old = earlier[row.subject_key, row.period_key]
+            assert all(row.columns[key] == amount for key, amount in old.columns.items())
     assert [p for p in current.posting_intents if p.posting_period_key < "FY2026-P09"] == [
         p for p in previous.posting_intents if p.posting_period_key < "FY2026-P09"
     ]
@@ -169,8 +174,6 @@ def test_full_compute_nets_effective_destinations_and_posts_reconciling_reclasse
         rows = {r.subject_key: r for r in current.balances if r.period_key == period}
         for destination in independent:
             for target in destination.member_balances:
-                if target.measure == "contract_liability_current":
-                    continue  # Member maturity allocation is implemented separately from netting.
                 assert rows[target.subject_key].columns[target.measure + "_txn"] == target.value
         for role in ("CONTRACT_LIABILITY", "CONTRACT_ASSET", "UNBILLED_RECEIVABLE"):
             ledger = sum(
@@ -187,7 +190,7 @@ def test_full_compute_nets_effective_destinations_and_posts_reconciling_reclasse
 
 
 def test_full_split_refuses_foreign_posting_without_destination_layer_continuation():
-    value = replace(billed_split(), evidence_revision=53)
+    value = replace(billed_split(), evidence_revision=54)
     value = replace(
         value, entities=tuple(replace(e, functional_currency="EUR") for e in value.entities)
     )

@@ -335,7 +335,14 @@ def _functional_member_balances(
         tb=tb,
     )
 
-    if ctx.dated_current_liability:
+    if ctx.member_current_liability:
+        from .current_members import combined
+
+        targets = (
+            *targets,
+            *combined(ctx, fx, getattr(balances, "current_split", ()), targets, tb),
+        )
+    elif ctx.dated_current_liability:
         from .current_members import singleton
 
         targets = (*targets, *singleton(ctx, fx, members, tb))
