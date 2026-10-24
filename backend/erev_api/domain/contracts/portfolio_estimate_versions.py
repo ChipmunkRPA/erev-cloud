@@ -1,6 +1,7 @@
 """Shared estimate draft values; no approval or financial application occurs here."""
 
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id, transitions
 from erev_api.db.tables import estimate, estimate_version
-from erev_api.domain.contracts import estimates, portfolios
+from erev_api.domain.contracts import estimates, portfolios, portfolio_allocation
 from erev_api.problems import Problem
 from erev_api.schemas.estimates import EstimateVersionOut
 from erev_api.schemas.portfolios import PortfolioEstimateVersionIn
@@ -118,6 +119,12 @@ def save(
                     "validation-failed",
                     "Enter the portfolio total breakage quantity for SSP allocation.",
                 )
+            try:
+                portfolio_allocation.units(
+                    Decimal(values["parameters"]["portfolio_total_breakage_quantity"])
+                )
+            except ValueError as error:
+                raise Problem("validation-failed", str(error)) from error
             if values["rate"] is not None or values["expected_quantity"] is not None:
                 raise Problem(
                     "validation-failed",

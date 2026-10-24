@@ -421,3 +421,68 @@ it("authors the shared breakage total without a member rate", async () => {
     }),
   );
 });
+
+it("previews saved shared breakage sources and clears obsolete shares on a refused refresh", async () => {
+  serve();
+  let refuse = false;
+  let reads = 0;
+  const version = {
+    id: "v1",
+    version_no: 1,
+    row_version: 1,
+    status: "DRAFT",
+    effective_date: "2026-09-01",
+    currency: "USD",
+    scenarios: [],
+    rationale: "Shared breakage",
+    parameters: { portfolio_total_breakage_quantity: "9" },
+  };
+  server.use(
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates"), () =>
+      HttpResponse.json({
+        items: [{ id: "e1", element_code: "BREAKAGE", estimate_kind: "BREAKAGE", method: "RATE" }],
+        next_cursor: null,
+      }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions"), () =>
+      HttpResponse.json({ items: [version], next_cursor: null }),
+    ),
+    http.get(apiUrl("/api/v1/portfolios/p1/estimates/e1/versions/v1/allocation-preview"), () => {
+      reads++;
+      if (refuse) return problemResponse("validation-failed", 422, "Recompute every member");
+      return HttpResponse.json({
+        basis: "CURRENT_COMPUTED_SSP_PREVIEW",
+        portfolio_id: "p1",
+        version_id: "v1",
+        book_code: "PRIMARY",
+        currency: "USD",
+        total_breakage_quantity: "9",
+        allocated_total: "9",
+        shares: [
+          {
+            contract_id: "c1",
+            contract_external_id: "LOYALTY-A",
+            contract_version_id: "retained-source-1",
+            obligation_id: "o1",
+            obligation_key: "POINTS",
+            ssp: "100",
+            entitlement_quantity: "10",
+            breakage_quantity: "3",
+          },
+        ],
+      });
+    }),
+  );
+  renderApp("/settings/portfolios?row=p1", { me: editor, screenRoutes: SCREEN_ROUTES });
+  fireEvent.click(await screen.findByRole("button", { name: "Versions" }));
+  fireEvent.click(await screen.findByRole("button", { name: "View version" }));
+  const button = await screen.findByRole("button", { name: "Preview SSP allocation" });
+  expect(reads).toBe(0);
+  fireEvent.click(button);
+  await screen.findByText("retained-source-1");
+  expect(screen.getByText(/Allocated \/ shared total: 9 \/ 9/)).toBeTruthy();
+  refuse = true;
+  fireEvent.click(button);
+  await waitFor(() => expect(reads).toBe(2));
+  await waitFor(() => expect(screen.queryByText("retained-source-1")).toBeNull());
+});

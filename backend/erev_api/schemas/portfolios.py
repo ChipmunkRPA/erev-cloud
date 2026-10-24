@@ -65,3 +65,25 @@ class PortfolioEstimateVersionIn(EstimateVersionCreateIn):
     currency: CurrencyCode
     modification_id: None = None
     judgement_record_id: None = None
+
+
+class PortfolioBreakageShareOut(BaseModel):
+    contract_id: UUID
+    contract_external_id: str
+    contract_version_id: UUID
+    obligation_id: UUID
+    obligation_key: str
+    ssp: str
+    entitlement_quantity: str
+    breakage_quantity: str
+
+
+class PortfolioBreakagePreviewOut(BaseModel):
+    basis: Literal["CURRENT_COMPUTED_SSP_PREVIEW"] = "CURRENT_COMPUTED_SSP_PREVIEW"
+    portfolio_id: UUID
+    version_id: UUID
+    book_code: str
+    currency: str
+    total_breakage_quantity: str
+    allocated_total: str
+    shares: list[PortfolioBreakageShareOut]

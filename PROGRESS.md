@@ -248,8 +248,9 @@ Current outstanding implementation and verification gaps remain in
 Shared estimates override local estimates; shared breakage uses a total quantity allocated by
 SSP. Combined scope changes are reassessed from their effective date, preserving earlier groups
 and revenue. These choices supersede earlier pending-choice notes. Explicit total authoring and
-approval population/computation pinning are implemented; allocation/application/recomputation
-and reassessment still require development. See [checkpoint](docs/release/SHARED-ESTIMATE-BASIS-2026-10-23.md).
+approval population pinning and current-SSP allocation preview are implemented. Effective-date
+freezing, approval/application, recomputation and reassessment remain open. See
+[checkpoint](docs/release/SHARED-BREAKAGE-PREVIEW-2026-10-23.md).
 
 ## Locked POB opening sources — October 23, 2026
 

@@ -343,6 +343,13 @@ def test_portfolio_membership_workflow(
     assert saved_total.status_code == 201, saved_total.text
     assert saved_total.json()["parameters"] == total_values["parameters"]
 
+    preview_path = saved_total.headers["location"] + "/allocation-preview"
+    assert get(app, preview_path, foreign).status_code == 404
+    assert get(app, preview_path, hidden).status_code == 404
+    # This ordinary subscription population has no redemption obligations. Never fabricate weights.
+    preview_response = get(app, preview_path, maya)
+    assert preview_response.status_code == 422, preview_response.text
+
     from erev_api.approvals import subjects
     from erev_api.db.session import DbContext, tenant_session
 

@@ -6022,6 +6022,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{version_id}/allocation-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Allocation Preview */
+    get: operations["portfolio_breakage_allocation_preview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{version_id}/discard": {
     parameters: {
       query?: never;
@@ -20136,6 +20153,63 @@ export interface components {
        * Format: uuid
        */
       approval_request_id: string;
+    };
+    /** PortfolioBreakagePreviewOut */
+    PortfolioBreakagePreviewOut: {
+      /** Allocated Total */
+      allocated_total: string;
+      /**
+       * Basis
+       * @default CURRENT_COMPUTED_SSP_PREVIEW
+       * @constant
+       */
+      basis: "CURRENT_COMPUTED_SSP_PREVIEW";
+      /** Book Code */
+      book_code: string;
+      /** Currency */
+      currency: string;
+      /**
+       * Portfolio Id
+       * Format: uuid
+       */
+      portfolio_id: string;
+      /** Shares */
+      shares: components["schemas"]["PortfolioBreakageShareOut"][];
+      /** Total Breakage Quantity */
+      total_breakage_quantity: string;
+      /**
+       * Version Id
+       * Format: uuid
+       */
+      version_id: string;
+    };
+    /** PortfolioBreakageShareOut */
+    PortfolioBreakageShareOut: {
+      /** Breakage Quantity */
+      breakage_quantity: string;
+      /** Contract External Id */
+      contract_external_id: string;
+      /**
+       * Contract Id
+       * Format: uuid
+       */
+      contract_id: string;
+      /**
+       * Contract Version Id
+       * Format: uuid
+       */
+      contract_version_id: string;
+      /** Entitlement Quantity */
+      entitlement_quantity: string;
+      /**
+       * Obligation Id
+       * Format: uuid
+       */
+      obligation_id: string;
+      /** Obligation Key */
+      obligation_key: string;
+      /** Ssp */
+      ssp: string;
     };
     /**
      * PortfolioEstimateIn
@@ -50727,6 +50801,72 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  portfolio_breakage_allocation_preview: {
+    parameters: {
+      query?: {
+        book_code?: string | null;
+      };
+      header?: never;
+      path: {
+        portfolio_id: string;
+        estimate_id: string;
+        version_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PortfolioBreakagePreviewOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
         headers: {
           [name: string]: unknown;
         };

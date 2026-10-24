@@ -30,10 +30,17 @@ from erev_api.api.lists import (
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import contract, estimate, estimate_version, portfolio, portfolio_member
-from erev_api.domain.contracts import estimates, portfolio_estimate_versions, portfolios, queries
+from erev_api.domain.contracts import (
+    estimates,
+    portfolio_estimate_versions,
+    portfolios,
+    queries,
+    portfolio_preview,
+)
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.estimates import EstimateOut, EstimateVersionOut
 from erev_api.schemas.portfolios import (
+    PortfolioBreakagePreviewOut,
     PortfolioEstimateIn,
     PortfolioEstimateVersionIn,
     PortfolioIn,
@@ -452,4 +459,30 @@ def discard_version(
             check_version=lambda actual: assert_version(cmd.expected_version, actual),
         ),
         etag=lambda out: row_etag(out.row_version),
+    )
+
+
+@router.get(
+    VERSION_PATH + "/{version_id}/allocation-preview",
+    operation_id="portfolio_breakage_allocation_preview",
+    response_model=PortfolioBreakagePreviewOut,
+    responses=problem_responses(*READ_PROBLEMS),
+)
+def allocation_preview(
+    portfolio_id: UUID,
+    estimate_id: UUID,
+    version_id: UUID,
+    ctx: ReadContext,
+    book_code: str | None = None,
+) -> PortfolioBreakagePreviewOut:
+    return queries.read(
+        ctx,
+        lambda session: portfolio_preview.preview(
+            session,
+            ctx,
+            portfolio_id,
+            estimate_id,
+            version_id,
+            book_code,
+        ),
     )

@@ -31994,6 +31994,111 @@
         "title": "PolicyValuesChangeOut",
         "type": "object"
       },
+      "PortfolioBreakagePreviewOut": {
+        "properties": {
+          "allocated_total": {
+            "title": "Allocated Total",
+            "type": "string"
+          },
+          "basis": {
+            "const": "CURRENT_COMPUTED_SSP_PREVIEW",
+            "default": "CURRENT_COMPUTED_SSP_PREVIEW",
+            "title": "Basis",
+            "type": "string"
+          },
+          "book_code": {
+            "title": "Book Code",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "portfolio_id": {
+            "format": "uuid",
+            "title": "Portfolio Id",
+            "type": "string"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioBreakageShareOut"
+            },
+            "title": "Shares",
+            "type": "array"
+          },
+          "total_breakage_quantity": {
+            "title": "Total Breakage Quantity",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "portfolio_id",
+          "version_id",
+          "book_code",
+          "currency",
+          "total_breakage_quantity",
+          "allocated_total",
+          "shares"
+        ],
+        "title": "PortfolioBreakagePreviewOut",
+        "type": "object"
+      },
+      "PortfolioBreakageShareOut": {
+        "properties": {
+          "breakage_quantity": {
+            "title": "Breakage Quantity",
+            "type": "string"
+          },
+          "contract_external_id": {
+            "title": "Contract External Id",
+            "type": "string"
+          },
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "contract_version_id": {
+            "format": "uuid",
+            "title": "Contract Version Id",
+            "type": "string"
+          },
+          "entitlement_quantity": {
+            "title": "Entitlement Quantity",
+            "type": "string"
+          },
+          "obligation_id": {
+            "format": "uuid",
+            "title": "Obligation Id",
+            "type": "string"
+          },
+          "obligation_key": {
+            "title": "Obligation Key",
+            "type": "string"
+          },
+          "ssp": {
+            "title": "Ssp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id",
+          "contract_external_id",
+          "contract_version_id",
+          "obligation_id",
+          "obligation_key",
+          "ssp",
+          "entitlement_quantity",
+          "breakage_quantity"
+        ],
+        "title": "PortfolioBreakageShareOut",
+        "type": "object"
+      },
       "PortfolioEstimateIn": {
         "additionalProperties": false,
         "description": "A shared-estimate definition, without contract-specific allocation targets.",
@@ -91180,6 +91285,136 @@
           "API-R-32 Estimates and portfolios"
         ],
         "x-erev-permission": "estimate.create"
+      }
+    },
+    "/api/v1/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{version_id}/allocation-preview": {
+      "get": {
+        "operationId": "portfolio_breakage_allocation_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portfolio_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Portfolio Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "estimate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Estimate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "book_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Book Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioBreakagePreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Allocation Preview",
+        "tags": [
+          "API-R-32 Estimates and portfolios"
+        ],
+        "x-erev-permission": "contract.read"
       }
     },
     "/api/v1/portfolios/{portfolio_id}/estimates/{estimate_id}/versions/{version_id}/discard": {
