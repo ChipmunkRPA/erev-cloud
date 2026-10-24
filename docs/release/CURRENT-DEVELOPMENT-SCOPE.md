@@ -4,6 +4,13 @@ Owner scope confirmed October 22, 2026. This is the current development index, n
 certificate that every historical limitation has been resolved. Dated checkpoints in
 LIMITS-1.0.md and BUILD-HISTORY remain evidence, not a cumulative list of unfinished work.
 
+## Rated usage workbench entry — October 24, 2026
+
+The workbench now exposes Record usage with metric, decimal quantity, rated amount and usage
+period. Original combined members remain selectable; preview and independent manual-event
+approval reuse the existing API. See [checkpoint](USAGE-WORKBENCH-2026-10-24.md).
+This closes the ordinary rated-usage entry gap, not shared breakage or combination reassessment.
+
 ## Contract costs across aligned calendars — October 24, 2026
 
 Contract cost rollforward now accepts separate calendar records with explicit from/to keys when

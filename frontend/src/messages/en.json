@@ -8179,5 +8179,14 @@
   "reports.openingAttribution.CREATED_AFTER_OPENING": "Created after the opening date; no opening liability belongs to this obligation.",
   "reports.openingAttribution.created": "Creation effective date: {date}",
   "reports.openingAttribution.event": "Original creation event: {id}",
-  "reports.openingAttribution.history": "Open contract history"
+  "reports.openingAttribution.history": "Open contract history",
+  "contracts.drawer.event.title.usage": "Record usage",
+  "contracts.drawer.event.metric": "Usage metric",
+  "contracts.drawer.event.metricError": "Enter a usage metric.",
+  "contracts.drawer.event.usageStart": "Usage period start",
+  "contracts.drawer.event.usageEnd": "Usage period end",
+  "contracts.drawer.event.ratedAmount": "Rated amount",
+  "contracts.drawer.event.usageQuantityError": "Enter a nonnegative usage quantity.",
+  "contracts.drawer.event.usagePeriodError": "Usage period end must be on or after its start.",
+  "contracts.drawer.event.usageEffectiveError": "Effective date must be on or after the usage period end."
 }

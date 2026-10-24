@@ -48,9 +48,10 @@ import {
   yesNoChoices,
 } from "./common";
 
-export type EventKind = "delivery" | "progress" | "milestone" | "cost" | "return";
+export type EventKind = "delivery" | "progress" | "milestone" | "cost" | "return" | "usage";
 export const EVENT_KINDS: readonly EventKind[] = [
   "delivery",
+  "usage",
   "progress",
   "milestone",
   "cost",
@@ -65,6 +66,9 @@ export function eventKindsFor(
     case "UNITS_DELIVERED":
     case "POINT_IN_TIME":
       return ["delivery", "return"];
+    case "USAGE":
+    case "RIGHT_TO_INVOICE":
+      return ["usage", "delivery", "return"];
     case "OUTPUT_PERCENT":
     case "LABOUR_HOURS":
       return ["progress"];
@@ -86,6 +90,11 @@ type Condition = "RESALEABLE" | "NOT_RESALEABLE";
 export interface EventForm {
   readonly obligation: string | null;
   readonly quantity: string;
+  readonly metric: string;
+  readonly usageStartText: string;
+  readonly usageStart: string | null;
+  readonly usageEndText: string;
+  readonly usageEnd: string | null;
   readonly trigger: Trigger | null;
   readonly effectiveText: string;
   readonly effectiveDate: string | null;
@@ -118,6 +127,11 @@ export function emptyEventForm(obligationKey: string | null): EventForm {
   return {
     obligation: obligationKey,
     quantity: "",
+    metric: "",
+    usageStartText: "",
+    usageStart: null,
+    usageEndText: "",
+    usageEnd: null,
     trigger: null,
     effectiveText: "",
     effectiveDate: null,
@@ -186,6 +200,35 @@ export function buildEvents(
   const items: EventItem[] = [];
   const effective = date ?? "";
   switch (kind) {
+    case "usage": {
+      const units = decimalText(form.quantity);
+      if (units === null) errors.quantity = t("contracts.drawer.event.usageQuantityError");
+      if (!form.metric.trim()) errors.metric = t("contracts.drawer.event.metricError");
+      if (form.usageStart === null) errors.usageStart = t("common.form.date.invalid");
+      if (form.usageEnd === null) errors.usageEnd = t("common.form.date.invalid");
+      if (form.usageStart && form.usageEnd && form.usageStart > form.usageEnd) {
+        errors.usageEnd = t("contracts.drawer.event.usagePeriodError");
+      } else if (form.usageEnd && date && form.usageEnd > date) {
+        errors.effectiveDate = t("contracts.drawer.event.usageEffectiveError");
+      }
+      if (form.amount === null || decimalText(form.amount) === null) {
+        errors.amount = t("common.form.money.invalid");
+      }
+      items.push({
+        event_type: "USAGE_REPORTED",
+        effective_date: effective,
+        obligation_key: form.obligation,
+        payload: {
+          obligation_key: form.obligation,
+          metric: form.metric.trim(),
+          quantity: units,
+          usage_period_start: form.usageStart,
+          usage_period_end: form.usageEnd,
+          rated_amount: { amount: form.amount, currency },
+        },
+      });
+      break;
+    }
     case "delivery":
       if (quantity === null) {
         errors.quantity = t("contracts.drawer.event.quantityError");
@@ -526,6 +569,9 @@ export interface RecordEventDrawerProps {
 const PREVIEW_DEBOUNCE_MS = 600;
 
 type EventField =
+  | "metric"
+  | "usageStart"
+  | "usageEnd"
   | "purpose"
   | "obligation"
   | "quantity"
@@ -555,16 +601,19 @@ function eventFields(
 ): Readonly<Record<EventField, readonly string[]>> {
   const on = (shown: boolean, ...endings: readonly string[]) => (shown ? endings : []);
   return {
+    metric: on(kind === "usage", "metric"),
+    usageStart: on(kind === "usage", "usage_period_start"),
+    usageEnd: on(kind === "usage", "usage_period_end"),
     purpose: on(kind === "cost", "purpose"),
     obligation: on(selectsObligation, "obligation_key"),
-    quantity: on(kind === "delivery" || kind === "return", "quantity"),
+    quantity: on(kind === "delivery" || kind === "return" || kind === "usage", "quantity"),
     trigger: on(kind === "delivery", "trigger"),
     measure: on(kind === "progress", "measure"),
     progress: on(kind === "progress", "cumulative_progress_ratio"),
     hours: on(kind === "progress" && labourHours, "hours_to_date"),
     milestone: on(kind === "milestone", "milestone_code"),
     weight: on(kind === "milestone", "cumulative_weight"),
-    amount: on(kind === "cost", "amount"),
+    amount: on(kind === "cost" || kind === "usage", "amount", "rated_amount"),
     reference: on(kind === "delivery" || kind === "return", "source_ref", "reason"),
     effectiveDate: ["effective_date"],
     creditMemo: on(kind === "return", "credit_memo_number"),
@@ -710,6 +759,7 @@ export function RecordEventDrawer({
 
   const acceptsOriginalComponents =
     kind === "delivery" ||
+    kind === "usage" ||
     kind === "return" ||
     (kind === "progress" && form.measure === "LABOUR_HOURS") ||
     (kind === "cost" && form.purpose === "PROGRESS_INPUT");
@@ -872,7 +922,7 @@ export function RecordEventDrawer({
           />
         ) : null}
         {obligationField}
-        {kind === "delivery" || kind === "return" ? (
+        {kind === "delivery" || kind === "return" || kind === "usage" ? (
           <TextField
             name="event-quantity"
             label={t(
@@ -887,6 +937,39 @@ export function RecordEventDrawer({
             onChange={(value) => set("quantity", value)}
             error={shown("quantity") ?? server("quantity")}
           />
+        ) : null}
+        {kind === "usage" ? (
+          <>
+            <TextField
+              name="event-metric"
+              label={t("contracts.drawer.event.metric")}
+              required
+              value={form.metric}
+              onChange={(value) => set("metric", value)}
+              error={shown("metric") ?? server("metric")}
+            />
+            {(["usageStart", "usageEnd"] as const).map((name) => (
+              <Field
+                key={name}
+                name={`event-${name}`}
+                label={t(`contracts.drawer.event.${name}`)}
+                required
+                width="date"
+                error={shown(name) ?? server(name)}
+              >
+                {(control) => (
+                  <DateInput
+                    control={control}
+                    value={form[`${name}Text`]}
+                    onChange={(text) => set(`${name}Text`, text)}
+                    onValue={(value) => set(name, value)}
+                    invalid={shown(name) !== null}
+                  />
+                )}
+              </Field>
+            ))}
+            {moneyField("amount", t("contracts.drawer.event.ratedAmount"), false)}
+          </>
         ) : null}
         {kind === "delivery" ? (
           <SelectField

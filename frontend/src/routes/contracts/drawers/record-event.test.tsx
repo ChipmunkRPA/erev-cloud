@@ -21,7 +21,13 @@ import {
   workbenchContract,
   workbenchObligation,
 } from "../../../test/workbench";
-import { type EventKind, RecordEventDrawer } from "./record-event";
+import {
+  buildEvents,
+  emptyEventForm,
+  eventKindsFor,
+  type EventKind,
+  RecordEventDrawer,
+} from "./record-event";
 
 installMswServer();
 // The preview is asked for 600 ms after the last change of the fields.
@@ -56,6 +62,7 @@ const PERIODS = [
 
 const TITLES: Readonly<Record<EventKind, string>> = {
   delivery: "Record delivery",
+  usage: "Record usage",
   progress: "Record progress",
   milestone: "Record milestone",
   cost: "Record cost",
@@ -216,6 +223,13 @@ async function open(
   const panel = within(drawer).getByRole("region", { name: "Preview" });
   expect(panel.textContent).toBe("PreviewThe preview appears once the fields are valid.");
   switch (kind) {
+    case "usage":
+      type(drawer, /^Quantity/, "50000.125");
+      type(drawer, /^Usage metric/, "API_CALL");
+      type(drawer, /^Usage period start/, "01 Sep 2026");
+      type(drawer, /^Usage period end/, "30 Sep 2026");
+      type(drawer, /^Rated amount/, "5000.25");
+      break;
     case "delivery":
       type(drawer, /^Quantity/, "120");
       select(drawer, /^Trigger/, "Delivery");
@@ -508,7 +522,7 @@ function attachCostEvidence(drawer: HTMLElement): void {
   });
 }
 
-it.each(["delivery", "return", "cost"] as const)(
+it.each(["delivery", "return", "cost", "usage"] as const)(
   "records %s against an original combined component",
   async (kind) => {
     serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
@@ -524,11 +538,31 @@ it.each(["delivery", "return", "cost"] as const)(
     select(drawer, /^Obligation/, "ORIGINAL · Combined into O1");
     fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
     await waitFor(() => expect(captured).toHaveLength(1));
+    if (kind === "usage") {
+      expect(captured[0]).toMatchObject({
+        events: [
+          {
+            event_type: "USAGE_REPORTED",
+            effective_date: "2026-09-30",
+            obligation_key: "ORIGINAL",
+            payload: {
+              obligation_key: "ORIGINAL",
+              metric: "API_CALL",
+              quantity: "50000.125",
+              usage_period_start: "2026-09-01",
+              usage_period_end: "2026-09-30",
+              rated_amount: { amount: "5000.25", currency: "USD" },
+            },
+          },
+        ],
+      });
+    }
     expect(captured[0]).toMatchObject({
       events: [
         {
           event_type: {
             delivery: "DELIVERY_RECORDED",
+            usage: "USAGE_REPORTED",
             return: "RETURN_RECORDED",
             cost: "COST_INCURRED",
           }[kind],
@@ -630,4 +664,29 @@ it("links a return credit memo to its original invoice and prevents a dangling r
       },
     ],
   });
+});
+
+it("validates usage dates and amounts before preview or submission", () => {
+  const form = {
+    ...emptyEventForm("O1"),
+    quantity: "0",
+    metric: "API_CALL",
+    amount: "0.00",
+    usageStart: "2026-09-01",
+    usageEnd: "2026-09-30",
+    effectiveDate: "2026-09-30",
+  };
+  expect(buildEvents("usage", form, "USD").errors).toEqual({});
+  expect(buildEvents("usage", form, "USD").evidenceRequired).toBe(false);
+  expect(
+    buildEvents("usage", { ...form, effectiveDate: "2026-09-29" }, "USD").errors,
+  ).toHaveProperty("effectiveDate");
+  expect(buildEvents("usage", { ...form, usageStart: "2026-10-01" }, "USD").errors).toHaveProperty(
+    "usageEnd",
+  );
+  expect(
+    buildEvents("usage", { ...form, amount: "-1.00", metric: " " }, "USD").errors,
+  ).toHaveProperty("amount");
+  expect(eventKindsFor({ recognition_method: "USAGE" })).toContain("usage");
+  expect(eventKindsFor({ recognition_method: "RIGHT_TO_INVOICE" })).toContain("usage");
 });

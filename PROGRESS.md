@@ -1,6 +1,6 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-**Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
+**Feature development first; necessary checks; publish directly to main; no deployment.**
 
 ## Current owner-authorized goal — October 22, 2026
 
@@ -19,6 +19,11 @@ review and publish changes without PR accumulation, and do not deploy.
 - Independent accounting review belongs to the owner and is not a development completion gate.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
+
+## Rated usage entry — October 24, 2026
+
+Workbench usage entry supports original combined members, preview and approval.
+See [checkpoint](docs/release/USAGE-WORKBENCH-2026-10-24.md).
 
 ## Multi-currency disclosure packs — October 24, 2026
 
