@@ -132,3 +132,27 @@ Necessary validation: 15 focused payload, schema, bundle-policy and architecture
 pass. The actual book-policy assembly and engine resolver honor each selection for both
 books, preserve other contracts' defaults, and retain the original event source. Scoped
 production types and lint pass; generated OpenAPI artifacts are unchanged.
+
+
+## Public acquired report integration and remaining lock blocker — October 24, 2026
+
+A database-backed acquisition now exercises original schema-3 opening input, persisted
+computation, the public opening-liability report job, JSON data retrieval and retained rerun.
+The EUR contract has EUR 10,000 opening liability / USD 11,000 historical carrying value.
+Its fixed-price RTI progress is EUR 10,000 realized divided by EUR 20,000 stated price;
+September recognizes half of the remaining EUR 10,000 allocation: EUR 5,000 / USD 5,500.
+Both transaction and functional reports reproduce these values and reruns reproduce all rows.
+The auxiliary setup contract is billed, avoiding an unrelated pending asset FX close pass.
+Only POL-126 selection is fixture-resolved to FIFO_WITHIN_POB; acquisition calculation and
+report input are not replaced. The opening event remains fixture-appended, not a public
+acquisition-entry screen. This verifies the open-period, post-acquisition path only.
+
+A separate real close run succeeded for August, but approval of the August lock failed with
+`Transaction opening relief requires a reconciled group path.` The public rollforward path
+has no acquisition-source flow family: its documents/posted entries do not represent the
+acquired opening balances as BUSINESS_COMBINATIONS. Native revision-19 closing snapshots
+therefore do not yet complete the public lock workflow. This is a confirmed implementation
+blocker, not a missing sign-off or deployment prerequisite. Fix original acquisition-period
+flows and their retained evidence in the public transaction/functional/reporting paths;
+then recheck lock approval, September income, frozen opening reads and bound reruns.
+Do not suppress OTHER, weaken reconciliation, or claim this closed-period path is complete.
