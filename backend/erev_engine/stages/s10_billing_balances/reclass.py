@@ -1065,8 +1065,19 @@ class _Emitter:
                     "mode": "parts",
                     "parts": "|".join(str(plan.parts[key][index]) for key in keys),
                 }
+            # Group codes and contract external ids occupy independent namespaces.
+            # Keep the member's standard balance node and qualify the group measure
+            # only when their encoded entity subjects would otherwise coincide.
+            group_measure = (
+                f"group_{measure_name}"
+                if any(
+                    contract_entity_subject_key(ob.contract_key, parts.entity) == parts.subject_key
+                    for ob in own
+                )
+                else measure_name
+            )
             node_id = self.tb.node(
-                measure=measure_name,
+                measure=group_measure,
                 subject_key=parts.subject_key,
                 period_key=point.period.period_key,
                 value=values[measure_name],

@@ -249,12 +249,17 @@ def test_unit_split_keeps_delivered_units_at_the_boundary():
     assert reevaluate(rendered) == {n.id: n.value for n in rendered.nodes}
 
 
-def test_full_native_computation_applies_split_boundary_and_replays_trace():
+@pytest.mark.parametrize("group_collision", [False, True])
+def test_full_native_computation_applies_split_boundary_and_replays_trace(group_collision):
     from erev_engine import compute
     from erev_engine.trace import reevaluate
 
     source = combined()
     source = replace(source, evidence_revision=49)
+    if group_collision:
+        source = replace(
+            source, group=replace(source.group, group_key=source.contracts[0].external_id)
+        )
     event = bundles.event(
         source.contracts[0].external_id,
         3,
@@ -276,5 +281,22 @@ def test_full_native_computation_applies_split_boundary_and_replays_trace():
     ]
     assert sum(o.columns["allocated_amount"] for o in result.obligation_versions) == 48_000_000
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    nodes = {n.id: n for n in result.trace.nodes}
+    for row in result.balances:
+        for measure in ("contract_liability", "contract_asset", "unbilled_receivable"):
+            assert (
+                Fraction(nodes[row.trace_nodes[measure]].value) * 100
+                == row.columns[f"{measure}_txn"]
+            )
+    if group_collision:
+        for measure in ("contract_liability", "contract_asset", "unbilled_receivable"):
+            group_nodes = [n for n in result.trace.nodes if n.measure == f"group_{measure}"]
+            assert group_nodes
+            for node in group_nodes:
+                assert Fraction(node.value) * 100 == sum(
+                    row.columns[f"{measure}_txn"]
+                    for row in result.balances
+                    if row.period_key == node.id.rsplit(":", 1)[1]
+                )
     with pytest.raises(ValueError, match="revision 49"):
         compute(replace(value, evidence_revision=48))

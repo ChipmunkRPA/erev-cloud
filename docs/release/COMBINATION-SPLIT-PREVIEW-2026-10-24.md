@@ -86,9 +86,10 @@ across membership boundaries still require integration. The calculation envelope
 contain the original group and is not itself a persisted membership split. No deployment.
 
 
-The split group-pool trace now uses a distinct event namespace from member pools; it does
-not place unescaped contract identities into obligation share node ids. Eight focused cases
-pass, including native installation when a group code equals a contract external id. A full
-computation of that same-name case separately exposes an existing duplicate node in stage-10
-balance presentation; that downstream namespace gap remains open and is not covered by the
-ordinary distinct-name full-computation witness above.
+The split group-pool trace uses a distinct event namespace from member pools and does
+not place unescaped contract identities into obligation share node ids. Stage-10 group
+balance traces now qualify their measure when the group and member entity subjects
+coincide, retaining standard member measures and explicit output trace links. Nine focused
+cases pass, including full native computation for equal group/contract codes, trace replay,
+member balance evidence and group/member conservation. Scoped Ruff and mypy pass.
+The durable split workflow and destination reporting remain open. No deployment.

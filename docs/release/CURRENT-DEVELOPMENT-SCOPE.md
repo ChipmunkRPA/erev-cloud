@@ -2710,3 +2710,15 @@ trace reevaluation pass; earlier targets and billing terms are preserved. This a
 calculation layer beyond preview but does not yet persist new effective group membership.
 See [native scope and remaining integration](COMBINATION-SPLIT-PREVIEW-2026-10-24.md).
 Public split proposals/approval/application and historical report integration remain open.
+
+
+### October 24 — split balance identity collision resolved
+
+Full native split computation now handles equal group and contract identifiers by
+qualifying only colliding group balance trace measures. Member output links and
+group/member totals reconcile; all nine focused split cases and scoped lint/types pass.
+This supersedes the downstream stage-10 collision limitation in the earlier checkpoint.
+Durable split approval/application, effective membership and destination reporting remain
+unfinished. Confirmed rules remain original-layer current functional liability, shared
+breakage expected quantity equal to rights less SSP-allocated breakage, and split
+unrecognized consideration allocated by effective-date remaining SSP. No deployment.
