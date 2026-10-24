@@ -154,10 +154,9 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             (
                 (key, entry)
                 for key in members
-                for entry in (
-                    *posted.get(key, ()),
-                    *documents.get(key, ()),
-                    *acquisitions.get(key, ()),
+                for entry in rollforward.acquisition_entries(
+                    [*posted.get(key, ()), *documents.get(key, ())],
+                    acquisitions.get(key, ()),
                 )
             ),
             key=lambda pair: (pair[1].order, selected[pair[0]].external_id),

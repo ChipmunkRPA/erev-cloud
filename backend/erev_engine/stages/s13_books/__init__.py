@@ -577,6 +577,7 @@ def _stage_call(
             capture_agent_control=(cb.bundle.evidence_revision or 0) >= 8,
             acquired_pob_opening=(cb.bundle.evidence_revision or 0) >= 14,
             capture_recomputed_acquisition=(cb.bundle.evidence_revision or 0) >= 38,
+            recomputed_acquisition_cutover=(cb.bundle.evidence_revision or 0) >= 39,
             acquisition_cutover_closing=(cb.bundle.evidence_revision or 0) >= 15,
             acquisition_functional_cutover=(cb.bundle.evidence_revision or 0) >= 19,
             acquisition_intercompany_sources=(cb.bundle.evidence_revision or 0) >= 20,

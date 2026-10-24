@@ -169,6 +169,7 @@ def run(
     capture_agent_control: bool = False,
     acquired_pob_opening: bool = False,
     capture_recomputed_acquisition: bool = False,
+    recomputed_acquisition_cutover: bool = False,
     acquisition_cutover_closing: bool = False,
     acquisition_functional_cutover: bool = False,
     acquisition_intercompany_sources: bool = False,
@@ -233,6 +234,7 @@ def run(
                 else {}
             ),
             acquired_pob_opening=acquired_pob_opening,
+            recomputed_acquisition_cutover=recomputed_acquisition_cutover,
             acquisition_cutover_closing=acquisition_cutover_closing,
             acquisition_functional_cutover=acquisition_functional_cutover,
             acquisition_intercompany_sources=acquisition_intercompany_sources,

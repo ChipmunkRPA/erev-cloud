@@ -1116,6 +1116,12 @@ using original invoice shares and cumulative functional revenue. Missing complet
 produce an error rather than silently applying contract-level FIFO. Special acquired, agent,
 cross-entity and original frozen POB histories remain subject to the limitations above.
 
+For admitted acquired contracts recomputed from inception, balance and opening-liability income
+reports use original cutover calculation sources. Activity already included in that acquisition
+balance is not counted again. Supported same-functional-currency cases include locked periods,
+reporting-currency translation, amount explanations and saved reruns. Missing original sources
+still refuse; foreign-functional recomputation and mixed acquired/ordinary groups remain limited.
+
 Multi-line invoices retain each line's original amount, billing date and FX source, so only
 lines admitted by the opening date enter that opening. Shared/unreferenced lines use increments
 of the document's cumulative allocation, preserving its rounding rather than independently

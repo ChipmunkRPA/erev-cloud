@@ -2478,3 +2478,32 @@ and mypy pass. This completes native transaction eligibility for admitted recomp
 foreign-functional source capture, unavailable closed-period targets and the guarded public
 acquisition reader still require work. Mixed public-report presentation still awaits the
 owner's choice. No deployment or overall readiness claim.
+
+
+## October 24: public recomputed-acquisition reports and lock snapshots
+
+New contract balance rollforward and opening-liability income runs admit original
+RECOMPUTE_FROM_INCEPTION acquisition evidence. They retain authenticated input/output
+identities and original cutover balance trace nodes. A saved admission marker preserves
+legacy reruns. Same-day and earlier activity already included in a recomputed acquisition
+balance is excluded from subsequent activity attribution; original source records remain
+retained. The ordinary report and the transaction opening-relief path used by lock packages
+share this selection. This fixes duplicated onboarding adjustments appearing as OTHER.
+
+Native evidence revision 39 uses available original recomputed cutover targets for the
+BUSINESS_COMBINATIONS caption, rather than the imported ERP baseline. Positive and negative
+onboarding differences then reconcile without unexplained OTHER. Posting intents remain
+unchanged. Missing native targets still do not produce fabricated POB sources.
+
+Verified through public API report creation, source-cell explanations and identical saved
+reruns in transaction, functional and reporting views, both before and after a real period
+lock/approval. The recomputed contract uses USD transaction/functional currency and EUR
+reporting currency, alongside a separate EUR contract. Three existing foreign/cross-entity
+acquisition report scenarios also passed. In total, five database workflows and 61 focused
+unit/native cases pass across the targeted runs; scoped Ruff/mypy pass. Opening events are
+fixture-appended as in the existing tests, not proof of a new public acquisition-entry flow.
+
+Foreign-functional RECOMPUTE_FROM_INCEPTION posting itself remains explicitly refused by
+the existing onboarding engine. Mixed acquired/ordinary groups, acquired-agent ownership,
+and missing original historical targets remain separate gaps. No deployment or overall
+readiness claim.

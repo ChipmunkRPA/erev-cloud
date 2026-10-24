@@ -102,3 +102,27 @@ def test_closed_recomputed_cutover_does_not_substitute_imported_balances():
     output = erev_engine.compute(replace(value, evidence_revision=38))
     asc = next(b for b in output.books if b.book_code == "ASC606")
     assert all(r.obligation_closing["status"] == "UNAVAILABLE" for r in asc.disclosure_rollforwards)
+
+
+@pytest.mark.parametrize("imported", ["100000", "140000"])
+def test_recomputed_cutover_caption_uses_actual_target_without_unexplained_other(imported):
+    value = w.chk_121(
+        as_of=date(2025, 12, 31),
+        states={"FY2025-P12": "open"},
+        payload=w.opening_payload(
+            revenue_cum=imported,
+            remaining_allocation=str(Decimal("240000") - Decimal(imported)),
+        ),
+        policies={"onboarding.method": "RECOMPUTE_FROM_INCEPTION"},
+    )
+    before = erev_engine.compute(replace(value, evidence_revision=38))
+    after = erev_engine.compute(replace(value, evidence_revision=39))
+    for old, book in zip(before.books, after.books, strict=True):
+        assert old.posting_intents == book.posting_intents
+        for row in book.disclosure_rollforwards:
+            lines = row.lines["CONTRACT_LIABILITY"]
+            assert lines["BUSINESS_COMBINATIONS"] == lines["CLOSING"]
+            assert lines["OTHER"] == 0
+            assert lines["BUSINESS_COMBINATIONS"] == (
+                12000000 if book.book_code == "ASC606" else 9000000
+            )

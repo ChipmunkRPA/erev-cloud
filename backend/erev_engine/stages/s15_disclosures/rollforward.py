@@ -218,6 +218,7 @@ class BalanceInputs:
         default_factory=lambda: MappingProxyType({})
     )
     acquired_pob_opening: bool = False  # Revision 14: original acquisition baseline eligibility
+    recomputed_acquisition_cutover: bool = False  # Revision 39: actual cutover targets
     acquisition_cutover_closing: bool = False  # Revision 15: baseline at a closed cutover
     acquisition_functional_cutover: bool = False  # Revision 19: original FX cutover snapshots
     acquisition_intercompany_sources: bool = False  # Revision 20: contracting control sources
@@ -985,9 +986,16 @@ def _established(
         baseline = baseline_of(ob)
         if baseline is None:
             continue
-        position += baseline.billed_cum - baseline.revenue_cum
+        actual = (
+            records.recomputed_acquisition_closings.get((ob.subject_key, cutover))
+            if records.recomputed_acquisition_cutover
+            else None
+        )
+        billed = baseline.billed_cum if actual is None else actual.billed
+        revenue = baseline.revenue_cum if actual is None else actual.revenue
+        position += billed - revenue
         if records.right_classes.get((ob.subject_key, period_key)) == _UNCONDITIONAL:
-            unconditional += max(0, baseline.revenue_cum - baseline.billed_cum)
+            unconditional += max(0, revenue - billed)
     debit = max(0, -position)
     receivable = min(debit, unconditional)
     return {

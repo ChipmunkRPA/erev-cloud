@@ -213,6 +213,7 @@ class Flow:
     acquisition_balances: tuple[tuple[str, Decimal], ...] = ()
     # Explicit original signed changes; distinct from legacy positive carrying balances.
     acquisition_changes: tuple[tuple[str, Decimal], ...] = ()
+    acquisition_includes_prior: bool = False
 
 
 def family_of(flow: Flow) -> str:
@@ -617,9 +618,8 @@ def rollforwards(
         described = closing if closing is not None else opening
         assert described is not None
         key = (contract_key, entity_id)
-        entries = sorted(
-            [*posted.get(key, ()), *unposted.get(key, ()), *acquisitions.get(key, ())],
-            key=lambda entry: entry.order,
+        entries = acquisition_entries(
+            [*posted.get(key, ()), *unposted.get(key, ())], acquisitions.get(key, ())
         )
         lines = path(
             _values(opening),
@@ -783,6 +783,16 @@ class Entry:
     line_id: UUID | None = None
     posting_kind: str | None = None
     subject_key: str | None = None
+
+
+def acquisition_entries(activity: Sequence[Entry], acquisitions: Sequence[Entry]) -> list[Entry]:
+    """Keep original sources without counting cutover-covered activity a second time."""
+    covered = [entry.order[0] for entry in acquisitions if entry.flow.acquisition_includes_prior]
+    selected = list(activity)
+    if covered:
+        cutover = max(covered)
+        selected = [entry for entry in selected if entry.order[0] > cutover]
+    return sorted([*selected, *acquisitions], key=lambda entry: entry.order)
 
 
 def _lines(

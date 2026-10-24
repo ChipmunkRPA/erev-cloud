@@ -32,6 +32,7 @@ from erev_engine.stages.state import PolicyResolver
 
 KEY = "acquisition_rollforward_sources_v1"
 FAMILY = "ACQUISITION"
+RECOMPUTED_KEY = "acquisition_recomputed_sources_v1"
 
 
 def read(
@@ -45,6 +46,10 @@ def read(
 ) -> dict[tuple[UUID, UUID], list[Entry]]:
     if params.binding is not None and KEY not in params.binding.evidence:
         return {}  # Historical runs retain their original interpretation.
+    allow_recomputed = params.binding is None or bool(params.binding.evidence.get(RECOMPUTED_KEY))
+    admitted_methods = {"OPENING_BALANCES_AT_CUTOVER"}
+    if allow_recomputed:
+        admitted_methods.add("RECOMPUTE_FROM_INCEPTION")
     candidates = set(
         uow.session.execute(
             select(contract_event.c.contract_id).where(
@@ -127,7 +132,7 @@ def read(
         method = PolicyResolver(original_book.policies).resolved(
             "onboarding.method", contract=row.external_id
         )
-        if method.value != "OPENING_BALANCES_AT_CUTOVER":
+        if method.value not in admitted_methods:
             continue
         openings = [
             event
@@ -168,7 +173,7 @@ def read(
             PolicyResolver(original_book.policies)
             .resolved("onboarding.method", contract=member)
             .value
-            != "OPENING_BALANCES_AT_CUTOVER"
+            not in admitted_methods
             for member in acquired_members
         ):
             raise tie_outs.invalid(
@@ -213,7 +218,11 @@ def read(
             Entry(
                 (cutover, -1, event.event_key),
                 Flow(
-                    Decimal(0), False, FAMILY, acquisition_balances=tuple(sorted(amounts.items()))
+                    Decimal(0),
+                    False,
+                    FAMILY,
+                    acquisition_balances=tuple(sorted(amounts.items())),
+                    acquisition_includes_prior=method.value == "RECOMPUTE_FROM_INCEPTION",
                 ),
                 period_id=period.id,
             )
@@ -221,4 +230,6 @@ def read(
     if params.binding is not None and params.binding.evidence[KEY] != captured:
         raise tie_outs.invalid("currency_view", "Retained acquisition sources differ.")
     tie_outs.record_evidence(params, KEY, captured)
+    if allow_recomputed:
+        tie_outs.record_evidence(params, RECOMPUTED_KEY, True)
     return result

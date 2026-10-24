@@ -27,10 +27,18 @@ def app(committed_db, app_settings, clock):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "locked,cross_entity", [(False, False), (True, False), (False, True), (True, True)]
+    "locked,cross_entity,recomputed",
+    [
+        (False, False, False),
+        (True, False, False),
+        (False, True, False),
+        (True, True, False),
+        (False, False, True),
+        (True, False, True),
+    ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(
-    app, keyring, clock, app_settings, monkeypatch, locked, cross_entity
+    app, keyring, clock, app_settings, monkeypatch, locked, cross_entity, recomputed
 ):
     if cross_entity:
         monkeypatch.setattr(
@@ -89,13 +97,26 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             keys=[f"FY2026-P{m:02d}" for m in range(1, 10)],
         )
         selected_entities.append("ACQUIRED-PERFORMER")
+    acquired_currency = "USD" if recomputed else "EUR"
+    if recomputed:
+        close_run_worlds.approved_ssp_version(
+            app,
+            world.maya,
+            [world.priya],
+            close_run_worlds.ssp_book(app, world.maya, code="ACQUIRED-USD", currency="USD"),
+            label="2026",
+            effective_from="2026-01-01",
+            entries=[
+                close_run_worlds.point_entry(close_run_worlds.EUR_HOURS, "100", currency="USD")
+            ],
+        )
     acquired = booked_contract(
         world.place,
         {
             "external_id": "ACQUIRED-EUR",
             "customer_id": str(existing.contract["customer_id"]),
             "contracting_entity_code": worlds.AVM_US,
-            "transaction_currency": "EUR",
+            "transaction_currency": acquired_currency,
             "inception_date": "2026-08-01",
             "lines": [
                 {
@@ -103,7 +124,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                     "product_code": close_run_worlds.EUR_HOURS,
                     **({"performing_entity_code": "ACQUIRED-PERFORMER"} if cross_entity else {}),
                     "quantity": "200",
-                    "total_price": {"amount": "20000.00", "currency": "EUR"},
+                    "total_price": {"amount": "20000.00", "currency": acquired_currency},
                     "unit_price": "100.00",
                     "start_date": "2026-08-01",
                     "end_date": "2026-12-31",
@@ -114,7 +135,7 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
     )
 
     def money(amount):
-        return {"amount": amount, "currency": "EUR"}
+        return {"amount": amount, "currency": acquired_currency}
 
     appended(
         world.place,
@@ -128,7 +149,9 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
                     {
                         "reason": "BUSINESS_COMBINATION",
                         "cutover_date": "2026-08-31",
-                        "onboarding_method": "OPENING_BALANCES_AT_CUTOVER",
+                        "onboarding_method": "RECOMPUTE_FROM_INCEPTION"
+                        if recomputed
+                        else "OPENING_BALANCES_AT_CUTOVER",
                         "fair_value_contract_liability": money("10000"),
                         "obligations": [
                             {
@@ -203,11 +226,20 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
     if not locked:
         world = worlds.on_record_clock(world, clock)
     monkeypatch.setattr(policy, "resolve", lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"))
-    for view, currency, amount, relief in (
-        ("transaction", "EUR", "10000.00", "5000.00"),
-        ("functional", "USD", "11000.00", "5500.00"),
-        ("reporting", "EUR", "9954.75", "4954.95"),
-    ):
+    views = (
+        (
+            ("transaction", "USD", "20000.00", "10000.00"),
+            ("functional", "USD", "20000.00", "10000.00"),
+            ("reporting", "EUR", "18099.55", "9009.01"),
+        )
+        if recomputed
+        else (
+            ("transaction", "EUR", "10000.00", "5000.00"),
+            ("functional", "USD", "11000.00", "5500.00"),
+            ("reporting", "EUR", "9954.75", "4954.95"),
+        )
+    )
+    for view, currency, amount, relief in views:
         acquired_run, acquired_rows = worlds.report_run(
             world,
             "contract_balance_rollforward",
@@ -220,14 +252,19 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             },
         )
         by_key = {r["row_key"]: r for r in acquired_rows}
+        suffix = ":USD" if recomputed and view == "transaction" else ""
+        combination_key = "BUSINESS_COMBINATIONS" + suffix
+        other_key = "OTHER" + suffix
         increase = "11000.00" if view == "functional" else "10000.00"
-        assert by_key["BUSINESS_COMBINATIONS"]["contract_liability"] == {
+        if recomputed:
+            increase = "18181.82" if view == "reporting" else "20000.00"
+        assert by_key[combination_key]["contract_liability"] == {
             "currency": currency,
             "amount": increase,
         }
-        assert by_key["OTHER"]["contract_liability"]["amount"] == "0.00"
+        assert by_key[other_key]["contract_liability"]["amount"] == "0.00"
         for row_key, column in (
-            ("BUSINESS_COMBINATIONS", "contract_liability"),
+            (combination_key, "contract_liability"),
             (f"contract:ACQUIRED-EUR:{worlds.AVM_US}", "business_combinations"),
         ):
             explained = get(
@@ -269,8 +306,8 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
         row = next(r for r in rows if r["row_key"] == f"contract:ACQUIRED-EUR:{worlds.AVM_US}")
         expected = {"currency": currency, "amount": amount}
         assert row["opening_contract_liability"] == expected
-        # Fixed-price RTI progress is 10,000 realized / 20,000 stated price.
-        # Half of the 10,000 remaining allocation is recognized (S09-R-18).
+        # RTI progress is 10,000 realized / 20,000 stated price. Recompute uses the
+        # original 20,000 allocation; the cutover method uses the 10,000 remainder.
         expected_relief = {"currency": currency, "amount": relief}
         assert row["revenue_from_opening"] == expected_relief
         assert row["revenue_recognized"] == expected_relief

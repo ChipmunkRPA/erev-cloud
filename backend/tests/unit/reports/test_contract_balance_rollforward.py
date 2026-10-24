@@ -558,3 +558,24 @@ def test_monthly_signed_acquisition_keeps_original_opening_relief_identity():
     assert months[SEPTEMBER.id]["BUSINESS_COMBINATIONS"] == NONE
     assert months[SEPTEMBER.id]["REVENUE_FROM_OPENING"][LIABILITY] == -40
     assert all(ties(month) for month in months.values())
+
+
+@pytest.mark.parametrize("recomputed", [False, True])
+def test_acquisition_cutover_excludes_only_activity_already_in_retained_balance(recomputed):
+    prior = cbr.Entry((date(2026, 8, 1), 0), cbr.Flow(D(-200), False), line_id=UUID(int=1))
+    adjustment = cbr.Entry((date(2026, 8, 31), 1), cbr.Flow(D(-100), True), line_id=UUID(int=2))
+    later = cbr.Entry((date(2026, 9, 1), 0), cbr.Flow(D(50), True), line_id=UUID(int=3))
+    acquired = cbr.Entry(
+        (date(2026, 8, 31), -1),
+        cbr.Flow(
+            D(0),
+            False,
+            "ACQUISITION",
+            acquisition_balances=((LIABILITY, D(200)),),
+            acquisition_includes_prior=recomputed,
+        ),
+    )
+    originals = [later, adjustment, prior]
+    selected = cbr.acquisition_entries(originals, [acquired])
+    assert selected == ([acquired, later] if recomputed else [prior, acquired, adjustment, later])
+    assert originals == [later, adjustment, prior]  # Source history is not mutated.
