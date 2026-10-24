@@ -2908,3 +2908,11 @@ All 86 runtime Python dependencies and npm runtime dependencies audit clean; 25 
 pass, two Linux-only cases skip on macOS. Frontend build passes with unchanged chunk warning.
 See [checkpoint](PDF-DEPENDENCY-2026-10-24.md); Linux/container verification remains separate.
 No deployment; pending accounting input choices are unchanged.
+
+
+### 2026-10-24 — Patched Linux packages and local configuration
+
+All three images build on 907557117c18. New worker probes verify real isolated PDF extraction
+and Linux address-space/CPU limits. Local Terraform validation passes without plan/apply.
+See [evidence](PDF-DEPENDENCY-2026-10-24.md); this supersedes the pending Linux-probe note in
+the preceding dependency checkpoint, not the outstanding functional gaps. No deployment.
