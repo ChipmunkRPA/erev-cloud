@@ -445,6 +445,7 @@ def rollforwards(
             periods=before,
             book_code=book_code,
             locked=locked,
+            measures=ROLLFORWARD_BALANCES,
         )
         closing_rows = functional_balances.read(
             session,
@@ -454,6 +455,7 @@ def rollforwards(
             periods=closing_at,
             book_code=book_code,
             locked=locked,
+            measures=ROLLFORWARD_BALANCES,
         )
     monthly: dict[tuple[UUID, UUID], dict[tuple[UUID, UUID], BalanceRow]] = {}
     if period_detail:
@@ -484,6 +486,7 @@ def rollforwards(
                             periods={entity_id: period},
                             book_code=book_code,
                             locked=locked,
+                            measures=ROLLFORWARD_BALANCES,
                         )
                 monthly[(entity_id, period.id)] = {
                     (row.contract_id, row.entity_id): row for row in rows
@@ -2108,6 +2111,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             periods={key: (value[-1] if value else None) for key, value in periods.items()},
             book_code=book_code,
             locked=ends,
+            measures=ROLLFORWARD_BALANCES,
         )
     movement_check = balances_tie(totals, functional_items)
     balance_check = balances_equal_tie(closing_balances, functional_items)

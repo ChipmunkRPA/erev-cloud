@@ -14,8 +14,6 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
-from erev_engine.trace import Trace
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,6 +22,8 @@ from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.explain import store
 from erev_api.problems import Problem
+from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
+from erev_engine.trace import Trace
 
 
 def _refuse(detail: str) -> Problem:
@@ -106,6 +106,7 @@ def read(
     periods: Mapping[UUID, tie_outs.PeriodRef | None],
     book_code: str,
     locked: tie_outs.LockedEnds | None = None,
+    measures: Sequence[str] = tie_outs.BALANCE_MEASURES,
 ) -> tuple[tie_outs.BalanceRow, ...]:
     currencies = {entity.id: entity.functional_currency for entity in entities}
     traces: dict[UUID, Trace] = {}
@@ -120,6 +121,13 @@ def read(
             result.append(replace(row, currency=currency, values={}))
             continue
         end = None if locked is None else locked.at(row.entity_id, at)
+        if end is None:
+            from .acquisition_functional import project as acquired
+
+            projected = acquired(params, row, at, currency=currency, measures=measures)
+            if projected is not None:
+                result.append(replace(row, currency=currency, values=projected))
+                continue
         identity = f"{row.entity_id}:{row.contract_id}:{at.key}"
         selected = row.version_id
         if params.binding is None and end is not None:
@@ -204,6 +212,7 @@ def read(
             period_key=at.key,
             stored=stored,
             version_id=selected,
+            measures=measures,
         )
         result.append(replace(row, currency=currency, values=values, version_id=selected))
     return tuple(result)

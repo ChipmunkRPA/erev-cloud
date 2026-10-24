@@ -127,6 +127,12 @@ def apply(
                 )
             carrying += signs[source["movement_kind"]] * Decimal(source["amount_functional"])
             consumed.add(source["id"])
+        if not rows:
+            from .acquisition_functional import liability_carrying
+
+            acquired = liability_carrying(params, row, period)
+            if acquired is not None:
+                carrying = acquired
         value = row.value(ROLE) - carrying
         identity = f"{row.version_id}:{row.contract_id}:{period.key}"
         if evidence_key != LEGACY_KEY:

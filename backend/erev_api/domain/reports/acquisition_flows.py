@@ -147,6 +147,45 @@ def read(
                 period=period,
                 functional=functional,
             )
+        if (
+            native is None
+            and allow_native
+            and foreign
+            and not any(identity in nodes for identity in identities)
+            and method.value == "RECOMPUTE_FROM_INCEPTION"
+        ):
+            from .acquisition_complete import read as complete_balances
+
+            complete = complete_balances(
+                bundle,
+                output,
+                member=row.external_id,
+                entity=row.entity_code,
+                book=book,
+                period=period,
+                event_key=event.event_key,
+            )
+            if complete is not None:
+                _, observation = complete
+                fn = observation["functional"]
+                scale = Decimal(10) ** -fn["minor_unit"]
+                values = {
+                    role: Decimal(fn["amounts"][role]) * scale
+                    for role in tie_outs.ROLLFORWARD_BALANCES
+                }
+                native = (
+                    values,
+                    {
+                        "basis": observation["basis"],
+                        "currency": fn["currency"],
+                        "period_key": observation["period_key"],
+                        "event_key": event.event_key,
+                        "nodes": sorted(
+                            fn["nodes"][role] for role in tie_outs.ROLLFORWARD_BALANCES
+                        ),
+                        "amounts": {role: str(value) for role, value in values.items()},
+                    },
+                )
         amounts: dict[str, Decimal] = {}
         inputs = []
         if native is not None:

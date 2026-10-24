@@ -580,6 +580,53 @@ def _closed_source_reports(world, complete=None, foreign=False):
         assert data.status_code == 200, data.text
         assert data.json()["items"] == rows
 
+    if foreign:
+        for view, currency, closing, movement, translation in (
+            ("functional", "USD", "22000.00", "22000.00", None),
+            ("reporting", "EUR", "19909.50", "20000.00", "-90.50"),
+        ):
+            run, rows = _settled_report(
+                world,
+                "contract_balance_rollforward",
+                {
+                    "entity_codes": [worlds.AVM_US],
+                    "book": "ASC606",
+                    "currency_view": view,
+                    "from_period_key": "FY2026-P08",
+                    "to_period_key": "FY2026-P08",
+                },
+            )
+            own = next(
+                row for row in rows if row["row_key"] == f"contract:ACQUIRED-EUR:{worlds.AVM_US}"
+            )
+            assert own["closing"] == {"currency": currency, "amount": closing}
+            assert own["business_combinations"] == {"currency": currency, "amount": movement}
+            assert own["other"]["amount"] == "0.00"
+            if translation is not None:
+                assert own["translation"]["amount"] == translation
+            checks = {item["code"]: item["result"] for item in run["tie_out_results"]}
+            assert checks["TO_BALANCES_EQ_ROLLFORWARD"] == "PASS"
+            explained = get(
+                world.app,
+                f"/api/v1/explain/report-runs/{run['id']}/cell",
+                world.maya,
+                params={"row_key": own["row_key"], "column_key": "business_combinations"},
+            )
+            assert explained.status_code == 200, explained.text
+            assert "contract_liability_functional" in str(explained.json())
+            repeated = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+            assert repeated.status_code == 202, repeated.text
+            done = worlds.run_now(world, UUID(repeated.json()["id"]))
+            assert done["state"] == "SUCCEEDED", done
+            data = get(
+                world.app,
+                f"/api/v1/report-runs/{repeated.headers['x-erev-report-run-id']}/data",
+                world.maya,
+                {"limit": "200"},
+            )
+            assert data.status_code == 200, data.text
+            assert data.json()["items"] == rows
+
 
 def _settled_refusal(world, job_id):
     from sqlalchemy import select
@@ -601,3 +648,24 @@ def _settled_refusal(world, job_id):
         assert shown.status_code == 200, shown.text
         state = shown.json()
     return state
+
+
+def _settled_report(world, code, parameters):
+    started = post(
+        world.app,
+        "/api/v1/report-runs",
+        world.maya,
+        {
+            "report_code": code,
+            "parameters": parameters,
+            "output_format": "JSON",
+        },
+    )
+    assert started.status_code == 202, started.text
+    done = _settled_refusal(world, UUID(started.json()["id"]))
+    assert done["state"] == "SUCCEEDED", str(done.get("problem"))
+    run_id = started.headers[worlds.REPORT_RUN_ID_HEADER]
+    shown = get(world.app, f"/api/v1/report-runs/{run_id}", world.maya)
+    rows = get(world.app, f"/api/v1/report-runs/{run_id}/data", world.maya, {"limit": "200"})
+    assert shown.status_code == rows.status_code == 200
+    return shown.json(), rows.json()["items"]
