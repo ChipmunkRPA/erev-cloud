@@ -35,8 +35,7 @@ terms or delta consideration. It does not imply approval/application support for
 
 Next: retain the reviewed basis in a split proposal, recheck sources at approval, preserve
 historical membership and allocations, and install the planned remaining allocations from
-the effective boundary. Frontend controls and broader consideration/progress/FX population
-support remain open. No DATA_CORRECTION fallback is used.
+the effective boundary. Broader consideration/progress/FX population support remains open. No DATA_CORRECTION fallback is used.
 
 ## Necessary verification
 
@@ -46,3 +45,18 @@ witness changes dated SSP weights from 2:1 to 1:1 while retaining original poste
 The API test verifies complete population, original sources, amount conservation, repeatable
 results and unchanged event/membership state. Scoped Ruff/mypy and frontend TypeScript pass.
 OpenAPI and generated client types are updated. No deployment or system-readiness claim.
+
+
+## Workbench preview entry
+
+Active/completed non-singleton members now expose Preview combination split in the workbench.
+The drawer loads the complete authorized member list, accepts a date/book/member selection,
+and calls the read-only preview on demand. It shows preserved income, before/after remainder,
+exact SSP, obligation allocations and original references. Changes to the selection clear old
+results; fetching or refusal hides them. Partial member access does not enable calculation.
+Amounts use integer-to-decimal conversion with the returned currency scale; unsafe numeric
+values are not displayed as rounded financial amounts.
+
+Two focused UI cases pass for exact selected query values, result clearing after edits/refusal,
+and refusal of partial population. Frontend TypeScript and scoped ESLint pass. This completes
+the preview entry, not split submission/approval/application. No deployment.

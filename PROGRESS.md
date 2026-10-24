@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 24: [split preview](docs/release/COMBINATION-SPLIT-PREVIEW-2026-10-24.md) uses dated remaining SSP; approval/application remain open.
+Oct 24: [split preview UI](docs/release/COMBINATION-SPLIT-PREVIEW-2026-10-24.md) added to workbench; approval/application remain open.

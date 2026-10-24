@@ -148,6 +148,7 @@ import { requestNumber, useRefreshRecord } from "./drawers/common";
 import { EstimatesTab } from "./estimates";
 import { CombineDrawer, DismissSuggestionModal } from "./drawers/combine";
 import { RegroupDrawer } from "./drawers/regroup";
+import { CombinationSplitDrawer } from "./drawers/combination-split";
 import { DistinctReviewDrawer } from "./drawers/distinct-review";
 import { LessorAssessmentDrawer } from "./drawers/lessor-assessment";
 import { DocumentsDrawer } from "./drawers/documents";
@@ -1406,6 +1407,7 @@ type OpenDrawer =
   | { readonly kind: "memos"; readonly obligationKey?: string | undefined }
   | { readonly kind: "combine" }
   | { readonly kind: "regroup" }
+  | { readonly kind: "combination-split" }
   | { readonly kind: "documents" }
   | { readonly kind: "dismiss"; readonly suggestion: CombinationSuggestion };
 
@@ -2374,6 +2376,17 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
       } else if (data.status === "ACTIVE" || data.status === "COMPLETED") {
         if (
           !hidden &&
+          !data.combination_group.is_singleton &&
+          permissions.includes("contract.read")
+        ) {
+          overflow.push({
+            id: "combination-split",
+            label: t("contracts.drawer.split.title"),
+            onSelect: () => setDrawer({ kind: "combination-split" }),
+          });
+        }
+        if (
+          !hidden &&
           data.status === "ACTIVE" &&
           canCreate &&
           permissions.includes(MODIFICATION_CREATE_PERMISSION)
@@ -3266,6 +3279,8 @@ function WorkbenchDrawer({
           onClose={onClose}
         />
       );
+    case "combination-split":
+      return <CombinationSplitDrawer contract={contract} onClose={onClose} />;
     case "regroup":
       return <RegroupDrawer contract={contract} obligations={obligations} onClose={onClose} />;
     case "combine":

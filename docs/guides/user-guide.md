@@ -91,6 +91,15 @@ and other progress methods remain unsupported and return a validation error. Cha
 contract's retained input require rebuilding and reviewing the pair. Separate-contract treatment
 is not supported for these pairs; classification is not automatically overridden.
 
+For an active or completed member of a combination, open **Preview combination split** from
+the workbench action menu. Select an effective date, accounting book and members that would
+become separate contracts, then choose **Calculate split allocation**. The result shows each
+member's preserved income, remaining consideration before and after allocation, and exact
+remaining SSP. Expand a member to inspect obligation allocations and SSP references; original
+calculation evidence is also available. Changing the date, book or members clears the old result.
+The complete combination must be readable. This is a read-only preview: split submission,
+approval and effective-date application are not available yet.
+
 A contract moves through the statuses `DRAFT`, `PENDING_REVIEW`, `ACTIVE`, `COMPLETED`, `TERMINATED` and `VOIDED`; a document that fails the contract criteria is `NOT_A_CONTRACT`. The API under `/api/v1/contracts`:
 
 - Create a draft with `POST /api/v1/contracts` and replace it with `POST /api/v1/contracts/{contract_id}/replace-draft`; `GET …/activation-checklist` shows what activation still needs; `POST …/submit-activation` sends the contract for approval (subject `CONTRACT_ACTIVATION`), and the approver must be someone other than the submitter.

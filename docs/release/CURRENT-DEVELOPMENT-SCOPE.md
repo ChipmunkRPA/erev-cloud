@@ -2690,3 +2690,13 @@ member and obligation while retaining recognized posted income. It verifies orig
 computation evidence, permissions and population and performs no membership changes.
 See [scope, exact witness and remaining application work](COMBINATION-SPLIT-PREVIEW-2026-10-24.md).
 Actual split submission/approval/application and broader populations remain unfinished.
+
+
+## October 24: combination split preview in the workbench
+
+The dated split preview is now accessible from active/completed combined-member workbenches.
+Users can select date, book and leaving members, inspect amounts and original references, and
+retry a refused read. Incomplete authorization cannot produce a partial allocation. Editing
+inputs or encountering refusal hides older results. See
+[scope and necessary verification](COMBINATION-SPLIT-PREVIEW-2026-10-24.md).
+Actual split submission, approval, historical membership and prospective application remain open.
