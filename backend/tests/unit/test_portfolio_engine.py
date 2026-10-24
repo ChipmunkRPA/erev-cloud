@@ -14,7 +14,14 @@ P, A, B, OA, OB, E, V = (UUID(int=i) for i in range(1, 8))
 
 
 def load(
-    *, quantity=None, kind="RETURN_RATE", targets=None, currency="USD", population=True, basis=None
+    *,
+    quantity=None,
+    kind="RETURN_RATE",
+    targets=None,
+    currency="USD",
+    population=True,
+    basis=None,
+    parameters=None,
 ):
     element = dict(
         id=E,
@@ -36,7 +43,7 @@ def load(
         scenarios=[],
         status="APPROVED",
         effective_date=date(2026, 1, 1),
-        parameters={},
+        parameters={} if parameters is None else parameters,
         unconstrained_amount=None,
         most_conservative_amount=None,
         constrained_amount=None,
@@ -86,7 +93,10 @@ def test_loads_shared_source_and_event_reference():
         ({"kind": "BREAKAGE"}, "frozen member allocations"),
         ({"targets": [OA]}, "matching targets"),
         ({"targets": []}, "matching targets"),
-        ({"currency": "GBP"}, "member-currency conversion"),
+        (
+            {"currency": "GBP", "parameters": {"carrying_cost_per_unit": "12"}},
+            "member-currency conversion",
+        ),
         ({"population": False}, "retained member population"),
     ],
 )
@@ -155,3 +165,18 @@ def test_frozen_binding_rejects_wrong_member_or_obligation_key(target, key):
                 ],
             ),
         )
+
+
+@pytest.mark.parametrize(
+    "parameters", [{}, {"carrying_cost_per_unit": "0.00", "recovery_cost_per_unit": "0"}]
+)
+def test_shared_rate_without_monetary_amounts_can_span_currencies(parameters):
+    inputs, _ = load(currency="GBP", parameters=parameters)
+    assert inputs[0].rate == Decimal("0.08")
+    assert inputs[0].currency == "USD"
+
+
+@pytest.mark.parametrize("cost", ["0.01", "-0.01", "NaN", "Infinity"])
+def test_nonzero_or_invalid_recovery_cost_is_not_relabelled_as_member_currency(cost):
+    with pytest.raises(EngineError):
+        load(currency="GBP", parameters={"recovery_cost_per_unit": cost})

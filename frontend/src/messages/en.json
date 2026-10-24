@@ -8073,7 +8073,7 @@
   "settings.portfolioVersions.withdraw": "Withdraw submission",
   "settings.portfolioVersions.approval": "View approval request",
   "settings.portfolioVersions.saveBeforeSubmit": "Save your changes before submitting",
-  "settings.portfolioVersions.help": "Draft values do not affect revenue. Shared return-rate versions support approval and application; other shared kinds remain drafts. After a version conflict, close and reopen the version to load its latest values.",
+  "settings.portfolioVersions.help": "Draft values do not affect revenue. Shared return-rate versions support approval and application; other shared kinds remain drafts. Rates can span member currencies only when monetary inputs are zero; nonzero costs require matching currency. After a version conflict, close and reopen the version to load its latest values.",
   "settings.portfolioVersions.close": "Close versions",
   "settings.portfolioVersions.new": "New draft version",
   "settings.portfolioVersions.networkError": "No response received. Retry the same request.",

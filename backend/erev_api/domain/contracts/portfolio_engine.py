@@ -1,7 +1,8 @@
 """Validate retained shared-return inputs before mapping them into native portfolio pins."""
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from decimal import Decimal, InvalidOperation
+from typing import Any, Never
 from uuid import UUID
 
 from erev_engine.bundle import PortfolioInput
@@ -24,7 +25,7 @@ def shared_return_contract(
     Total quantities and breakage need their frozen per-member application, not duplication.
     """
 
-    def refuse(detail: str) -> None:
+    def refuse(detail: str) -> Never:
         raise EngineError("ENGINE_INVARIANT_VIOLATED", detail)
 
     if str(element["estimate_kind"]) != "RETURN_RATE":
@@ -42,7 +43,28 @@ def shared_return_contract(
     }
     if len(members) != len(selected.member_contract_keys):
         refuse("The applied shared estimate population is incomplete")
-    if any(
+    parameters = version.get("parameters") or {}
+    try:
+        monetary = [
+            Decimal(str(parameters.get(key, 0)))
+            for key in ("carrying_cost_per_unit", "recovery_cost_per_unit")
+        ]
+        monetary.extend(
+            Decimal(str(version[key]))
+            for key in (
+                "unconstrained_amount",
+                "constrained_amount",
+                "most_conservative_amount",
+                "expected_total_amount",
+            )
+            if version.get(key) is not None
+        )
+    except (InvalidOperation, ValueError, TypeError):
+        refuse("Shared return monetary inputs must be valid finite numbers")
+    if any(not amount.is_finite() for amount in monetary):
+        refuse("Shared return monetary inputs must be valid finite numbers")
+    carries_money = any(amount != 0 for amount in monetary) or bool(version.get("scenarios"))
+    if carries_money and any(
         str(row["transaction_currency"]).strip() != str(version["currency"]).strip()
         for row in members.values()
     ):

@@ -744,3 +744,52 @@ def test_portfolio_membership_workflow(
     approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
     assert approved.status_code == 200, approved.text
     assert len(get(app, new_path, maya).json()["applied_event_ids"]) == 1
+
+    # A rate with no monetary amounts is independent of the version's denomination.
+    # No GBP/USD rate is installed: both the preview and real application must work.
+    from support.reference import put
+
+    enabled = put(
+        app, "/api/v1/tenant-currencies", world.marcus, {"currency_codes": ["USD", "GBP"]}
+    )
+    assert enabled.status_code == 200, enabled.text
+    rate_only = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        {
+            **values,
+            "currency": "GBP",
+            "effective_date": "2026-10-01",
+            "rate": "0.15",
+            "parameters": {
+                "carrying_cost_per_unit": "0",
+                "recovery_cost_per_unit": "0",
+                "window_end_date": "2026-12-31",
+            },
+        },
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert rate_only.status_code == 201, rate_only.text
+    rate_path = rate_only.headers["location"]
+    preview = get(app, rate_path + "/impact-preview", maya)
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["groups"][0]["currency"] == "USD"
+    attached = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": rate_only.json()["id"],
+            "file_object_id": file_id,
+        },
+    )
+    assert attached.status_code == 201, attached.text
+    submitted = post(
+        app, rate_path + "/submit", maya, {}, if_match=get(app, rate_path, maya).headers["etag"]
+    )
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    assert get(app, rate_path, maya).json()["status"] == "APPROVED"

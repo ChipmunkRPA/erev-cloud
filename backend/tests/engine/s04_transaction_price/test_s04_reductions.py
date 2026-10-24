@@ -1061,3 +1061,53 @@ def test_frozen_shared_membership_changes_only_from_version_effective_date(
         first.hash_view()
         != dataclasses.replace(first, portfolio_member_contract_keys=None).hash_view()
     )
+
+
+def test_dimensionless_shared_return_rate_does_not_need_source_currency_conversion():
+    from erev_engine.bundle import PortfolioInput
+    from erev_engine.stages.s09_recognition import run
+    from support.recognition import targets_by_period
+
+    base = chk_029(ssp=True, revised=True)
+    totals = []
+    for source_currency in ("USD", "GBP"):
+        shared = dataclasses.replace(
+            base.estimate_versions[0],
+            estimate_key="PORTFOLIO:RETURNS/SHARED",
+            element_code="SHARED",
+            version_key="PORTFOLIO:RETURNS/SHARED@v1",
+            effective_date=date(2026, 1, 20),
+            expected_quantity=None,
+            rate=Decimal("0.08"),
+            currency=source_currency,
+            parameters={
+                "carrying_cost_per_unit": "0",
+                "recovery_cost_per_unit": "0",
+                "window_end_date": "2026-12-31",
+            },
+            portfolio_member_contract_keys=(C_RET,),
+        )
+        value = dataclasses.replace(
+            base,
+            evidence_revision=12,
+            group=dataclasses.replace(
+                base.group, portfolios=(PortfolioInput("RETURNS", (C_RET,)),)
+            ),
+            estimate_versions=tuple(
+                sorted(
+                    (*base.estimate_versions, shared), key=lambda v: (v.estimate_key, v.version_no)
+                )
+            ),
+            events=tuple(
+                sorted(
+                    (*base.events, changed(C_RET, 7, shared, shared.effective_date)),
+                    key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+                )
+            ),
+        )
+        ctx, _, allocated, _ = fold(value)
+        assert allocated is not None
+        recognized = run(ctx, allocated, TraceBuilder(engine_version=ENGINE_VERSION))
+        totals.append(targets_by_period(recognized, O_RET))
+    assert totals[0] == totals[1]
+    assert totals[1]["FY2026-P01"] == 920000

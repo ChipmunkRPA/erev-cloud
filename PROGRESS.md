@@ -248,8 +248,9 @@ Current outstanding implementation and verification gaps remain in
 Shared overrides local; breakage totals use SSP allocation; combination changes require effective-date
 reassessment. Shared return-rate drafts now support frozen bindings, impact previews, independent
 approval, atomic application/recomputation, effective-date exits and onboarding by common target
-keys. Other shared kinds and combination reassessment remain open. See
-[checkpoint](docs/release/SHARED-RETURN-ONBOARDING-2026-10-23.md).
+keys. Pure rates now support differing member currencies. Monetary conversion, other shared
+kinds and combination reassessment remain open. See
+[checkpoint](docs/release/SHARED-RATE-CURRENCY-2026-10-23.md).
 
 ## Locked POB opening sources — October 23, 2026
 
