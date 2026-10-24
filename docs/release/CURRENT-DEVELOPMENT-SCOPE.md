@@ -1945,3 +1945,13 @@ delivery of one member, preserved recognized revenue, trace reevaluation and rev
 results. Scoped lint/types pass. Other recognition measures and INCEPTION_ALL behavior remain
 unchanged. Quantity/term continuation, partial removal and split application still require their
 reassessment implementation; this correction does not relax those guards. No deployment.
+
+
+## October 24: native combined quantity continuation
+
+Revision 29 now applies explicitly reassessed unit-quantity changes prospectively while retaining
+original members and prior revenue. Member quantities and original product SSP selection carry
+forward into later modifications. Thirty-six focused cases and scoped lint/types pass. See
+[the implementation checkpoint](COMBINED-QUANTITY-REASSESSMENT-2026-10-24.md) for the retained
+assessment shape and boundaries. Public UI/approval acceptance, term changes, member removal/split
+and other recognition measures remain unfinished. No deployment.

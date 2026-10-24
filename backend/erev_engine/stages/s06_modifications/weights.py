@@ -200,14 +200,23 @@ def added_parts(
             continue
         stratification = item.members.get("stratification")
         version_label = item.members.get("ssp_version_label")
+        original_member = item.members.get("obligation_key") in ob.combined_component_keys
         line = _raw(
             ob,
             ev.effective_date,
             item.quantity_delta,
             item.consideration_delta,
             product_code=item.product_code or ob.product_code,
-            stratification=stratification if isinstance(stratification, str) else ob.stratification,
-            ssp_version_label=version_label if isinstance(version_label, str) else label,
+            stratification=stratification
+            if isinstance(stratification, str)
+            else ""
+            if original_member
+            else ob.stratification,
+            ssp_version_label=version_label
+            if isinstance(version_label, str)
+            else None
+            if original_member
+            else label,
         )
         found = s05_allocation.resolve_ssp(
             scoped,
@@ -285,10 +294,17 @@ def existing(
                     from erev_engine.stages.s01_canonicalize import obligation_subject_key
                     from erev_engine.stages.s09_recognition import progress_events
 
-                    if gone:
-                        raise ValueError(
-                            "Combined removals require original member quantity changes"
-                        )
+                    from . import combined_reassessment
+
+                    removed_here = sum(
+                        (
+                            -line.quantity_delta
+                            for line in lines
+                            if line.quantity_delta < 0
+                            and payload_text(line.members, "obligation_key") == key
+                        ),
+                        Fraction(0),
+                    )
                     original_component = dataclasses.replace(
                         ob,
                         obligation_key=key,
@@ -307,7 +323,8 @@ def existing(
                         progress_events.Position(ev.order_key, False),
                     )
                     total = payload_fraction(original, "quantity") or Fraction(0)
-                    left = total - counts.counted + counts.returned
+                    current = combined_reassessment.quantities(state, ob)[key]
+                    left = current - counts.counted + counts.returned - removed_here
                     if left < 0 or (total == 0 and left != 0):
                         raise ValueError("Combined member delivery exceeds its original quantity")
                     fraction = left / total if total else Fraction(0)
@@ -321,6 +338,9 @@ def existing(
                     ssp_version_label=payload_text(original, "ssp_version_label"),
                 )
                 raw_lines.append(dataclasses.replace(line, obligation_key=key))
+            if state is not None and before.segment.progress_measure in segments.UNIT_MEASURES:
+                if sum((line.quantity for line in raw_lines), Fraction(0)) != remaining:
+                    raise ValueError("Combined member remaining quantities do not reconcile")
         resolutions = []
         for line in raw_lines:
             found_resolution = s05_allocation.resolve_ssp(

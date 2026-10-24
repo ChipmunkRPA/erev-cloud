@@ -866,7 +866,14 @@ def _amended(
             _ssp_basis(ev.payload.get("ssp_basis"), ev), combined.aliases(st, ev.contract_key)
         ),
     )
-    return _native(ctx, st, ev, tb, identified, price_at, route)
+    from . import combined_reassessment
+
+    original = ModificationView.of(ev.contract_key, _modification_input(st, ev), event=ev)
+    continuing = combined_reassessment.continued(ctx, st, original)
+    if any(treatments.get(host) != ModificationTreatment.PROSPECTIVE for host in continuing):
+        raise ValueError("Combined continuation must preserve prior revenue prospectively")
+    result = _native(ctx, st, ev, tb, identified, price_at, route)
+    return combined_reassessment.install(st, result, original, continuing)
 
 
 def _template_basis(ctx: BookContext, st: AllocatedState, contract_key: str, ev: EventView) -> None:

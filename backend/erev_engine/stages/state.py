@@ -261,6 +261,7 @@ class BookContext:
     tenant_preset: str  # "DEFAULT" | "LEGACY_PARITY"
     contracting_agent_relief: bool = False
     contracting_agent_calendar: bool = False
+    combined_quantity_reassessment: bool = False
     retain_boundary_allocation_basis: bool = False
 
 
@@ -1007,6 +1008,9 @@ class ObligationState:
     snapshot_producer_links: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
     # Original components of a reviewed POL-231 combination; source events retain their keys.
     combined_component_keys: tuple[str, ...] = ()
+    combined_component_quantities: Mapping[str, Fraction] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
 
 
 @dataclass(frozen=True, slots=True)

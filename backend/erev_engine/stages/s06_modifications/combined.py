@@ -59,7 +59,7 @@ def _check_original_removals(
         if quantity is None:
             raise ValueError("Combined termination requires each original member quantity")
         ob = by_host[aliases_by_key[key]]
-        remaining = quantity
+        remaining = ob.combined_component_quantities.get(key, quantity)
         if ob.recognition_method in ("UNITS_DELIVERED", "POINT_IN_TIME"):
             component = replace(
                 ob,
@@ -108,6 +108,9 @@ def view(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> Modific
             if names.get(line.obligation_key) == ob.obligation_key
         )
     }
+    from . import combined_reassessment
+
+    continuing = combined_reassessment.continued(ctx, st, mod)
     _check_original_removals(ctx, st, mod, removed)
     lines = []
     for line in mod.lines:
@@ -117,7 +120,7 @@ def view(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> Modific
             continue
         # A component quantity or transfer-term change can invalidate the reviewed combination.
         # It needs reassessment, not an inferred change to the host's synthetic quantity/term.
-        if host not in removed and (
+        if host not in removed | continuing and (
             line.action != "CHANGE"
             or line.quantity_delta != 0
             or any(line.members.get(name) is not None for name in ("start_date", "end_date"))
@@ -125,5 +128,25 @@ def view(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> Modific
             raise ValueError("Combined component quantity or term changes require reassessment")
         # Keep the original immutable members for source evidence; only the calculation target
         # changes. Multiple component price deltas remain separate and are summed by the pool.
-        lines.append(replace(line, obligation_key=host))
+        product = line.product_code
+        members = dict(line.members)
+        if host in continuing:
+            ob = next(
+                o
+                for o in st.obligations
+                if o.contract_key == mod.contract_key and o.obligation_key == host
+            )
+            original = combined_reassessment.originals(st, ob)[line.obligation_key]
+            original_product = payload_text(original, "product_code")
+            if product is not None and product != original_product:
+                raise ValueError("Combined continuation cannot replace an original product")
+            product = original_product
+            for field in ("stratification", "ssp_version_label"):
+                if members.get(field) is None:
+                    members[field] = original.get(field)
+        lines.append(
+            replace(
+                line, obligation_key=host, product_code=product, members=MappingProxyType(members)
+            )
+        )
     return replace(mod, lines=tuple(lines), questionnaire=keyed(mod.questionnaire, names))
