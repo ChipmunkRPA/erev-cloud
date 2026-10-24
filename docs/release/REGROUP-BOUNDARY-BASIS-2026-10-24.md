@@ -161,3 +161,28 @@ books. Scoped types/lint pass. These tests use native source calculation with st
 reads for the freshness entry; they do not prove a public post-posting approval round trip.
 Public after-posting regroup remains gated pending other consideration/progress paths and
 complete workflow validation. No deployment.
+
+
+## Preview/application event alignment
+
+Retained posted-transfer preview jobs now acquire both contracts/groups and both modification
+rows, validate the pair and source freshness, and create the same REGROUPED OUT/IN event used
+by application. Ordinary modifications retain their CONTRACT_AMENDED preview. A preview with
+no counterpart is refused.
+
+Bundle reconstruction now identifies a retained book-specific transfer draft as an after-posting
+boundary even before it has an approval_request_id. Previously a REGROUPED dry run at that
+point could be mistaken for a before-posting draft move and rewrite booking from inception.
+Original booking events now remain intact for these previews; historical draft-edit moves keep
+their existing reconstruction.
+
+A retained transfer targeting a named receiving contract cannot choose the separate-contract
+booking branch, which would create a different contract. Preview/submission structure checks
+and final pair consistency refuse that unsupported destination change. This is a stated scope
+limit, not automatic substitution of a different accounting treatment.
+
+16 focused preview/pair cases pass, plus the populated ordinary K-02 preview job. Scoped types/
+lint pass. Public after-posting regroup remains gated; per-row preview alignment does not prove
+a full paired approval round trip or simultaneous two-sided preview within a shared group.
+Other consideration/progress paths and supported separate-contract transfer treatment remain
+outstanding. No deployment.

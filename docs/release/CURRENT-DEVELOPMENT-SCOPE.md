@@ -2128,3 +2128,14 @@ to the standard bundle hash excluding read-time known_at, preventing timestamp-o
 26 focused native/pair/freshness cases and scoped types/lint pass. Public after-posting regroup
 remains gated pending remaining consideration/progress support and full workflow validation.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Regroup preview uses the application boundary
+
+Preview jobs now lock/check both sides and source freshness, then use REGROUPED instead of
+CONTRACT_AMENDED. Retained posted-transfer drafts no longer trigger before-posting booking
+rewrites merely because an approval request has not yet been created. Unsupported separate
+booking that would change the named destination is refused. Sixteen focused preview/pair cases
+and one populated ordinary public preview pass; scoped types/lint pass. Public after-posting
+regroup remains gated pending remaining treatment/consideration/progress paths and full paired
+workflow coverage. See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.

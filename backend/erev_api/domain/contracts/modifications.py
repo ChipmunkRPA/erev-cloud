@@ -2048,6 +2048,16 @@ def _candidate_nodes(
     return event_key, {node.id: node for node in book.trace.nodes if node.measure == measure}
 
 
+def _preview_event(row: Mapping[str, Any], pair: Sequence[Mapping[str, Any]]) -> EventIn:
+    """The same ordinary/amended or paired/regrouped boundary used at application."""
+    if row.get("regroup_id") is None:
+        return _amended_event(row, approval_request_id=None)
+    counterparts = [item for item in pair if item["id"] != row["id"]]
+    if len(counterparts) != 1:
+        raise Problem("invalid-transition", "Preview requires both sides of the regroup.")
+    return _regrouped_event(row, counterparts[0], approval_request_id=None)
+
+
 def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     """``CONTRACT_COMPUTE`` in mode ``MODIFICATION_PREVIEW``: the DG-CMD-15 dry run with the
     candidate ``CONTRACT_AMENDED`` pending (S06-R-02); the summary and its provenance are stored as
@@ -2060,8 +2070,16 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         # DG-KRN-DB-08) BEFORE the bundle is built, so every member append serialises behind this
         # preview and the basis captured after the compute is the exact consumed state.
         peek = _row(session, modification_id)
-        _, current = lock_group_then_contract(session, _uuid(peek["contract_id"]))
-        row = _row(session, modification_id, lock=True)
+        if peek.get("regroup_id") is not None:
+            row, current, pair = _locked_subject(uow, modification_id)
+            from . import regroup_freshness, regroup_pair
+
+            regroup_pair.require_consistent(pair, primary_book=queries.primary_book(session))
+            regroup_freshness.require_fresh(uow, pair)
+        else:
+            _, current = lock_group_then_contract(session, _uuid(peek["contract_id"]))
+            row = _row(session, modification_id, lock=True)
+            pair = [row]
         if int(row["row_version"]) != int(params["row_version"]) or _text(row["status"]) != DRAFT:
             raise Problem("precondition-failed", PREVIEW_STALE)
         if int(current["head_stream_version"]) != int(params["expected_stream_version"]):
@@ -2085,7 +2103,7 @@ def run_preview(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                 unknown = override_version_errors(row, versions=_ssp_versions(session, row))
                 if unknown:
                     raise _failed(*unknown)
-                event = _amended_event(row, approval_request_id=None)
+                event = _preview_event(row, pair)
                 bundle, output, maybe = dry_run_summary(
                     session,
                     current,
@@ -2851,6 +2869,18 @@ def separate_errors(row: Mapping[str, Any]) -> list[ProblemError]:
     chosen = {str(k): _text(v) for k, v in (row["chosen_treatments"] or {}).items()}
     if SEPARATE not in chosen.values():
         return []
+    if row.get("regroup_id") is not None and (row.get("questionnaire") or {}).get(
+        "regroup_book_lines"
+    ):
+        return [
+            _error(
+                "chosen_treatments",
+                RULE_SEPARATE,
+                "A retained regroup targets its named receiving contract; "
+                "separate-contract booking is not supported for this paired transfer.",
+            )
+        ]
+
     errors: list[ProblemError] = []
     for key, value in sorted(chosen.items()):
         if value != SEPARATE:

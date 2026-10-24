@@ -599,7 +599,13 @@ def _apply_regroups(
             continue
         named = seen.payload.get("modification_id")
         row = None if named is None else rows.get(UUID(str(named)))
-        if row is None or row.get("approval_request_id") is not None:
+        if (
+            row is None
+            or row.get("approval_request_id") is not None
+            or (row.get("questionnaire") or {}).get("regroup_book_lines")
+        ):
+            # A retained posted-transfer draft also previews as a boundary before
+            # an approval request exists; never rewrite its original booking.
             continue  # after posting: the events are the modification (S06-R-27)
         named_keys = seen.payload.get("obligation_keys")
         keys = tuple(

@@ -78,6 +78,8 @@ def require_consistent(rows: Sequence[Mapping[str, Any]], *, primary_book: str) 
     questionnaires = [row.get("questionnaire") or {} for row in (source, target)]
     if not any("regroup_book_lines" in q or "regroup_source_basis" in q for q in questionnaires):
         return
+    if any("SEPARATE_CONTRACT" in (row.get("chosen_treatments") or {}).values() for row in rows):
+        _refuse()
     out, incoming = [q.get("regroup_book_lines") for q in questionnaires]
     evidence = questionnaires[0].get("regroup_source_basis")
     if (
