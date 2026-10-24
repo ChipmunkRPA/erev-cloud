@@ -2722,3 +2722,15 @@ Durable split approval/application, effective membership and destination reporti
 unfinished. Confirmed rules remain original-layer current functional liability, shared
 breakage expected quantity equal to rights less SSP-allocated breakage, and split
 unrecognized consideration allocated by effective-date remaining SSP. No deployment.
+
+
+### October 24 — effective population for successive combination splits
+
+Native split preparation/application now resolves earlier split destinations in original
+event order. Subsequent splits allocate only one complete effective group's remainder;
+already separated members retain their segments and revenue schedules. Cross-group rejoining,
+omitted members and reuse of another current destination are refused. Fourteen focused
+cases cover distinct-date and same-date successive splits, conservation and trace replay;
+scoped Ruff/mypy pass. Database membership, durable command/approval, destination-scoped
+later amendments and destination balance/posting/report integration remain open.
+See COMBINATION-SPLIT-PREVIEW-2026-10-24.md. No deployment.

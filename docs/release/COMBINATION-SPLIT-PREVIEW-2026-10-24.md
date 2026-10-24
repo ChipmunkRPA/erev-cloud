@@ -93,3 +93,23 @@ coincide, retaining standard member measures and explicit output trace links. Ni
 cases pass, including full native computation for equal group/contract codes, trace replay,
 member balance evidence and group/member conservation. Scoped Ruff and mypy pass.
 The durable split workflow and destination reporting remain open. No deployment.
+
+## Successive effective-date splits
+
+Native membership resolution now follows retained split events in effective-date, record
+sequence and event-key order. Date queries include that date's retained events; exact-event
+queries stop before the requested event. Canonicalized input preserves the existing void
+handling. A later split must select all members of one current destination, and cannot
+rejoin previously separated groups or reuse another current group's identity.
+
+Preparation measures and allocates only that selected group's remaining consideration.
+Application rechecks its effective population and leaves other members' allocation segments
+unchanged. Fourteen focused cases pass, including three original members, successive splits
+on different dates and on the same date, unchanged earlier exit revenue schedules, total
+allocation conservation, trace replay, and rejection of incomplete or cross-group selections.
+Scoped Ruff and mypy pass.
+
+This resolves effective population selection inside the retained native calculation envelope.
+It does not persist database membership, provide a durable approval command, isolate later
+amendment allocation by destination, or partition destination balances/postings/report history.
+Those integration steps remain required before a public split can be applied. No deployment.

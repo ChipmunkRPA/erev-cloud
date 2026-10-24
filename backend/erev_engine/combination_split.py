@@ -10,9 +10,12 @@ from dataclasses import dataclass
 from datetime import date
 from fractions import Fraction
 
-from erev_engine import money
+from erev_engine import ENGINE_VERSION, money
 from erev_engine.boundary_basis import FixedBoundaryBasis, fixed_boundary_basis
 from erev_engine.bundle import InputBundle
+from erev_engine.combination_membership import membership_at, validate_partition
+from erev_engine.stages import s01_canonicalize
+from erev_engine.trace import TraceBuilder
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,23 +52,36 @@ def prepare(
     effective_date: date | None = None,
     event_key: str | None = None,
 ) -> SplitBasis:
-    """Partition every original member and allocate the posted remainder by dated SSP.
+    """Partition one complete effective group and allocate its remainder by dated SSP.
 
     Native boundary measurement preserves prior posted revenue, including its rounding.
-    First apportion the group remainder to original contracts by remaining SSP; then
+    Earlier split events determine the current group in original event order. Previously
+    separated contracts are excluded from subsequent pools. First apportion the current
+    group remainder to original contracts by remaining SSP; then
     apportion each member's amount to its obligations. Both use native largest remainder
     and stable original identities. No latest remaining-balance column is used.
     """
     if book_code not in {"ASC606", "IFRS15"}:
         raise ValueError("Prospective split allocation requires ASC606 or IFRS15")
-    population = {contract.external_id for contract in bundle.contracts}
-    if len(population) < 2 or set(destinations) != population:
-        raise ValueError("A split must partition every original combined contract exactly once")
-    if (
-        any(not target.strip() for target in destinations.values())
-        or len(set(destinations.values())) < 2
-    ):
-        raise ValueError("A split requires at least two named destinations")
+    if (event_key is None) == (effective_date is None):
+        raise ValueError("Choose exactly one original event or proposed effective date")
+    canonical = s01_canonicalize.run(bundle, TraceBuilder(engine_version=ENGINE_VERSION))
+    boundary = None
+    if event_key is not None:
+        boundary = next((e for e in canonical.boundary_events if e.event_key == event_key), None)
+        if boundary is None:
+            raise ValueError("The requested split event is not in the retained computation")
+        if boundary.contract_key not in destinations:
+            raise ValueError("A split event must belong to the group being split")
+    current = membership_at(
+        bundle.group.group_key,
+        canonical.contracts,
+        canonical.events,
+        effective_date=effective_date,
+        before_event=None if boundary is None else boundary.order_key,
+    )
+    validate_partition(current, destinations)
+    population = set(destinations)
     dated = {}
     for key in sorted(population):
         dated[key] = fixed_boundary_basis(
@@ -80,7 +96,11 @@ def prepare(
             resolve_remaining_ssp=True,
         )
     first = next(iter(dated.values()))[0]
-    if any(c.inception_date > first.effective_date for c in bundle.contracts):
+    if any(
+        c.inception_date > first.effective_date
+        for c in bundle.contracts
+        if c.external_id in population
+    ):
         raise ValueError("A split cannot include contracts created after its effective date")
     ssp = {
         key: sum((row.remaining_ssp or Fraction(0) for row in rows), Fraction(0))

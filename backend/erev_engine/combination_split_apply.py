@@ -7,6 +7,7 @@ This kernel changes future allocations only; it does not perform database member
 from dataclasses import replace
 from fractions import Fraction
 
+from erev_engine.combination_membership import membership_at, validate_partition
 from erev_engine.combination_split import SplitBasis
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from erev_engine.stages.s02_contract_identification import IdentifiedState
@@ -42,17 +43,25 @@ def install(
         raise ValueError("Split plan differs from the calculation boundary")
     if plan.boundary_event_key is not None and plan.boundary_event_key != event.event_key:
         raise ValueError("Split plan names a different original boundary event")
-    if set(member.contract_key for member in plan.members) != {
-        c.header.external_id for c in state.contracts
-    }:
-        raise ValueError("Split plan differs from the original member population")
+    destinations = {member.contract_key: member.destination for member in plan.members}
+    if len(destinations) != len(plan.members):
+        raise ValueError("Split plan repeats an original member")
+    current = membership_at(
+        state.group_code,
+        (c.header.external_id for c in state.contracts),
+        state.events,
+        before_event=event.order_key,
+    )
+    source_group = validate_partition(current, destinations)
+    if event.contract_key not in destinations:
+        raise ValueError("A split event must belong to the group being split")
     originals = {
         obligation_subject_key(member.contract_key, row.obligation_key): row
         for member in plan.members
         for row in member.original
     }
     if len(originals) != sum(len(m.original) for m in plan.members) or set(originals) != {
-        o.subject_key for o in state.obligations
+        o.subject_key for o in state.obligations if o.contract_key in destinations
     }:
         raise ValueError("Split plan must retain every original obligation exactly once")
     if any(
@@ -64,6 +73,8 @@ def install(
     befores = {}
     selected = {}
     for ob in state.obligations:
+        if ob.contract_key not in destinations:
+            continue
         if (
             ob.scope_flag != "IN_SCOPE_606"
             or ob.principal_agent != "PRINCIPAL"
@@ -117,7 +128,7 @@ def install(
         befores[ob.subject_key], selected[ob.subject_key] = before, value
     mu = segments.minor_unit(ctx)
     group_pool = pool.Pool(
-        state.group_code,
+        source_group,
         tuple(
             pool.Member(key, before.segment.a_posted, before.posted)
             for key, before in sorted(befores.items())
@@ -204,8 +215,12 @@ def install(
                 boundary_no=before.segment.modification_boundary_no + 1,
             )
             changed[ob.subject_key] = replace(ob, segments=(*ob.segments, boundary))
-    result = replace(state, obligations=tuple(changed[ob.subject_key] for ob in state.obligations))
+    result = replace(
+        state, obligations=tuple(changed.get(ob.subject_key, ob) for ob in state.obligations)
+    )
     for ob in result.obligations:
+        if ob.subject_key not in changed:
+            continue
         before = befores[ob.subject_key]
         after = segments.measure(ctx, result, ob, ob.segments[-1], event)
         if after.posted != before.posted:
