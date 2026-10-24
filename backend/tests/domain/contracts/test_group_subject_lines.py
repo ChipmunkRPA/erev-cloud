@@ -99,7 +99,7 @@ def _grouped(app: FastAPI, author: Actor, approver: Actor, contract_ids: list[UU
     return group_id
 
 
-def _gateways(world: FxWorld, external_id: str) -> UUID:
+def _gateways(world: FxWorld, external_id: str, *, performer: str | None = None) -> UUID:
     """A second USD contract of AVM-UK — 200 gateway units for USD 90,000.00 from 1 July 2026,
     at list like ``NS-SO-UK-7001`` — booked and activated; nothing delivered, nothing billed."""
     body = {
@@ -112,6 +112,7 @@ def _gateways(world: FxWorld, external_id: str) -> UUID:
             {
                 "obligation_key": "O1",
                 "product_code": GATEWAY,
+                **({"performing_entity_code": performer} if performer else {}),
                 "quantity": "200",
                 "total_price": {"amount": "90000.00", "currency": "USD"},
             }
@@ -1533,6 +1534,7 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         ("18000.00", 2, False, True),
         ("18000.00", 2, True, True),
         ("18000.00", 2, False, "mixed"),
+        ("18000.00", 2, False, "cross_contracting"),
     ],
 )
 def test_agent_supplier_sources_retain_original_paid_history(
@@ -1587,7 +1589,35 @@ def test_agent_supplier_sources_retain_original_paid_history(
             },
         ],
     )
-    identity = _gateways(fx, "AGENT-SOURCES")
+    performer = None
+    if opening_deposit == "cross_contracting":
+        from dataclasses import replace
+
+        from support.factories import open_periods
+        from support.reference import entity
+
+        from erev_api.db.tables import legal_entity
+        from erev_api.domain.contracts import bundles
+
+        calendar_id = fx.place.scalar(
+            select(legal_entity.c.calendar_id).where(legal_entity.c.code == AVM_UK)
+        )
+        performer = "AGENT-PERFORMER"
+        entity(fx.app, fx.maya, code=performer, calendar_id=str(calendar_id))
+        open_periods(
+            fx.app, fx.maya, entity_code=performer,
+            keys=[f"FY2026-P{m:02d}" for m in range(1, 10)],
+        )
+        policies = bundles._policies
+
+        def contracting_policies(*args, **kwargs):
+            return tuple(
+                replace(p, value="CONTRACTING_ENTITY") if p.code == "ic.revenue_entity" else p
+                for p in policies(*args, **kwargs)
+            )
+
+        monkeypatch.setattr(bundles, "_policies", contracting_policies)
+    identity = _gateways(fx, "AGENT-SOURCES", performer=performer)
     with fx.place.uow() as uow:
         uow.session.execute(
             insert(judgement_record).values(

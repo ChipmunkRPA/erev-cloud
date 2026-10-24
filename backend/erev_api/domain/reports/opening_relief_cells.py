@@ -266,7 +266,13 @@ def _details(source: dict[str, Any]) -> list[str]:
                         f"control relief: {line['control_relief']} {currency}; "
                         "original sources: " + "; ".join(line["sources"])
                     )
-            for line in obligation.get("agent_net_sources", {}).get("lines", []):
+            agent = obligation.get("agent_net_sources", {})
+            if agent.get("contracting_revenue_entity_id"):
+                result.append(
+                    f"{subject} · Original net revenue and supplier postings belong to "
+                    f"contracting entity {agent['contracting_revenue_entity_id']}."
+                )
+            for line in agent.get("lines", []):
                 result.append(
                     f"{subject} · Agent net income: {line['net_income']} {currency}; "
                     f"gross control relief: {line['gross_relief']} {currency}; "

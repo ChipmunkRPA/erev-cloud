@@ -54,6 +54,7 @@ def calculate(
     allow_unresolved: bool = False,
     allow_historical_owners: bool = False,
     allow_historical_principal: bool = False,
+    allow_contracting_revenue: bool = False,
 ) -> Result | None:
     owners = {row.contract_id for row in rows}
     agents = {}
@@ -71,6 +72,7 @@ def calculate(
             classify_opening=not (allow_zero_consumption and consumed <= 0),
             allow_unresolved=allow_unresolved,
             allow_historical_owners=allow_historical_owners,
+            allow_contracting_revenue=allow_contracting_revenue,
         )
         if found is not None:
             agents[key] = found

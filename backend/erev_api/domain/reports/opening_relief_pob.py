@@ -123,9 +123,20 @@ def calculate(
         if intercompany_reader is not None
         else {}
     )
+
+    def contracting_agent(item: Mapping[Any, Any]) -> bool:
+        subject = obligation_subject_key(row.external_id, item["obligation_key"])
+        detail = (agent_evidence or {}).get(subject, {})
+        return (
+            str(item["principal_agent"]) == "AGENT"
+            and detail.get("contracting_revenue_entity_id") == str(row.entity_id)
+            and bool(detail.get("lines"))
+        )
+
     supported_special = all(
         (
             item["performing_entity_id"] == row.entity_id
+            or contracting_agent(item)
             or obligation_subject_key(row.external_id, item["obligation_key"]) in intercompany
         )
         and (
@@ -180,6 +191,7 @@ def calculate(
             and any(
                 (
                     item["performing_entity_id"] != row.entity_id
+                    and not contracting_agent(item)
                     and obligation_subject_key(row.external_id, item["obligation_key"])
                     not in original_intercompany
                 )

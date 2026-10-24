@@ -259,6 +259,7 @@ class BookContext:
     mapping: AccountMappingView
     trigger: str  # E-87 literal, or "DRY_RUN" (05 §3.2)
     tenant_preset: str  # "DEFAULT" | "LEGACY_PARITY"
+    contracting_agent_relief: bool = False
 
 
 # --- Billing mode (POLICIES §1 POL-004, POL-123; ENGINE_SPEC_B S10-R-06; D-91) -------------------

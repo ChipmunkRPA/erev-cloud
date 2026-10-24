@@ -159,6 +159,7 @@ def rows(
                     net_entries=all_net.get(key, []),
                     allow_unresolved=availability.enabled(params),
                     allow_historical_owners=opening_agent_sources.historical_enabled(params),
+                    allow_contracting_revenue=opening_agent_sources.contracting_enabled(params),
                     allowed_source_contracts={member.contract_id for member in members}
                     if agent_key == opening_agent_sources.KEY
                     else None,

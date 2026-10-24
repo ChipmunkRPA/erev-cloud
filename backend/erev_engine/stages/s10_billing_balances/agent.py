@@ -1,6 +1,6 @@
 """Stage 10 agent gross relief and supplier share (D-87 L4-3-Q-24; POLICIES JET-02 agent row).
 
-For an agent obligation (S03-R-09 ``gross_to_net``) performed by its contracting entity, at each
+For an agent obligation (S03-R-09 ``gross_to_net``) booked in its contracting entity, at each
 stage 09 ``revenue_cum`` period end t (D-87 L4-3-Q-24 (c)):
 
 - G_t = the net billing on the obligation (stage 10 attribution, credit memos included) dated on or
@@ -77,12 +77,20 @@ class AgentRelief:
     transfers: Mapping[str, tuple[date, ...]]  # subject key -> JET-02 transfer dates, ascending
 
 
-def is_agent(ob: ObligationState) -> bool:
-    """An agent obligation with a stage 03 basis, performed by its contracting entity (JET-02)."""
+def is_agent(ob: ObligationState, ctx: BookContext | None = None) -> bool:
+    """A reviewed agent whose revenue is posted in the contracting entity (JET-02)."""
     return (
         ob.principal_agent == PrincipalAgent.AGENT
         and ob.gross_to_net is not None
-        and ob.performing_entity == ob.contracting_entity
+        and (
+            ob.performing_entity == ob.contracting_entity
+            or (
+                ctx is not None
+                and ctx.contracting_agent_relief
+                and ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
+                == "CONTRACTING_ENTITY"
+            )
+        )
     )
 
 
@@ -101,13 +109,23 @@ def measure(
     supplier: dict[str, tuple[tuple[date, int, str | None], ...]] = {}
     transfers: dict[str, tuple[date, ...]] = {}
     for ob in sorted(st.obligations, key=lambda item: item.subject_key):
-        if not is_agent(ob):
+        if not is_agent(ob, ctx):
             continue
         items = revenue.get(("revenue_cum", ob.subject_key), ())
         dates = _transfers(st, ob, items)
         transfers[ob.subject_key] = dates
         rows: list[tuple[date, int, str | None]] = []
         for end, target in items:
+            if ob.performing_entity != ob.contracting_entity:
+                period = next(
+                    (p for p in ctx.entities[ob.contracting_entity].periods if p.end_date == end),
+                    None,
+                )
+                if period is None:
+                    raise ValueError("Cross-entity agent gross relief requires aligned period ends")
+                target = dataclasses.replace(
+                    target, entity=ob.contracting_entity, period_key=period.period_key
+                )
             transfer = _latest(dates, end)
             gross_id, gross = _gross(ctx, tb, billed, ob, transfer, end, target.period_key, mu)
             if gross <= target.value:
@@ -160,7 +178,7 @@ def version_relief(
 ) -> tuple[int, Fraction, str | None] | None:
     """(relief, exact, node) of an agent obligation at the version date: G at ``as_of`` when it
     exceeds R, else R as given; None for any other obligation (D-87 L4-3-Q-24 (d))."""
-    if not is_agent(ob):
+    if not is_agent(ob, ctx):
         return None
     mu = classification.minor_unit(ctx)
     transfer = _latest(relief.transfers.get(ob.subject_key, ()), as_of)

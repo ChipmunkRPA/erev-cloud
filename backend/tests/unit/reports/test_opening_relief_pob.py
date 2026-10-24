@@ -292,10 +292,17 @@ def test_special_positive_opening_without_consumption_needs_no_invented_attribut
         )
 
 
-def test_agent_opening_uses_verified_net_eligibility_not_gross_liability(monkeypatch):
+@pytest.mark.parametrize("cross_performer", [False, True])
+def test_agent_opening_uses_verified_net_eligibility_not_gross_liability(
+    monkeypatch, cross_performer
+):
     session, row, nodes = fixture(monkeypatch)
     obligations = [
-        {"obligation_key": "S", "performing_entity_id": row.entity_id, "principal_agent": "AGENT"}
+        {
+            "obligation_key": "S",
+            "performing_entity_id": UUID(int=88) if cross_performer else row.entity_id,
+            "principal_agent": "AGENT",
+        }
     ]
     session.execute = lambda *a: NS(mappings=lambda: NS(all=lambda: obligations))
     amount, facts = pob.calculate(
@@ -306,7 +313,19 @@ def test_agent_opening_uses_verified_net_eligibility_not_gross_liability(monkeyp
         D("5000"),
         D("5000"),
         agent_eligible={"C/S": D("200")},
-        agent_evidence={"C/S": {"basis": "UNIFORM_NET_SOURCE_SET"}},
+        agent_evidence={
+            "C/S": {
+                "basis": "UNIFORM_NET_SOURCE_SET",
+                **(
+                    {
+                        "contracting_revenue_entity_id": str(row.entity_id),
+                        "lines": [{"control_line": "proof"}],
+                    }
+                    if cross_performer
+                    else {}
+                ),
+            }
+        },
     )
     assert amount == D("200")
     assert facts["obligations"]["C/S"]["posted_revenue"] == "800"

@@ -346,6 +346,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         mapping=book.account_mapping,
         trigger=cb.bundle.trigger,
         tenant_preset=cb.bundle.tenant_preset,
+        contracting_agent_relief=(cb.bundle.evidence_revision or 0) >= 21,
     )
 
 
@@ -1598,19 +1599,25 @@ def _relief_targets(
         key = (item.subject_key, item.period_key)
         created[key] = created.get(key, 0) + item.value
     # D-87 L4-3-Q-24 (c): an agent obligation relieves max(G_t, R_t), which stage 10 publishes.
-    gross = {(t.subject_key, t.period_key): t for t in agent if t.measure == _AGENT_RELIEF}
+    ends = _period_ends(ctx)
+    gross = {
+        (t.subject_key, ends[(t.entity, t.period_key)]): t
+        for t in agent
+        if t.measure == _AGENT_RELIEF
+    }
     by_subject: dict[str, list[Target]] = {}
     for target in st.revenue_targets:
         if target.measure == "revenue_cum":
             by_subject.setdefault(target.subject_key, []).append(target)
-    ends = _period_ends(ctx)
     out: list[Target] = []
     for subject_key in sorted(by_subject):
         contracting = _obligation(obligations, subject_key).contracting_entity
         targets = by_subject[subject_key]
         if all(target.entity == contracting for target in targets):
             for target in sorted(targets, key=lambda t: ends[(t.entity, t.period_key)]):
-                base = gross.get((target.subject_key, target.period_key), target)
+                base = gross.get(
+                    (target.subject_key, ends[(target.entity, target.period_key)]), target
+                )
                 concession = created.get((target.subject_key, target.period_key), 0)
                 out.append(
                     dataclasses.replace(base, measure=_RELIEF, value=base.value + concession)
@@ -1621,13 +1628,16 @@ def _relief_targets(
             before = [t for t in dated if ends[(t.entity, t.period_key)] <= period.end_date]
             if before:
                 concession = created.get((subject_key, period.period_key), 0)
+                base = gross.get(
+                    (subject_key, ends[(before[-1].entity, before[-1].period_key)]), before[-1]
+                )
                 out.append(
                     dataclasses.replace(
-                        before[-1],
+                        base,
                         entity=contracting,
                         period_key=period.period_key,
                         measure=_RELIEF,
-                        value=before[-1].value + concession,
+                        value=base.value + concession,
                     )
                 )
     return tuple(out)

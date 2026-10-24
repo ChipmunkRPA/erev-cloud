@@ -275,6 +275,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     net_entries=all_net.get(member, []) if all_net is not None else None,
                     allow_unresolved=availability.enabled(params),
                     allow_historical_owners=opening_agent_sources.historical_enabled(params),
+                    allow_contracting_revenue=opening_agent_sources.contracting_enabled(params),
                     allowed_source_contracts={member[0] for member in members}
                     if agent_key == opening_agent_sources.KEY
                     else None,
@@ -320,6 +321,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 view="transaction",
                 allow_unresolved=availability.enabled(params),
                 allow_historical_owners=opening_agent_sources.historical_enabled(params),
+                allow_contracting_revenue=opening_agent_sources.contracting_enabled(params),
                 allow_historical_principal=opening_source_membership.enabled(params),
             )
             if contract_result is not None:

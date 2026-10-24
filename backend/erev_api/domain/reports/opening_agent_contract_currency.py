@@ -106,6 +106,7 @@ def rows(
             view="functional",
             allow_unresolved=availability.enabled(params),
             allow_historical_owners=opening_agent_sources.historical_enabled(params),
+            allow_contracting_revenue=opening_agent_sources.contracting_enabled(params),
             allow_historical_principal=opening_source_membership.enabled(params),
             allow_zero_consumption=reporting_slices is None
             or all(
