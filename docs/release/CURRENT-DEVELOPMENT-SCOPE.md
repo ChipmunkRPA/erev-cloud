@@ -2059,3 +2059,14 @@ Six focused unit/time/order/target checks and scoped types/lint pass. Public aft
 regroup remains refused until paired changes, target future service and atomic approval are
 integrated; other consideration components and book balances are not inferred from this query.
 See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.
+
+
+### 2026-10-24 — Native incoming regroup future service
+
+Evidence revision 35 starts an incoming posted regroup's added service no earlier than its
+effective transfer date, preserving later starts and original authored input. Native PROSPECTIVE
+and SEPARATE_CONTRACT paths use the adjusted calculation view. OUT/before-posting paths and
+older evidence replay remain unchanged. Seven focused cases and scoped type/lint checks pass.
+This resolves target-side backdated service in the native path; the public after-posting command
+still requires dated amount/quantity and paired atomic workflow integration before reopening.
+See `REGROUP-BOUNDARY-BASIS-2026-10-24.md`. No deployment.

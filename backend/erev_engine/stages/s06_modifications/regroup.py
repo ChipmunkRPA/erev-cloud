@@ -19,9 +19,13 @@ which case applies. Private to stage 06. Standard library only (DG-ARC-02).
 
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import date
+from types import MappingProxyType
 from typing import Final
 
 from erev_engine.stages.s01_canonicalize import payload_text
+from erev_engine.stages.s06_modifications.classify import ModificationView
 from erev_engine.stages.state import AllocatedState, EventView, SegmentCause
 
 __all__ = ["IN", "OUT", "before_posting"]
@@ -68,3 +72,27 @@ def before_posting(st: AllocatedState, ev: EventView) -> bool:
     raise ValueError(
         f"{ev.event_key}: the regroup names obligations both moved and not moved (S06-R-27)"
     )
+
+
+def future_service(mod: ModificationView, ev: EventView) -> ModificationView:
+    """Incoming remaining service starts no earlier than the effective transfer date.
+
+    Retain the original authored input and later starts, but do not let an incoming
+    ADD reconstruct source service already performed before the regroup boundary.
+    Amounts and quantities must separately come from the source's dated transfer basis.
+    """
+    if payload_text(ev.payload, "direction") != IN:
+        return mod
+    lines = []
+    for line in mod.lines:
+        if line.action != "ADD":
+            raise ValueError("An incoming posted regroup must add its transferred obligations")
+        members = dict(line.members)
+        end = members.get("end_date")
+        if end is not None and date.fromisoformat(str(end)) < ev.effective_date:
+            raise ValueError("Incoming regroup service ends before its effective transfer date")
+        start = members.get("start_date")
+        if start is None or date.fromisoformat(str(start)) < ev.effective_date:
+            members["start_date"] = ev.effective_date.isoformat()
+        lines.append(replace(line, members=MappingProxyType(members)))
+    return replace(mod, lines=tuple(lines))

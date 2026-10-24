@@ -1504,6 +1504,8 @@ def _regrouped(
         return st
     found = _modification_input(st, ev)
     mod = ModificationView.of(ev.contract_key, found, event=ev)
+    if ctx.regroup_future_service:
+        mod = regroup.future_service(mod, ev)
     route = _Route(mod, _treatments(found.chosen_treatments, ev), _ssp_basis(found.ssp_basis, ev))
     return _native(ctx, st, ev, tb, identified, price_at, route)
 
