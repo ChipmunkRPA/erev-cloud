@@ -2925,3 +2925,12 @@ unauthenticated ZAP baseline reports no high/medium alerts, one low COEP-header 
 informational classes. Project teardown and empty container/volume inspections pass.
 See [checkpoint](LOCAL-CHECKS-2026-10-24.md). Restore evidence remains dated October 22;
 functional gaps and pending decisions are unchanged. No deployment.
+
+
+### 2026-10-24 — Current-schema disposable restore
+
+On 21f7c041aecb, all 12 restore-drill stages pass: eight tenants, 1,818 files and 722 tables;
+no missing tables or reduced row counts, only two verification security events added. Temporary
+project/container/volume cleanup is verified. See [checkpoint](LOCAL-CHECKS-2026-10-24.md).
+This refreshes the local restore evidence and does not complete outstanding accounting features.
+No deployment or actual business data.

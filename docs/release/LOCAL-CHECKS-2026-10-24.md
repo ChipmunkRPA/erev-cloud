@@ -20,3 +20,19 @@ Machine-readable evidence and scanner output are retained under .run/reports/zap
 including the nested compose-verify report. The restore drill still has its October 22 checkpoint;
 it is not refreshed by this check. No deployment, live migration or external accounting sign-off.
 Outstanding calculation-policy decisions and unfinished functionality are unchanged.
+
+## Current-source disposable restore drill
+
+The complete drill passed on 21f7c041aecb4cac95a892342a966c68a749a67b. All 12 stages passed,
+including backup, destruction of the source volume, fresh-server restore, integrity verification,
+doctor, row-count comparison and teardown. Eight tenants and 1,818 files verified without failures.
+Across 722 tables, the source held 97,158 rows and the clone 97,160; no table was missing or had
+fewer rows. The only increase was two erev.security_event rows from verification itself.
+
+Backup took 23 seconds; destruction-to-verified-clone took 29 seconds; total drill 617 seconds.
+Docker inspection after completion found no erev-verify-drill containers or volumes. The gate
+removed its temporary execution context and backup/credential material; none was published.
+Detailed evidence remains in .run/reports/restore-drill/, including backup.report.json,
+restore-verify.report.json and row-counts.json. This supersedes the October 22 restore evidence
+for the current schema; it remains a local synthetic-data exercise, not production recovery.
+Outstanding functional gaps and pending owner calculation decisions remain unchanged.
