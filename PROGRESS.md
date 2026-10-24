@@ -25,7 +25,8 @@ review and publish changes without PR accumulation, and do not deploy.
 Implemented the owner’s whole/member scope rule, complete member-batch entry, latest readings,
 and original-source trace reconciliation. 51 native cases, 15 UI cases and a populated public
 approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](docs/release/COMBINED-ACTUAL-HOURS-2026-10-23.md).
-[Termination](docs/release/COMBINED-TERMINATION-2026-10-23.md) still needs public verification;
+[Termination](docs/release/COMBINED-TERMINATION-2026-10-23.md) now passes public approval,
+entry and saved-report replay; partial-member removal remains open;
 [local builds](docs/release/LOCAL-BUILD-2026-10-23.md) remain partly unverified. No deployment.
 
 ## Original agent gross-control closing evidence — October 23, 2026

@@ -289,6 +289,9 @@ export function useWizardBase(contractId: string, enabled: boolean): BaseState {
         currency: contract.data.transaction_currency,
         obligations: facts,
         priceOnlyObligationKeys: [...originals.keys()],
+        combinedObligationMembers: obligations.data
+          .map((item) => item.combined_component_keys ?? [])
+          .filter((keys) => keys.length > 0),
       },
       obligationChoices: [
         ...obligations.data.map((item) => ({

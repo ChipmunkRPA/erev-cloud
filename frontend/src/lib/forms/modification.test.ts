@@ -660,3 +660,39 @@ it("retained combined keys allow price changes but not quantity changes or dupli
     expect(result.errors["line-l1-obligationKey"]).toBeTruthy();
   }
 });
+
+it("accepts only a complete original-member termination and preserves both amounts", () => {
+  const context = {
+    ...CONTEXT,
+    priceOnlyObligationKeys: ["LEASE"],
+    combinedObligationMembers: [["O1", "LEASE"]],
+  };
+  const form = {
+    ...emptyChange("l1", "TERMINATION"),
+    reference: "TERM-COMBINED",
+    effectiveDate: "2026-10-01",
+    terminationKind: "PARTIAL" as const,
+    lines: ["O1", "LEASE"].map((key, i) => ({
+      ...emptyChangeLine(`l${i + 1}`),
+      action: "REMOVE" as const,
+      obligationKey: key,
+      quantityChange: "0",
+      considerationChange: i === 0 ? "-300" : "-600",
+    })),
+  };
+  const built = buildChange(form, context);
+  expect(built.errors).toEqual({});
+  expect(built.body?.lines?.map((line) => [line.obligation_key, line.consideration_delta])).toEqual(
+    [
+      ["O1", USD("-300")],
+      ["LEASE", USD("-600")],
+    ],
+  );
+  for (const lines of [
+    form.lines.slice(0, 1),
+    form.lines.slice(1),
+    form.lines.map((line, index) => (index === 1 ? { ...line, endDate: "2026-10-01" } : line)),
+  ]) {
+    expect(buildChange({ ...form, lines }, context).body).toBeNull();
+  }
+});

@@ -73,8 +73,9 @@ export interface ChangeContext {
   readonly externalId: string;
   readonly currency: string;
   readonly obligations: readonly ObligationFacts[];
-  /** Retained original combined components; only pure price changes are supported. */
+  /** Retained originals; general scope edits require a complete termination group. */
   readonly priceOnlyObligationKeys?: readonly string[];
+  readonly combinedObligationMembers?: readonly (readonly string[])[];
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -259,6 +260,22 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
   const known = new Set(context.obligations.map((item) => item.key));
   const priceOnly = new Set(context.priceOnlyObligationKeys ?? []);
   for (const key of priceOnly) known.add(key);
+  const completeTerminations = new Set<string>();
+  if (form.kind === "TERMINATION") {
+    for (const members of context.combinedObligationMembers ?? []) {
+      const selected = form.lines.filter((line) => members.includes(line.obligationKey.trim()));
+      if (
+        members.length > 0 &&
+        members.every((key) => selected.some((line) => line.obligationKey.trim() === key)) &&
+        selected.every(
+          (line) =>
+            line.action === "REMOVE" && line.startDate.trim() === "" && line.endDate.trim() === "",
+        )
+      ) {
+        for (const key of members) completeTerminations.add(key);
+      }
+    }
+  }
   if (form.kind === null) {
     errors.kind = t("modifications.wizard.error.kind");
   }
@@ -321,7 +338,13 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
         errors[at("obligationKey")] = tooLong(KEY_MAX_LENGTH);
       } else if (line.action === "ADD" && known.has(key)) {
         errors[at("obligationKey")] = t("modifications.wizard.error.keyExists", { key });
-      } else if (line.action !== "ADD" && priceOnly.has(key)) {
+      } else if (
+        line.action !== "ADD" &&
+        !completeTerminations.has(key) &&
+        (priceOnly.has(key) ||
+          (form.kind === "TERMINATION" &&
+            context.combinedObligationMembers?.some((members) => members.includes(key))))
+      ) {
         errors[at("obligationKey")] = t("modifications.wizard.error.originalComponentPriceOnly");
       } else if (line.action !== null && line.action !== "ADD" && !known.has(key)) {
         errors[at("obligationKey")] = t("modifications.wizard.error.keyUnknown", {

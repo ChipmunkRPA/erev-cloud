@@ -1434,7 +1434,7 @@ describe("SF-07 a new modification", () => {
     fireEvent.click(trigger);
     fireEvent.mouseDown(
       await screen.findByRole("option", {
-        name: "LEASE-ORIGINAL · Combined into O1 · Price changes only",
+        name: "LEASE-ORIGINAL · Combined into O1",
       }),
     );
     type(/^Price change amount/, "1000.00");

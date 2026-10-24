@@ -1495,3 +1495,77 @@ def test_combined_member_hours_approval_and_saved_reporting(app, keyring, clock,
     replay = run_now(world, UUID(rerun.json()["id"]))
     assert replay["state"] == "SUCCEEDED", replay
     assert replay["result"]["output_sha256_equal"] is True
+
+
+@pytest.mark.parametrize("termination_kind", ["FULL", "PARTIAL"])
+def test_combined_original_termination_public_workflow(
+    app, keyring, clock, files, termination_kind
+):
+    from support.modifications import confirm_answers
+    from support.worlds import run_now
+
+    lease = br06_lease(
+        app, keyring, clock, files, lessor_combination=True, nonlease_predominates=True
+    )
+    world = lease.report
+    created = post(
+        app,
+        f"/api/v1/contracts/{lease.contract_id}/modifications",
+        world.maya,
+        {
+            "effective_date": "2026-09-10",
+            "kind": "TERMINATION",
+            "rationale": "Terminate every original member of the reviewed combination.",
+            "termination": {
+                "kind": termination_kind,
+            },
+            "lines": [
+                {
+                    "obligation_key": key,
+                    "action": "REMOVE",
+                    "quantity_delta": "0",
+                    "consideration_delta": {"amount": amount, "currency": "USD"},
+                }
+                for key, amount in [("L1-LEASE", "-60000.00"), ("L2-SERVICE", "-30000.00")]
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    path = f"/api/v1/modifications/{created.json()['id']}"
+    confirm_answers(app, created.json()["id"], world.maya)
+    queued = post(app, path + "/preview", world.maya, {})
+    assert queued.status_code == 202, queued.text
+    finished = run_now(world, UUID(queued.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    submitted = post(
+        app, path + "/submit", world.maya, {"comment": "Review complete member termination."}
+    )
+    assert submitted.status_code == 200, submitted.text
+    clock.advance(STEP)
+    approved = approve(app, submitted.json()["approval_request_id"], world.priya)
+    assert approved.status_code == 200, approved.text
+    detail = get(app, path, world.maya).json()
+    assert detail["status"] == "APPLIED", detail
+    assert {line["obligation_key"] for line in detail["lines"]} == {"L1-LEASE", "L2-SERVICE"}
+    event = get(app, f"/api/v1/events/{detail['applied_event_id']}", world.maya).json()
+    assert event["event_type"] == "CONTRACT_TERMINATED", event
+    clock.advance(STEP)
+    run, rows = report_run(
+        world,
+        "latest_contract_status",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "as_of": "2026-09-30",
+            "contract_external_id": BR06_EXTERNAL_ID,
+        },
+    )
+    assert run["status"] == "SUCCEEDED", run
+    assert len(rows) == 1
+    assert rows[0]["revenue_cum"] == usd("18000.00")
+    assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
+    rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    replay = run_now(world, UUID(rerun.json()["id"]))
+    assert replay["state"] == "SUCCEEDED", replay
+    assert replay["result"]["output_sha256_equal"] is True
