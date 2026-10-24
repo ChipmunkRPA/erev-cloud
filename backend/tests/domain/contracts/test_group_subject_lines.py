@@ -1535,6 +1535,7 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         ("18000.00", 2, True, True),
         ("18000.00", 2, False, "mixed"),
         ("18000.00", 2, False, "cross_contracting"),
+        ("18000.00", 2, False, "cross_calendar"),
     ],
 )
 def test_agent_supplier_sources_retain_original_paid_history(
@@ -1590,7 +1591,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
         ],
     )
     performer = None
-    if opening_deposit == "cross_contracting":
+    if opening_deposit in {"cross_contracting", "cross_calendar"}:
         from dataclasses import replace
 
         from support.factories import open_periods
@@ -1602,6 +1603,24 @@ def test_agent_supplier_sources_retain_original_paid_history(
         calendar_id = fx.place.scalar(
             select(legal_entity.c.calendar_id).where(legal_entity.c.code == AVM_UK)
         )
+        if opening_deposit == "cross_calendar":
+            created = post(fx.app, "/api/v1/calendars", fx.maya, {
+                "code": "AGENT-445", "name": "Agent 4-4-5", "pattern": "P445",
+                "week_end_day": 7, "year_end_anchor": "NEAREST_WEEKDAY_TO_MONTH_END",
+            })
+            assert created.status_code == 201, created.text
+            calendar_id = created.json()["id"]
+            for year in (2026, 2027):
+                generated = post(fx.app, f"/api/v1/calendars/{calendar_id}/generate-year",
+                                 fx.maya, {"fiscal_year": year})
+                assert generated.status_code == 200, generated.text
+            performer_august_end = fx.place.scalar(
+                select(period.c.end_date).where(
+                    period.c.calendar_id == UUID(str(calendar_id)),
+                    period.c.period_key == "FY2026-P08",
+                )
+            )
+            assert performer_august_end.isoformat() == "2026-08-23"
         performer = "AGENT-PERFORMER"
         entity(fx.app, fx.maya, code=performer, calendar_id=str(calendar_id))
         open_periods(
@@ -1675,7 +1694,8 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 str(Decimal("90000") / deposits),
             ),
         )
-    for quantity, day in (("120", "2026-08-21"), ("80", "2026-08-22")):
+    final_delivery = "2026-08-31" if opening_deposit == "cross_calendar" else "2026-08-22"
+    for quantity, day in (("120", "2026-08-21"), ("80", final_delivery)):
         approved_manual_events(
             fx.place,
             fx.priya,

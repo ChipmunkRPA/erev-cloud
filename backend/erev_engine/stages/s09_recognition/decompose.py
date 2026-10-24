@@ -35,6 +35,7 @@ from erev_engine.stages.state import (
     EventView,
     ObligationState,
     Target,
+    revenue_calendar_entity,
 )
 from erev_engine.trace import SourceRef, TraceBuilder
 
@@ -454,7 +455,7 @@ def emit(
         targets.append(
             Target(
                 book_code=ctx.book_code,
-                entity=ob.performing_entity,
+                entity=revenue_calendar_entity(ctx, ob),
                 subject_key=ob.subject_key,
                 measure="revenue",
                 period_key=period_key,

@@ -45,7 +45,7 @@ with unavailable opening amounts explicitly marked. Cross-entity principal POB v
 [due-to sources](docs/release/INTERCOMPANY-POB-OPENING-2026-10-23.md).
 Historical agent owners now use verified original membership: [checkpoint](docs/release/AGENT-HISTORICAL-OWNERS-2026-10-24.md).
 Principal historical owners now use original membership proof in FIFO, reversals and due-to attribution.
-Cross-performer contracting revenue: [sources](docs/release/CONTRACTING-AGENT-SOURCES-2026-10-24.md).
+Cross-performer contracting revenue (different calendars): [sources](docs/release/CONTRACTING-AGENT-SOURCES-2026-10-24.md).
 Performing-entity agent revenue and regrouping remain open.
 
 ## Acquired POB sources — October 23, 2026

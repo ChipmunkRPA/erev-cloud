@@ -10,7 +10,7 @@ returns within the units measures from ``returns`` (ENC-7). ``Evaluator`` applie
 order: segment targets, manual adjustments in ENG-06 order (``manual``), recognition holds
 (``holds``), then the V4 status guard; the V5 start
 applies with the guard (S02-R-03, S02-R-05, S09-INV-05, S09-INV-06). Targets are evaluated at every
-period end of the performing entity from the group's inception period through the horizon, and a
+period end of the selected revenue calendar from inception through the horizon, and a
 deterministic component (``is_deterministic``) through the period containing its term end (C-04,
 C-05; S09-R-50). Each period amount
 is decomposed by cause (``decompose``). A ``LEASE`` repurchase outcome produces no targets
@@ -59,6 +59,7 @@ from erev_engine.stages.state import (
     ObligationState,
     SegmentCause,
     Target,
+    revenue_calendar_entity,
 )
 from erev_engine.trace import SourceRef, TraceBuilder
 
@@ -657,9 +658,9 @@ class Evaluator:
         attribution: step1.Attribution | None = None,
     ) -> None:
         validate(ob)
-        entity = ctx.entities.get(ob.performing_entity)
+        entity = ctx.entities.get(revenue_calendar_entity(ctx, ob))
         if entity is None:
-            raise _invariant("the performing entity has no calendar", ob, rule="CV-12")
+            raise _invariant("the revenue calendar entity has no calendar", ob, rule="CV-12")
         self.ctx = ctx
         self.st = st
         self.ob = ob
@@ -931,10 +932,10 @@ def target_at(ctx: BookContext, st: AllocatedState, ob: ObligationState, d: date
 
 
 def _horizon(ctx: BookContext, ob: ObligationState) -> tuple[tuple[PeriodInput, ...], PeriodInput]:
-    entity = ctx.entities.get(ob.performing_entity)
-    horizon_key = ctx.horizon.get(ob.performing_entity)
+    entity = ctx.entities.get(revenue_calendar_entity(ctx, ob))
+    horizon_key = ctx.horizon.get(revenue_calendar_entity(ctx, ob))
     if entity is None or horizon_key is None:
-        raise _invariant("the performing entity has no calendar or horizon", ob, rule="CV-13")
+        raise _invariant("the revenue calendar entity has no calendar or horizon", ob, rule="CV-13")
     ordered = tuple(sorted(entity.periods, key=lambda period: (period.start_date, period.end_date)))
     horizon = next((period for period in ordered if period.period_key == horizon_key), None)
     if horizon is None:
@@ -945,13 +946,13 @@ def _horizon(ctx: BookContext, ob: ObligationState) -> tuple[tuple[PeriodInput, 
 def evaluation_periods(
     ctx: BookContext, st: AllocatedState, ob: ObligationState
 ) -> tuple[PeriodInput, ...]:
-    """Periods of the performing entity from the group's inception period through the horizon.
+    """Periods of the selected revenue calendar from inception through the horizon.
 
     A deterministic component (``is_deterministic``) extends them through the period containing its
     term end (C-04, C-05; S09-R-50).
     """
     ordered, horizon = _horizon(ctx, ob)
-    entity = ctx.entities[ob.performing_entity]
+    entity = ctx.entities[revenue_calendar_entity(ctx, ob)]
     first = dates.period_of(entity, st.inception_date)
     last_end = horizon.end_date
     if is_deterministic(ob):
@@ -1366,7 +1367,7 @@ def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> S
             targets.append(
                 Target(
                     book_code=ctx.book_code,
-                    entity=ob.performing_entity,
+                    entity=revenue_calendar_entity(ctx, ob),
                     subject_key=ob.subject_key,
                     measure="revenue_cum",
                     period_key=period.period_key,

@@ -80,3 +80,48 @@ def test_gross_relief_projects_by_date_when_entity_period_keys_differ():
         10000,
         "gross-source",
     )
+
+
+@pytest.mark.parametrize(
+    "enabled,policy,role,expected",
+    [
+        (False, "CONTRACTING_ENTITY", PrincipalAgent.AGENT, "PERF08"),
+        (True, "CONTRACTING_ENTITY", PrincipalAgent.AGENT, "CONT08"),
+        (True, "PERFORMING_ENTITY", PrincipalAgent.AGENT, "PERF08"),
+        (True, "CONTRACTING_ENTITY", PrincipalAgent.PRINCIPAL, "PERF08"),
+    ],
+)
+def test_recognition_calendar_follows_revision_and_original_agent_election(
+    enabled, policy, role, expected
+):
+    from datetime import date
+
+    from erev_engine.enums import RecognitionMethod
+    from erev_engine.stages.s09_recognition.components import evaluation_periods
+
+    contractor = NS(
+        code="CONTRACTOR",
+        periods=[NS(period_key="CONT08", start_date=date(2026, 8, 1), end_date=date(2026, 8, 31))],
+    )
+    performer = NS(
+        code="PERFORMER",
+        periods=[NS(period_key="PERF08", start_date=date(2026, 7, 27), end_date=date(2026, 8, 23))],
+    )
+    ctx = NS(
+        contracting_agent_calendar=enabled,
+        policies=NS(value=Mock(return_value=policy)),
+        entities={"CONTRACTOR": contractor, "PERFORMER": performer},
+        horizon={"CONTRACTOR": "CONT08", "PERFORMER": "PERF08"},
+    )
+    ob = NS(
+        principal_agent=role,
+        gross_to_net={"amount": "20"},
+        performing_entity="PERFORMER",
+        contracting_entity="CONTRACTOR",
+        recognition_method=RecognitionMethod.UNITS_DELIVERED,
+        material_right=None,
+        segments=(),
+    )
+    result = evaluation_periods(ctx, NS(inception_date=date(2026, 8, 1)), ob)
+    assert [period.period_key for period in result] == [expected]
+    assert ob.performing_entity == "PERFORMER"

@@ -260,6 +260,20 @@ class BookContext:
     trigger: str  # E-87 literal, or "DRY_RUN" (05 §3.2)
     tenant_preset: str  # "DEFAULT" | "LEGACY_PARITY"
     contracting_agent_relief: bool = False
+    contracting_agent_calendar: bool = False
+
+
+def revenue_calendar_entity(ctx: BookContext, ob: ObligationState) -> str:
+    """Select the posting calendar without changing the original performing entity."""
+    if (
+        ctx.contracting_agent_calendar
+        and ob.principal_agent == PrincipalAgent.AGENT
+        and ob.gross_to_net is not None
+        and ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
+        == "CONTRACTING_ENTITY"
+    ):
+        return ob.contracting_entity
+    return ob.performing_entity
 
 
 # --- Billing mode (POLICIES §1 POL-004, POL-123; ENGINE_SPEC_B S10-R-06; D-91) -------------------

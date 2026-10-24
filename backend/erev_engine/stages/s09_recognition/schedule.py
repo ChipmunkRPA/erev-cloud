@@ -1152,7 +1152,7 @@ def revenue_schedule(
                     schedule_kind=ScheduleKind.REVENUE,
                     subject_type="obligation",
                     subject_key=ob.subject_key,
-                    entity=ob.performing_entity,
+                    entity=target.entity,
                     period_key=target.period_key,
                     line_type=ScheduleLineType(line_type),
                     amount=item.value,
