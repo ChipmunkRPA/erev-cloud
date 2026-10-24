@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.auth.principal import RequestContext
-from erev_api.db.tables import combination_group, contract, material_right, obligation_version
+from erev_api.db.tables import combination_group, contract, obligation_version
 from erev_api.domain.contracts import (
     bundles,
     portfolio_allocation,
@@ -100,14 +100,6 @@ def preview(
                 "validation-failed",
                 "A current computation is required for every portfolio member and book.",
             )
-        loyalty = set(
-            session.scalars(
-                select(material_right.c.obligation_id).where(
-                    material_right.c.contract_id == current["id"],
-                    material_right.c.option_type == "LOYALTY_POINTS",
-                )
-            )
-        )
         rows = (
             session.execute(
                 select(obligation_version).where(
@@ -118,7 +110,7 @@ def preview(
             .mappings()
             .all()
         )
-        eligible = _target_candidates([dict(row) for row in rows], target_keys, loyalty)
+        eligible = _target_candidates([dict(row) for row in rows], target_keys)
         if target_keys:
             if {row["obligation_key"] for row in eligible} != target_keys:
                 raise Problem(
@@ -130,16 +122,6 @@ def preview(
             raise Problem(
                 "validation-failed",
                 "Every member must have a retained redemption or loyalty obligation.",
-            )
-        bound = bound_members.get(current["id"])
-        if bound is not None and (
-            bound.contract_key != current["external_id"]
-            or set(bound.obligation_keys) != {row["obligation_key"] for row in eligible}
-            or set(bound.obligation_ids) != {row["obligation_id"] for row in eligible}
-        ):
-            raise Problem(
-                "validation-failed",
-                "The saved breakage targets differ. Save the draft again before previewing.",
             )
         computation_id = computed["contract_computation_id"]
         if computation_id not in verified:
@@ -156,12 +138,36 @@ def preview(
                     obligation_subject_key(current["external_id"], row["obligation_key"])
                     for row in eligible
                 ],
+                redemption_only=not target_keys,
             )
         except EngineError as error:
             raise Problem(
                 "validation-failed",
                 f"The retained contract cannot supply the dated allocation basis ({error.code}).",
             ) from error
+        if not target_keys:
+            eligible = [
+                row
+                for row in eligible
+                if obligation_subject_key(current["external_id"], row["obligation_key"])
+                in historical
+            ]
+            if not eligible:
+                raise Problem(
+                    "validation-failed",
+                    "Every member must have a redemption or loyalty obligation "
+                    "on the estimate date.",
+                )
+        bound = bound_members.get(current["id"])
+        if bound is not None and (
+            bound.contract_key != current["external_id"]
+            or set(bound.obligation_keys) != {row["obligation_key"] for row in eligible}
+            or set(bound.obligation_ids) != {row["obligation_id"] for row in eligible}
+        ):
+            raise Problem(
+                "validation-failed",
+                "The saved breakage targets differ. Save the draft again before previewing.",
+            )
         for row in eligible:
             key = obligation_subject_key(current["external_id"], row["obligation_key"])
             dated = historical[key]
@@ -228,18 +234,10 @@ def preview(
 
 
 def _target_candidates(
-    rows: Sequence[Mapping[str, Any]], target_keys: set[str], loyalty: set[UUID]
+    rows: Sequence[Mapping[str, Any]], target_keys: set[str]
 ) -> list[Mapping[str, Any]]:
     # Explicit keys select original identities only. Historical eligibility is decided
     # by the verified dated fold, even when the latest scope or recognition method differs.
     if target_keys:
         return [row for row in rows if row["obligation_key"] in target_keys]
-    return [
-        row
-        for row in rows
-        if row["scope_flag"] == "IN_SCOPE_606"
-        and (
-            str(row["recognition_method"]) == "REDEMPTION_PATTERN"
-            or row["obligation_id"] in loyalty
-        )
-    ]
+    return list(rows)

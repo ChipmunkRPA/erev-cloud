@@ -1020,8 +1020,13 @@ def test_portfolio_membership_workflow(
         )
 
 
+@pytest.mark.parametrize("explicit_targets", [True, False])
 def test_breakage_preview_reads_verified_native_redemption_sources(
-    app: FastAPI, app_settings: Settings, keyring: KeyRing, clock: FrozenClock
+    app: FastAPI,
+    app_settings: Settings,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    explicit_targets: bool,
 ) -> None:
     from support.factories import (
         TPL_PROD_UNITS,
@@ -1054,9 +1059,7 @@ def test_breakage_preview_reads_verified_native_redemption_sources(
             "total_price": "1000.00",
         },
     )
-    product_id = world.place.scalar(
-        select(product.c.id).where(product.c.code == "AVM-IMPL-STD")
-    )
+    product_id = world.place.scalar(select(product.c.id).where(product.c.code == "AVM-IMPL-STD"))
     set_default_template(app, world.maya, str(product_id), template["template_id"])
     customer = world.place.scalar(
         select(contract.c.customer_id).where(
@@ -1114,7 +1117,7 @@ def test_breakage_preview_reads_verified_native_redemption_sources(
             "element_code": "BREAKAGE",
             "estimate_kind": "BREAKAGE",
             "method": "RATE",
-            "target_obligation_keys": ["POINTS"],
+            **({"target_obligation_keys": ["POINTS"]} if explicit_targets else {}),
         },
         if_match=get(app, path, world.maya).headers["etag"],
     )

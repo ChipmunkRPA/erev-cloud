@@ -2317,3 +2317,20 @@ existing populated public preview workflow and scoped lint/types. The selection 
 exercise differing current classifications; they do not claim a new full reclassification workflow.
 Shared breakage application still requires the unresolved expected-redemption denominator and
 frozen member application integration. No approval, posting or deployment was enabled.
+
+
+## Automatic breakage populations use dated eligibility — October 24, 2026
+
+Automatic (no explicit target keys) breakage preview now selects redemption/loyalty eligibility
+from the verified native fold on the estimate date, rather than today's scope, recognition method
+or material-right table. Original current rows supply candidate identities. The dated fold omits
+absent, out-of-scope, terminated and non-redemption candidates in automatic mode. Explicit targets
+retain strict completeness and eligibility refusals; each member still needs a nonempty eligible
+population. Unsupported combined hosts and retained-input checks remain guarded.
+
+Eight focused selection/native cases pass, including preservation of exact historical SSP and
+entitlement and omission of non-redemption/absent candidates. Populated public preview passes
+both explicit and automatic target modes with stable source identities and repeat responses.
+Scoped lint/types pass. This supersedes the earlier current-eligibility selection policy for
+unspecified populations. It does not enable shared-breakage approval or financial application;
+the expected-redemption denominator decision remains pending. No deployment.

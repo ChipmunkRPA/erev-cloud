@@ -42,3 +42,45 @@ def test_group_cannot_supply_a_basis_before_its_inception():
     bundle = golden_streams.stream("Contract 2", "09").input_bundle(preset="LEGACY_PARITY")
     with pytest.raises(Problem, match="members created after"):
         from_bundle(bundle, "ASC606", date(2000, 1, 1), [SUBJECT])
+
+
+def test_unscoped_population_excludes_dated_nonredemption_and_absent_candidates():
+    bundle = golden_streams.stream("Contract 2", "09").input_bundle(preset="LEGACY_PARITY")
+    assert (
+        from_bundle(
+            bundle,
+            "ASC606",
+            date(2023, 5, 14),
+            [SUBJECT, "Contract 2/FUTURE"],
+            redemption_only=True,
+        )
+        == {}
+    )
+
+
+def test_unscoped_redemption_population_preserves_exact_dated_basis():
+    from dataclasses import replace
+
+    bundle = golden_streams.stream("Contract 2", "09").input_bundle(preset="LEGACY_PARITY")
+    bundle = replace(
+        bundle,
+        pob_template_versions=tuple(
+            replace(template, recognition_method="REDEMPTION_PATTERN")
+            for template in bundle.pob_template_versions
+        ),
+    )
+    day = date(2023, 5, 14)
+    explicit = from_bundle(bundle, "ASC606", day, [SUBJECT])
+    assert explicit[SUBJECT].redemption_eligible
+    assert explicit[SUBJECT].ssp == 612
+    assert explicit[SUBJECT].entitlement == 8
+    assert (
+        from_bundle(
+            bundle,
+            "ASC606",
+            day,
+            [SUBJECT, "Contract 2/FUTURE"],
+            redemption_only=True,
+        )
+        == explicit
+    )

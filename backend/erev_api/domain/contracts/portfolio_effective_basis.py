@@ -34,12 +34,16 @@ def from_bundle(
     book_code: str,
     effective_date: date,
     subjects: Collection[str],
+    *,
+    redemption_only: bool = False,
 ) -> dict[str, Basis]:
     """End-of-day basis after all accepted boundaries on the estimate effective date.
 
     A retained computation has today's admitted population. Historical regrouping cannot be
     inferred from it: requested original-member subjects must remain individually represented.
-    Likewise, an opening migration cannot prove a basis before its cutover.
+    Likewise, an opening migration cannot prove a basis before its cutover. For an unscoped
+    redemption population, candidates absent or ineligible on that date are omitted; explicit
+    targets retain strict completeness checks.
     """
     if bundle.engine_version != ENGINE_VERSION:
         raise Problem(
@@ -83,6 +87,12 @@ def from_bundle(
     for ob in state.obligations:
         if ob.subject_key not in requested:
             continue
+        redemption_eligible = ob.recognition_method == "REDEMPTION_PATTERN" or (
+            ob.material_right is not None
+            and ob.material_right.terms.option_type == "LOYALTY_POINTS"
+        )
+        if redemption_only and not redemption_eligible:
+            continue
         if ob.combined_component_keys or ob.subject_key in merged:
             raise Problem(
                 "validation-failed", "A combined host cannot supply an original member entitlement."
@@ -94,6 +104,8 @@ def from_bundle(
             or (ob.terminated_on is not None and ob.terminated_on <= effective_date)
             or ob.scope_flag != "IN_SCOPE_606"
         ):
+            if redemption_only:
+                continue
             raise Problem("validation-failed", "A target is unavailable on the estimate date.")
         segment = segments[-1]
         ssp = segment.remaining_ssp
@@ -109,13 +121,9 @@ def from_bundle(
             ssp,
             ob.quantity,
             effective_date,
-            ob.recognition_method == "REDEMPTION_PATTERN"
-            or (
-                ob.material_right is not None
-                and ob.material_right.terms.option_type == "LOYALTY_POINTS"
-            ),
+            redemption_eligible,
         )
-    if set(result) != requested:
+    if not redemption_only and set(result) != requested:
         raise Problem(
             "validation-failed",
             "Original targets are missing at the estimate date; "
