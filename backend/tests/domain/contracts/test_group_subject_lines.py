@@ -1460,12 +1460,13 @@ def test_intercompany_due_to_sources_support_progress_reversal(
 
 
 @pytest.mark.parametrize(
-    "net_fee, deposits, combined",
+    "net_fee, deposits, combined, opening_deposit",
     [
-        ("18000.00", 1, False),
-        ("0.00", 1, False),
-        ("18000.00", 2, False),
-        ("18000.00", 2, True),
+        ("18000.00", 1, False, False),
+        ("0.00", 1, False, False),
+        ("18000.00", 2, False, False),
+        ("18000.00", 2, True, False),
+        ("18000.00", 2, False, True),
     ],
 )
 def test_agent_supplier_sources_retain_original_paid_history(
@@ -1474,6 +1475,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
     net_fee: str,
     deposits: int,
     combined: bool,
+    opening_deposit: bool,
 ) -> None:  # noqa: F811
     from erev_api.jobs import registry
 
@@ -1562,7 +1564,11 @@ def test_agent_supplier_sources_retain_original_paid_history(
             fx,
             identity,
             int(head),
-            _invoice(f"AGENT-ADV-{index}", "2026-08-20", str(Decimal("90000") / deposits)),
+            _invoice(
+                f"AGENT-ADV-{index}",
+                "2026-07-20" if opening_deposit else "2026-08-20",
+                str(Decimal("90000") / deposits),
+            ),
         )
     for quantity, day in (("120", "2026-08-21"), ("80", "2026-08-22")):
         approved_manual_events(
@@ -1726,7 +1732,8 @@ def test_agent_supplier_sources_retain_original_paid_history(
                     == "PASS"
                 )
             else:
-                assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
+                if not opening_deposit:
+                    assert Decimal(detail["revenue_from_opening"]["amount"]) == 0, detail
                 if view == "transaction":
                     # Existing disclosure policy reports the gross control-relief family.
                     # Net revenue remains separately proven above, not substituted here.
@@ -1743,6 +1750,81 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 fx.maya,
             )
             assert repeated.status_code == 200 and repeated.json()["items"] == data, repeated.text
+
+    if not combined and Decimal(net_fee):
+        from types import SimpleNamespace
+        from erev_api.domain.reports import opening_consumption_policy
+        from erev_api.domain.reports.reporting_currency import Translation
+
+        with monkeypatch.context() as scoped:
+            scoped.setattr(
+                opening_consumption_policy,
+                "resolve",
+                lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"),
+            )
+            net_functional = -sum(
+                (row["amount_functional"] for row in rows if row["account_role"] == "REVENUE"),
+                Decimal(0),
+            )
+            for view in ("transaction", "functional", "reporting"):
+                run, data = worlds.report_run(
+                    reporting,
+                    "revenue_from_opening_liability",
+                    {
+                        "entity_codes": [AVM_UK],
+                        "book": "ASC606",
+                        "currency_view": view,
+                        "from_period_key": AUGUST,
+                        "to_period_key": AUGUST,
+                    },
+                )
+                detail = next(
+                    row for row in data if row.get("contract_external_id") == "AGENT-SOURCES"
+                )
+                expected = Decimal(net_fee) if view == "transaction" else net_functional
+                if view == "reporting":
+                    rate = next(
+                        rate
+                        for rate in run["control_totals"]["translation_rates"]
+                        if rate["period_key"] == AUGUST and rate["rate_type"] == "average"
+                    )
+                    expected = Translation(detail["currency"], {reporting.entity_id: rate}).amount(
+                        reporting.entity_id, expected
+                    )
+                assert Decimal(detail["revenue_recognized"]["amount"]) == expected, detail
+                assert Decimal(detail["revenue_from_opening"]["amount"]) == (
+                    expected if opening_deposit else Decimal(0)
+                ), detail
+                assert (
+                    "Agent revenue is the verified net posting" in run["control_totals"]["footnote"]
+                )
+                explained = get(
+                    fx.app,
+                    f"/api/v1/explain/report-runs/{run['id']}/cell",
+                    reporting.maya,
+                    {"row_key": detail["row_key"], "column_key": "revenue_recognized"},
+                )
+                assert explained.status_code == 200, explained.text
+                details = [
+                    text
+                    for item in explained.json()["contributors"]["items"]
+                    for text in item.get("details", [])
+                ]
+                assert any("Agent net income:" in text for text in details), details
+                restarted = post(
+                    fx.app, f"/api/v1/report-runs/{run['id']}/rerun", reporting.maya, {}
+                )
+                assert restarted.status_code == 202, restarted.text
+                complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))
+                assert complete["state"] == "SUCCEEDED", complete
+                repeated = get(
+                    fx.app,
+                    f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+                    reporting.maya,
+                )
+                assert repeated.status_code == 200 and repeated.json()["items"] == data, (
+                    repeated.text
+                )
 
     if deposits == 2:
         head = fx.place.scalar(
@@ -1815,8 +1897,8 @@ def test_agent_supplier_sources_retain_original_paid_history(
             "BILLING_CLEARING",
         }
         assert all(row["transaction"] == 0 for row in totals), totals
-        if combined:
-            # Original funding was at .80; the restored own layer is at .84.
+        if combined or opening_deposit:
+            # Original funding/prepayment was at .80; the restored own layer is at .84.
             # The 90,000 x .04 historical-rate difference is not a supplier balance.
             assert {row["account_role"]: row["functional"] for row in totals} == {
                 "REVENUE": Decimal("3600"),

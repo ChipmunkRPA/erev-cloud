@@ -75,3 +75,79 @@ def test_original_opening_is_not_reset_and_reversal_uses_its_own_average_rate():
         )
 
     assert "reconcile" in exc.value.errors[0].message
+
+
+def test_agent_periods_cap_net_income_by_original_opening_source_eligibility():
+    a, b = uuid4(), uuid4()
+
+    def entry(period, amount):
+        return NS(period_id=period, subject_key="agent", flow=NS(is_revenue=True, amount=D(amount)))
+
+    # First period earns 25 from original opening sources and 15 from current receipts.
+    # Next period reverses 10 of opening-sourced net income.
+    entries = [entry(a, "40"), entry(b, "-10")]
+    amounts = deltas(
+        periods=[a, b],
+        opening=D(100),
+        obligations={"agent": D(100)},
+        entries=entries,
+        consumption={a: D(100), b: D(-20)},
+        expected=D(15),
+        source_eligibility={"agent": [entry(a, "25"), entry(b, "-10")]},
+    )
+    assert amounts == {a: D(25), b: D(-10)}
+    with pytest.raises(Problem):
+        deltas(
+            periods=[a, b],
+            opening=D(100),
+            obligations={"agent": D(100)},
+            entries=entries,
+            consumption={a: D(100), b: D(-20)},
+            expected=D(15),
+            source_eligibility={"agent": [entry(uuid4(), "25")]},
+        )
+
+
+def test_agent_reporting_translates_net_revenue_not_gross_control_path():
+    entity, contract, a, b = (uuid4() for _ in range(4))
+    rows = [{"row_key": "agent", "entity_code": "UK"}]
+    projected = [
+        NS(
+            contract_id=contract,
+            entity_id=entity,
+            currency="USD",
+            lines={
+                "OPENING": {"contract_liability": D(120)},
+                "REVENUE_FROM_OPENING": {
+                    "contract_asset": D(0),
+                    "unbilled_receivable": D(0),
+                    "contract_liability": D(-120),
+                },
+            },
+        )
+    ]
+    slices = {
+        "agent": {
+            "row_key": "agent",
+            "entity": entity,
+            "members": [(contract, entity)],
+            "currency": "GBP",
+            "periods": {a: D(25), b: D(-10)},
+            "net_revenue": {a: D(40), b: D(-10)},
+        }
+    }
+    periods = {entity: (NS(id=a, key="A"), NS(id=b, key="B"))}
+    rates = [
+        {
+            "entity_code": "UK",
+            "period_key": key,
+            "rate_type": "average",
+            "base_currency": "GBP",
+            "quote_currency": "USD",
+            "rate": rate,
+        }
+        for key, rate in (("A", "1.2"), ("B", "1.5"))
+    ]
+    translate(rows, slices, projected, periods, rates)
+    assert rows[0]["revenue_recognized"] == {"currency": "USD", "amount": "33.00"}
+    assert rows[0]["revenue_from_opening"] == {"currency": "USD", "amount": "15.00"}

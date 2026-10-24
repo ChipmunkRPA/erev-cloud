@@ -29,6 +29,7 @@ def translate(
         if any(item.currency != currency for item in members):
             raise tie_outs.invalid("currency_view", "POB reporting currencies differ.")
         relief = ZERO
+        net_revenue = ZERO
         for period in periods[entity]:
             found = [
                 fact
@@ -45,6 +46,8 @@ def translate(
                 raise tie_outs.invalid("currency_view", "POB reporting rate source differs.")
             translation = reporting_currency.Translation(currency, {entity: found[0]})
             relief += translation.amount(entity, source["periods"][period.id])
+            if "net_revenue" in source:
+                net_revenue += translation.amount(entity, source["net_revenue"][period.id])
         opening = sum((item.lines["OPENING"][LIABILITY] for item in members), ZERO)
         recognized = sum(
             (
@@ -55,6 +58,8 @@ def translate(
             ),
             ZERO,
         )
+        if "net_revenue" in source:
+            recognized = net_revenue
         row.update(
             currency=currency,
             opening_contract_liability=tie_outs.money(opening, currency),

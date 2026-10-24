@@ -281,14 +281,14 @@ def finish(
                 " Combined contracts show one group total with the full member set; "
                 "member relief is not allocated."
             )
-    from .opening_agent_sources import KEY as agent_source_key
+    from .opening_agent_sources import KEY as agent_source_key, LEGACY_KEY as legacy_agent_key
 
     retained = (
         params.binding.evidence
         if params.binding is not None
         else (params.sources.evidence if params.sources is not None else {})
     )
-    if retained.get(agent_source_key):
+    if retained.get(agent_source_key) or retained.get(legacy_agent_key):
         footnote += (
             " Agent revenue is the verified net posting, excluding supplier payable. "
             "Positive opening attribution requires the complete net source set to belong "

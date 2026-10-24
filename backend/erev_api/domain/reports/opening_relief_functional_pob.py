@@ -6,7 +6,12 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from erev_api.domain.reports import opening_relief_frozen, opening_relief_pob, tie_outs
+from erev_api.domain.reports import (
+    opening_agent_sources,
+    opening_relief_frozen,
+    opening_relief_pob,
+    tie_outs,
+)
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.uow import UnitOfWork
@@ -56,7 +61,30 @@ def rows(
         if source is None:
             raise tie_outs.invalid("currency_view", "Functional POB source version is missing.")
         groups[(source.version_id, item.entity_id, item.currency)].append(item)
-    frozen_sources = opening_relief_frozen.Reader(uow, params)
+    source_uow = (
+        uow
+        if params.requester is None
+        else UnitOfWork(
+            ctx=params.requester,
+            session=uow.session,
+            clock=uow.clock,
+            keyring=uow.keyring,
+            files=uow.files,
+        )
+    )
+    frozen_sources = opening_relief_frozen.Reader(source_uow, params)
+    use_agent_sources = (
+        params.binding is None or opening_agent_sources.KEY in params.binding.evidence
+    )
+    from .opening_agent_postings import read as net_postings
+
+    all_net = (
+        net_postings(source_uow, params, book, periods, view="functional")
+        if use_agent_sources
+        else {}
+    )
+    agent_evidence: dict[str, Any] = {}
+    paid_members: set[UUID] = set()
     result = []
     excluded: set[tuple[UUID, UUID]] = set()
     evidence: dict[str, Any] = {}
@@ -85,6 +113,8 @@ def rows(
             >= ZERO
             for p in periods[entity]
         )
+        group_entries: list[rollforward.Entry] = []
+        source_eligibility: dict[str, list[rollforward.Entry]] = {}
         recognized = ZERO
         eligible = []
         facts = {}
@@ -93,7 +123,7 @@ def rows(
         for item in members:
             key = (item.contract_id, item.entity_id)
             source = sources[key]
-            entries = posted.get(key, ())
+            entries: Sequence[rollforward.Entry] = posted.get(key, ())
             member_revenue = sum(
                 (entry.flow.amount for entry in entries if entry.flow.is_revenue), ZERO
             )
@@ -111,6 +141,33 @@ def rows(
                 raise tie_outs.invalid(
                     "currency_view", "Functional posted revenue differs from its balance path."
                 )
+            agent_result = (
+                opening_agent_sources.read(
+                    source_uow,
+                    source,
+                    list(entries),
+                    periods[entity][0].start,
+                    opening,
+                    view="functional",
+                    net_entries=all_net.get(key, []),
+                )
+                if use_agent_sources
+                else None
+            )
+            if agent_result is not None:
+                entries = agent_result.entries
+                member_revenue = sum(
+                    (entry.flow.amount for entry in entries if entry.flow.is_revenue), ZERO
+                )
+                paid_members.update(agent_result.paid_lines)
+                agent_evidence[f"{version}:{entity}:{item.contract_id}"] = agent_result.evidence
+                for subject in agent_result.eligible:
+                    source_eligibility[subject] = [
+                        entry
+                        for entry in agent_result.opening_entries
+                        if entry.subject_key == subject
+                    ]
+            group_entries.extend(entries)
             original = None
             frozen_facts = None
             if frozen is not None and previous is not None:
@@ -131,6 +188,8 @@ def rows(
                 opening_absent=frozen is not None and original is None,
                 functional_currency=currency,
                 allow_zero_consumption=zero_consumption_safe,
+                agent_eligible=agent_result.eligible if agent_result is not None else None,
+                agent_evidence=agent_result.evidence if agent_result is not None else None,
             )
             if frozen_facts is not None:
                 detail["frozen_opening"] = frozen_facts
@@ -162,11 +221,8 @@ def rows(
                     for member in facts.values()
                     for subject, detail in member["obligations"].items()
                 },
-                entries=[
-                    entry
-                    for item in members
-                    for entry in posted.get((item.contract_id, entity), ())
-                ],
+                entries=group_entries,
+                source_eligibility=source_eligibility,
                 consumption={
                     p.id: -sum(
                         (
@@ -192,6 +248,22 @@ def rows(
                 if len(members) > 1
                 else f"contract:{members[0].external_id}:{members[0].entity_code}",
             }
+            if source_eligibility:
+                net_periods = {
+                    p.id: sum(
+                        (
+                            entry.flow.amount
+                            for entry in group_entries
+                            if entry.flow.is_revenue and entry.period_id == p.id
+                        ),
+                        ZERO,
+                    )
+                    for p in periods[entity]
+                }
+                evidence[group_key]["period_net_revenue"] = {
+                    p.key: str(net_periods[p.id]) for p in periods[entity]
+                }
+                reporting_slices[group_key]["net_revenue"] = net_periods
         if opening == recognized == amount == 0 and (
             reporting_slices is None or not any(period_amounts.values())
         ):
@@ -225,6 +297,17 @@ def rows(
                 "revenue_from_opening": tie_outs.money(amount, currency),
             }
         )
+    if use_agent_sources:
+        if (
+            params.binding is not None
+            and params.binding.evidence[opening_agent_sources.KEY] != agent_evidence
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Agent net functional sources differ from retained evidence."
+            )
+        tie_outs.record_evidence(params, opening_agent_sources.KEY, agent_evidence)
+        tie_outs.require_members(params, "agent_net_paid_line", paid_members)
+        tie_outs.record_members(params, "agent_net_paid_line", paid_members)
     if params.binding is not None and params.binding.evidence[evidence_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Functional POB sources differ from retained evidence."

@@ -153,3 +153,72 @@ def test_other_member_source_requires_separate_ownership_support(monkeypatch):
     uow, row, entry, _ = setup(monkeypatch, foreign)
     with pytest.raises(Problem):
         agent.read(uow, row, [entry], START, D(100))
+
+
+def test_functional_income_uses_original_net_leg_not_gross_exchange_ratio(monkeypatch):
+    original = replace(proof(date(2026, 3, 1), amount=-27), view="functional")
+    uow, row, entry, gross = setup(monkeypatch, original)
+    gross.delta.amount = F(-125)
+    gross.components = (
+        (UUID(int=5), "REVENUE", "-20", "-27"),
+        (UUID(int=6), "SUPPLIER_PAYABLE", "-80", "-98"),
+    )
+    entry = replace(entry, flow=replace(entry.flow, amount=D(125)), period_id=UUID(int=8))
+    result = agent.read(uow, row, [entry], START, D(125), view="functional")
+    assert result.entries[0].flow.amount == D(27)
+    assert result.eligible == {"C/S": D(27)}
+    assert result.opening_entries[0].period_id == UUID(int=8)
+    assert result.opening_entries[0].flow.amount == D(27)
+
+
+def test_net_supplier_reallocation_is_included_once_without_gross_control(monkeypatch):
+    from erev_api.domain.reports import opening_agent_postings
+
+    uow, row, entry, _ = setup(monkeypatch, proof(date(2026, 3, 1)))
+    original_net = replace(entry, line_id=UUID(int=5), flow=replace(entry.flow, amount=D(20)))
+    extra_net = replace(entry, line_id=UUID(int=7), flow=replace(entry.flow, amount=D(10)))
+    pair = [
+        {
+            "id": UUID(int=7),
+            "account_role": "REVENUE",
+            "amount_txn": D(-10),
+            "amount_functional": D(-12),
+        },
+        {
+            "id": UUID(int=8),
+            "account_role": "BILLING_CLEARING",
+            "amount_txn": D(10),
+            "amount_functional": D(12),
+        },
+    ]
+    monkeypatch.setattr(
+        opening_agent_postings,
+        "supplier_pair",
+        lambda *a, **k: (pair, proof(date(2026, 3, 1), amount=10)),
+    )
+    monkeypatch.setattr(
+        agent.revenue_attribution,
+        "verify_component",
+        lambda uow, identity, **k: proof(
+            date(2026, 3, 1), amount=-10 if identity == UUID(int=7) else -20
+        ),
+    )
+    result = agent.read(
+        uow,
+        row,
+        [entry],
+        START,
+        D(100),
+        net_entries=[original_net, extra_net],
+    )
+    assert sum(e.flow.amount for e in result.entries) == D(30)
+    assert result.eligible == {"C/S": D(30)}
+    assert len(result.evidence["C/S"]["lines"]) == 2
+    assert result.evidence["C/S"]["lines"][1]["gross_relief"] == "0"
+    assert {UUID(int=7), UUID(int=8)} <= result.paid_lines
+
+
+def test_control_counterpart_must_belong_to_captured_net_population(monkeypatch):
+    uow, row, entry, _ = setup(monkeypatch, proof(date(2026, 3, 1)))
+    with pytest.raises(Problem):
+        agent.read(uow, row, [entry], START, D(100), net_entries=[])

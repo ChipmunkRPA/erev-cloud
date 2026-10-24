@@ -114,8 +114,18 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
     )
     frozen_sources = opening_relief_frozen.Reader(source_uow, params)
-    use_agent_sources = (
-        params.binding is None or opening_agent_sources.KEY in params.binding.evidence
+    agent_key = (
+        opening_agent_sources.KEY
+        if params.binding is None or opening_agent_sources.KEY in params.binding.evidence
+        else opening_agent_sources.LEGACY_KEY
+    )
+    use_agent_sources = params.binding is None or agent_key in params.binding.evidence
+    from .opening_agent_postings import read as net_postings
+
+    all_net = (
+        net_postings(source_uow, params, book, periods, view="transaction")
+        if (use_agent_sources and agent_key == opening_agent_sources.KEY)
+        else None
     )
     agent_evidence: dict[str, Any] = {}
     for (version, entity, currency), members in groups.items():
@@ -236,6 +246,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     [entry for owner, entry in entries if owner == member],
                     periods[entity][0].start,
                     first["contract_liability"],
+                    net_entries=all_net.get(member, []) if all_net is not None else None,
                 )
                 if agent_result is not None:
                     agent_results[member] = agent_result
@@ -400,14 +411,11 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             )
         tie_outs.record_evidence(params, opening_relief_pob.KEY, pob_evidence)
     if use_agent_sources:
-        if (
-            params.binding is not None
-            and params.binding.evidence[opening_agent_sources.KEY] != agent_evidence
-        ):
+        if params.binding is not None and params.binding.evidence[agent_key] != agent_evidence:
             raise tie_outs.invalid(
                 "currency_view", "Agent net opening sources differ from retained evidence."
             )
-        tie_outs.record_evidence(params, opening_agent_sources.KEY, agent_evidence)
+        tie_outs.record_evidence(params, agent_key, agent_evidence)
     tie_outs.record_evidence(params, "opening_relief_groups_v1", membership)
     contracts.sort(key=lambda row: row["row_key"])
     return finish(

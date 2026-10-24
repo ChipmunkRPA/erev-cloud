@@ -215,7 +215,7 @@ def _details(source: dict[str, Any]) -> list[str]:
                 result.append(
                     f"{subject} · Agent net income: {line['net_income']} {currency}; "
                     f"gross control relief: {line['gross_relief']} {currency}; "
-                    f"control line: {line['control_line']}"
+                    f"control line: {line['control_line'] or 'none (net/supplier reallocation)'}"
                 )
                 for net in line["source_sets"]:
                     result.append(
@@ -235,6 +235,8 @@ def _details(source: dict[str, Any]) -> list[str]:
         )
         for period, amount in sorted(facts["period_relief"].items()):
             result.append(f"{period} · Relief before reporting translation: {amount} {currency}")
+    for period, amount in sorted(facts.get("period_net_revenue", {}).items()):
+        result.append(f"{period} · Net revenue before reporting translation: {amount} {currency}")
     result.extend(_ownership_details(source.get("ownership_alignment", [])))
     for rate in source["translation_rates"]:
         result.append(

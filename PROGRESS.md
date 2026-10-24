@@ -29,18 +29,16 @@ approval/report-rerun workflow pass; types/lint pass. See [hours checkpoint](doc
 entry and saved-report replay; partial-member removal remains open;
 [local build/startup](docs/release/LOCAL-BUILD-2026-10-23.md) passes on 13ad937c; security/restore refresh remains. No deployment.
 
-## Agent net opening disclosure — October 23, 2026
+## Agent multi-currency opening disclosure — October 23, 2026
 
-Transaction FIFO_WITHIN_POB now reads verified net postings separately from gross control
-relief and supplier payable. Uniform complete source sets can establish opening eligibility;
-mixed positive-opening sets and cross-owner sources remain refused. Cell explanations retain
-net totals and complete source identities without invented shares. Legacy saved reports keep
-their former path. This is a bounded implementation, not full agent-report completion:
-functional/reporting currencies, contract FIFO, cross-entity/acquired cases and a dedicated
-agent public-API end-to-end scenario remain open. See
-[checkpoint](docs/release/AGENT-NET-OPENING-2026-10-23.md).
-43 focused cases and seven existing public database/report-rerun cases pass; scoped lint/types
-pass. Earlier revision-8 gross-control evidence remains separately labelled, never net revenue.
+FIFO_WITHIN_POB now uses verified original net postings in transaction and functional views,
+including net/supplier reallocations with no gross control line. Reporting currency translates
+signed period opening eligibility and net income at retained average rates. Revision-2 evidence
+captures the complete net population; earlier bound reports keep their prior behavior.
+47 focused cases and four populated database cases pass; scoped lint/types pass.
+See [checkpoint](docs/release/AGENT-MULTICURRENCY-OPENING-2026-10-23.md).
+Contract FIFO, cross-owner/cross-entity/acquired sources and mixed positive-opening source sets
+remain unfinished. Gross closing evidence remains separate from net revenue attribution.
 No posting changes or deployment.
 
 ## Rollforward Other explanation — October 23, 2026
