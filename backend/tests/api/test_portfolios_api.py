@@ -688,3 +688,59 @@ def test_portfolio_membership_workflow(
         assert ending.portfolio_member_contract_keys == ()
         assert original.portfolio_member_contract_keys == (source["external_id"],)
         assert ending.effective_date.isoformat() == "2026-10-01"
+
+    # New members resolve the definition's common keys into their own original IDs,
+    # without rewriting the definition or any historical version's saved bindings.
+    from support.factories import booked_contract, computed
+
+    clone_body = worlds.k01_body(source["customer_id"])
+    clone_body["external_id"] = "NEW-SHARED-MEMBER"
+    clone = booked_contract(world.place, clone_body, activate=True)
+    computed(world.place, clone.combination_group["id"])
+    new_id = str(clone.contract["id"])
+    joined = post(
+        app,
+        path + "/members",
+        maya,
+        {"contract_id": new_id, "rationale": "New member with the same target keys"},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert joined.status_code == 201, joined.text
+    onboarding = post(
+        app,
+        targeted.headers["location"] + "/versions",
+        maya,
+        {**values, "effective_date": "2026-10-01"},
+        if_match=get(app, path, maya).headers["etag"],
+    )
+    assert onboarding.status_code == 201, onboarding.text
+    new_path = onboarding.headers["location"]
+    binding = onboarding.json()["portfolio_application_basis"]["members"][0]
+    assert binding["contract_id"] == new_id
+    assert binding["obligation_keys"] == [target_key]
+    assert set(binding["obligation_ids"]).isdisjoint(retained_basis["members"][0]["obligation_ids"])
+    assert get(app, targeted.headers["location"], maya).json()["target_obligation_keys"] == [
+        target_key
+    ]
+    assert get(app, version_path, maya).json()["portfolio_application_basis"] == retained_basis
+    preview = get(app, new_path + "/impact-preview", maya)
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["groups"][0]["members"][0]["contract_id"] == new_id
+    attached = post(
+        app,
+        "/api/v1/attachments",
+        maya,
+        {
+            "subject_type": "estimate_version",
+            "subject_id": onboarding.json()["id"],
+            "file_object_id": file_id,
+        },
+    )
+    assert attached.status_code == 201, attached.text
+    submitted = post(
+        app, new_path + "/submit", maya, {}, if_match=get(app, new_path, maya).headers["etag"]
+    )
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    assert len(get(app, new_path, maya).json()["applied_event_ids"]) == 1

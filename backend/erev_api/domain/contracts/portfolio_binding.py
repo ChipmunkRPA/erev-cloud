@@ -35,9 +35,21 @@ def capture(
     ]
     if not population and not retired:
         raise Problem("validation-failed", "Add members or retire a previously applied population.")
+    # Definitions retain their original IDs as the source of the common target keys.
+    # A new member has different original IDs; resolve those only into the new version.
+    keys = set(
+        session.scalars(
+            select(obligation.c.obligation_key).where(
+                obligation.c.id.in_(element["target_obligation_ids"])
+            )
+        )
+    )
+    if not keys:
+        raise Problem("validation-failed", "The shared definition has no retained target keys.")
     rows = session.execute(
         select(obligation.c.id, obligation.c.contract_id, obligation.c.obligation_key).where(
-            obligation.c.id.in_(element["target_obligation_ids"])
+            obligation.c.contract_id.in_([m["contract_id"] for m in population]),
+            obligation.c.obligation_key.in_(keys),
         )
     ).all()
     members = []
@@ -46,9 +58,10 @@ def capture(
             (row for row in rows if row.contract_id == member["contract_id"]),
             key=lambda r: str(r.id),
         )
-        if not targets:
+        if {row.obligation_key for row in targets} != keys:
             raise Problem(
-                "validation-failed", "A current member has no retained targets in this definition."
+                "validation-failed",
+                "Every current member must contain every shared target obligation key.",
             )
         members.append(
             SharedEstimateMemberBinding(
@@ -69,6 +82,9 @@ def for_group(
     basis: Mapping[str, Any],
     element: Mapping[str, Any],
     contracts: Mapping[UUID, Mapping[str, Any]],
+    *,
+    obligation_keys: Mapping[UUID, str],
+    obligation_owners: Mapping[UUID, UUID],
 ) -> tuple[dict[str, Any], tuple[str, ...], tuple[str, ...]]:
     frozen = SharedEstimateApplicationBasis.model_validate(basis)
     if str(frozen.portfolio_id) != str(element["portfolio_id"]):
@@ -80,9 +96,19 @@ def for_group(
         if member.contract_id in contracts
     ]
     targets = {target for member in recipients for target in member.obligation_ids}
-    declared = {UUID(str(target)) for target in element["target_obligation_ids"]}
-    if not targets <= declared:
-        raise Problem("validation-failed", "The retained application names undeclared targets.")
+    for member in recipients:
+        if (
+            not member.obligation_ids
+            or any(
+                obligation_owners.get(target) != member.contract_id
+                for target in member.obligation_ids
+            )
+            or {obligation_keys.get(target) for target in member.obligation_ids}
+            != set(member.obligation_keys)
+        ):
+            raise Problem(
+                "validation-failed", "Retained targets no longer match their member and keys."
+            )
     if any(
         str(contracts[member.contract_id]["external_id"]) != member.contract_key
         for member in recipients

@@ -3639,13 +3639,10 @@ def _portfolio_estimate_basis(session: Session, portfolio_id: UUID) -> dict[str,
         .all()
     )
     retained = []
-    current: set[UUID] = set()
     historical: set[UUID] = set()
     for member in memberships:
         contract_id = UUID(str(member["contract_id"]))
         historical.add(contract_id)
-        if member["valid_to_known_at"] is None:
-            current.add(contract_id)
         retained.append(
             {
                 "id": str(member["id"]),
@@ -3657,7 +3654,9 @@ def _portfolio_estimate_basis(session: Session, portfolio_id: UUID) -> dict[str,
             }
         )
     affected = set(historical)
-    for contract_id in sorted(current):
+    # Former members can still receive a scope-ending application. Their current group
+    # peers affect that recomputation and must remain in the reviewed/authorized basis.
+    for contract_id in sorted(historical):
         affected.update(_group_member_ids(session, contract_id))
     states = _member_states(session, sorted(affected))
     if any(state["head_stream_version"] is None for state in states):

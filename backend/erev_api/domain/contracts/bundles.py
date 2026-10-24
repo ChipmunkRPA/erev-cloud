@@ -1360,7 +1360,11 @@ def _estimate_versions(
             source_portfolios = portfolios
             if row.get("portfolio_application_basis") is not None:
                 element, scope, recipients = for_group(
-                    row["portfolio_application_basis"], element, contracts
+                    row["portfolio_application_basis"],
+                    element,
+                    contracts,
+                    obligation_keys=obligation_keys,
+                    obligation_owners=obligation_owners or {},
                 )
                 source_portfolios = (PortfolioInput(str(element["portfolio_id"]), recipients),)
             external_id = shared_return_contract(

@@ -112,3 +112,46 @@ def test_retired_targets_reach_loader_without_reactivating_members(active):
     )
     assert inputs[0].portfolio_member_contract_keys == active
     assert inputs[0].target_obligation_keys == ("GOODS",)
+
+
+def test_new_member_binding_can_use_its_own_original_obligation_id():
+    inputs, _ = load(
+        targets=[OA],
+        basis=dict(
+            schema_version=1,
+            portfolio_id=str(P),
+            members=[
+                dict(
+                    contract_id=str(B),
+                    contract_key="B",
+                    obligation_ids=[str(OB)],
+                    obligation_keys=["GOODS"],
+                )
+            ],
+            retired_members=[],
+        ),
+    )
+    assert inputs[0].portfolio_member_contract_keys == ("B",)
+    assert inputs[0].target_obligation_keys == ("GOODS",)
+
+
+@pytest.mark.parametrize("target,key", [(OA, "GOODS"), (OB, "OTHER")])
+def test_frozen_binding_rejects_wrong_member_or_obligation_key(target, key):
+    from erev_api.problems import Problem
+
+    with pytest.raises(Problem, match="Retained targets"):
+        load(
+            targets=[OA],
+            basis=dict(
+                schema_version=1,
+                portfolio_id=str(P),
+                members=[
+                    dict(
+                        contract_id=str(B),
+                        contract_key="B",
+                        obligation_ids=[str(target)],
+                        obligation_keys=[key],
+                    )
+                ],
+            ),
+        )

@@ -20,7 +20,7 @@ def basis(monkeypatch, *, closed=False, computation=9, hidden=False, revision=1)
             valid_to_known_at=NOW if closed else None,
         )
     ]
-    affected = [A] if closed else [A, B]
+    affected = [A, B]
     calls = iter(
         [
             NS(one_or_none=lambda: NS(row_version=revision)),
@@ -58,7 +58,8 @@ def test_population_and_ssp_computation_are_bound(monkeypatch):
     ended = basis(monkeypatch, closed=True)
     assert ended != initial
     assert ended["portfolio_basis"]["memberships"][0]["contract_id"] == str(A)
-    assert len(ended["portfolio_basis"]["members"]) == 1
+    assert len(ended["portfolio_basis"]["members"]) == 2
+    assert basis(monkeypatch, closed=True, computation=12) != ended
 
 
 def test_hidden_member_is_not_silently_dropped(monkeypatch):

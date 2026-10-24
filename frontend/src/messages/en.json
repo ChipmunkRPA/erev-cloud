@@ -8045,7 +8045,7 @@
   "settings.portfolios.estimateCode": "Estimate code",
   "settings.portfolios.estimateCodeRequired": "Enter an estimate code.",
   "settings.portfolios.targets": "Target obligation keys",
-  "settings.portfolios.targetsHelp": "Enter one obligation key per line. Each current member must contain every key. Targets are retained in this definition; leave blank only for an unconfigured draft. Shared return-rate versions support approval and application; other shared kinds remain drafts.",
+  "settings.portfolios.targetsHelp": "Enter one obligation key per line. Each current member must contain every key. Each new version resolves these keys for the current members and freezes their original obligation IDs; earlier versions keep their targets. Leave blank only for an unconfigured draft. Shared return-rate versions support approval and application; other shared kinds remain drafts.",
   "settings.portfolios.createEstimate": "Create estimate definition",
   "settings.portfolios.estimateDefinitionHelp": "Define shared estimates and prepare their draft values. Shared return-rate versions can be submitted for independent approval and applied to members. Other shared kinds remain drafts. Access requires permission for all current and former members.",
   "settings.portfolios.kind.RETURN_RATE": "Return rate",
