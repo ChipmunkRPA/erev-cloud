@@ -75,3 +75,20 @@ def test_event_context_is_retained_without_assigning_baselines_or_other_events()
         assert {key: row[key] for key in before} == before
         assert "modification_chosen_treatments" not in before
     assert dataset(evidence) == decisions
+
+    evidence["modification_event_context"] = True
+    evidence["modifications"]["OWNER/EV-1"].update(
+        event_type="REGROUPED", regroup_id="pair-1", direction="OUT"
+    )
+    events = dataset(evidence)
+    assert events.rows[1]["modification_event_type"] == "REGROUPED"
+    assert events.rows[1]["regroup_id"] == "pair-1"
+    assert events.rows[1]["regroup_direction"] == "OUT"
+    for row in (events.rows[0], events.rows[2], events.rows[3]):
+        assert row["modification_event_type"] is None
+        assert row["regroup_id"] is None
+        assert row["regroup_direction"] is None
+    assert events.control_totals == decisions.control_totals
+    assert [r["causal_amount"] for r in events.rows] == [r["causal_amount"] for r in decisions.rows]
+    assert "regroup_id" not in decisions.rows[1]
+    assert dataset(original) == old

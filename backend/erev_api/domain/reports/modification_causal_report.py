@@ -187,6 +187,27 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
                 "validation-failed",
                 "Select all entities in the retained computation group for causal analysis.",
             )
+        # Read event context from the verified retained input, never today's event rows.
+        retained_events = {event.event_key: event for event in source.bundle.events}
+        for event_key in keys:
+            event = retained_events.get(event_key)
+            if event is None:
+                raise Problem(
+                    "validation-failed",
+                    "Selected modification event is absent from its retained computation.",
+                )
+            modifications[event_key]["event_type"] = event.event_type
+            if event.event_type == "REGROUPED":
+                if event.payload.get("direction") not in {"OUT", "IN"}:
+                    raise Problem("validation-failed", "Retained regroup direction is invalid.")
+                for field in ("regroup_id", "direction"):
+                    value = event.payload.get(field)
+                    if not isinstance(value, str) or not value:
+                        raise Problem(
+                            "validation-failed",
+                            "Retained regroup event lacks its pair identity or direction.",
+                        )
+                    modifications[event_key][field] = value
         entity = by_code[entity_code]
         selected_period = calendars[entity.id].named(period_key, "currency_view")
         original_periods = [
@@ -243,6 +264,7 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
         "book": original["book"],
         "modification_context_columns": True,
         "modification_treatment_maps": True,
+        "modification_event_context": True,
         "currency_view": params.parameters.get("currency_view") or "transaction",
     }
     return Prepared(collector, tuple(tasks), identity, modifications, tuple(unavailable))
@@ -449,6 +471,17 @@ def dataset(evidence: Mapping[str, Any]) -> ReportData:
             modification = evidence["modifications"].get(row["event_key"], {})
             for field in ("proposed_treatments", "chosen_treatments"):
                 row[f"modification_{field}"] = modification.get(field)
+    if evidence.get("modification_event_context"):
+        context_columns += (
+            Column("modification_event_type", "Modification event type", "code"),
+            Column("regroup_id", "Regroup pair", "code"),
+            Column("regroup_direction", "Regroup direction", "code"),
+        )
+        for row in rows:
+            modification = evidence["modifications"].get(row["event_key"], {})
+            row["modification_event_type"] = modification.get("event_type")
+            row["regroup_id"] = modification.get("regroup_id")
+            row["regroup_direction"] = modification.get("direction")
     return ReportData(
         columns=(
             Column("contract_external_id", "Affected contract", "text"),

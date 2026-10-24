@@ -1591,6 +1591,10 @@ def test_combined_original_termination_public_workflow(
         )
         selected = [row for row in causal_rows if row["contribution"] == "Selected modification"]
         assert selected
+        assert {row["modification_event_type"] for row in selected} == {"CONTRACT_TERMINATED"}
+        assert all(
+            row["regroup_id"] is None and row["regroup_direction"] is None for row in selected
+        )
         assert {row["modification_contract"] for row in selected} == {BR06_EXTERNAL_ID}
         assert {row["modification_effective_date"] for row in selected} == {"2026-09-10"}
         rerun = post(app, f"/api/v1/report-runs/{causal_run['id']}/rerun", world.maya, {})

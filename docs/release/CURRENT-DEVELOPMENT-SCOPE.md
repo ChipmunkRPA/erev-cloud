@@ -2223,3 +2223,19 @@ saved reports rerun with equal output hashes. The existing status report still s
 cumulative revenue. These USD fixtures exercise the view paths, not additional foreign-FX rules.
 Scoped lint/types pass. This removes the termination-event selection/classification gap in
 Reporting; it does not claim all remaining system gaps are complete. No deployment.
+
+
+## Causal report event and transfer-pair context — October 24, 2026
+
+New modification causal reports retain and expose the original event type, regroup pair identity
+and OUT/IN direction. Context comes from the authorized, hash-verified computation input, not
+current event rows. Missing selected events and invalid/missing regroup direction/identity refuse.
+The report dataset supplies these columns to the viewer/export paths; no new posting amounts
+or counterpart-contract reads are introduced. A retained feature flag keeps earlier report
+bindings' column shape unchanged. Baseline/final and unselected event rows remain unlabelled.
+
+Necessary verification: the populated shared-group transfer and full termination report workflows
+pass in transaction/functional/reporting views and all saved reruns preserve output hashes.
+Transfer rows retain the same pair identity and correct owner/direction; termination rows have
+no fabricated pair. A focused retained-dataset case preserves amounts/control totals and old
+output shape. Scoped lint/types pass. No deployment.

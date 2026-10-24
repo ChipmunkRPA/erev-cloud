@@ -900,6 +900,11 @@ def test_retained_posted_pair_workflow(
                 "REGROUP-SOURCE",
                 "REGROUP-TARGET",
             }
+            assert {r["modification_event_type"] for r in selected_rows} == {"REGROUPED"}
+            assert {r["regroup_id"] for r in selected_rows} == {str(source_row["regroup_id"])}
+            assert {
+                (r["modification_contract"], r["regroup_direction"]) for r in selected_rows
+            } == {("REGROUP-SOURCE", "OUT"), ("REGROUP-TARGET", "IN")}
             rerun = post(k02.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
             assert rerun.status_code == 202, rerun.text
             replay = run_now(world, UUID(rerun.json()["id"]))
