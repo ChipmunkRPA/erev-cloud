@@ -1083,6 +1083,20 @@ def measure(
                         attributed_id,
                     )
                 )
+        # A closed acquisition cutover can be beyond the posting horizon. Retain its
+        # original billing evidence for historical readers without adding a target.
+        baseline = baseline_of(ob)
+        if (
+            st.acquisition_cutover_billing_trace
+            and baseline is not None
+            and baseline.method == "OPENING_BALANCES_AT_CUTOVER"
+            and ob.opening is not None
+            and ob.opening.get("reason") == "BUSINESS_COMBINATION"
+        ):
+            measured = {p.period_key for p in _periods(ctx, st, ob.contracting_entity)}
+            for period in ctx.entities[ob.contracting_entity].periods:
+                if period.end_date == baseline.cutover_date and period.period_key not in measured:
+                    emitter.billed(ob, period.end_date, period.period_key)
         if ob.contract_key in engine_billed:
             # JET-03 invoice inputs per obligation under ENGINE billing (Table 14-A; L4-3-Q-19;
             # lanes L5-3 and L5-5 at the L5 merge, the tax rule of L5-5-Q-9).

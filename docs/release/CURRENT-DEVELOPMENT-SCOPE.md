@@ -43,6 +43,13 @@ assembly and retained reruns. Zero-opening RPO no longer requires a preceding FX
 for a zero opening term. Locked packs retain their transaction sources; reporting-currency
 packs remain unfinished. See [checkpoint](FUNCTIONAL-DISCLOSURE-2026-10-23.md).
 
+## Closed acquisition billing evidence — October 24, 2026
+
+Revision 17 supplies period-keyed original billing traces at closed acquisition cutovers
+without adding posting targets. ASC606/IFRS15 transaction POB readers can consume these
+sources; 43 focused cases pass. See [checkpoint](ACQUIRED-CLOSED-CUTOVER-2026-10-23.md).
+Full public acquired-report/lock workflows and foreign closed-cutover sources remain open.
+
 ## Acquired functional sources — October 23, 2026
 
 Revision 16 connects original cutover billing attribution and actual FX amounts to native

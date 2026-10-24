@@ -1020,6 +1020,7 @@ class AllocatedState:
     findings: tuple[Finding, ...]
     # The dated additions behind the CONCESSION refund quotas, in ENG-06 order (S10-R-26; D-91).
     concession_history: tuple[ConcessionAddition, ...] = ()
+    acquisition_cutover_billing_trace: bool = False  # revision 17: closed cutover evidence
     combined_unit_boundaries: bool = False  # revision 10: original member quantities at changes
     hours_scope_required: bool = False  # revision 9: explicit combined actual-hour coverage
     hours_source_evidence: bool = False  # revision 7 retains original cumulative-hour inputs

@@ -774,6 +774,7 @@ def _state(
             zip(pool.element.keys, pool.quotas, strict=True)
         )
     return AllocatedState(
+        acquisition_cutover_billing_trace=(cb.bundle.evidence_revision or 0) >= 17,
         eac_scope_required=(cb.bundle.evidence_revision or 0) >= 6,
         combined_unit_boundaries=(cb.bundle.evidence_revision or 0) >= 10,
         hours_scope_required=(cb.bundle.evidence_revision or 0) >= 9,

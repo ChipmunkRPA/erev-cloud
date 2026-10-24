@@ -141,7 +141,6 @@ from erev_engine.bundle import (
     EventInput,
     FxRateInput,
     GroupInput,
-    PortfolioInput,
     InputBundle,
     JudgementInput,
     MappingRuleInput,
@@ -152,6 +151,7 @@ from erev_engine.bundle import (
     PayableInput,
     PaymentPointInput,
     PeriodInput,
+    PortfolioInput,
     PostedAmountInput,
     ProductInput,
     ResolvedPolicyInput,
@@ -193,7 +193,7 @@ FORMAT_VERSION: Final = 1
 # Revision 6 requires explicit combined EAC scope; old retained bundles keep legacy selection.
 # Revision 7 retains original actual/expected hour sources without changing progress amounts.
 # Revision 8 retains agent gross-control closing evidence separately from net revenue attribution.
-EVIDENCE_REVISION: Final = 16
+EVIDENCE_REVISION: Final = 17
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).
@@ -1365,9 +1365,9 @@ def _estimate_versions(
         scope = None
         target_scope = None
         if contract_id is None:
-            from .portfolio_engine import shared_return_contract
             from .portfolio_binding import for_group
             from .portfolio_cost_fx import apply as apply_cost_fx
+            from .portfolio_engine import shared_return_contract
 
             source_portfolios = portfolios
             if row.get("portfolio_application_basis") is not None:

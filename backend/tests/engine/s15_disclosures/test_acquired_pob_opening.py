@@ -4,10 +4,11 @@ from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
-import erev_engine
 import pytest
-from support import onboarding_worlds as w
 from support import bundles
+from support import onboarding_worlds as w
+
+import erev_engine
 
 
 @pytest.mark.parametrize("at", [date(2025, 12, 31), date(2026, 1, 31), date(2026, 2, 28)])
@@ -90,6 +91,7 @@ def test_acquired_pob_opening_preserves_baseline_and_journals(at, pre_invoice):
 
 def test_acquired_baseline_does_not_override_authenticated_frozen_opening():
     from types import SimpleNamespace as NS
+
     from erev_engine.errors import EngineError
     from erev_engine.stages.s15_disclosures.rollforward import _within_obligations
 
@@ -144,3 +146,76 @@ def test_closed_cutover_uses_original_baseline_without_posting(method, consumpti
         assert values["OTHER"] == values["REVENUE_FROM_OPENING_BALANCE"] == 0
         for role, lines in row.lines.items():
             assert lines["CLOSING"] == sum(v for k, v in lines.items() if k != "CLOSING"), role
+
+
+@pytest.mark.parametrize("cutover_open", [False, True])
+def test_cutover_billing_evidence_serves_original_pob_reader_without_posting(
+    monkeypatch, cutover_open
+):
+    from types import SimpleNamespace as NS
+    from uuid import UUID
+
+    from support import cpc_worlds as cpc
+
+    from erev_api.domain.reports import opening_relief_pob as pob
+    from erev_api.domain.reports.builders.contract_balance_rollforward import Entry, Flow
+
+    value = w.chk_121(
+        as_of=date(2025, 12, 31),
+        states={"FY2025-P12": "open"} if cutover_open else None,
+        policies={"onboarding.method": "OPENING_BALANCES_AT_CUTOVER"},
+    )
+    old = erev_engine.compute(replace(value, evidence_revision=16))
+    new = erev_engine.compute(replace(value, evidence_revision=17))
+    entity = UUID(int=1)
+    session = NS(
+        execute=lambda *a: NS(
+            mappings=lambda: NS(
+                all=lambda: [
+                    dict(
+                        obligation_key=w.OBLIGATION,
+                        performing_entity_id=entity,
+                        principal_agent="PRINCIPAL",
+                    )
+                ]
+            )
+        )
+    )
+    row = NS(
+        version_id=UUID(int=2),
+        contract_id=UUID(int=3),
+        entity_id=entity,
+        external_id=w.CONTRACT,
+        currency="USD",
+    )
+    period = NS(key="FY2025-P12", end=date(2025, 12, 31))
+    for prior, book in zip(old.books, new.books, strict=True):
+        assert book.posting_intents == prior.posting_intents
+        assert book.fx_layer_movements == prior.fx_layer_movements
+        assert book.disclosure_rollforwards == prior.disclosure_rollforwards
+        assert cpc.trace_mismatches(book.trace) == []
+        if cutover_open:
+            assert book.trace == prior.trace
+        else:
+            assert not any(
+                n.id == f"billed_cum:{w.SUBJECT}:{period.key}" for n in prior.trace.nodes
+            )
+        monkeypatch.setattr(pob.store, "load_trace", lambda *a, trace=book.trace: trace)
+        monthly = Decimal("10000" if book.book_code == "ASC606" else "7500")
+        opening = monthly * 12
+        relief, facts = pob.calculate(
+            session,
+            row,
+            period,
+            [
+                Entry(
+                    order=(1,), flow=Flow(monthly, True), subject_key=w.SUBJECT, line_id=UUID(int=4)
+                )
+            ],
+            opening,
+            monthly,
+        )
+        assert relief == monthly
+        assert Decimal(facts["obligations"][w.SUBJECT]["opening_billing"]) == (
+            Decimal("240000") if book.book_code == "ASC606" else Decimal("90000")
+        )
