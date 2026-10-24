@@ -147,3 +147,20 @@ Shared breakage submission/application remains disabled until its frozen member 
 application path are complete. The owner has been asked whether expected total redemptions should
 be total entitlement minus allocated breakage, overriding the local estimate, or retain the local
 expected-redemption estimate and refuse inconsistencies. No choice has been assumed. No deployment.
+
+
+## October 24: canonical breakage allocation snapshot primitive
+
+`portfolio_breakage_basis` now freezes a verified effective-date preview into a versioned,
+canonical payload and digest. It retains exact SSP fractions, quantities, original computation
+identities/digests and FX conversion provenance, with stable target ordering. Reading validates
+the digest, complete typed shape, unique targets and exact SSP allocation rather than accepting
+a rehashed redistribution. Freshness compares the entire original basis, so equal totals cannot
+hide a changed source computation, obligation identity, book or effective date.
+
+Six focused cases cover exact fraction preservation, order independence, source changes despite
+unchanged totals, digest corruption and rehashed incorrect allocation. Scoped lint/types pass.
+This is a workflow primitive, not an enabled submission/application path: the caller must still
+authorize/capture the preview under the source locks, persist the snapshot on submission, recheck
+it at approval and apply the member pins atomically. The expected-redemption denominator decision
+remains pending. No approval, financial application, API schema change or deployment in this step.
