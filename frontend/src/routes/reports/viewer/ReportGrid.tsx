@@ -119,7 +119,9 @@ export function ReportGrid({
         const value = row[column.key];
         return isMoney(value) ? value : null;
       };
+      const canDrill = (row: ReportRow) => column.drillable && (column.drillableWhen?.(row) ?? true);
       const drill = (row: ReportRow, element: Element | null) => {
+        if (!canDrill(row)) return;
         onDrill({ row, column, element: cellOf(element) });
       };
       return {
@@ -133,7 +135,7 @@ export function ReportGrid({
             return null;
           }
           const figure = <Money value={value.amount} currency={value.currency} variant="cell" />;
-          return column.drillable ? (
+          return canDrill(row) ? (
             <Button
               variant="link"
               tabIndex={-1}

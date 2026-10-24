@@ -187,3 +187,27 @@ all rows. As with the existing close fixtures, preceding empty periods and recon
 review rows are fixture-prepared; opening input is fixture-appended and POL-126 is selected
 by the fixture. This does not establish an acquisition-entry UI or real-business migration.
 Focused path/source checks, scoped types and lint also pass. No deployment or posting change.
+
+
+## Acquisition cell explanations — October 24, 2026
+
+The public contract-balance rollforward now exposes explanations for BUSINESS_COMBINATIONS
+summary cells and the by-contract business_combinations amount. New report bindings retain
+each member's actual presented acquisition amount beside the original event, computation
+hashes and trace nodes. Reporting-currency explanations retain the presented amount and its
+original functional amount, with the selected period rates; they do not retranslate using
+current configuration. Contributions must reconcile exactly to each saved cell.
+
+The explanation API returns internal contract-history and original trace links. The existing
+entity-scope filter now recognizes acquisition contributions, naming sources only within the
+reader's entity scope and aggregating amounts outside it. Historical bindings without cell
+evidence refuse explanation rather than inventing it. Missing original trace IDs and
+inconsistent contribution totals also refuse. Internal close calculations without a report
+source collector do not create cell evidence or alter lock behavior.
+
+The viewer enables only supported acquisition cells, including keyboard activation guards;
+other rollforward lines keep their prior display. The public open and locked scenarios verify
+summary/member explanations in all three currency views alongside the existing report/rerun
+checks. Two source-retention checks and six focused UI checks pass, as do scoped backend types,
+frontend typechecking and lint. No journal changes or deployment. Broader acquired-history
+and mixed-member attribution limitations above remain open.

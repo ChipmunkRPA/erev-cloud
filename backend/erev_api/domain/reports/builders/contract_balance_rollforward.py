@@ -2123,6 +2123,9 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             movement_check.setdefault("details", []).append(
                 {"reason": "Functional period movements contain unexplained OTHER."}
             )
+    from ..acquisition_cells import retain as retain_acquisition_cells
+
+    retain_acquisition_cells(params, items, rows, role, rate_evidence)
     return ReportData(
         columns=columns,
         rows=tuple(rows),

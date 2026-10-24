@@ -647,6 +647,7 @@ export interface ReportColumn {
   readonly header: string;
   readonly kind: ReportColumnKind;
   readonly drillable: boolean;
+  readonly drillableWhen?: (row: ReportRow) => boolean;
   readonly percentChange?: boolean;
   readonly decimal?: boolean;
   readonly textFormat?: "actor" | "codes";
@@ -929,12 +930,17 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
       ...(sourceKind === "decimal" ? { decimal: true } : {}),
       ...(sourceKind === "actor" || sourceKind === "codes" ? { textFormat: sourceKind } : {}),
       kind,
+      ...(definition.code === "contract_balance_rollforward" ? {
+        drillableWhen: (row: ReportRow) => row.line_code === "BUSINESS_COMBINATIONS" ||
+          (key === "business_combinations" && isMoney(row[key]) && Number(row[key].amount) !== 0),
+      } : {}),
       drillable:
         (drillable ||
           (definition.code === "loss_provision_register" && key === "provision_balance") ||
           definition.code === "modification_register" ||
           (definition.code === "bookings_billings_revenue" && ["booked_new", "booked_modifications", "billings", "revenue"].includes(key)) ||
           (definition.code === "variance_between_closes" && key === "change") ||
+          (definition.code === "contract_balance_rollforward" && ["contract_liability", "contract_asset", "unbilled_receivable", "business_combinations"].includes(key)) ||
           (definition.code === "revenue_from_opening_liability" && ["opening_contract_liability", "revenue_recognized", "revenue_from_opening"].includes(key))) &&
         kind === "money",
     };

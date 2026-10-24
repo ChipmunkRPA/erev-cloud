@@ -19,3 +19,21 @@ it.each([1, 2])("offers all opening-liability money cells in section %s", (numbe
     "opening_contract_liability", "revenue_from_opening", "revenue_recognized",
   ]);
 });
+
+it("offers acquisition explanations only on their rollforward cells", () => {
+  const definition: ReportDefinition = {
+    code: "contract_balance_rollforward", version: 1, name: "Rollforward", kind: "STANDARD",
+    description: "Disclosure", parameters_schema: {}, output_formats: ["JSON"],
+    tie_outs: [], ipe_logic: null,
+  };
+  const money = { amount: "10000.00", currency: "EUR" };
+  const acquired = { row_key: "BUSINESS_COMBINATIONS", line_code: "BUSINESS_COMBINATIONS", contract_liability: money };
+  const opening = { row_key: "OPENING", line_code: "OPENING", contract_liability: money };
+  const columns = reportColumns({ definition, periods: [], bands: [], section: {
+    number: 1, heading: "Rollforward", totals: [], rows: [acquired, opening],
+  }});
+  const column = columns.find(c => c.key === "contract_liability")!;
+  expect(column.drillable).toBe(true);
+  expect(column.drillableWhen?.(acquired)).toBe(true);
+  expect(column.drillableWhen?.(opening)).toBe(false);
+});

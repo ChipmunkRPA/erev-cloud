@@ -76,8 +76,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, BinaryIO, Final
 from uuid import UUID
 
-from erev_engine import ENGINE_VERSION
-from erev_engine.canonical import sha256_hex
 from sqlalchemy import (
     ColumnElement,
     Select,
@@ -126,7 +124,14 @@ from erev_api.domain.ai import export_visibility, log_export
 from erev_api.domain.ai.access import job_requester
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.platform.jobs import job_outs
-from erev_api.domain.reports import catalogue, locked, tie_outs, validation_sources
+from erev_api.domain.reports import (
+    acquisition_cells,
+    catalogue,
+    locked,
+    opening_relief_cells,
+    tie_outs,
+    validation_sources,
+)
 from erev_api.domain.reports import requester as report_requester
 from erev_api.domain.reports.builders import (
     ADAPTER,
@@ -237,7 +242,6 @@ from erev_api.jobs.context import JobContext
 from erev_api.jobs.registry import JobOutcome, RetryPolicy, task
 from erev_api.numbering import next_number
 from erev_api.problems import Problem, ProblemError
-from erev_api.domain.reports import opening_relief_cells
 from erev_api.registry.resolve import setting
 from erev_api.schemas.common import ActorOut, JobOut, MoneyOut, ProblemOut, RefOut
 from erev_api.schemas.explain import (
@@ -259,6 +263,8 @@ from erev_api.schemas.reports import (
     ReportRunSourcesOut,
     TieOutResultOut,
 )
+from erev_engine import ENGINE_VERSION
+from erev_engine.canonical import sha256_hex
 
 if TYPE_CHECKING:
     from erev_api.auth.keyring import KeyRing
@@ -1041,6 +1047,7 @@ type CellExplainer = Callable[
 CELL_EXPLAINERS: Final[Mapping[str, CellExplainer]] = MappingProxyType(
     {
         "revenue_from_opening_liability": opening_relief_cells.cell,
+        "contract_balance_rollforward": acquisition_cells.cell,
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.cell,
         rpo_builder.CODE: rpo_builder.cell,
         loss_provision_register_builder.CODE: loss_provision_register_builder.cell,
@@ -2647,9 +2654,8 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         execution_result = variance_builder.calculate(prepared, engine=variance_compute)
         jc.heartbeat()
     if str(run["report_code"]) == book_bridge_builder.CODE and report_params(run).binding is None:
-        from erev_engine import compute as book_compute
-
         from erev_api.domain.reports import book_bridge_replay
+        from erev_engine import compute as book_compute
 
         with jc.unit_of_work() as read_uow:
             source_run = _lock_run(read_uow.session, run_id)
@@ -2669,9 +2675,8 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         and report_params(run).parameters.get("currency_basis") == "causal_analysis"
         and report_params(run).binding is None
     ):
-        from erev_engine import compute as causal_compute
-
         from erev_api.domain.reports import modification_causal_report
+        from erev_engine import compute as causal_compute
 
         with jc.unit_of_work() as read_uow:
             source_run = _lock_run(read_uow.session, run_id)
@@ -3341,7 +3346,9 @@ def _contributor_entities(
     by_kind: dict[str, list[UUID]] = {}
     owners: dict[UUID, UUID] = {}
     disclosure = [
-        item for item in contributors if item["object_type"] == "opening_disclosure_contribution"
+        item
+        for item in contributors
+        if item["object_type"] in {"opening_disclosure_contribution", acquisition_cells.KIND}
     ]
     entity_ids = {UUID(str(item["_entity_id"])) for item in disclosure}
     verified = (
@@ -3358,7 +3365,7 @@ def _contributor_entities(
     for item in disclosure:
         owners[UUID(str(item["id"]))] = UUID(str(item["_entity_id"]))
     for item in contributors:
-        if item["object_type"] != "opening_disclosure_contribution":
+        if item["object_type"] not in {"opening_disclosure_contribution", acquisition_cells.KIND}:
             by_kind.setdefault(str(item["object_type"]), []).append(UUID(str(item["id"])))
     for kind, ids in sorted(by_kind.items()):
         owners.update(

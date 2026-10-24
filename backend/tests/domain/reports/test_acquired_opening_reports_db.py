@@ -194,6 +194,27 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             "amount": increase,
         }
         assert by_key["OTHER"]["contract_liability"]["amount"] == "0.00"
+        for row_key, column in (
+            ("BUSINESS_COMBINATIONS", "contract_liability"),
+            (f"contract:ACQUIRED-EUR:{worlds.AVM_US}", "business_combinations"),
+        ):
+            explained = get(
+                app,
+                f"/api/v1/explain/report-runs/{acquired_run['id']}/cell",
+                world.maya,
+                params={"row_key": row_key, "column_key": column},
+            )
+            assert explained.status_code == 200, explained.text
+            detail = explained.json()
+            assert detail["value"] == {"currency": currency, "amount": increase}
+            assert len(detail["contributors"]["items"]) == 1
+            contribution = detail["contributors"]["items"][0]
+            assert contribution["object_type"] == "acquisition_disclosure_contribution"
+            assert contribution["value"] == detail["value"]
+            assert any("ACQUIRED-EUR/EV-000003" in text for text in contribution["details"])
+            assert any(link["href"].startswith("/trace/") for link in contribution["source_links"])
+            assert "_entity_id" not in contribution
+
         repeated = post(app, f"/api/v1/report-runs/{acquired_run['id']}/rerun", world.maya, {})
         assert repeated.status_code == 202, repeated.text
         done = worlds.run_now(world, UUID(repeated.json()["id"]))
