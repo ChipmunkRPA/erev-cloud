@@ -1576,7 +1576,8 @@ def test_combined_original_termination_public_workflow(
     assert replay["result"]["output_sha256_equal"] is True
 
 
-def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files):
+@pytest.mark.parametrize("term_change", [False, True])
+def test_combined_quantity_continuation_public_workflow(app, keyring, clock, files, term_change):
     from support.modifications import confirm_answers
     from support.worlds import run_now
 
@@ -1632,16 +1633,21 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         world.maya,
         {
             "effective_date": "2026-09-10",
-            "kind": "QUANTITY_CHANGE",
-            "rationale": "Continue the complete combination with one additional equipment unit.",
+            "kind": "TERM_CHANGE" if term_change else "QUANTITY_CHANGE",
+            "rationale": "Continue the complete combination under the dated assessment.",
             "questionnaire": {"combined_reassessment": {"L2-SERVICE": assessment}},
             "lines": [
                 {
-                    "obligation_key": "L1-LEASE",
+                    "obligation_key": key,
                     "action": "CHANGE",
-                    "quantity_delta": "1",
-                    "consideration_delta": {"amount": "1000.00", "currency": "USD"},
+                    "quantity_delta": "0" if term_change else "1",
+                    "consideration_delta": {
+                        "amount": "0.00" if term_change else "1000.00",
+                        "currency": "USD",
+                    },
+                    **({"end_date": "2028-06-30"} if term_change else {}),
                 }
+                for key in (["L1-LEASE", "L2-SERVICE"] if term_change else ["L1-LEASE"])
             ],
         },
     )
@@ -1676,7 +1682,7 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
     )
     assert run["status"] == "SUCCEEDED", run
     assert len(rows) == 1
-    assert rows[0]["allocated_amount"] == usd("109000.00")
+    assert rows[0]["allocated_amount"] == usd("108000.00" if term_change else "109000.00")
     assert rows[0]["revenue_cum"] == usd("27000.00")
     assert set(rows[0]["combined_components"].split("; ")) == {"L1-LEASE", "L2-SERVICE"}
     rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
@@ -1697,7 +1703,7 @@ def test_combined_quantity_continuation_public_workflow(app, keyring, clock, fil
         },
     )
     assert register_run["status"] == "SUCCEEDED", register_run
-    assert len(register_rows) == 1
+    assert len(register_rows) == (2 if term_change else 1)
     import json
 
     assert json.loads(register_rows[0]["combined_reassessment"]) == {"L2-SERVICE": assessment}

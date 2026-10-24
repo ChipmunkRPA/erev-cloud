@@ -176,3 +176,65 @@ def test_added_units_keep_the_original_component_ssp_stratification():
     assert result.contract_version.columns["revenue_cum"] == 250_000
     assert result.obligation_versions[0].columns["quantity"] == 3
     assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+
+
+def term_continuation():
+    value = continuation("0")
+    contract = value.contracts[0]
+    original = contract.modifications[0]
+    lines = tuple(
+        {
+            **original.lines[0],
+            "obligation_key": key,
+            "quantity_delta": Decimal(0),
+            "consideration_delta": Decimal(0),
+            "end_date": "2026-12-31",
+        }
+        for key in ("LEASE", "SERVICE")
+    )
+    mod = replace(original, kind="TERM_CHANGE", lines=lines)
+    event = replace(value.events[-1], payload={**value.events[-1].payload, "lines": list(lines)})
+    return replace(
+        value,
+        evidence_revision=30,
+        contracts=(replace(contract, modifications=(mod,)),),
+        events=(*value.events[:-1], event),
+    )
+
+
+def test_complete_unit_term_continuation_preserves_prior_income():
+    value = term_continuation()
+    result = compute(value).books[0]
+    assert result.contract_version.columns["revenue_cum"] == 250_000
+    assert result.obligation_versions[0].columns["end_date"] == date(2026, 12, 31)
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    with pytest.raises(ValueError, match="require reassessment"):
+        compute(replace(value, evidence_revision=29))
+
+
+@pytest.mark.parametrize("invalid", ["partial", "different", "past", "start", "quantity"])
+def test_combined_unit_term_rejects_incomplete_or_incompatible_changes(invalid):
+    value = term_continuation()
+    contract = value.contracts[0]
+    mod = contract.modifications[0]
+    lines = list(mod.lines)
+    if invalid == "partial":
+        lines = lines[:1]
+    elif invalid == "different":
+        lines[0] = {**lines[0], "end_date": "2026-11-30"}
+    elif invalid == "past":
+        lines = [{**line, "end_date": "2026-01-01"} for line in lines]
+    elif invalid == "start":
+        lines[0] = {**lines[0], "start_date": "2026-01-15"}
+    else:
+        lines[0] = {**lines[0], "quantity_delta": Decimal(1)}
+    mod = replace(mod, lines=tuple(lines))
+    event = replace(value.events[-1], payload={**value.events[-1].payload, "lines": lines})
+    with pytest.raises(ValueError, match="Combined term continuation"):
+        compute(
+            replace(
+                value,
+                contracts=(replace(contract, modifications=(mod,)),),
+                events=(*value.events[:-1], event),
+            )
+        )

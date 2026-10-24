@@ -1964,3 +1964,12 @@ member amounts. Previous retained reports keep their original shape. The public 
 continuation workflow passes classification, preview, approval, application and saved-report
 replay with prior income preserved. See the
 [updated checkpoint](COMBINED-QUANTITY-REASSESSMENT-2026-10-24.md). No deployment.
+
+## October 24: common-end-date combined unit continuation
+
+Revision 30 and the modification wizard now support complete original-member TERM_CHANGE
+with one common end date, unchanged starts and zero quantity deltas. Dated eligibility
+confirmation and prospective treatment preserve prior income. Public approval/application
+and status/register/causal report replay pass for quantity and term continuations.
+See [scope and validation](COMBINED-UNIT-TERMS-2026-10-24.md). Other term and split paths remain
+open; no deployment.

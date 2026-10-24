@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import replace
+from datetime import date
 from fractions import Fraction
 from types import MappingProxyType
 
@@ -41,7 +42,12 @@ def continued(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> se
         if ob.contract_key != mod.contract_key or not ob.combined_component_keys:
             continue
         changes = [line for line in mod.lines if line.obligation_key in ob.combined_component_keys]
-        if not any(line.quantity_delta for line in changes):
+        term_change = any(
+            line.members.get(k) is not None for line in changes for k in ("start_date", "end_date")
+        )
+        if not any(line.quantity_delta for line in changes) and not (
+            ctx.combined_unit_term_reassessment and term_change
+        ):
             continue
         decision = decisions.get(ob.obligation_key)
         if not isinstance(decision, Mapping):
@@ -62,12 +68,28 @@ def continued(ctx: BookContext, st: AllocatedState, mod: ModificationView) -> se
             raise ValueError("Combined quantity continuation requires native in-scope treatment")
         if ob.recognition_method not in {"UNITS_DELIVERED", "POINT_IN_TIME"}:
             raise ValueError("Combined quantity continuation requires an original unit measure")
-        if any(
-            line.action != "CHANGE"
-            or any(line.members.get(k) is not None for k in ("start_date", "end_date"))
-            for line in changes
-        ):
-            raise ValueError("Combined term or member removal requires separate reassessment")
+        if any(line.action != "CHANGE" for line in changes):
+            raise ValueError("Combined member removal requires separate reassessment")
+        if term_change:
+            ends = [line.members.get("end_date") for line in changes]
+            if (
+                not ctx.combined_unit_term_reassessment
+                or mod.kind != "TERM_CHANGE"
+                or len(changes) != len(ob.combined_component_keys)
+                or {line.obligation_key for line in changes} != set(ob.combined_component_keys)
+                or any(
+                    line.quantity_delta or line.members.get("start_date") is not None
+                    for line in changes
+                )
+                or any(end is None for end in ends)
+                or len({str(end) for end in ends}) != 1
+            ):
+                raise ValueError(
+                    "Combined term continuation requires every original member "
+                    "and one common end date"
+                )
+            if date.fromisoformat(str(ends[0])) < mod.effective_date:
+                raise ValueError("Combined term continuation cannot end before its effective date")
         current = quantities(st, ob)
         contract = next(c for c in st.contracts if c.header.external_id == ob.contract_key)
         for key, total in current.items():

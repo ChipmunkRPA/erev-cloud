@@ -262,6 +262,7 @@ class BookContext:
     contracting_agent_relief: bool = False
     contracting_agent_calendar: bool = False
     combined_quantity_reassessment: bool = False
+    combined_unit_term_reassessment: bool = False
     retain_boundary_allocation_basis: bool = False
 
 

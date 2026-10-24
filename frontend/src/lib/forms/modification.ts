@@ -265,23 +265,35 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
   const known = new Set(context.obligations.map((item) => item.key));
   const priceOnly = new Set(context.priceOnlyObligationKeys ?? []);
   for (const key of priceOnly) known.add(key);
-  const continuations = (context.combinedUnitHosts ?? []).filter(
-    (group) =>
+  const continuations = (context.combinedUnitHosts ?? []).filter((group) => {
+    if (!form.continuedHosts?.includes(group.host)) return false;
+    const selected = form.lines.filter((line) => group.members.includes(line.obligationKey.trim()));
+    if (!selected.every((line) => line.action === "CHANGE" && line.startDate.trim() === ""))
+      return false;
+    if (form.kind === "TERM_CHANGE") {
+      const ends = selected.map((line) => dateOf(line.endDate));
+      const effective = dateOf(form.effectiveDate);
+      return (
+        selected.length === group.members.length &&
+        group.members.every((key) => selected.some((line) => line.obligationKey.trim() === key)) &&
+        selected.every((line) => {
+          const quantity = decimalOf(line.quantityChange.trim() || "0");
+          return quantity !== null && isZero(quantity);
+        }) &&
+        effective !== null &&
+        ends.every((end) => end !== null && end >= effective) &&
+        new Set(ends).size === 1
+      );
+    }
+    return (
       form.kind === "QUANTITY_CHANGE" &&
-      form.continuedHosts?.includes(group.host) &&
-      form.lines.some(
+      selected.some(
         (line) =>
-          group.members.includes(line.obligationKey.trim()) &&
-          decimalOf(line.quantityChange.trim()) !== null &&
-          !isZero(line.quantityChange.trim()),
+          decimalOf(line.quantityChange.trim()) !== null && !isZero(line.quantityChange.trim()),
       ) &&
-      form.lines
-        .filter((line) => group.members.includes(line.obligationKey.trim()))
-        .every(
-          (line) =>
-            line.action === "CHANGE" && line.startDate.trim() === "" && line.endDate.trim() === "",
-        ),
-  );
+      selected.every((line) => line.endDate.trim() === "")
+    );
+  });
   const continuedKeys = new Set(continuations.flatMap((group) => group.members));
   const completeTerminations = new Set<string>();
   if (form.kind === "TERMINATION") {
@@ -366,7 +378,7 @@ export function buildChange(form: ChangeForm, context: ChangeContext): BuiltModi
         !completeTerminations.has(key) &&
         !continuedKeys.has(key) &&
         (priceOnly.has(key) ||
-          (form.kind === "QUANTITY_CHANGE" &&
+          ((form.kind === "QUANTITY_CHANGE" || form.kind === "TERM_CHANGE") &&
             context.combinedUnitHosts?.some((group) => group.members.includes(key))) ||
           (form.kind === "TERMINATION" &&
             context.combinedObligationMembers?.some((members) => members.includes(key))))

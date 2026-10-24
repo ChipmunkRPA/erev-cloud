@@ -745,3 +745,41 @@ it("requires explicit continuation and sends the complete dated original populat
     ).body,
   ).toBeNull();
 });
+
+it("requires a complete common-end-date continuation for combined unit terms", () => {
+  const context = {
+    ...CONTEXT,
+    priceOnlyObligationKeys: ["LEASE"],
+    combinedUnitHosts: [{ host: "O1", members: ["O1", "LEASE"] }],
+  };
+  const form = {
+    ...emptyChange("l1", "TERM_CHANGE"),
+    reference: "TERM-1",
+    effectiveDate: "2026-10-01",
+    continuedHosts: ["O1"],
+    lines: ["O1", "LEASE"].map((key, index) => ({
+      ...emptyChangeLine(String(index)),
+      obligationKey: key,
+      action: "CHANGE" as const,
+      endDate: "2027-06-30",
+    })),
+  };
+  expect(buildChange(form, context).body?.questionnaire).toMatchObject({
+    combined_reassessment: { O1: { component_keys: ["O1", "LEASE"], decision: "CONTINUE" } },
+  });
+  expect(buildChange({ ...form, continuedHosts: [] }, context).body).toBeNull();
+  expect(buildChange({ ...form, lines: form.lines.slice(1) }, context).body).toBeNull();
+  for (const patch of [
+    { endDate: "2026-09-30" },
+    { endDate: "2027-07-31" },
+    { startDate: "2026-10-01" },
+    { quantityChange: "1" },
+  ]) {
+    expect(
+      buildChange(
+        { ...form, lines: form.lines.map((line, i) => (i === 0 ? { ...line, ...patch } : line)) },
+        context,
+      ).body,
+    ).toBeNull();
+  }
+});

@@ -644,7 +644,7 @@ function GeneralForm({
       </div>
       {priceChange ? null : (
         <div inert={busy}>
-          {form.kind === "QUANTITY_CHANGE"
+          {form.kind === "QUANTITY_CHANGE" || form.kind === "TERM_CHANGE"
             ? (context.combinedUnitHosts ?? [])
                 .filter((group) =>
                   form.lines.some((line) => group.members.includes(line.obligationKey.trim())),
