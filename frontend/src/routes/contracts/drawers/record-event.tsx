@@ -109,6 +109,7 @@ export interface EventForm {
   readonly clawback: YesNo | null;
   readonly condition: Condition | null;
   readonly creditMemo: string;
+  readonly creditedInvoice: string;
   readonly creditText: string;
   readonly credit: string | null;
 }
@@ -140,6 +141,7 @@ export function emptyEventForm(obligationKey: string | null): EventForm {
     clawback: null,
     condition: null,
     creditMemo: "",
+    creditedInvoice: "",
     creditText: "",
     credit: null,
   };
@@ -300,6 +302,10 @@ export function buildEvents(
         errors.condition = choose;
       }
       const memo = form.creditMemo.trim();
+      const creditedInvoice = form.creditedInvoice.trim();
+      if (creditedInvoice !== "" && memo === "") {
+        errors.creditMemo = t("contracts.drawer.event.creditMemoRequired");
+      }
       if (memo !== "" && form.credit === null) {
         errors.credit = t("common.form.money.invalid");
       }
@@ -323,6 +329,7 @@ export function buildEvents(
           obligation_key: form.obligation,
           payload: {
             credit_memo_number: memo,
+            ...(creditedInvoice === "" ? {} : { credited_invoice_number: creditedInvoice }),
             obligation_key: form.obligation,
             amount: { amount: form.credit, currency },
             issue_date: effective,
@@ -531,6 +538,7 @@ type EventField =
   | "amount"
   | "reference"
   | "effectiveDate"
+  | "creditedInvoice"
   | "creditMemo"
   | "credit";
 
@@ -560,6 +568,7 @@ function eventFields(
     reference: on(kind === "delivery" || kind === "return", "source_ref", "reason"),
     effectiveDate: ["effective_date"],
     creditMemo: on(kind === "return", "credit_memo_number"),
+    creditedInvoice: on(kind === "return", "credited_invoice_number"),
     credit: on(kind === "return", "refund_amount"),
   };
 }
@@ -1046,7 +1055,15 @@ export function RecordEventDrawer({
               optional
               value={form.creditMemo}
               onChange={(value) => set("creditMemo", value)}
-              error={server("creditMemo")}
+              error={shown("creditMemo") ?? server("creditMemo")}
+            />
+            <TextField
+              name="event-credited-invoice"
+              label={t("contracts.drawer.event.creditedInvoice")}
+              optional
+              value={form.creditedInvoice}
+              onChange={(value) => set("creditedInvoice", value)}
+              error={server("creditedInvoice")}
             />
             {moneyField("credit", t("contracts.drawer.event.creditAmount"), true)}
           </>

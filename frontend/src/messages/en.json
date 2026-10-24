@@ -2105,6 +2105,8 @@
   "contracts.drawer.event.condition.label": "Condition",
   "contracts.drawer.event.creditAmount": "Credit amount",
   "contracts.drawer.event.creditMemo": "Credit memo number",
+  "contracts.drawer.event.creditMemoRequired": "Enter a credit memo number to link the original invoice.",
+  "contracts.drawer.event.creditedInvoice": "Original invoice number",
   "contracts.drawer.event.effectiveDate": "Effective date",
   "contracts.drawer.event.evidenceError": "Attach at least one evidence file.",
   "contracts.drawer.event.hoursScope": "Cumulative hour coverage",

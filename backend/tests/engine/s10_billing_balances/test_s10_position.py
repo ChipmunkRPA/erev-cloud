@@ -940,7 +940,10 @@ def test_s10_inv_08_performing_entity_holds_no_balance() -> None:
 
 
 @pytest.mark.parametrize("credit_amount", ["3.00", "1.00"])
-def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sign(credit_amount):
+@pytest.mark.parametrize("direct_invoice", [False, True])
+def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sign(
+    credit_amount, direct_invoice
+):
     from erev_engine.bundle import FxRateInput
     from erev_engine.stages import s12_fx_entities
     from erev_engine.stages.state import RateIndex
@@ -958,6 +961,7 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
         INCEPTION,
         {
             "invoice_number": "SHARED",
+            **({"obligation_key": "P1"} if direct_invoice else {}),
             "line_external_id": "SHARED-1",
             "amount": Decimal("3.00"),
             "issue_date": INCEPTION,
@@ -971,7 +975,7 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
         credit_date,
         {
             "credit_memo_number": "CM-SHARED",
-            "invoice_number": "SHARED",
+            "credited_invoice_number": "SHARED",
             "amount": Decimal(credit_amount),
             "issue_date": credit_date,
         },
@@ -1011,9 +1015,11 @@ def test_foreign_billing_obligation_evidence_keeps_document_total_and_credit_sig
     assert with_sources.functional_targets == without_sources.functional_targets
     assert without_sources.billing_disclosure_targets == ()
     targets = with_sources.billing_disclosure_targets
-    assert len(targets) == 3
+    assert len(targets) == (1 if direct_invoice else 3)
     assert sum(target.amount_txn for target in targets) == (0 if credit_amount == "3.00" else 200)
     expected = {O1: 1, O2: 0, O3: 0} if credit_amount == "3.00" else {O1: 67, O2: 67, O3: 67}
+    if direct_invoice:
+        expected = {O1: 1 if credit_amount == "3.00" else 201}
     assert {target.subject_key: target.amount_functional for target in targets} == expected
     from types import SimpleNamespace
     from erev_api.domain.reports.opening_pob_functional_nodes import read

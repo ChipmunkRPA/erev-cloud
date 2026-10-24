@@ -596,3 +596,38 @@ it("submits complete original-member cumulative hours as one approval batch", as
     ],
   });
 });
+
+it("links a return credit memo to its original invoice and prevents a dangling reference", async () => {
+  serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+  const captured: unknown[] = [];
+  server.use(
+    http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+      captured.push(await request.json());
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  const { drawer } = await open("return");
+  type(drawer, /^Original invoice number/, " INV-123 ");
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  expect(captured).toHaveLength(0);
+  expect(
+    await screen.findByText("Enter a credit memo number to link the original invoice."),
+  ).toBeTruthy();
+  type(drawer, /^Credit memo number/, "CM-123");
+  type(drawer, /^Credit amount/, "100.00");
+  fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+  await waitFor(() => expect(captured).toHaveLength(1));
+  expect(captured[0]).toMatchObject({
+    events: [
+      { event_type: "RETURN_RECORDED" },
+      {
+        event_type: "CREDIT_MEMO_RECORDED",
+        payload: {
+          credit_memo_number: "CM-123",
+          credited_invoice_number: "INV-123",
+          amount: { amount: "100.00", currency: "USD" },
+        },
+      },
+    ],
+  });
+});
