@@ -951,6 +951,29 @@ def test_retained_posted_pair_workflow(
         from support.worlds import ReportWorld, report_run, run_now
 
         world = ReportWorld(k02.place, k02.priya, k02.marcus, runtime, k02.entity_id, {})
+        plain_run, plain_rows = report_run(
+            world,
+            "modification_register",
+            {
+                "entity_codes": [entity.code],
+                "book": "ASC606",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+                "currency_view": "transaction",
+            },
+        )
+        transfer_rows = [
+            r for r in plain_rows if r.get("regroup_id") == str(source_row["regroup_id"])
+        ]
+        assert {(r["contract_external_id"], r["regroup_direction"]) for r in transfer_rows} == {
+            ("REGROUP-SOURCE", "OUT"),
+            ("REGROUP-TARGET", "IN"),
+        }
+        saved = post(k02.app, f"/api/v1/report-runs/{plain_run['id']}/rerun", world.maya, {})
+        assert saved.status_code == 202, saved.text
+        saved_result = run_now(world, UUID(saved.json()["id"]))
+        assert saved_result["state"] == "SUCCEEDED", saved_result
+        assert saved_result["result"]["output_sha256_equal"] is True
         for view in ("transaction", "functional", "reporting"):
             run, rows = report_run(
                 world,

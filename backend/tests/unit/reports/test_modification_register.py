@@ -842,3 +842,37 @@ def test_modification_treatment_maps_preserve_host_identity_and_saved_shape(chos
         assert "modification_proposed_treatments" not in before
     assert "modification_proposed_treatments" not in {column.key for column in old.columns}
     assert register.data_from_inputs(retained) == current
+
+
+@pytest.mark.parametrize("kind,direction", [("REMOVE_OBLIGATION", "OUT"), ("ADD_OBLIGATION", "IN")])
+def test_regroup_context_is_retained_without_changing_old_outputs_or_amounts(kind, direction):
+    import json
+    from dataclasses import asdict
+
+    from erev_engine.canonical import canonical_bytes
+
+    retained = json.loads(
+        canonical_bytes(
+            {
+                "sources": [asdict(_source(kind=kind, regroup_id="pair-1"))],
+                "currency_view": "transaction",
+                "from_date": "2026-09-01",
+                "to_date": "2026-09-30",
+            }
+        )
+    )
+    old = register.data_from_inputs(retained)
+    retained["regroup_context_columns"] = True
+    current = register.data_from_inputs(retained)
+    assert current.control_totals == old.control_totals
+    for before, row in zip(old.rows, current.rows, strict=True):
+        assert row["regroup_id"] == "pair-1"
+        assert row["regroup_direction"] == direction
+        assert {key: row[key] for key in before} == before
+        assert "regroup_id" not in before
+    assert register.data_from_inputs(retained) == current
+    retained["sources"][0]["regroup_id"] = None
+    assert all(row["regroup_direction"] is None for row in register.data_from_inputs(retained).rows)
+    del retained["regroup_context_columns"]
+    del retained["sources"][0]["regroup_id"]
+    assert register.data_from_inputs(retained).columns == old.columns

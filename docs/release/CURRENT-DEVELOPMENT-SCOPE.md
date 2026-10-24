@@ -2399,3 +2399,20 @@ shared-group and fully performed target service). The completed-target case sepa
 that the original target allocation stays 144,000 and the incoming line receives exactly the
 source remainder, along with approval/application, conservation and report replay checks. Scoped
 lint/types pass. User guide updated. No deployment.
+
+
+## Transfer context in the ordinary modification register — October 24, 2026
+
+The ordinary modification register now retains and displays Regroup pair and Regroup direction
+columns, identifying REMOVE/OUT and ADD/IN records across contracts. Causal analysis already had
+this context; the ordinary source/translated dataset now carries it to viewer/export paths too.
+The pair identity comes from the authorized selected modification record and is frozen with
+report inputs. No counterpart-contract lookup or invented per-side monetary attribution is added.
+Ordinary modifications have empty context; invalid retained pair kinds refuse. A retained feature
+flag preserves old report column/row shapes, and old sources without the optional identity load.
+
+Twenty-eight register unit cases pass, including unchanged amounts/control totals, old shape,
+missing optional fields and deterministic replay. The populated shared-group public workflow
+passes ordinary register generation with both pair sides and an identical-hash saved rerun,
+alongside its existing three-view causal/report replay checks. Scoped lint/types pass. This
+adds report context, not foreign-currency transfer support. No deployment.

@@ -256,6 +256,7 @@ class Source:
     functional_calculation: Mapping[str, Mapping[str, Any]] | None = None
     modification_id: str | None = None
     contract_id: str | None = None
+    regroup_id: str | None = None
 
 
 def applied_event_reference(owner: tuple[str, int] | None) -> str | None:
@@ -1007,6 +1008,7 @@ def sources(
         out.append(
             Source(
                 modification_no=str(row["modification_no"]),
+                regroup_id=None if row["regroup_id"] is None else str(row["regroup_id"]),
                 modification_id=str(modification_id),
                 contract_id=str(row["contract_id"]),
                 reference=None if row["reference"] is None else str(row["reference"]),
@@ -1316,6 +1318,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "functional_calculation_columns": True,
                 "combined_reassessment_column": True,
                 "modification_treatment_maps": True,
+                "regroup_context_columns": True,
                 "currency_basis": basis,
                 "spot_equivalents": spot_facts,
                 "reporting_currency": target,
@@ -1406,6 +1409,21 @@ def data_from_inputs(retained: Mapping[str, Any]) -> ReportData:
             ),
             Column("conversion_basis", "Conversion basis", "text"),
         )
+    if retained.get("regroup_context_columns"):
+        columns += (
+            Column("regroup_id", "Regroup pair", "code"),
+            Column("regroup_direction", "Regroup direction", "code"),
+        )
+        by_number = {item.modification_no: item for item in found}
+        for row in rows:
+            item = by_number[str(row["modification_no"])]
+            direction = {"REMOVE_OBLIGATION": "OUT", "ADD_OBLIGATION": "IN"}.get(item.kind)
+            if item.regroup_id is not None and direction is None:
+                raise Problem(
+                    "validation-failed", "Retained regroup modification has no valid direction."
+                )
+            row["regroup_id"] = item.regroup_id
+            row["regroup_direction"] = direction if item.regroup_id is not None else None
     if retained.get("tp_component_breakdown"):
         labels = (
             "Fixed consideration",
