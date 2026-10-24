@@ -204,3 +204,45 @@ def test_agent_report_sources_replay_actual_gross_billing_targets() -> None:
             assert {item.contract_id for item in result.movements} == {UUID(int=100)}
         amounts[role] = result.amount
     assert sum(amounts.values()) == -120000
+
+
+def test_agent_closing_retains_gross_control_without_inventing_net_revenue_attribution():
+    loaded = load(ANSWER_KEY_ROOT / "pob" / f"{WM_05}.yaml")
+    checked = set()
+    for checkpoint in _Assembler(loaded).checkpoints():
+        if checkpoint.name not in {"prepaid-before-stay", "check-in-month"}:
+            continue
+        for original in checkpoint.bundles:
+            bundle = cast(InputBundle, original)
+            if not any(c.external_id == "WM-05-MERCHANT" for c in bundle.contracts):
+                continue
+            old = erev_engine.compute(dataclasses.replace(bundle, evidence_revision=7))
+            new = erev_engine.compute(dataclasses.replace(bundle, evidence_revision=8))
+            before = next(b for b in old.books if b.book_code == "ASC606")
+            after = next(b for b in new.books if b.book_code == "ASC606")
+            assert before.posting_intents == after.posting_intents
+            assert before.balances == after.balances
+            assert all(
+                "control_closing" not in (row.obligation_closing or {})
+                for row in before.disclosure_rollforwards or ()
+            )
+            rows = after.disclosure_rollforwards or ()
+            assert rows
+            for row in rows:
+                held = row.obligation_closing
+                assert held["status"] == "UNAVAILABLE"
+                control = held["control_closing"]
+                assert control["basis"] == "ORIGINAL_CONTROL_CLOSING_NOT_NET_REVENUE_ATTRIBUTION"
+                item = control["obligations"]["WM-05-MERCHANT/L1-STAYS"]
+                assert "revenue" not in item
+                assert item["relief_basis"] == "AGENT_GROSS_CONTROL"
+                assert item["billed"] == 12000000
+                assert item["control_relief"] == (
+                    0 if checkpoint.name == "prepaid-before-stay" else 12000000
+                )
+                assert item["liability"] == (
+                    12000000 if checkpoint.name == "prepaid-before-stay" else 0
+                )
+                assert item["sources"]
+            checked.add(checkpoint.name)
+    assert checked == {"prepaid-before-stay", "check-in-month"}

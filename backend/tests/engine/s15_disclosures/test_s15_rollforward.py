@@ -900,3 +900,65 @@ def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening(multiple
     result = apply(ctx, proven, records, row, [source])
     assert result.revenue_from_opening_liability == usd("800.00")
     assert result.revenue_relief == row.revenue_relief
+
+
+def test_agent_functional_closing_uses_gross_control_targets_not_net_commission():
+    from types import SimpleNamespace as NS
+    from erev_engine.stages.s15_disclosures.obligation_closing import capture
+
+    ctx = NS(txn_currency="EUR", entities={ENTITY: NS(functional_currency="USD")})
+    own = NS(
+        subject_key=SERVICES,
+        contracting_entity=ENTITY,
+        performing_entity=ENTITY,
+        principal_agent=NS(value="AGENT"),
+        gross_to_net=NS(basis="FIXED_FEE"),
+        opening=None,
+    )
+    st = NS(obligations=[own])
+    period = NS(period_key=APRIL, end_date=date(2026, 4, 30))
+    billed = invoice(1, date(2026, 4, 1), "3.00")
+    released = on_event(2, date(2026, 4, 2), "1.00", SERVICES)
+    target = NS(
+        entity=ENTITY,
+        subject_key=SERVICES,
+        measure="revenue_cum",
+        period_key=APRIL,
+        amount_txn=100,
+        amount_functional=110,
+        txn_currency="EUR",
+        functional_currency="USD",
+    )
+    records = NS(
+        flows=[billed, released],
+        attribution={billed.source_key: {SERVICES: 300}},
+        fx=NS(
+            billing_attribution_sources=[
+                NS(
+                    entity=ENTITY,
+                    period_key=APRIL,
+                    source_key=billed.source_key,
+                    subject_key=SERVICES,
+                    amount_txn=300,
+                    amount_functional=330,
+                    node_id="invoice-source",
+                )
+            ],
+            functional_targets=[target],
+        ),
+    )
+    held = capture(ctx, st, records, ENTITY, period, functional=True, capture_agent_control=True)
+    assert held["status"] == "UNAVAILABLE"
+    item = held["control_closing"]["obligations"][SERVICES]
+    assert (item["billed"], item["control_relief"], item["liability"]) == (330, 110, 220)
+    assert "revenue" not in item
+    assert {
+        billed.source_key,
+        released.source_key,
+        "invoice-source",
+        f"revenue_functional:{SERVICES}:{APRIL}",
+    } <= set(item["sources"])
+    target.amount_txn = 10  # Net commission is not evidence of the gross liability release.
+    refused = capture(ctx, st, records, ENTITY, period, functional=True, capture_agent_control=True)
+    assert refused["status"] == "UNAVAILABLE"
+    assert "control_closing" not in refused

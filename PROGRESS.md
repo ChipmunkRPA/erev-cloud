@@ -20,21 +20,21 @@ review and publish changes without PR accumulation, and do not deploy.
 - Owner resumed development October 21. The app goal tool cannot edit the existing objective
   text; this section records the superseding scope while the goal remains active.
 
-## Original labour-hour progress sources — October 23, 2026
+## Original agent gross-control closing evidence — October 23, 2026
 
-- Evidence revision 7 retains the latest admitted cumulative-hour event and every selected
-  original EAC expected-hour version. Prospective segments also retain the original baseline
-  event; superseded cumulative readings are not added together.
-- Registered labour-hours formula v2 verifies current, baseline and expected source totals
-  before evaluating the existing arithmetic. Earlier retained bundles keep formula v1.
-  The full-engine comparison proves identical contract figures and posting intents.
-- Calculation explanations include the new source-verified formula text. Registered the
-  existing multi-member cost formula v3 in the stage catalogue and added its explanation.
-- Necessary validation: 43 focused cases pass, including original combined EAC sources,
-  exact trace replay, rejected changed source amounts, latest-record selection and prospective
-  baseline reconciliation. Scoped lint/types pass. No deployment.
-- Actual-hour aggregation across original members and the pending percentage/milestone choice
-  remain separate work. The broader Reporting/system gaps remain open.
+- Revision 8 captures same-entity agent closing control balances and complete original billing,
+  control-release and functional source identities. Agent control relief is labelled gross and
+  never stored as net revenue. Functional targets must match original transaction control flows.
+- Evidence explicitly keeps net opening-revenue attribution UNAVAILABLE and places these facts
+  in a separate control_closing record. Existing frozen-opening admission cannot mistake the
+  record for supported net commission attribution. Older revisions remain unchanged.
+- Necessary checks: 26 focused cases pass. A full merchant-agent calculation retains the
+  120,000 prepayment and 120,000 gross release with identical posting intents/balances; foreign
+  source validation retains gross-control amounts and refuses a substituted net commission.
+  Scoped lint/types pass. No deployment.
+- This is retained-source preparation for the unfinished agent opening report, not completion
+  of net revenue attribution. Owner choice for mixed opening/current-period agent receipts is
+  pending, alongside percentage/milestone progress. Cross-entity/acquired sources remain open.
 
 ## Rollforward Other explanation — October 23, 2026
 

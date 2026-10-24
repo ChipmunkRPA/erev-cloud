@@ -16,16 +16,19 @@ def capture(
     period: PeriodInput,
     *,
     functional: bool,
+    capture_agent_control: bool = False,
 ) -> dict[str, Any]:
     def unavailable(reason: str) -> dict[str, Any]:
         return {"status": "UNAVAILABLE", "reason": reason}
 
     own = [ob for ob in st.obligations if ob.contracting_entity == entity]
-    if any(
-        ob.performing_entity != entity
-        or ob.principal_agent.value != "PRINCIPAL"
-        or ob.opening is not None
-        for ob in own
+    agents = {ob.subject_key for ob in own if ob.principal_agent.value == "AGENT"}
+    if any(ob.performing_entity != entity or ob.opening is not None for ob in own) or (
+        agents
+        and (
+            not capture_agent_control
+            or any(ob.gross_to_net is None for ob in own if ob.subject_key in agents)
+        )
     ):
         return unavailable("Original principal, same-entity sources are required.")
     subjects = {ob.subject_key for ob in own}
@@ -100,7 +103,7 @@ def capture(
                 return unavailable("Functional revenue does not reconcile to original quantities.")
             revenue[subject] = latest.amount_functional
             sources[subject].add(f"revenue_functional:{subject}:{latest.period_key}")
-    return {
+    result: dict[str, Any] = {
         "status": "AVAILABLE",
         "basis": "OBLIGATION_ELIGIBILITY_BEFORE_GROUP_CAP",
         "obligations": {
@@ -113,3 +116,21 @@ def capture(
             for subject in sorted(subjects)
         },
     }
+
+    if agents:
+        # S12 revenue_cum here is the gross control flow for agents, including supplier
+        # share. It proves closing liability, not net commission attributable to opening.
+        result["basis"] = "ORIGINAL_CONTROL_CLOSING_NOT_NET_REVENUE_ATTRIBUTION"
+        for subject, item in result["obligations"].items():
+            item["control_relief"] = item.pop("revenue")
+            item["relief_basis"] = (
+                "AGENT_GROSS_CONTROL" if subject in agents else "PRINCIPAL_REVENUE"
+            )
+        return {
+            "status": "UNAVAILABLE",
+            "reason": (
+                "Agent net revenue attribution requires a separate opening-consumption basis."
+            ),
+            "control_closing": result,
+        }
+    return result

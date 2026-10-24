@@ -837,3 +837,19 @@ not decide whether a host EAC represents its component or the entire combination
   Scoped lint/types passed; the disposable database was stopped. No deployment.
 - Broader Reporting source gaps and combined progress/reassessment development remain open;
   the pending owner choice for percentage/milestone progress is not inferred here.
+
+## Original labour-hour progress sources — October 23, 2026
+
+- Evidence revision 7 retains the latest admitted cumulative-hour event and every selected
+  original EAC expected-hour version. Prospective segments also retain the original baseline
+  event; superseded cumulative readings are not added together.
+- Registered labour-hours formula v2 verifies current, baseline and expected source totals
+  before evaluating the existing arithmetic. Earlier retained bundles keep formula v1.
+  The full-engine comparison proves identical contract figures and posting intents.
+- Calculation explanations include the new source-verified formula text. Registered the
+  existing multi-member cost formula v3 in the stage catalogue and added its explanation.
+- Necessary validation: 43 focused cases pass, including original combined EAC sources,
+  exact trace replay, rejected changed source amounts, latest-record selection and prospective
+  baseline reconciliation. Scoped lint/types pass. No deployment.
+- Actual-hour aggregation across original members and the pending percentage/milestone choice
+  remain separate work. The broader Reporting/system gaps remain open.

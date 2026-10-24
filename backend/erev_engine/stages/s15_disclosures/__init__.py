@@ -166,6 +166,7 @@ def run(
     balances: object = None,
     fx: object = None,
     capture_obligation_closing: bool = False,
+    capture_agent_control: bool = False,
     frozen_openings: tuple[DisclosureOpeningInput, ...] = (),
 ) -> DisclosureState:
     """RPO, exemptions, time bands, the narrative dataset, the waterfall, the RPO rollforward, the
@@ -247,6 +248,7 @@ def run(
                         if period.period_key == row.period_key
                     ),
                     functional=row.view == FUNCTIONAL and row.currency != ctx.txn_currency,
+                    capture_agent_control=capture_agent_control,
                 ),
             )
             for row in balance_rows
