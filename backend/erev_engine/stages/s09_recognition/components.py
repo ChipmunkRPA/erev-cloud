@@ -1349,12 +1349,15 @@ def revenue_targets(ctx: BookContext, st: AllocatedState, tb: TraceBuilder) -> S
                 and ob.opening is not None
                 and ob.opening.get("reason") == "BUSINESS_COMBINATION"
                 and ob.principal_agent.value == "PRINCIPAL"
-                and ob.performing_entity == ob.contracting_entity
+                and (
+                    ob.performing_entity == ob.contracting_entity
+                    or ctx.acquired_cross_entity_observation
+                )
                 and attribution is None
             ):
                 extra = tuple(
                     p
-                    for p in ctx.entities[ob.contracting_entity].periods
+                    for p in ctx.entities[ob.performing_entity].periods
                     if p.end_date == baseline.cutover_date and p.period_key not in ordinary_keys
                 )
                 periods = tuple(sorted((*periods, *extra), key=lambda p: p.end_date))

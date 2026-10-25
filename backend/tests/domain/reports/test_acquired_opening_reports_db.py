@@ -40,6 +40,7 @@ def app(committed_db, app_settings, clock):
         (False, False, True, True, "complete"),
         (False, False, True, True, "foreign"),
         (False, False, True, True, "group"),
+        (False, True, True, True, "foreign"),
     ],
 )
 def test_acquired_opening_report_retains_original_foreign_currency_sources(

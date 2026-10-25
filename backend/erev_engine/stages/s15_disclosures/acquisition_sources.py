@@ -13,5 +13,12 @@ def intercompany_enabled(records: object, ob: ObligationState) -> bool:
         and ob.opening is not None
         and ob.opening.get("reason") == "BUSINESS_COMBINATION"
         and baseline is not None
-        and baseline.method == "OPENING_BALANCES_AT_CUTOVER"
+        and (
+            baseline.method == "OPENING_BALANCES_AT_CUTOVER"
+            or (
+                baseline.method == "RECOMPUTE_FROM_INCEPTION"
+                and (ob.subject_key, baseline.cutover_date)
+                in getattr(records, "recomputed_acquisition_closings", {})
+            )
+        )
     )

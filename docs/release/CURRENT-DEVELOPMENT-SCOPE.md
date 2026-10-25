@@ -2996,3 +2996,22 @@ explanations and six retained-input reruns now pass against local PostgreSQL. Re
 hashes and member contributor details match; the existing singleton foreign scenario also
 passes. See [evidence](ACQUIRED-GROUP-BRIDGE-2026-10-24.md). The closed cutover is a retained-input
 fixture, not an actual lock workflow. Local PostgreSQL stopped; no deployment.
+
+
+### 2026-10-24 — Cross-entity recomputed acquisition observations
+
+Revision 64 captures nonposting closed-cutover balances for principal acquired contracts
+whose performing and contracting entities differ. Revenue uses the performing calendar;
+billing uses the contracting calendar, matched by exact period end. Original calendar states
+and posting targets are retained. Acquisition sources require the captured original closing.
+
+Four same/foreign-currency and net-asset/net-liability cases verify retained original evidence
+and report readers. The 31-case acquisition regression selection passes; a further four-case
+comparison verifies revision 63/64 open-cutover posting behavior stays unchanged, including
+existing refusal codes where applicable. One populated PostgreSQL public-report case passes
+balance and rollforward jobs in three currencies, explanations and retained reruns. Scoped
+lint/type checks pass. Local PostgreSQL is stopped; no deployment.
+
+This closes the tested singleton cross-entity observation gap, not every acquisition shape.
+Agent acquisitions, mixed ordinary/acquired flow presentation and broader cross-entity group
+combinations are not claimed complete. Pending owner policy choices remain separate.

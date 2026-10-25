@@ -1244,7 +1244,9 @@ def present(
                     or ob.opening is None
                     or ob.opening.get("reason") != "BUSINESS_COMBINATION"
                     or ob.principal_agent.value != "PRINCIPAL"
-                    or ob.performing_entity != entity
+                    or (
+                        ob.performing_entity != entity and not ctx.acquired_cross_entity_observation
+                    )
                 ):
                     continue
                 for period in ctx.entities[entity].periods:

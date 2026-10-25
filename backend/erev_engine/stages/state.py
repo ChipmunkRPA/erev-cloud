@@ -278,6 +278,7 @@ class BookContext:
     acquired_member_current_liability: bool = False
     recomputed_member_current_liability: bool = False
     acquired_member_current_asset: bool = False
+    acquired_cross_entity_observation: bool = False
     prospective_split_netting: bool = False
     dated_current_asset: bool = False
     dated_current_liability: bool = False

@@ -852,3 +852,158 @@ def test_combined_closed_cutover_retains_each_member_and_shared_layers(
                     event_key=opening.event_key,
                 )
             assert "member source differs" in rejected_source.value.errors[0].message
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+@pytest.mark.parametrize("billed", ["100000", "300000"])
+def test_cross_entity_closed_observation_keeps_contracting_balances(foreign, billed):
+    from erev_api.domain.reports.acquisition_complete import read as read_complete
+    from erev_engine.bundle import MappingRuleInput
+    from erev_engine.trace import reevaluate
+
+    value = foreign_cutover_value(billed=billed)
+    original = value.entities[0]
+    if not foreign:
+        original = replace(original, functional_currency="USD")
+    performer = replace(original, code="PERFORMER", functional_currency="USD")
+    value = replace(
+        value,
+        evidence_revision=64,
+        entities=tuple(sorted((original, performer), key=lambda e: e.code)),
+        events=tuple(
+            replace(
+                e,
+                payload={
+                    **e.payload,
+                    "lines": [
+                        {**line, "performing_entity_code": performer.code}
+                        for line in e.payload["lines"]
+                    ],
+                },
+            )
+            if e.event_type == "CONTRACT_BOOKED"
+            else e
+            for e in value.events
+        ),
+        books=tuple(
+            replace(
+                book,
+                entity_codes=tuple(sorted((original.code, performer.code))),
+                policies=tuple(
+                    sorted(
+                        (
+                            *book.policies,
+                            *(
+                                replace(
+                                    p,
+                                    subject_key=p.subject_key.replace(
+                                        original.code + "@", performer.code + "@", 1
+                                    ),
+                                )
+                                for p in book.policies
+                                if p.scope == "PERIOD"
+                            ),
+                        ),
+                        key=lambda p: (p.code, p.scope, p.subject_key),
+                    )
+                ),
+                account_mapping=replace(
+                    book.account_mapping,
+                    rules=tuple(
+                        sorted(
+                            (
+                                *book.account_mapping.rules,
+                                MappingRuleInput(
+                                    "INTERCOMPANY_DUE_FROM",
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    "IC-FROM",
+                                    {},
+                                    0,
+                                    0,
+                                ),
+                                MappingRuleInput(
+                                    "INTERCOMPANY_DUE_TO",
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    "IC-TO",
+                                    {},
+                                    0,
+                                    0,
+                                ),
+                            ),
+                            key=lambda r: (
+                                r.account_role,
+                                r.clearing_purpose or "",
+                                r.account_code,
+                            ),
+                        )
+                    ),
+                ),
+            )
+            for book in value.books
+        ),
+    )
+    from erev_engine.errors import EngineError
+
+    with pytest.raises(EngineError):
+        compute(replace(value, evidence_revision=63))
+    result = compute(value)
+    output = result.books[0]
+    assert output.balances == ()
+    assert output.posting_intents == ()
+    (snapshot,) = output.acquisition_balance_observations
+    assert snapshot["entity"] == original.code
+    role = "contract_asset" if billed == "100000" else "contract_liability"
+    amount = 2000000 if billed == "100000" else 18000000
+    assert snapshot["amounts"][role] == amount
+    if foreign:
+        assert snapshot["functional"]["amounts"][role] == (
+            1800000 if billed == "100000" else 14400000
+        )
+    replay = reevaluate(output.trace)
+    for name, node in snapshot["nodes"].items():
+        assert Decimal(replay[node]) == Decimal(snapshot["amounts"][name]) / 100
+    opening = next(e for e in value.events if e.event_type == "OPENING_BALANCE_ESTABLISHED")
+    selected = read_complete(
+        value,
+        json.loads(canonical_bytes(result)),
+        member=w.CONTRACT,
+        entity=original.code,
+        book="ASC606",
+        period=PERIOD,
+        event_key=opening.event_key,
+    )
+    assert selected is not None
+    assert selected[1]["amounts"] == snapshot["amounts"]
+    opened = replace(
+        value,
+        entities=tuple(
+            replace(
+                entity,
+                periods=tuple(
+                    replace(period, states=(("ASC606", "open"),))
+                    if period.end_date == w.CUTOVER
+                    else period
+                    for period in entity.periods
+                ),
+            )
+            for entity in value.entities
+        ),
+    )
+    try:
+        old_open = compute(replace(opened, evidence_revision=63)).books[0]
+    except EngineError as original_error:
+        with pytest.raises(EngineError) as refused:
+            compute(opened)
+        assert refused.value.code == original_error.code
+    else:
+        new_open = compute(opened).books[0]
+        assert new_open.posting_intents == old_open.posting_intents
+        assert new_open.schedules == old_open.schedules

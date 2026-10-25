@@ -48,15 +48,24 @@ def capture(ctx: BookContext, balances: BalanceState) -> dict[tuple[str, date], 
             or ob.opening is None
             or ob.opening.get("reason") != "BUSINESS_COMBINATION"
             or ob.principal_agent.value != "PRINCIPAL"
-            or ob.performing_entity != ob.contracting_entity
+            or (
+                ob.performing_entity != ob.contracting_entity
+                and not ctx.acquired_cross_entity_observation
+            )
         ):
             continue
         for period in ctx.entities[ob.contracting_entity].periods:
             if period.end_date < baseline.cutover_date:
                 continue
             selected = []
-            for index in indexes:
-                rows = index.get((ob.subject_key, ob.contracting_entity, period.period_key), [])
+            for position, index in enumerate(indexes):
+                entity = ob.contracting_entity if position == 0 else ob.performing_entity
+                aligned = next(
+                    (p for p in ctx.entities[entity].periods if p.end_date == period.end_date), None
+                )
+                if aligned is None:
+                    break
+                rows = index.get((ob.subject_key, entity, aligned.period_key), [])
                 if len(rows) != 1:
                     break
                 selected.append(rows[0])

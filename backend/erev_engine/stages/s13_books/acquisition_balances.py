@@ -54,7 +54,10 @@ def capture(
         or (len({ob.contract_key for ob in own}) != 1 and (cb.bundle.evidence_revision or 0) < 62)
         or any(
             ob.principal_agent.value != "PRINCIPAL"
-            or ob.performing_entity != ob.contracting_entity
+            or (
+                ob.performing_entity != ob.contracting_entity
+                and (cb.bundle.evidence_revision or 0) < 64
+            )
             or ob.opening is None
             or ob.opening.get("reason") != "BUSINESS_COMBINATION"
             for ob in own
@@ -83,7 +86,13 @@ def capture(
     # for a foreign observation), retaining all
     # specialist inputs. No posting, disclosure, or output assembler runs here.
     # Calendar states, original input and ordinary context are never changed.
-    extended = replace(ctx, horizon=MappingProxyType({**ctx.horizon, entity: period.period_key}))
+    horizons = {**ctx.horizon, entity: period.period_key}
+    for performer in {ob.performing_entity for ob in own} - {entity}:
+        aligned = next((p for p in ctx.entities[performer].periods if p.end_date == cutover), None)
+        if aligned is None:
+            return ()
+        horizons[performer] = aligned.period_key
+    extended = replace(ctx, horizon=MappingProxyType(horizons))
     try:
         _, measured, _ = _run_book(
             extended,

@@ -1097,7 +1097,10 @@ def measure(
                     st.acquisition_recomputed_cutover_evidence
                     and baseline.method == "RECOMPUTE_FROM_INCEPTION"
                     and ob.principal_agent.value == "PRINCIPAL"
-                    and ob.performing_entity == ob.contracting_entity
+                    and (
+                        ob.performing_entity == ob.contracting_entity
+                        or ctx.acquired_cross_entity_observation
+                    )
                 )
             )
             and ob.opening is not None
