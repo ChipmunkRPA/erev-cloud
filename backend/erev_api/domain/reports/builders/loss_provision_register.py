@@ -1,8 +1,8 @@
 """RPT-31: period loss tests from immutable, report-bound calculation versions.
 
 No loss is reconstructed from today's estimates or policy. Trace coverage distinguishes an
-untested contract from an older version whose loss tests were never persisted. Functional view
-requires matching currencies until functional loss-test measurements are persisted.
+untested contract from an older version whose loss tests were never persisted. Foreign views
+read the original independent functional test and retained reporting-currency rates.
 """
 
 from __future__ import annotations
@@ -10,14 +10,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, Final
+from urllib.parse import quote
 from uuid import UUID
 
-from erev_engine.stages.s01_canonicalize import encode_key
-from erev_engine.trace import Trace
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import (
+    calc_trace,
     contract,
     contract_version_balance,
     estimate,
@@ -26,12 +26,14 @@ from erev_api.db.tables import (
     loss_provision_version,
     obligation,
 )
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.out_of_period_register import refuse_locked_source
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.explain import store
 from erev_api.uow import UnitOfWork
+from erev_engine.stages.s01_canonicalize import encode_key
+from erev_engine.trace import Trace
 
 CODE: Final = "loss_provision_register"
 MONEY: Final = (
@@ -133,13 +135,77 @@ def dataset_rows(found: Sequence[Mapping[str, Any]]) -> ReportData:
     )
 
 
-def sources(session: Session, params: ReportParams) -> list[dict[str, Any]]:
+FUNCTIONAL_FIELDS = {
+    "expected_consideration": "loss_expected_consideration_functional",
+    "expected_total_costs": "loss_expected_total_costs_functional",
+    "costs_to_date": "loss_costs_to_date_functional",
+    "revenue_to_date": "loss_revenue_to_date_functional",
+    "expected_margin": "expected_margin_functional",
+    "provision_balance": "loss_provision_required_functional",
+    "provision_movement": "provision_movement_functional",
+}
+REPORTING_KEY = "loss_register_reporting_v1"
+
+
+def project_functional(
+    row: Mapping[str, Any], trace: Trace | None, currency: str
+) -> dict[str, Any]:
+    if trace is None:
+        raise tie_outs.invalid("currency_view", "Functional loss test has no original trace.")
+    original_id = row["trace_nodes"]["loss_provision_required"]
+    tail = original_id.removeprefix("loss_provision_required:")
+    nodes = {n.id: n for n in trace.nodes}
+    original = nodes.get(original_id)
+    if original is None or Decimal(original.value) != Decimal(row["provision_balance"]):
+        raise tie_outs.invalid(
+            "currency_view", "Original loss provision differs from its stored test."
+        )
+    values = {}
+    for field, measure in FUNCTIONAL_FIELDS.items():
+        node = nodes.get(f"{measure}:{tail}")
+        if node is None or node.currency != currency or not Decimal(node.value).is_finite():
+            raise tie_outs.invalid(
+                "currency_view", "Original functional loss test is unavailable or inconsistent."
+            )
+        values[field] = Decimal(node.value)
+    return {
+        **row,
+        **values,
+        "currency": currency,
+        "functional_trace_node_id": f"loss_provision_required_functional:{tail}",
+    }
+
+
+def sources(
+    session: Session, params: ReportParams, *, tenant_id: UUID | None = None
+) -> list[dict[str, Any]]:
     refuse_locked_source(params)
     book = tie_outs.book_of(session, params)
     entities = tie_outs.entities(session, params.entity_ids, params=params)
     calendars = tie_outs.calendars(session, entities, params=params)
     periods = {e.id: tie_outs.period_of(params, calendars[e.id], e) for e in entities}
     functional = {e.id: e.functional_currency for e in entities}
+    translations = {}
+    view = str(params.parameters.get("currency_view", "transaction"))
+    if view == "reporting" and (params.binding is None or REPORTING_KEY in params.binding.evidence):
+        if params.binding is not None:
+            tenant_id = UUID(params.binding.evidence[REPORTING_KEY])
+        elif tenant_id is None and params.requester is not None:
+            tenant_id = params.requester.principal.tenant_id
+        if tenant_id is None:
+            raise tie_outs.invalid("currency_view", "Reporting loss tests require tenant context.")
+        tie_outs.record_evidence(params, REPORTING_KEY, str(tenant_id))
+        for entity in entities:
+            for kind in ("closing", "average"):
+                translations[(entity.id, kind)] = reporting_currency.rates_for_period(
+                    session,
+                    params,
+                    tenant_id=tenant_id,
+                    entities=(entity,),
+                    periods={entity.id: periods[entity.id]},
+                    rate_type=kind,
+                    evidence_key=f"loss_reporting_v1:{entity.id}:{periods[entity.id].key}:{kind}",
+                )
     cutoff = tie_outs.cutoff_for(session, params)
     balance = contract_version_balance.c
     owners = list(
@@ -257,18 +323,42 @@ def sources(session: Session, params: ReportParams) -> list[dict[str, Any]]:
             if not row["in_scope"]:
                 continue
             if (
+                view != "transaction"
+                and str(row["currency"]).strip() != functional[owner["entity_id"]]
+            ):
+                row = project_functional(
+                    row, traces[owner["contract_version_id"]], functional[owner["entity_id"]]
+                )
+            if (
                 params.parameters.get("only_with_provision", False)
                 and row["provision_balance"] == 0
             ):
                 continue
-            if (
-                params.parameters.get("currency_view", "transaction") != "transaction"
-                and str(row["currency"]).strip() != functional[owner["entity_id"]]
-            ):
-                raise tie_outs.invalid(
-                    "currency_view",
-                    "Choose transaction currency: functional loss tests are not stored.",
-                )
+            if translations:
+                row = {
+                    **row,
+                    "reporting_source": {
+                        "functional_currency": str(row["currency"]).strip(),
+                        "functional_provision": str(row["provision_balance"]),
+                        "rates": [
+                            translations[(owner["entity_id"], kind)].rates[owner["entity_id"]]
+                            for kind in ("closing", "average")
+                        ],
+                    },
+                }
+                row = {
+                    **row,
+                    **{
+                        field: translations[
+                            (
+                                owner["entity_id"],
+                                "average" if field == "provision_movement" else "closing",
+                            )
+                        ].amount(owner["entity_id"], Decimal(row[field]))
+                        for field in MONEY
+                    },
+                    "currency": translations[(owner["entity_id"], "closing")].currency,
+                }
             key = tie_outs.label_for(
                 params, "loss.obligation", row["obligation_id"], row["obligation_key"]
             )
@@ -284,7 +374,7 @@ def sources(session: Session, params: ReportParams) -> list[dict[str, Any]]:
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
-    return dataset_rows(sources(uow.session, params))
+    return dataset_rows(sources(uow.session, params, tenant_id=uow.principal.tenant_id))
 
 
 def cell(
@@ -297,13 +387,53 @@ def cell(
         row = dataset_rows([source]).rows[0]
         if row["row_key"] == row_key:
             value = tie_outs.money(Decimal(source[column_key]), str(source["currency"]).strip())
+            href = f"/api/v1/explain/loss_provision_version/{source['id']}/{column_key}"
+            if source.get("functional_trace_node_id"):
+                trace_id = session.execute(
+                    select(calc_trace.c.id).where(
+                        calc_trace.c.contract_version_id == source["contract_version_id"]
+                    )
+                ).scalar_one()
+                href = (
+                    f"/trace/{trace_id}?node={quote(source['functional_trace_node_id'], safe='')}"
+                )
+            details = []
+            if source.get("functional_trace_node_id"):
+                details.append(
+                    "Independent functional test: historical actual costs/revenue "
+                    "and assessment-date remaining forecasts."
+                )
+            if source.get("reporting_source"):
+                projection = source["reporting_source"]
+                details.append(
+                    f"Functional provision: {projection['functional_provision']} "
+                    f"{projection['functional_currency']}."
+                )
+                details.extend(
+                    f"Retained {rate['rate_type']} rate {rate['period_key']}: "
+                    f"{rate['base_currency']}/{rate['quote_currency']} at {rate['rate']}; "
+                    f"version {rate['version_id']}."
+                    for rate in projection["rates"]
+                )
             return value, [
                 {
                     "object_type": "loss_provision_version",
                     "id": source["id"],
                     "measure": column_key,
                     "value": value,
-                    "href": f"/api/v1/explain/loss_provision_version/{source['id']}/{column_key}",
+                    "href": href,
+                    **(
+                        {
+                            "_source_set_details": details,
+                            "_source_set_links": [
+                                {"label": "Original measured provision", "href": href}
+                            ],
+                            "_entity_id": str(source["entity_id"]),
+                            "_source_set_entity_ids": [str(source["entity_id"])],
+                        }
+                        if details
+                        else {}
+                    ),
                 }
             ]
     raise tie_outs.invalid("row_key", "The bound loss register has no such row.")

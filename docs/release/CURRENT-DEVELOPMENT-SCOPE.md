@@ -53,13 +53,20 @@ validation and presentation details.
   independent functional recoverability; IFRS reversals remain capped by the independently
   measured unimpaired carrying amount, while ASC606 does not reverse impairment.
 
+- Foreign return assets retain each delivery's original unit-cost estimate and FX rate.
+  Recovery costs use the assessment-date rate; actual releases follow the existing
+  FIFO/pro-rata policy. Later unit-cost estimates apply to later deliveries. Earlier
+  deliveries without a cost estimate use the earliest retained estimate available for them.
+- Foreign loss tests retain historical actual cost/revenue amounts and translate remaining
+  original forecasts at the assessment-date rate. Journals, member balances and functional
+  loss-register projections use that independent test. Reporting-currency snapshots use
+  retained closing rates, with the period movement at the retained average rate.
+
 ## Remaining engineering work and explicit limits
 
 - The original FX-layer allocation kernel conserves source/destination transaction totals and
   functional carrying, preserving original rate/source/age. Runtime split continuation and
   newly exposed gross-balance carry-forward still require completion.
-- Foreign return-asset and loss-provision measurements still require completion of their
-  separate historical/assessment-rate treatment rules.
 - Broader performing-agent calendars are not supported by the aligned-period implementation.
 - Unsupported acquisition methods, agent acquisition attribution and broader entity/group
   combinations remain outside the completed reporting lane.

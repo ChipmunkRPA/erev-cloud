@@ -759,6 +759,14 @@ NARRATIVES: Final[Mapping[str, str]] = MappingProxyType(
             "Signed sum of the foreign-currency differences to the end of {period} = {value}."
         ),
         # ENGINE_SPEC_B §12.5 remeasurement and monetary liabilities (END-2).
+        "fx.return_asset": (
+            "Return-asset carrying at {date:as_of} retains original delivery unit costs and "
+            "historical FX rates, less recovery costs at the assessment-date rate = {value}."
+        ),
+        "fx.loss_forecast": (
+            "Functional forecast at {date:as_of} retains historical actuals and converts "
+            "the remaining original forecast at the assessment-date rate = {value}."
+        ),
         "fx.cost_translate": (
             "Original cost amount translated using its retained direct exchange rate = {value}."
         ),

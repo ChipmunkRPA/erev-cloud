@@ -384,7 +384,7 @@ def part_targets(ctx: BookContext, st: FxState, inputs: PartInputs) -> tuple[Par
         *_refund_liabilities(ctx, inputs, st),
         *_receivable_contra(ctx, inputs),
         *_financing(ctx, inputs),
-        *_return_assets(ctx, inputs),
+        *_return_assets(ctx, inputs, st),
         *_remeasurement(ctx, st),
         *_reclass(ctx, st, inputs),
         *_invoices(ctx, st, inputs),
@@ -1259,7 +1259,9 @@ def _noncash(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
     return out
 
 
-def _return_assets(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
+def _return_assets(
+    ctx: BookContext, inputs: PartInputs, st: FxState | None = None
+) -> list[PartTarget]:
     """``JET-07c`` and ``JET-07d`` per returnable obligation (S10-R-16; CHK-029, CHK-060).
 
     JET-07d carries the cumulative derecognition into inventory; JET-07c carries the rest against
@@ -1280,9 +1282,29 @@ def _return_assets(ctx: BookContext, inputs: PartInputs) -> list[PartTarget]:
             raise ValueError(f"a return asset of {_key[1]} lacks its balance or derecognition")
         values: tuple[NodeInput, ...] = ((balance.node_id, 1), (derecognised.node_id, 1))
         amount = balance.value + derecognised.value
-        out.append(_plain(ctx, balance, "JET-07c", None, amount, values))
+        fx_release = next(
+            (
+                t
+                for t in (() if st is None else st.functional_targets)
+                if (t.entity, t.subject_key, t.period_key, t.measure)
+                == (*_key, RETURN_DERECOGNISED_MEASURE)
+            ),
+            None,
+        )
+        combined_fx = next(
+            (
+                t
+                for t in (() if st is None else st.functional_targets)
+                if (t.entity, t.subject_key, t.period_key, t.measure)
+                == (*_key, "return_asset_established_cum")
+            ),
+            None,
+        )
+        out.append(_plain(ctx, balance, "JET-07c", None, amount, values, fx=combined_fx))
         cited: tuple[NodeInput, ...] = ((derecognised.node_id, 1),)
-        out.append(_plain(ctx, derecognised, "JET-07d", None, derecognised.value, cited))
+        out.append(
+            _plain(ctx, derecognised, "JET-07d", None, derecognised.value, cited, fx=fx_release)
+        )
     return out
 
 

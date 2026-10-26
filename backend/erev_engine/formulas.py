@@ -3916,6 +3916,27 @@ def _fx_remeasure(formula_id: str) -> Formula:
     return formula
 
 
+def _fx_return_asset(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    quantities = _list(params, "quantities")
+    _require_arity(inputs, 3 + 3 * len(quantities), "fx.return_asset.v1")
+    recovery = inputs[0] * inputs[1]
+    amount = Fraction(0)
+    for index, raw in enumerate(quantities):
+        quantity = Fraction(raw)
+        cost, rate, delivered = inputs[2 + 3 * index : 5 + 3 * index]
+        if not 0 <= quantity <= delivered:
+            raise ValueError("Return asset quantity differs from original delivery")
+        amount += max(Fraction(0), cost * rate - recovery) * quantity
+    return amount
+
+
+def _fx_loss_forecast(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    """Historical actuals plus remaining original forecast at the assessment-date rate."""
+    _require_arity(inputs, 4, "fx.loss_forecast.v1")
+    mu = minor_unit_of(params)
+    return inputs[2] + Fraction(round_half_up((inputs[0] - inputs[1]) * inputs[3], mu), 10**mu)
+
+
 def _fx_cost_translate(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     """Original monetary input translated at its retained direct rate."""
     _require_arity(inputs, 2, "fx.cost_translate.v1")
@@ -4223,6 +4244,8 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "fx.remeasure.closing.v1": _fx_remeasure("fx.remeasure.closing.v1"),
         "fx.revenue_functional.v1": _fx_signed_sum("fx.revenue_functional.v1"),
         "fx.cost_translate.v1": _fx_cost_translate,
+        "fx.loss_forecast.v1": _fx_loss_forecast,
+        "fx.return_asset.v1": _fx_return_asset,
         "fx.cost_recoverable.v1": _fx_cost_recoverable,
         "fx.functional_member.v1": _fx_functional_member,
         "fx.settlement.spot.v1": _fx_settle("fx.settlement.spot.v1"),

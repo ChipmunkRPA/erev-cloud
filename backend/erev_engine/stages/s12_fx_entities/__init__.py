@@ -108,11 +108,13 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
     "fx.layer.consume.fifo.v1",
     "fx.layer.consume.pro_rata.v1",
     "fx.layer.create.v1",
+    "fx.loss_forecast.v1",
     "fx.monetary_liability.create.v1",
     "fx.monetary_liability.recognition_difference.v1",
     "fx.monetary_liability.remeasure.closing.v1",
     "fx.monetary_liability.settle.v1",
     "fx.remeasure.closing.v1",
+    "fx.return_asset.v1",
     "fx.revenue_functional.v1",
     "fx.settlement.spot.v1",
 )
@@ -281,6 +283,12 @@ def run(
         from .cost_assets import measure as cost_currency
 
         result_state = cost_currency(ctx, st, result_state, tb, rates=rates)
+    if ctx.functional_return_loss:
+        from .loss_provisions import measure as functional_losses
+        from .return_assets import measure as functional_return_assets
+
+        result_state = functional_losses(ctx, st, result_state, tb, rates=rates)
+        result_state = functional_return_assets(ctx, st, result_state, tb, rates=rates)
     if capture_cutover_evidence:
         from .cutover_evidence import capture
 

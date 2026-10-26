@@ -121,6 +121,17 @@ def functional_balance_columns(
             out.append(row)
             continue
         columns = dict(row.columns)
+        return_target = next(
+            (
+                t
+                for t in fx.functional_member_balances
+                if (t.subject_key, t.period_key, t.measure)
+                == (row.subject_key, row.period_key, "return_asset_functional")
+            ),
+            None,
+        )
+        if return_target is not None:
+            columns["return_asset_functional"] = return_target.value
         columns[_LIABILITY] = found
         for role, name in _PRESENTED.items():
             columns[name] = presented.get((row.subject_key, role, row.period_key), 0)
