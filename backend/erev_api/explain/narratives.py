@@ -759,6 +759,14 @@ NARRATIVES: Final[Mapping[str, str]] = MappingProxyType(
             "Signed sum of the foreign-currency differences to the end of {period} = {value}."
         ),
         # ENGINE_SPEC_B §12.5 remeasurement and monetary liabilities (END-2).
+        "fx.cost_translate": (
+            "Original cost amount translated using its retained direct exchange rate = {value}."
+        ),
+        "fx.cost_recoverable": (
+            "Functional recoverability at {date:as_of}: translate remaining consideration "
+            "and remaining direct costs at the retained assessment-date rate, "
+            "then subtract = {value}."
+        ),
         "fx.functional_member": (
             "Functional-currency balance of this contract and entity at the period end: {value}, "
             "from the entity's open layers and reclass shares."

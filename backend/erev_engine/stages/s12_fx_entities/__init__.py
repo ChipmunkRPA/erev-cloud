@@ -100,6 +100,8 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
     "ent.pair.v1",
     "ent.performing_revenue_rate.v1",
     "fx.asset_layer.create.v1",
+    "fx.cost_recoverable.v1",
+    "fx.cost_translate.v1",
     "fx.credit_memo_difference.v1",
     "fx.functional_member.v1",
     "fx.gain_loss.sum.v1",

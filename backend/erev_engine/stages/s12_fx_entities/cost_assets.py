@@ -3,7 +3,7 @@
 from collections import defaultdict
 from dataclasses import replace
 from fractions import Fraction
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from erev_engine.money import round_half_up
 from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
@@ -13,6 +13,8 @@ from erev_engine.stages.state import BookContext, Finding, RateIndex, Target
 from erev_engine.trace import TraceBuilder
 
 if TYPE_CHECKING:
+    from erev_engine.stages.s11_costs_loss import CostLossState
+
     from . import FxSource, FxState
 
 
@@ -30,7 +32,21 @@ def measure(
     functional = list(fx.functional_targets)
     findings = list(fx.findings)
     carrying: dict[tuple[str, str, str], list[FxTarget]] = defaultdict(list)
-    for spec in specs:
+    if ctx.independent_functional_costs:
+        from .cost_impairment import targets as independent_targets
+
+        measured, missing = independent_targets(ctx, cast("CostLossState", costs), trace, rates)
+        functional.extend(measured)
+        findings.extend(missing)
+        by_asset = {s.asset_key: s for s in specs}
+        for functional_target in measured:
+            if functional_target.measure == "carrying_amount":
+                spec = by_asset[functional_target.subject_key]
+                member = contract_entity_subject_key(spec.contract_key, spec.entity)
+                carrying[(spec.entity, member, functional_target.period_key)].append(
+                    functional_target
+                )
+    for spec in () if ctx.independent_functional_costs else specs:
         currency = ctx.entities[spec.entity].functional_currency
         if currency == ctx.txn_currency:
             continue

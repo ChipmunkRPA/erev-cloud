@@ -279,4 +279,4 @@ groups, agents and recomputed baselines remain open. See
   interval checks pass with scoped types/lint. No date reallocation or posting changes.
 - Snapshot checkpoint archived. No deployment.
 
-Oct 26: net agent commission and contractor supplier ownership implemented with retained report sources. See CURRENT-DEVELOPMENT-SCOPE. No deployment.
+Oct 26: independent functional cost impairment, capped reversals and carrying/journal reconciliation implemented. See CURRENT-DEVELOPMENT-SCOPE. No deployment.

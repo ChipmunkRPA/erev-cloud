@@ -3061,3 +3061,26 @@ requires aligned period dates; a different calendar must not silently shift inco
 period. Broader calendar support is not claimed. Local PostgreSQL is stopped; no deployment.
 Acquisition scenario admission has not been expanded. Acquisition reporting wrap-up, foreign
 splits and remaining foreign-cost measurements are still outstanding.
+
+
+### 2026-10-26 — Independent functional cost impairment and reversals
+
+Revision 67 reuses cost segmentation, amortisation, impairment and book-specific reversal
+controls with a separate functional monetary basis. Original capitalization remains historical.
+Remaining consideration and remaining direct costs are independently converted at the retained
+assessment-date spot rate before recoverability is tested; transaction impairment is not used
+as a translated proxy. Functional-only impairment can therefore post with zero transaction
+amount. IFRS reversals remain capped by independently measured unimpaired functional carrying;
+ASC606 does not reverse. Subsequent amortisation uses the resulting functional segments.
+
+Original per-asset transaction clawback allocations are replayed before historical conversion
+and capped by remaining functional carrying. Native member carrying nodes, journal amounts and
+existing report projections reconcile. The new recovery/conversion formulas have readable source
+explanations. Legacy revisions retain their original cost outputs.
+
+Thirty-three focused calculation, source, legacy and registry checks pass, including functional-
+only impairment, IFRS capped reversal, ASC606 non-reversal, historical clawback after impairment,
+trace replay, deterministic output and journal/report carrying ties. Scoped types/lint pass.
+Foreign return assets and loss provisions remain separate; their historical/assessment-rate
+choices have been asked explicitly. Acquisition reporting wrap-up and foreign splits remain
+outstanding. No deployment or full-system completion claim.

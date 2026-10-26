@@ -38,7 +38,7 @@ net of clawbacks and acceleration (L2-4-Q-38). Every value is a trace node of a 
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from fractions import Fraction
@@ -46,11 +46,11 @@ from types import MappingProxyType
 from typing import Final
 
 from erev_engine import money
-from erev_engine.stages import eac_scope
 from erev_engine.bundle import EstimateVersionInput, PeriodInput
 from erev_engine.enums import ScheduleKind, ScheduleLineType
 from erev_engine.errors import EngineError
 from erev_engine.formulas import rational_param
+from erev_engine.stages import eac_scope
 from erev_engine.stages.s10_billing_balances import BalanceState
 from erev_engine.stages.s11_costs_loss import amortise, capitalise
 from erev_engine.stages.s11_costs_loss.amortise import CostSegment, Revenue
@@ -132,7 +132,7 @@ class Measured:
 
 @dataclass(frozen=True, slots=True)
 class _Clawback:
-    ref: SourceRef  # the clawback event amount
+    ref: str | SourceRef  # the original or separately converted clawback amount
     carrying: int  # after amortisation through the clawback date
     taken_before: int  # taken from older capitalisations
     taken: int
@@ -179,6 +179,16 @@ class _Change:
 
 
 @dataclass(frozen=True, slots=True)
+class MonetaryBasis:
+    """Independent functional measurement while progress inputs stay in source currency."""
+
+    source_mu: int
+    revenue: Revenue
+    recoverable: Callable[[str, PeriodInput, int, int], tuple[int, str]]
+    clawback: Callable[[str, EventView], tuple[int, str]]
+
+
+@dataclass(frozen=True, slots=True)
 class _Context:
     """What every change and period-end test of one contract reads."""
 
@@ -192,6 +202,7 @@ class _Context:
     mu: int
     # ALG-11 calendar of straight-line amortisation: None (calendar months) for MONTHLY (C-04)
     time_calendar: tuple[PeriodInput, ...] | None = None
+    monetary_basis: MonetaryBasis | None = None
 
 
 @dataclass(slots=True)
@@ -303,7 +314,8 @@ def _run_off(
     g_v the related obligations' revenue progress since version v's effective date, (C_t − C_0) ÷
     (A_t − C_0) within [0, 1] and 1 when A_t = C_0, with C their posted revenue and A their posted
     allocation (S11-R-09 as amended by D-89 L7-6-Q-7; EX-11-A COST-CAP rows)."""
-    scale: int = 10**cx.mu
+    source_mu = cx.mu if cx.monetary_basis is None else cx.monetary_basis.source_mu
+    scale: int = 10**source_mu
     keys = [ob.subject_key for ob in related]
     earned = sum(cx.revenue.value(key, t) for key in keys)
     allocation = sum(cx.revenue.allocation(key, t) for key in keys)
@@ -315,8 +327,8 @@ def _run_off(
             g = Fraction(1)
         else:
             g = min(Fraction(1), max(Fraction(0), Fraction(earned - before, allocation - before)))
-        amount = _amount(version, cx.mu)
-        total += money.cumulative_posted(Fraction(amount, scale), amount, g, cx.mu)
+        amount = _amount(version, source_mu)
+        total += money.cumulative_posted(Fraction(amount, scale), amount, g, source_mu)
         progress.append(g)
     return total, tuple(progress)
 
@@ -423,8 +435,13 @@ def _claw_back(cx: _Context, assets: Sequence[_Asset], ev: EventView) -> None:
     taken = 0
     for asset in matching:
         carrying = _carrying(cx, asset, d)
-        take = min(max(0, amount - taken), carrying)
-        asset.clawbacks.append(_Clawback(ref, carrying, taken, take))
+        if cx.monetary_basis is None:
+            take = min(max(0, amount - taken), carrying)
+            asset.clawbacks.append(_Clawback(ref, carrying, taken, take))
+        else:
+            converted, converted_node = cx.monetary_basis.clawback(asset.spec.asset_key, ev)
+            take = min(converted, carrying)
+            asset.clawbacks.append(_Clawback(converted_node, carrying, 0, take))
         if take:
             asset.clawback += take
             asset.segments.append(
@@ -556,13 +573,16 @@ def _test(
     ]
     if min(carrying) < 0:
         raise _invariant("a carrying amount is negative", first.contract_key, rule="S11-INV-01")
-    consideration, source = _consideration(allocated, first.contract_key, related, t, mu)
+    source_mu = mu if cx.monetary_basis is None else cx.monetary_basis.source_mu
+    consideration, source = _consideration(allocated, first.contract_key, related, t, source_mu)
     renewal = capitalise.renewal_at(cx.versions, t)
-    eac, eac_versions = _eac(allocated, first.contract_key, related, t, mu)
+    eac, eac_versions = _eac(allocated, first.contract_key, related, t, source_mu)
     # D-89 L7-6-Q-7: progress costs when a PROGRESS_INPUT cost is effective by t, else run-off.
     extra: dict[str, str] = {}
     if capitalise.has_progress_input(allocated, first.contract_key, obligation_keys, t):
-        costs = capitalise.progress_costs(allocated, first.contract_key, obligation_keys, t, mu)
+        costs = capitalise.progress_costs(
+            allocated, first.contract_key, obligation_keys, t, source_mu
+        )
         extra["costs_basis"] = "progress"
     else:
         costs, progress = _run_off(cx, related, eac_versions, t)
@@ -572,31 +592,37 @@ def _test(
         target for ob in related if (target := cx.revenue.target(ob.subject_key, t)) is not None
     ]
     remaining_costs = 0 if eac is None else max(0, eac - costs)
-    recoverable = (
-        consideration - sum(target.value for target in earned) + _amount(renewal, mu)
-    ) - remaining_costs
-    recoverable_node = tb.node(
-        measure="cost_recoverable",
-        subject_key=group_key,
-        period_key=period.period_key,
-        value=recoverable,
-        currency=ctx.txn_currency,
-        minor_unit=mu,
-        formula_id=RECOVERABLE_FORMULA,
-        inputs=[target.node_id for target in earned],
-        params={
-            "as_of": t.isoformat(),
-            "consideration": str(consideration),
-            "consideration_source": source,
-            "costs": str(costs),
-            "eac": "none" if eac is None else str(eac),
-            "eac_versions": "|".join(version.version_key for version in eac_versions),
-            "renewal": str(_amount(renewal, mu)),
-            "renewal_version": "none" if renewal is None else renewal.version_key,
-            **extra,
-        },
-        narrative_key=_narrative(RECOVERABLE_FORMULA),
+    remaining_consideration = (
+        consideration - sum(target.value for target in earned) + _amount(renewal, source_mu)
     )
+    recoverable = remaining_consideration - remaining_costs
+    if cx.monetary_basis is not None:
+        recoverable, recoverable_node = cx.monetary_basis.recoverable(
+            group_key, period, remaining_consideration, remaining_costs
+        )
+    else:
+        recoverable_node = tb.node(
+            measure="cost_recoverable",
+            subject_key=group_key,
+            period_key=period.period_key,
+            value=recoverable,
+            currency=ctx.txn_currency,
+            minor_unit=mu,
+            formula_id=RECOVERABLE_FORMULA,
+            inputs=[target.node_id for target in earned],
+            params={
+                "as_of": t.isoformat(),
+                "consideration": str(consideration),
+                "consideration_source": source,
+                "costs": str(costs),
+                "eac": "none" if eac is None else str(eac),
+                "eac_versions": "|".join(version.version_key for version in eac_versions),
+                "renewal": str(_amount(renewal, mu)),
+                "renewal_version": "none" if renewal is None else renewal.version_key,
+                **extra,
+            },
+            narrative_key=_narrative(RECOVERABLE_FORMULA),
+        )
     if eac is None:
         for asset in live:
             if not asset.no_eac_reported:
@@ -893,6 +919,8 @@ def measure(
     specs: Sequence[CostAssetSpec],
     capitalised_nodes: Mapping[str, str],
     tb: TraceBuilder,
+    *,
+    monetary_basis: MonetaryBasis | None = None,
 ) -> Measured:
     """Segment events, amortisation, the period-end tests and T-CON-16 values of one contract's
     assets."""
@@ -908,7 +936,9 @@ def measure(
         ctx=ctx,
         allocated=allocated,
         by_key=MappingProxyType(by_key),
-        revenue=Revenue(ctx, st.recognition.revenue_targets, by_key),
+        revenue=Revenue(ctx, st.recognition.revenue_targets, by_key)
+        if monetary_basis is None
+        else monetary_basis.revenue,
         calendar=tuple(
             sorted(
                 ctx.entities[first.entity].periods,
@@ -919,6 +949,7 @@ def measure(
         capitalised_nodes=capitalised_nodes,
         mu=capitalise.minor_unit(ctx),
         time_calendar=_time_calendar(ctx, first.entity),
+        monetary_basis=monetary_basis,
     )
     assets = [
         _Asset(

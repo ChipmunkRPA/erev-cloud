@@ -3916,6 +3916,26 @@ def _fx_remeasure(formula_id: str) -> Formula:
     return formula
 
 
+def _fx_cost_translate(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    """Original monetary input translated at its retained direct rate."""
+    _require_arity(inputs, 2, "fx.cost_translate.v1")
+    return inputs[0] * inputs[1]
+
+
+def _fx_cost_recoverable(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    """Translate remaining consideration and costs before functional recoverability."""
+    _require_arity(inputs, 2, "fx.cost_recoverable.v1")
+    source_mu = int(_param(params, "source_minor_unit"))
+    remaining = Fraction(_minor(params, "remaining_consideration"), 10**source_mu)
+    costs = Fraction(_minor(params, "remaining_costs"), 10**source_mu)
+    if inputs[0] != remaining - costs:
+        raise ValueError("Functional recovery inputs differ from original source recoverability")
+    mu = minor_unit_of(params)
+    return Fraction(
+        round_half_up(remaining * inputs[1], mu) - round_half_up(costs * inputs[1], mu), 10**mu
+    )
+
+
 def _fx_functional_member(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     """``fx.functional_member.v1`` (T-CON-09 ``_functional`` columns of a foreign-currency entity
     per member and period; D-97 (8) T1F-Q-4): the functional amount stage 12 measured for the
@@ -4202,6 +4222,8 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "fx.monetary_liability.settle.v1": _fx_settle("fx.monetary_liability.settle.v1"),
         "fx.remeasure.closing.v1": _fx_remeasure("fx.remeasure.closing.v1"),
         "fx.revenue_functional.v1": _fx_signed_sum("fx.revenue_functional.v1"),
+        "fx.cost_translate.v1": _fx_cost_translate,
+        "fx.cost_recoverable.v1": _fx_cost_recoverable,
         "fx.functional_member.v1": _fx_functional_member,
         "fx.settlement.spot.v1": _fx_settle("fx.settlement.spot.v1"),
         "late.assign.v1": _late_assign,

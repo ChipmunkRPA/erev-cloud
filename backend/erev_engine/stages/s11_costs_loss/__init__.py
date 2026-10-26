@@ -26,8 +26,10 @@ from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
 from erev_engine.stages.s10_billing_balances import BalanceState
 from erev_engine.stages.s11_costs_loss import balances, capitalise, impair, loss
 from erev_engine.stages.s11_costs_loss.amortise import CostSegment
+from erev_engine.stages.s11_costs_loss.amortise import Revenue as CostRevenue
 from erev_engine.stages.s11_costs_loss.capitalise import CostAssetSpec, ExpensedCost
-from erev_engine.stages.s11_costs_loss.impair import CostAssetMeasures
+from erev_engine.stages.s11_costs_loss.impair import CostAssetMeasures, MonetaryBasis
+from erev_engine.stages.s11_costs_loss.impair import measure as measure_assets
 from erev_engine.stages.s11_costs_loss.loss import LossMeasures
 from erev_engine.stages.state import (
     AllocatedState,
@@ -45,6 +47,9 @@ __all__ = [
     "CostAssetSpec",
     "CostLossState",
     "CostSegment",
+    "CostRevenue",
+    "MonetaryBasis",
+    "measure_assets",
     "ExpensedCost",
     "LossMeasures",
     "run",
