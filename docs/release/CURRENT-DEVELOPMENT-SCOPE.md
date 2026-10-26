@@ -8,7 +8,7 @@ limits. It is not a certification of accounting compliance or a deployment appro
 The project implements revenue recognition for ASC606 and IFRS15. It includes contract and
 obligation management, transaction-price allocation, recognition schedules, supported contract
 modifications, variable consideration, journals, reports and source explanations. Use is subject
-to the repository's noncommercial license.
+to [Apache License 2.0](../../LICENSE), including commercial use and company self-hosting.
 
 Development completion targets the repository. Live deployment, promotion of migration data
 into actual business operations and independent accounting review are outside that scope.
@@ -90,3 +90,6 @@ validation and presentation details.
 Focused checks accompany functional changes. Successful checks establish the exercised
 behavior; they do not imply every possible contract scenario is supported. No deployment is
 part of repository completion.
+
+See [capacity and sizing](CAPACITY.md) for the synthetic benchmark profile and configurable
+resource constraints. The profile is not a contract-count limit or a measured throughput claim.

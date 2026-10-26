@@ -1,7 +1,7 @@
 # Project status
 
-This repository provides eRev Cloud revenue-recognition software for ASC606 and IFRS15,
-under its noncommercial license. Repository completion does not include deployment.
+This open-source repository provides eRev Cloud revenue-recognition software for ASC606 and IFRS15,
+under Apache License 2.0. Repository completion does not include deployment.
 
 ## Available functionality
 

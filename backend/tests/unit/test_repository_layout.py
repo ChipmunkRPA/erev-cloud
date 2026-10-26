@@ -140,13 +140,16 @@ def test_dg_lay_01_ignores_only_the_gitignored_cache_directories(tmp_path: Path)
         assert any(line.strip().lstrip("/").rstrip("/") == name for line in ignored), name
 
 
-def test_licence_is_noncommercial_with_required_notice() -> None:
+def test_licence_is_apache_2_with_notice() -> None:
     text = (ROOT / "LICENSE").read_text(encoding="utf-8")
-    assert text.startswith("# PolyForm Noncommercial License 1.0.0")
-    assert "## Noncommercial Purposes" in text
+    assert text.lstrip().startswith("Apache License")
+    assert "Version 2.0, January 2004" in text
+    assert "3. Grant of Patent License." in text
+    assert text == (ROOT / "frontend/public/licenses/LICENSE.txt").read_text(encoding="utf-8")
     notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
-    assert "Required Notice: Copyright (c) 2025-2026 ChipmunkRPA" in notice
-    assert "Licensed under the PolyForm Noncommercial License 1.0.0" in notice
+    assert "Copyright (c) 2025-2026 ChipmunkRPA" in notice
+    assert "Licensed under the Apache License, Version 2.0" in notice
+    assert notice == (ROOT / "frontend/public/licenses/NOTICE.txt").read_text(encoding="utf-8")
 
 
 def test_env_example_names_exact() -> None:

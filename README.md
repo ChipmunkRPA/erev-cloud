@@ -1,6 +1,6 @@
 # eRev Cloud
 
-eRev Cloud is a source-available, multi-tenant ASC 606 / IFRS 15 revenue subledger. It has a FastAPI and
+eRev Cloud is an open-source, multi-tenant ASC 606 / IFRS 15 revenue subledger. It has a FastAPI and
 PostgreSQL 17 backend, a pure Python revenue engine and a React 19 workbench, and it rebuilds the legacy
 desktop application eRev.
 
@@ -400,6 +400,15 @@ Full steps: [Audit log](docs/guides/illustrated-guide.md#audit-log).
 Full steps: [Settings and administration](docs/guides/illustrated-guide.md#settings-and-administration) and
 [Workspace structure, reference data and access](docs/guides/illustrated-guide.md#workspace-structure-reference-data-and-access).
 
+## Capacity and sizing
+
+The included performance workload is configured for **10,000 contracts, 50,000 performance
+obligations and 24 months**, across three entities and USD, GBP and EUR. Those are synthetic
+benchmark inputs, not application contract quotas or a verified maximum production capacity.
+No maximum annual revenue amount, throughput result or close-time guarantee has been established
+for this release. Real sizing depends on contract/event complexity, history, concurrent jobs and
+the deployed worker/database resources. See [capacity and sizing](docs/release/CAPACITY.md).
+
 ## Quick start
 
 Prerequisites: uv 0.11 or later with Python 3.12; Node.js 22 or later with npm; GNU Make; PostgreSQL 17 on
@@ -449,14 +458,15 @@ Every developer and gate target, the repository layout and the conventions are d
 
 ## Licence
 
-This public release is licensed under **PolyForm Noncommercial 1.0.0**. Use, modification and
-redistribution are permitted for the purposes specified in [LICENSE](LICENSE); commercial use is not
-granted. See [NOTICE](NOTICE) for the required copyright notice and third-party components, which keep
-their own licenses.
+This public release is licensed under **Apache License 2.0**, an OSI-approved open-source
+license. Commercial use, internal company deployment, modification and redistribution are
+permitted under its terms. See [LICENSE](LICENSE) and preserve the applicable copyright,
+license and [NOTICE](NOTICE) attributions when distributing the software. Third-party components
+retain their own licenses.
 
-Because it restricts commercial use, this is **source-available, not OSI open source**. This release does
-not revoke rights to copies previously received under MIT or other licenses. Historical design and
-review documents may describe the former MIT license; the LICENSE and NOTICE files govern this release.
+This replaces the earlier PolyForm Noncommercial release. Previously granted rights are not
+withdrawn. Dated design and review records may describe earlier licensing; the current LICENSE
+and NOTICE files govern this release.
 
 See [publication notes](docs/release/PUBLICATION-2026-10-05.md) for the source snapshot, excluded research
 material and verification scope.

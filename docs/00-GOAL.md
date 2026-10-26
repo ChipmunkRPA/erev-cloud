@@ -1,10 +1,10 @@
 # eRev Cloud: goal and completion scope
 
-Updated: October 24, 2026. Owner: Ray.
+Updated: October 26, 2026. Owner: Ray.
 
 ## Goal
 
-Finish the eRev Cloud repository as a publicly available, noncommercial ASC 606 / IFRS 15 revenue subledger with a usable workbench, deterministic accounting calculations, source-linked reports, and documented limitations. The repository uses the **PolyForm Noncommercial License 1.0.0** in [LICENSE](../LICENSE). Commercial use is prohibited; this is source-available software, not an MIT or OSI open-source license.
+Finish the eRev Cloud repository as an open-source ASC 606 / IFRS 15 revenue subledger with a usable workbench, deterministic accounting calculations, source-linked reports, and documented limitations. The repository uses **Apache License 2.0** in [LICENSE](../LICENSE), permitting commercial use, company self-hosting, modification and redistribution under its terms. This supersedes the earlier noncommercial licensing instruction.
 
 The owner's current instructions govern scope. [Current development scope](release/CURRENT-DEVELOPMENT-SCOPE.md) records accepted accounting choices and subsequent implementation checkpoints. [PROGRESS.md](../PROGRESS.md) summarizes delivery. Earlier requirements and decision records remain design references; historical completion claims do not establish current support.
 
@@ -31,4 +31,4 @@ Before declaring the repository complete, reconcile remaining gaps in the develo
 - No complete approval-control suite or sandbox lock-history reproduction.
 - No public research-harness or docs/research folders, or competitor website material in reports.
 - Deliver authorized changes directly to main; do not accumulate pull requests or development branches.
-- Preserve the noncommercial license, publication exclusions, tenant safety and secrets hygiene.
+- Preserve Apache License 2.0, publication exclusions, tenant safety and secrets hygiene.

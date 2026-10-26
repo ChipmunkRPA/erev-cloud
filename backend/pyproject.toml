@@ -2,7 +2,7 @@
 name = "erev-backend"
 version = "0.1.0"
 description = "eRev Cloud backend: API, worker, CLI and the pure revenue engine"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "Apache-2.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "alembic>=1.13",

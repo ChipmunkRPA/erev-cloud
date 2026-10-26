@@ -7,8 +7,10 @@ or accounting sign-off. The release remains the 1.0 release candidate described 
 
 ## Licensing
 
-The owner requested a public repository prohibiting commercial use. First-party software is offered
-under PolyForm Noncommercial 1.0.0, with matching Python/npm metadata, About dialog and bundled notices.
+At publication on October 5, the owner requested a public repository prohibiting commercial use,
+and first-party software was offered under PolyForm Noncommercial 1.0.0. On October 26, 2026, the
+owner changed the release to Apache License 2.0, permitting commercial use and company self-hosting.
+Current Python/npm metadata, the About dialog and bundled notices reflect Apache License 2.0.
 Third-party licenses are preserved. The license does not withdraw rights already granted for earlier
 MIT copies. Historical references to MIT and open source are retained as historical records.
 

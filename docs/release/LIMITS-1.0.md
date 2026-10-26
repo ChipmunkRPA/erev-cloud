@@ -2,7 +2,7 @@
 
 This is the public summary of the repository's current calculation and reporting boundaries.
 See [current scope](CURRENT-DEVELOPMENT-SCOPE.md) and [project status](../../PROGRESS.md).
-Use is subject to the repository's noncommercial license.
+Use is subject to Apache License 2.0.
 
 ## Completed reporting and currency work
 

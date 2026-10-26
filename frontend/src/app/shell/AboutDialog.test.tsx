@@ -44,7 +44,7 @@ describe("SF-27", () => {
     expect(engine.hasAttribute("data-volatile")).toBe(true);
     expect(
       within(dialog)
-        .getByRole("link", { name: "PolyForm Noncommercial licence" })
+        .getByRole("link", { name: "Apache 2.0 licence" })
         .getAttribute("href"),
     ).toBe("/licenses/LICENSE.txt");
     expect(

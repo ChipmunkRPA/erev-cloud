@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "eRev strict-IAP health probe: Cloud Monitoring synthetic monitor runner that calls the IAP-protected /api/v1/healthz with a short-lived service-account JWT (lane P3c; 05 DPL-37).",
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "Apache-2.0",
   "main": "index.js",
   "engines": {
     "node": ">=20"

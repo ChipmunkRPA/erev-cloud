@@ -7275,7 +7275,7 @@
   "shell.about.byline": "by Chipmunk Robotics",
   "shell.about.copyright": "Copyright (c) 2025-2026 ChipmunkRPA",
   "shell.about.engine": "Engine {version} · build {build} · schema {schema}",
-  "shell.about.licence": "PolyForm Noncommercial licence",
+  "shell.about.licence": "Apache 2.0 licence",
   "shell.about.notices": "Third-party notices",
   "shell.about.releaseRegion": "engine release",
   "shell.about.releaseUnavailable": "Engine release unavailable",
