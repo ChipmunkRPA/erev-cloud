@@ -40,6 +40,7 @@ def app(committed_db, app_settings, clock):
         (False, False, True, True, "complete"),
         (False, False, True, True, "foreign"),
         (False, False, True, True, "group"),
+        (False, False, False, False, "mixed"),
         (False, True, True, True, "foreign"),
     ],
 )
@@ -189,13 +190,49 @@ def test_acquired_opening_report_retains_original_foreign_currency_sources(
             ],
         )
 
-    append_acquisition(UUID(str(acquired.contract["id"])))
+    if untraced != "mixed":
+        append_acquisition(UUID(str(acquired.contract["id"])))
     second = None
-    if untraced == "group":
+    if untraced in {"group", "mixed"}:
         second = booked_contract(
             world.place, {**acquired_body, "external_id": "ACQUIRED-SECOND"}, activate=True
         )
-        append_acquisition(UUID(str(second.contract["id"])))
+        if untraced == "group":
+            append_acquisition(UUID(str(second.contract["id"])))
+    if untraced == "mixed":
+        from support.reference import approve
+
+        worlds.approved_manual_events(
+            world.place,
+            world.priya,
+            UUID(str(second.contract["id"])),
+            {
+                "event_type": "DELIVERY_RECORDED",
+                "effective_date": "2026-08-31",
+                "payload": {"obligation_key": "O1", "quantity": "100", "trigger": "DELIVERY"},
+            },
+            evidence_file_ids=[],
+        )
+        append_acquisition(UUID(str(acquired.contract["id"])))
+        proposal = post(
+            app,
+            "/api/v1/combination-groups",
+            world.maya,
+            {
+                "contract_ids": [str(acquired.contract["id"]), str(second.contract["id"])],
+                "criterion": "606-10-25-9(b)",
+                "rationale": "Existing supported mixed package reporting.",
+            },
+        )
+        assert proposal.status_code == 201, proposal.text
+        group_id = UUID(proposal.json()["id"])
+        submitted = post(app, f"/api/v1/combination-groups/{group_id}/submit", world.maya, {})
+        assert submitted.status_code == 200, submitted.text
+        approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+        assert approved.status_code == 200, approved.text
+        computed(world.place, group_id)
+        _mixed_group_reports(worlds.on_record_clock(world, clock))
+        return
     if closed_source:
         # Retained legacy calculation fixture: the native input excludes the cutover
         # from its posting horizon. This is not a test of creating an actual lock.
@@ -780,3 +817,82 @@ def _closed_group_reports(world, snapshots):
                 assert explanation.status_code == 200, explanation.text
                 assert explanation.json()["value"] == original["value"]
                 assert explanation.json()["contributors"] == original["contributors"]
+
+
+def _mixed_group_reports(world):
+    from decimal import Decimal
+
+    for view in ("transaction", "functional", "reporting"):
+        run, rows = _settled_report(
+            world,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [worlds.AVM_US],
+                "book": "ASC606",
+                "currency_view": view,
+                "balance_role": "CONTRACT_LIABILITY",
+                "from_period_key": "FY2026-P08",
+                "to_period_key": "FY2026-P08",
+            },
+        )
+        groups = [
+            row
+            for row in rows
+            if (row.get("attribution_scope") or "").startswith("Group movements")
+        ]
+        assert len(groups) == 1
+        group = groups[0]
+        assert (
+            "ACQUIRED-EUR" in group["group_members"] and "ACQUIRED-SECOND" in group["group_members"]
+        )
+        members = [r for r in rows if r["row_key"].startswith("member-endpoints:")]
+        assert len(members) == 2
+        assert all(r["business_combinations"] is None and r["billings"] is None for r in members)
+        assert all(Decimal(row["other"]["amount"]) == 0 for row in rows if row["section"] == 2)
+        checks = {check["code"]: check["result"] for check in run["tie_out_results"]}
+        assert checks["TO_ROLLFORWARD_BALANCES"] == checks["TO_BALANCES_EQ_ROLLFORWARD"] == "PASS"
+        explanation = get(
+            world.app,
+            f"/api/v1/explain/report-runs/{run['id']}/cell",
+            world.maya,
+            params={"row_key": group["row_key"], "column_key": "business_combinations"},
+        )
+        assert explanation.status_code == 200, explanation.text
+        body = explanation.json()
+        assert body["value"] == group["business_combinations"]
+        assert "Complete members" in str(body)
+        assert "ACQUIRED-EUR" in str(body) and "ACQUIRED-SECOND" in str(body)
+        repeated = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+        assert repeated.status_code == 202, repeated.text
+        again = worlds.run_now(world, UUID(repeated.json()["id"]))
+        assert again["state"] == "SUCCEEDED", again
+        rerun_id = repeated.headers[worlds.REPORT_RUN_ID_HEADER]
+        retained = get(world.app, f"/api/v1/report-runs/{rerun_id}", world.maya)
+        assert retained.json()["output"]["sha256"] == run["output"]["sha256"]
+        explanation_again = get(
+            world.app,
+            f"/api/v1/explain/report-runs/{rerun_id}/cell",
+            world.maya,
+            params={"row_key": group["row_key"], "column_key": "business_combinations"},
+        )
+        assert explanation_again.status_code == 200, explanation_again.text
+        assert explanation_again.json()["contributors"] == body["contributors"]
+
+    partial = post(
+        world.app,
+        "/api/v1/report-runs",
+        world.maya,
+        {
+            "report_code": "contract_balance_rollforward",
+            "output_format": "JSON",
+            "parameters": {
+                "entity_codes": [worlds.AVM_US],
+                "book": "ASC606",
+                "currency_view": "transaction",
+                "from_period_key": "FY2026-P08",
+                "to_period_key": "FY2026-P08",
+                "contract_external_id": "ACQUIRED-SECOND",
+            },
+        },
+    )
+    assert partial.status_code == 422 and "not a parameter" in partial.text, partial.text

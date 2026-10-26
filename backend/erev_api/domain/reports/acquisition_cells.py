@@ -55,6 +55,16 @@ def retain(
         row_key = f"contract:{item.external_id}:{item.entity_code}"
         sources[row_key] = {
             "contract_id": str(item.contract_id),
+            **(
+                {
+                    "group_members": [
+                        {"contract_id": str(m.contract_id), "external_id": m.external_id}
+                        for m in item.group_members
+                    ]
+                }
+                if item.group_members
+                else {}
+            ),
             "entity_id": str(item.entity_id),
             "currency": item.currency,
             "values": {
@@ -125,6 +135,18 @@ def cell(
                 "href": f"/contracts/{source['contract_id']}/history",
             }
         ]
+        if source.get("group_members"):
+            details = [
+                "Original signed acquisition group change; member movements are unallocated.",
+                "Complete members: " + ", ".join(m["external_id"] for m in source["group_members"]),
+            ]
+            links = [
+                {
+                    "label": f"Original member history · {m['external_id']}",
+                    "href": f"/contracts/{m['contract_id']}/history",
+                }
+                for m in source["group_members"]
+            ]
         for identity, original in sorted(source["original"].items()):
             version, _, _, period = identity.split(":")
             details.extend(

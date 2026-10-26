@@ -11,9 +11,9 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Text, cast, select
 
-from erev_api.db.tables import contract_event
+from erev_api.db.tables import contract_computation, contract_event, contract_version
 from erev_api.domain.reports import acquisition_evidence, acquisition_native, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import Entry, Flow
@@ -35,6 +35,7 @@ def read(
     book: str,
     *,
     functional: bool,
+    groups: dict[UUID, Any] | None = None,
 ) -> dict[tuple[UUID, UUID], list[Entry]]:
     if params.binding is not None and KEY not in params.binding.evidence:
         return {}  # Historical runs retain their original interpretation.
@@ -43,20 +44,55 @@ def read(
     admitted_methods = {"OPENING_BALANCES_AT_CUTOVER"}
     if allow_recomputed:
         admitted_methods.add("RECOMPUTE_FROM_INCEPTION")
+    from .acquisition_groups import KEY as GROUP_KEY
+
+    allow_groups = groups is not None and (
+        params.binding is None or GROUP_KEY in params.binding.evidence
+    )
+    acquisition_contracts = select(contract_event.c.contract_id).where(
+        contract_event.c.event_type == "OPENING_BALANCE_ESTABLISHED",
+        contract_event.c.payload["reason"].astext == "BUSINESS_COMBINATION",
+    )
     candidates = set(
         uow.session.execute(
-            select(contract_event.c.contract_id).where(
-                contract_event.c.contract_id.in_([key[0] for key in rows]),
-                contract_event.c.event_type == "OPENING_BALANCE_ESTABLISHED",
-                contract_event.c.payload["reason"].astext == "BUSINESS_COMBINATION",
-            )
+            acquisition_contracts.where(contract_event.c.contract_id.in_([key[0] for key in rows]))
         ).scalars()
     )
+    group_versions = set()
+    if allow_groups:
+        # Original stream heads bind even closed computations without persisted
+        # member balance rows. This is a candidate filter; files prove membership.
+        acquisition_exists = (
+            select(contract_event.c.id)
+            .where(
+                contract_event.c.event_type == "OPENING_BALANCE_ESTABLISHED",
+                contract_event.c.payload["reason"].astext == "BUSINESS_COMBINATION",
+                contract_computation.c.stream_heads.has_key(
+                    cast(contract_event.c.contract_id, Text)
+                ),
+            )
+            .exists()
+        )
+        group_versions = set(
+            uow.session.execute(
+                select(contract_version.c.id)
+                .select_from(
+                    contract_version.join(
+                        contract_computation,
+                        contract_computation.c.id == contract_version.c.contract_computation_id,
+                    )
+                )
+                .where(
+                    contract_version.c.id.in_([r.version_id for r in rows.values()]),
+                    acquisition_exists,
+                )
+            ).scalars()
+        )
     captured: dict[str, Any] = {}
     result: dict[tuple[UUID, UUID], list[Entry]] = {}
     cached = {}
     for key, row in rows.items():
-        if row.contract_id not in candidates:
+        if row.contract_id not in candidates and row.version_id not in group_versions:
             continue
         selected_periods = periods.get(row.entity_id, ())
         if not selected_periods:
@@ -66,24 +102,40 @@ def read(
         bundle, output, source = cached[row.version_id]
         original_book = next(b for b in bundle.books if b.book_code == book)
         voided = {e.supersedes_event_key for e in bundle.events if e.event_type == "EVENT_VOIDED"}
-        method = PolicyResolver(original_book.policies).resolved(
-            "onboarding.method", contract=row.external_id
-        )
-        if method.value not in admitted_methods:
-            continue
         openings = [
             event
             for event in bundle.events
-            if event.contract_key == row.external_id
-            and event.event_key not in voided
+            if event.event_key not in voided
             and event.event_type == "OPENING_BALANCE_ESTABLISHED"
             and event.payload.get("reason") == "BUSINESS_COMBINATION"
         ]
+        own_openings = [e for e in openings if e.contract_key == row.external_id]
+        if own_openings:
+            openings = own_openings
+        else:
+            # An ordinary member cannot show a standalone movement allocation for
+            # a mixed group. Choose its group's acquisition inside this range.
+            openings = [
+                e
+                for e in openings
+                if any(
+                    p.start <= date.fromisoformat(str(e.payload["cutover_date"])) <= p.end
+                    for p in selected_periods
+                )
+            ]
+            openings = sorted(
+                openings, key=lambda e: (e.effective_date, e.record_seq, e.event_key)
+            )[:1]
         if not openings:
             continue
         if len(openings) != 1:
             raise tie_outs.invalid("currency_view", "Acquisition opening source is ambiguous.")
         event = openings[0]
+        method = PolicyResolver(original_book.policies).resolved(
+            "onboarding.method", contract=event.contract_key
+        )
+        if method.value not in admitted_methods:
+            continue
         cutover = date.fromisoformat(str(event.payload["cutover_date"]))
         period = next((p for p in selected_periods if p.start <= cutover <= p.end), None)
         if period is None:
@@ -106,7 +158,8 @@ def read(
             and e.payload.get("reason") == "BUSINESS_COMBINATION"
             and e.payload.get("cutover_date") == cutover.isoformat()
         }
-        if acquired_members != set(bundle.group.member_contract_keys) or any(
+        mixed = acquired_members != set(bundle.group.member_contract_keys)
+        if any(
             PolicyResolver(original_book.policies)
             .resolved("onboarding.method", contract=member)
             .value
@@ -117,6 +170,33 @@ def read(
                 "currency_view",
                 "Mixed acquired and existing group members require explicit attribution.",
             )
+        if mixed:
+            from . import acquisition_groups
+
+            if groups is None or (
+                params.binding is not None and acquisition_groups.KEY not in params.binding.evidence
+            ):
+                raise tie_outs.invalid(
+                    "currency_view",
+                    "Mixed acquisition requires original group presentation evidence.",
+                )
+            group = acquisition_groups.collect(
+                uow,
+                rows,
+                bundle,
+                output,
+                source,
+                book=book,
+                entity_id=row.entity_id,
+                entity_code=row.entity_code,
+                periods=selected_periods,
+                functional=functional,
+            )
+            if group.id in groups and groups[group.id] != group:
+                raise tie_outs.invalid("currency_view", "Mixed acquisition group sources differ.")
+            groups[group.id] = group
+            captured.update(group.facts)
+            continue
         original_output = next(b for b in output["books"] if b["book_code"] == book)
         nodes = {n["id"]: n for n in original_output["trace"]["nodes"]}
         prefix = f"opening_revenue_cum@{event.event_key}:"
@@ -251,6 +331,18 @@ def read(
                 period_id=period.id,
             )
         ]
+    if groups is not None:
+        group_evidence = {str(key): value.evidence for key, value in sorted(groups.items())}
+        if (
+            params.binding is not None
+            and GROUP_KEY in params.binding.evidence
+            and params.binding.evidence[GROUP_KEY] != group_evidence
+        ):
+            raise tie_outs.invalid(
+                "currency_view", "Retained mixed acquisition group evidence differs."
+            )
+        if params.binding is None or GROUP_KEY in params.binding.evidence:
+            tie_outs.record_evidence(params, GROUP_KEY, group_evidence)
     if params.binding is not None and params.binding.evidence[KEY] != captured:
         raise tie_outs.invalid("currency_view", "Retained acquisition sources differ.")
     tie_outs.record_evidence(params, KEY, captured)

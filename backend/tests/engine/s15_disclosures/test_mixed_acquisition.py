@@ -608,3 +608,198 @@ def test_acquired_current_assets_follow_original_member_maturity(mode, foreign):
             assert values["contract_asset_current"] == (
                 0 if long_lived else values["contract_asset"]
             )
+
+
+@pytest.mark.parametrize("functional", [False, True])
+@pytest.mark.parametrize("invoice_day", [date(2025, 12, 30), w.CUTOVER])
+@pytest.mark.parametrize("billed", ["240000", "0"])
+def test_public_group_projection_preserves_native_movements(
+    monkeypatch, functional, invoice_day, billed
+):
+    import json
+    from datetime import timedelta
+    from uuid import UUID
+
+    from erev_api.domain.reports import acquisition_groups as groups
+    from erev_api.domain.reports import tie_outs
+    from erev_api.domain.reports.builders.contract_balance_rollforward import (
+        balances_equal_tie,
+        balances_tie,
+    )
+    from erev_api.problems import Problem
+    from erev_engine.canonical import canonical_bytes
+    from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
+
+    value = replace(
+        foreign_value(mixed_value(invoice_day, billed, "FIFO_WITHIN_CONTRACT")),
+        evidence_revision=67,
+    )
+    output = compute(value)
+    encoded = json.loads(canonical_bytes(output))
+    original = output.books[0]
+    entity_id = UUID(int=1)
+    currency = "EUR" if functional else "USD"
+    view = "FUNCTIONAL" if functional else "TRANSACTION"
+    native = sorted(
+        (r for r in original.disclosure_rollforwards if r.view == view),
+        key=lambda r: r.closing_date,
+    )
+    periods = tuple(
+        tie_outs.PeriodRef(
+            UUID(int=100 + i),
+            r.period_key,
+            r.period_key,
+            r.closing_date.year,
+            r.closing_date.month,
+            4,
+            r.opening_date + timedelta(days=1),
+            r.closing_date,
+        )
+        for i, r in enumerate(native)
+    )
+    nodes = {n.id: n for n in original.trace.nodes}
+
+    def endpoints(period):
+        result = []
+        for i, member in enumerate(sorted(value.group.member_contract_keys)):
+            subject = contract_entity_subject_key(member, w.ENTITY)
+            suffix = "_functional" if functional else ""
+            result.append(
+                tie_outs.BalanceRow(
+                    UUID(int=10 + i),
+                    member,
+                    None,
+                    entity_id,
+                    w.ENTITY,
+                    currency,
+                    UUID(int=20 + i),
+                    {
+                        role: Decimal(nodes[f"{role}{suffix}:{subject}:{period.key}"].value)
+                        for role in tie_outs.ROLLFORWARD_BALANCES
+                    },
+                )
+            )
+        return tuple(result)
+
+    closing = endpoints(periods[-1])
+    rows = {(r.contract_id, r.entity_id): r for r in closing}
+    source = {"input_sha256": value.sha256(), "output_sha256": "authenticated-original-output"}
+    monkeypatch.setattr(groups.acquisition_evidence, "load", lambda *_: (value, encoded, source))
+    group = groups.collect(
+        None,
+        rows,
+        value,
+        encoded,
+        source,
+        book="ASC606",
+        entity_id=entity_id,
+        entity_code=w.ENTITY,
+        periods=periods,
+        functional=functional,
+    )
+    monthly = {
+        (entity_id, period.id): {(r.contract_id, r.entity_id): r for r in endpoints(period)}
+        for period in periods
+    }
+    before = json.loads(canonical_bytes(encoded))
+    item = groups.project(group, opening=(), closing=closing, monthly=monthly)
+    assert len(item.group_members) == 2
+    assert {m.contract_id for m in item.group_members} == {r.contract_id for r in closing}
+    assert item.lines["OTHER"] == dict.fromkeys(tie_outs.ROLLFORWARD_BALANCES, Decimal(0))
+    assert balances_tie({currency: item.lines}, (item,))["result"] == "PASS"
+    assert balances_equal_tie(closing, (item,))["result"] == "PASS"
+    for period, row in zip(periods, native, strict=True):
+        assert item.period_lines[period.id]["BUSINESS_COMBINATIONS"] == {
+            role.lower(): Decimal(lines["BUSINESS_COMBINATIONS"]) / 100
+            for role, lines in row.lines.items()
+        }
+    if invoice_day == w.CUTOVER and billed == "240000":
+        from datetime import UTC, datetime
+        from types import SimpleNamespace
+
+        from erev_api.domain.reports import acquisition_cells, acquisition_flows
+        from erev_api.domain.reports.builders import ReportParams, SourceBinding, SourceCollector
+
+        collector = SourceCollector()
+        collector.record_evidence(acquisition_flows.KEY, group.facts)
+        params = ReportParams(
+            "contract_balance_rollforward",
+            1,
+            {},
+            (entity_id,),
+            datetime.now(UTC),
+            sources=collector,
+        )
+        row_key = f"contract:{item.external_id}:{item.entity_code}"
+        amount = tie_outs.money(item.lines["BUSINESS_COMBINATIONS"]["contract_asset"], currency)
+        assert Decimal(amount["amount"]) < 0
+        acquisition_cells.retain(
+            params,
+            (item,),
+            ({"row_key": row_key, "business_combinations": amount},),
+            "contract_asset",
+            [],
+        )
+        held = replace(
+            params,
+            binding=SourceBinding(
+                params.known_at, {}, {}, frozenset(), evidence=collector.evidence
+            ),
+        )
+        session = SimpleNamespace(
+            execute=lambda _: [(UUID(key.split(":")[0]), UUID(int=200)) for key in group.facts]
+        )
+        cell_value, contributors = acquisition_cells.cell(
+            session, held, row_key, "business_combinations"
+        )
+        assert cell_value == amount and sum(Decimal(c["value"]["amount"]) for c in contributors) < 0
+        assert all(len(c["_source_set_links"]) >= 2 for c in contributors)
+        assert "Complete members" in str(contributors)
+    assert encoded == before
+    # Source identities retain each independently bound member version; no per-member flow quota.
+    assert len(group.evidence["member_versions"]) == 2
+    assert all(len(fact["group_members"]) == 2 for fact in group.facts.values())
+    with pytest.raises(Problem):
+        groups.collect(
+            None,
+            {next(iter(rows)): next(iter(rows.values()))},
+            value,
+            encoded,
+            source,
+            book="ASC606",
+            entity_id=entity_id,
+            entity_code=w.ENTITY,
+            periods=periods,
+            functional=functional,
+        )
+    bad_closing = (
+        replace(closing[0], values={**closing[0].values, "contract_liability": Decimal(1)}),
+        closing[1],
+    )
+    if bad_closing != closing:
+        with pytest.raises(Problem):
+            groups.project(group, opening=(), closing=bad_closing, monthly={})
+
+
+def test_mixed_monthly_retention_does_not_change_calculations():
+    value = foreign_value(mixed_value(w.CUTOVER, "240000", "FIFO_WITHIN_CONTRACT"))
+    prior = compute(replace(value, evidence_revision=67)).books[0]
+    current = compute(replace(value, evidence_revision=68)).books[0]
+    assert current.posting_intents == prior.posting_intents
+    assert current.fx_layer_movements == prior.fx_layer_movements
+    assert current.schedules == prior.schedules
+    assert current.balances == prior.balances
+    assert current.trace == prior.trace
+    previous = {(r.entity, r.period_key, r.view): r for r in prior.disclosure_rollforwards}
+    assert previous
+    assert all(
+        r == previous[(r.entity, r.period_key, r.view)]
+        for r in current.disclosure_rollforwards
+        if (r.entity, r.period_key, r.view) in previous
+    )
+    cutover = [r for r in current.disclosure_rollforwards if r.period_key == "FY2025-P12"]
+    assert len(cutover) == 2 and all(r.acquisition_sources for r in cutover)
+    for row in current.disclosure_rollforwards:
+        for lines in row.lines.values():
+            assert lines["OTHER"] == 0
+            assert lines["CLOSING"] == sum(v for k, v in lines.items() if k != "CLOSING")

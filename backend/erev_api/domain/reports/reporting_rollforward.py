@@ -12,15 +12,15 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
+from erev_api.domain.reports import reporting_currency, tie_outs
+from erev_api.domain.reports.builders import ReportParams
 from erev_engine.bundle import FxRateInput, PeriodInput
 from erev_engine.currencies import ISO_4217
 from erev_engine.money import decimal_to_minor, minor_to_decimal
 from erev_engine.stages.s12_fx_entities import FunctionalLine, translate_to_reporting
 from erev_engine.stages.state import RateIndex
-from sqlalchemy.orm import Session
-
-from erev_api.domain.reports import reporting_currency, tie_outs
-from erev_api.domain.reports.builders import ReportParams
 
 if TYPE_CHECKING:
     from erev_api.domain.reports.builders.contract_balance_rollforward import ContractRollforward
@@ -138,5 +138,24 @@ def project(
                         line.amount_reporting, tie_outs.minor_unit(target)
                     )
             prior = period
-        result.append(replace(item, currency=target, lines=totals))
+        members = []
+        for member in item.group_members:
+            member_lines = {code: dict(values) for code, values in member.lines.items()}
+            for code, endpoint in (
+                ("OPENING", before[item.entity_id]),
+                ("CLOSING", selected_periods[-1]),
+            ):
+                if endpoint is None:
+                    if any(member_lines[code].values()):
+                        raise tie_outs.invalid(
+                            "currency_view", "Member opening lacks a preceding rate."
+                        )
+                    continue
+                selected = rates[(item.entity_id, endpoint.id, "closing")]
+                member_lines[code] = {
+                    balance: selected.amount(item.entity_id, value)
+                    for balance, value in member_lines[code].items()
+                }
+            members.append(replace(member, currency=target, lines=member_lines))
+        result.append(replace(item, currency=target, lines=totals, group_members=tuple(members)))
     return tuple(result), evidence

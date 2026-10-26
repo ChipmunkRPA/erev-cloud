@@ -176,6 +176,7 @@ def run(
     acquisition_functional_cutover: bool = False,
     acquisition_intercompany_sources: bool = False,
     capture_acquisition_sources: bool = False,
+    capture_mixed_history: bool = False,
     mixed_acquisition_functional: bool = False,
     mixed_acquisition_rollforward: bool = False,
     mixed_acquisition_closing: bool = False,
@@ -257,15 +258,32 @@ def run(
             records = replace(records, attribution=attribution)
         for entity in entities:
             key = rpo.period_of(ctx, entity, found.as_of)
-            balance_rows.append(
-                balances_rollforward.rollforward_balances(ctx, allocated, records, entity, key)
-            )
-            if ctx.entities[entity].functional_currency != ctx.txn_currency:
+            keys = [key]
+            if capture_mixed_history:
+                from .mixed_acquisition import is_mixed
+
+                own = tuple(ob for ob in allocated.obligations if ob.contracting_entity == entity)
+                if is_mixed(own):
+                    # Retain the existing renderer's monthly results. No new cutover
+                    # admission, posting calculation or retrospective input rewrite.
+                    last = next(p for p in ctx.entities[entity].periods if p.period_key == key)
+                    keys = [
+                        p.period_key
+                        for p in ctx.entities[entity].periods
+                        if p.end_date >= allocated.inception_date and p.end_date <= last.end_date
+                    ]
+            for period_key in keys:
                 balance_rows.append(
                     balances_rollforward.rollforward_balances(
-                        ctx, allocated, records, entity, key, view=FUNCTIONAL
+                        ctx, allocated, records, entity, period_key
                     )
                 )
+                if ctx.entities[entity].functional_currency != ctx.txn_currency:
+                    balance_rows.append(
+                        balances_rollforward.rollforward_balances(
+                            ctx, allocated, records, entity, period_key, view=FUNCTIONAL
+                        )
+                    )
     if frozen_openings:
         from .frozen_opening import apply
 

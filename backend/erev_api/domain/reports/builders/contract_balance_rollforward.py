@@ -247,6 +247,7 @@ class ContractRollforward:
     currency: str
     lines: Mapping[str, Mapping[str, Decimal]]
     period_lines: Mapping[UUID, Lines] = field(default_factory=dict)
+    group_members: tuple[ContractRollforward, ...] = ()
 
 
 def path(
@@ -435,6 +436,22 @@ def rollforwards(
     transaction_ends = {
         (row.contract_id, row.entity_id): row for row in (*opening_rows, *closing_rows)
     }
+    acquisitions: dict[tuple[UUID, UUID], list[Entry]] = {}
+    native_groups: dict[UUID, Any] = {}
+    if documents and uow is not None:
+        from ..acquisition_flows import read as acquisition_flows
+
+        acquisitions = acquisition_flows(
+            uow,
+            params,
+            transaction_ends,
+            periods,
+            book_code,
+            functional=functional,
+            groups=native_groups,
+        )
+    group_keys = frozenset(key for group in native_groups.values() for key in group.keys)
+    transaction_ends = {key: row for key, row in transaction_ends.items() if key not in group_keys}
     if functional:
         entities = tie_outs.entities(session, entity_ids, params=params)
         opening_rows = functional_balances.read(
@@ -506,6 +523,7 @@ def rollforwards(
         params=params,
         functional=functional,
     )
+    posted = {key: entries for key, entries in posted.items() if key not in group_keys}
     member_transfers: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     opening_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
     liability_relief: dict[tuple[UUID, UUID, UUID], Decimal] = {}
@@ -612,15 +630,10 @@ def rollforwards(
             asset_transfers[transfer_key] = asset_transfers.get(transfer_key, ZERO) + amount
         for transfer_key, amount in revenue_sources.items():
             member_transfers[transfer_key] = member_transfers.get(transfer_key, ZERO) + amount
-    acquisitions: dict[tuple[UUID, UUID], list[Entry]] = {}
-    if documents and uow is not None:
-        from ..acquisition_flows import read as acquisition_flows
-
-        acquisitions = acquisition_flows(
-            uow, params, transaction_ends, periods, book_code, functional=functional
-        )
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
+        if (contract_key, entity_id) in group_keys:
+            continue
         described = closing if closing is not None else opening
         assert described is not None
         key = (contract_key, entity_id)
@@ -680,8 +693,8 @@ def rollforwards(
                 session,
                 params,
                 found,
-                opening=opening_rows,
-                closing=closing_rows,
+                opening=[r for r in opening_rows if (r.contract_id, r.entity_id) not in group_keys],
+                closing=[r for r in closing_rows if (r.contract_id, r.entity_id) not in group_keys],
                 before=before,
                 periods=periods,
                 monthly=monthly,
@@ -722,14 +735,21 @@ def rollforwards(
                 session,
                 params,
                 found,
-                opening=opening_rows,
-                closing=closing_rows,
+                opening=[r for r in opening_rows if (r.contract_id, r.entity_id) not in group_keys],
+                closing=[r for r in closing_rows if (r.contract_id, r.entity_id) not in group_keys],
                 before=before,
                 periods=periods,
                 monthly=monthly,
                 transfers=asset_transfers,
                 billing_assets=billing_assets,
             )
+        )
+    if native_groups:
+        from ..acquisition_groups import project as group_project
+
+        found.extend(
+            group_project(group, opening=opening_rows, closing=closing_rows, monthly=monthly)
+            for group in native_groups.values()
         )
     return tuple(sorted(found, key=lambda item: (item.external_id, item.entity_code)))
 
@@ -2022,7 +2042,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     _check_view(params, found, items)
     functional_items = items
     rate_evidence: list[dict[str, Any]] = []
-    line_codes: tuple[str, ...] = LINES
+    from .. import acquisition_groups
+
+    group_presentation = any(item.group_members for item in items)
+    line_codes: tuple[str, ...] = (
+        (*LINES[:-1], *acquisition_groups.EXTRA_LINES, "CLOSING") if group_presentation else LINES
+    )
     if view == "reporting":
         items, rate_evidence = reporting_rollforward.project(
             session,
@@ -2034,7 +2059,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             items=items,
             locked=ends,
         )
-        line_codes = (*LINES[:-1], *reporting_rollforward.EXTRA_LINES, "CLOSING")
+        line_codes = (*line_codes[:-1], *reporting_rollforward.EXTRA_LINES, "CLOSING")
     role = BALANCE_ROLES[str(params.parameters.get("balance_role") or "CONTRACT_LIABILITY")]
     totals: dict[str, Lines] = {}
     for item in items:
@@ -2043,7 +2068,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         )
         for line in line_codes:
             for balance in ROLLFORWARD_BALANCES:
-                into[line][balance] += item.lines[line][balance]
+                into[line][balance] += item.lines.get(line, {}).get(balance, ZERO)
     rows: list[dict[str, Any]] = []
     mixed = len(totals) > 1
     for currency, lines in sorted(totals.items()):
@@ -2053,7 +2078,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     "row_key": f"{line}:{currency}" if mixed else line,
                     "section": 1,
                     "line_code": line,
-                    "line_label": LABELS[line],
+                    "line_label": {**LABELS, **acquisition_groups.LABELS}[line],
                     # 04 T-CLS-05 dataset identity (D-98 85): a line row is identified by its
                     # line code and currency; the contract column is stated EMPTY, never left
                     # out — the lock freeze reads every key column by name (S15-R-18).
@@ -2075,12 +2100,41 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 "contract_external_id": item.external_id,
                 "customer_name": item.customer_name,
                 "currency": item.currency,
+                **(
+                    {
+                        "attribution_scope": "Group movements; members have endpoint balances only",
+                        "group_members": ", ".join(m.external_id for m in item.group_members),
+                    }
+                    if item.group_members
+                    else {}
+                ),
                 **{
-                    line.lower(): tie_outs.money(item.lines[line][role], item.currency)
+                    line.lower(): tie_outs.money(
+                        item.lines.get(line, {}).get(role, ZERO), item.currency
+                    )
                     for line in line_codes
                 },
             }
         )
+        for member in item.group_members:
+            rows.append(
+                {
+                    "row_key": f"member-endpoints:{member.external_id}:{member.entity_code}",
+                    "section": 3,
+                    "line_code": None,
+                    "contract_external_id": member.external_id,
+                    "customer_name": member.customer_name,
+                    "currency": member.currency,
+                    "attribution_scope": "Member endpoints; movements shown in the group row",
+                    "group_members": item.external_id,
+                    **{
+                        line.lower(): tie_outs.money(member.lines[line][role], member.currency)
+                        if line in {"OPENING", "CLOSING"}
+                        else None
+                        for line in line_codes
+                    },
+                }
+            )
     control: dict[str, Any] = _other_control(
         session, params, items, totals, book=book_code, periods=periods
     )
@@ -2148,6 +2202,20 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             movement_check.setdefault("details", []).append(
                 {"reason": "Functional period movements contain unexplained OTHER."}
             )
+    if group_presentation:
+        columns = (
+            *columns,
+            Column("attribution_scope", "Attribution scope", "text"),
+            Column("group_members", "Group members", "text"),
+            *(
+                Column(code.lower(), acquisition_groups.LABELS[code], "money")
+                for code in acquisition_groups.EXTRA_LINES
+            ),
+        )
+        control["mixed_acquisition_presentation"] = (
+            "Group movements; member endpoints are informational and excluded from totals. "
+            "Monthly opening revenue and asset settlements keep their original classification."
+        )
     from ..acquisition_cells import retain as retain_acquisition_cells
 
     retain_acquisition_cells(params, items, rows, role, rate_evidence)
