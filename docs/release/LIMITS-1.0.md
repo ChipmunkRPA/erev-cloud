@@ -26,9 +26,11 @@ the loss register reads the original test and retained reporting rates.
 
 ## Calculation boundaries
 
-- Prospective split continuation uses the existing fixed-service admission. Specialist
-  consideration, estimates, returns, acquired openings and cross-entity/agent split inputs
-  outside that admission remain unsupported.
+- Contract-group separation preserves existing variable consideration, estimates, returns,
+  breakage, financing and noncash state alongside fixed service. It keeps original obligations
+  and source ledgers; obligation transfers retain their separate eligibility rules. Historical
+  return entitlements remain with original deliveries, with future-service allocation and
+  release rates retained through successive separations.
 - Performing-agent commission transfers require aligned period dates. Broader calendar
   combinations are outside the completed implementation.
 - Acquisition work covers reporting for already supported calculations, including monthly

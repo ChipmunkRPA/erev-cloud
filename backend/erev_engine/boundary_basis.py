@@ -6,7 +6,7 @@ preserve the source's recognized revenue when constructing a target's future ser
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import localcontext
 from fractions import Fraction
 from types import MappingProxyType
@@ -40,6 +40,8 @@ class FixedBoundaryBasis:
     service_end_date: date | None
     remaining_ssp: Fraction | None = None
     remaining_ssp_sources: tuple[SourceRef, ...] = ()
+    retained_minor: int = 0
+    recognized_total_minor: int | None = None
 
 
 def fixed_boundary_basis(
@@ -53,6 +55,7 @@ def fixed_boundary_basis(
     require_fixed_transfer: bool = False,
     require_remaining_service: bool = True,
     resolve_remaining_ssp: bool = False,
+    separation: bool = False,
 ) -> tuple[FixedBoundaryBasis, ...]:
     """Query selected original obligations without using latest-version remainder columns.
 
@@ -180,7 +183,13 @@ def fixed_boundary_basis(
             segment = segments.in_force(state, ob, event)
             if segment is None:
                 raise ValueError("The selected obligation has no fixed allocation at the boundary")
-            measured = segments.measure(context, state, ob, segment, event)
+            if separation:
+                from erev_engine.separation import measure, remaining_weight, retained
+                from erev_engine.stages.s09_recognition import target_at_position
+
+                measured = measure(context, state, ob, segment, event)
+            else:
+                measured = segments.measure(context, state, ob, segment, event)
             if require_fixed_transfer and (
                 segment.a_posted - measured.posted < 0
                 or (
@@ -202,8 +211,20 @@ def fixed_boundary_basis(
                     remaining_ssp = Fraction(0)
                 else:
                     findings: list[Finding] = []
-                    weight = weights.existing(
-                        context, identified, ob, measured, (), event, None, findings, state=state
+                    weight = (
+                        remaining_weight(context, state, identified, ob, measured, event, findings)
+                        if separation
+                        else weights.existing(
+                            context,
+                            identified,
+                            ob,
+                            measured,
+                            (),
+                            event,
+                            None,
+                            findings,
+                            state=state,
+                        )
                     )
                     if weight is None or any(f.severity == "ERROR" for f in findings):
                         raise ValueError("Remaining service lacks a valid effective-date SSP")
@@ -230,6 +251,27 @@ def fixed_boundary_basis(
                     service_end_date=segment.totals.end_date,
                     remaining_ssp=remaining_ssp,
                     remaining_ssp_sources=ssp_sources,
+                    retained_minor=(
+                        retained(context, state, ob, measured, event) if separation else 0
+                    ),
+                    recognized_total_minor=(
+                        target_at_position(
+                            context,
+                            state,
+                            ob,
+                            event.effective_date - timedelta(days=1)
+                            if segment.progress_measure == "TIME_ELAPSED"
+                            or (
+                                ob.recognition_method in {"USAGE", "ROYALTY"}
+                                and ob.satisfaction_pattern == "OVER_TIME"
+                            )
+                            else event.effective_date,
+                            event=event,
+                            inclusive=False,
+                        ).value
+                        if separation
+                        else None
+                    ),
                 )
             )
         return tuple(result)

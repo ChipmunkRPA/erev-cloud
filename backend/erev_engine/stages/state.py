@@ -279,6 +279,7 @@ class BookContext:
     recomputed_member_current_liability: bool = False
     acquired_member_current_asset: bool = False
     foreign_split_layers: bool = False  # revision 70: scoped historical FX continuation
+    specialist_split_continuation: bool = False  # revision 71: retained specialist state
     functional_return_loss: bool = False  # revision 69: historical actuals and dated forecasts
     independent_functional_costs: bool = False  # revision 67: functional recoverability
     performing_agent_supplier: bool = False  # revision 66: contractor supplier, net IC
@@ -770,6 +771,10 @@ class AllocationSegment:
     remaining_billing_plan: Fraction
     estimate_pair: tuple[str | None, str | None]  # (v_old, v_new) for ESTIMATE_CHANGE, TP_CHANGE
     modification_boundary_no: int  # 25-13(a) boundaries through this segment (REQ-MOD-020)
+    # Separation keeps the original specialist component and measures only the
+    # allocated future-service adjustment against that retained source.
+    separation_source_index: int | None = None
+    separation_event_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

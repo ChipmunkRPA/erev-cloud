@@ -321,6 +321,7 @@ class UnitResult:
     billing_attribution_sources: tuple[BillingAttribution, ...] = ()
     split_member_shares: tuple[Target, ...] = ()
     split_layer_parents: Mapping[str, str] = field(default_factory=dict)
+    routed_control_flows: tuple[ControlFlow, ...] = ()
 
 
 class UnitBook:
@@ -370,6 +371,7 @@ class UnitBook:
             tuple(self.billing_attribution_sources),
             () if self.split_manager is None else tuple(self.split_manager.member_shares),
             {} if self.split_manager is None else dict(self.split_manager.parents),
+            () if self.split_manager is None else tuple(self.split_manager.applied_flows),
         )
 
     # --- policies and dates ----------------------------------------------------------------------

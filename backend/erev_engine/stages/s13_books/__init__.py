@@ -367,6 +367,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         independent_functional_costs=(cb.bundle.evidence_revision or 0) >= 67,
         functional_return_loss=(cb.bundle.evidence_revision or 0) >= 69,
         foreign_split_layers=(cb.bundle.evidence_revision or 0) >= 70,
+        specialist_split_continuation=(cb.bundle.evidence_revision or 0) >= 71,
         performing_agent_supplier=(cb.bundle.evidence_revision or 0) >= 66,
         royalty_member_scope=(cb.bundle.evidence_revision or 0) >= 65,
         contracting_agent_relief=(cb.bundle.evidence_revision or 0) >= 21,

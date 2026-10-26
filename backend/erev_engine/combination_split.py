@@ -82,6 +82,7 @@ def prepare(
     )
     validate_partition(current, destinations)
     population = set(destinations)
+    specialist = (bundle.evidence_revision or 0) >= 71
     dated = {}
     for key in sorted(population):
         dated[key] = fixed_boundary_basis(
@@ -91,7 +92,8 @@ def prepare(
             effective_date=effective_date,
             contract_key=key,
             obligation_keys=None,
-            require_fixed_transfer=True,
+            require_fixed_transfer=not specialist,
+            separation=specialist,
             require_remaining_service=False,
             resolve_remaining_ssp=True,
         )
@@ -109,11 +111,19 @@ def prepare(
     if any(weight < 0 for weight in ssp.values()):
         raise ValueError("Remaining split SSP must be nonnegative")
     unrecognized = sum(row.remaining_minor for rows in dated.values() for row in rows)
-    recognized = sum(row.recognized_minor for rows in dated.values() for row in rows)
+    retained = {key: sum(row.retained_minor for row in rows) for key, rows in dated.items()}
+    distributable = unrecognized - sum(retained.values())
+    recognized = sum(
+        row.recognized_total_minor
+        if row.recognized_total_minor is not None
+        else row.recognized_minor
+        for rows in dated.values()
+        for row in rows
+    )
     keys = sorted(dated)
     shares = (
-        money.largest_remainder(unrecognized, [ssp[key] for key in keys], keys)
-        if unrecognized
+        money.largest_remainder(distributable, [ssp[key] for key in keys], keys)
+        if distributable
         else [0] * len(keys)
     )
     members = []
@@ -127,15 +137,23 @@ def prepare(
             if share
             else [0] * len(rows)
         )
+        child_shares = [
+            amount + row.retained_minor for amount, row in zip(child_shares, rows, strict=True)
+        ]
         members.append(
             SplitMember(
                 contract_key=key,
                 destination=destinations[key],
                 original=rows,
                 remaining_ssp=ssp[key],
-                recognized_minor=sum(row.recognized_minor for row in rows),
+                recognized_minor=sum(
+                    row.recognized_total_minor
+                    if row.recognized_total_minor is not None
+                    else row.recognized_minor
+                    for row in rows
+                ),
                 remaining_before_minor=sum(row.remaining_minor for row in rows),
-                remaining_after_minor=share,
+                remaining_after_minor=share + retained[key],
                 obligation_shares=tuple(zip(child_keys, child_shares, strict=True)),
             )
         )

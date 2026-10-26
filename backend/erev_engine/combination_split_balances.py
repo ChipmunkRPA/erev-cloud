@@ -11,7 +11,8 @@ from erev_engine import ENGINE_VERSION, fold_book
 from erev_engine.bundle import InputBundle
 from erev_engine.combination_membership import membership_at
 from erev_engine.stages import s01_canonicalize, s09_recognition, s10_billing_balances, s13_books
-from erev_engine.stages.state import Target
+from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
+from erev_engine.stages.state import DepositRelease, Target
 from erev_engine.trace import Trace, TraceBuilder
 
 
@@ -37,7 +38,7 @@ def calculate(
     Original earlier allocations stay intact. Recompute stage 09 and stage 10 for each
     destination using its original member events, rather than apportioning an already
     netted source group's displayed balance. Return transaction-currency measures only.
-    This is the fixed-service split lane; specialist flows require separate continuation.
+    Retained specialist measurements and source ledgers stay with their original members.
     """
     if (bundle.evidence_revision or 0) < 49 or book_code not in {"ASC606", "IFRS15"}:
         raise ValueError("Destination balances require native split evidence revision 49")
@@ -64,26 +65,32 @@ def calculate(
         trace.merge_evidence(source_evidence)
         if any(f.severity == "ERROR" for f in original.findings):
             raise ValueError("Destination balance source has blocking calculation findings")
-        if original.estimates.pins or original.return_paths or original.refund_components:
+        specialist = ctx.specialist_split_continuation
+        if not specialist and (
+            original.estimates.pins or original.return_paths or original.refund_components
+        ):
             raise ValueError(
                 "Estimated or refund balances require separate destination continuation"
             )
-        if any(
+        if not specialist and any(
             getattr(original.specialist_targets, field.name)
             for field in fields(original.specialist_targets)
         ):
             raise ValueError("Specialist balances require separate destination continuation")
         obligations = tuple(o for o in original.obligations if o.contract_key in members)
-        if not obligations or any(
-            o.scope_flag != "IN_SCOPE_606"
-            or o.principal_agent != "PRINCIPAL"
-            or o.opening is not None
-            or o.material_right is not None
-            or o.combined_component_keys
-            or o.performing_entity != o.contracting_entity
-            or o.recognition_method not in {"TIME_ELAPSED", "UNITS_DELIVERED"}
-            or any(s.component != "FIXED" for s in o.segments)
-            for o in obligations
+        if not obligations or (
+            not specialist
+            and any(
+                o.scope_flag != "IN_SCOPE_606"
+                or o.principal_agent != "PRINCIPAL"
+                or o.opening is not None
+                or o.material_right is not None
+                or o.combined_component_keys
+                or o.performing_entity != o.contracting_entity
+                or o.recognition_method not in {"TIME_ELAPSED", "UNITS_DELIVERED"}
+                or any(s.component != "FIXED" for s in o.segments)
+                for o in obligations
+            )
         ):
             raise ValueError("Destination balances require supported fixed-service obligations")
         periods = {}
@@ -93,6 +100,14 @@ def calculate(
                 raise ValueError("Choose a common contracting-period end for destination balances")
             periods[entity] = ends[0]
         segment_events = {s.event_key for o in obligations for s in o.segments}
+
+        def owned(
+            target: Target | DepositRelease, selected_members: tuple[str, ...] = members
+        ) -> bool:
+            if isinstance(target, DepositRelease):
+                return target.contract_key in selected_members
+            return contract_key_from_subject(target.subject_key) in selected_members
+
         scoped = replace(
             original,
             group_code=destination,
@@ -104,6 +119,30 @@ def calculate(
                 if (e.contract_key in members or e.event_key in segment_events)
                 and e.effective_date <= as_of
             ),
+            specialist_targets=replace(
+                original.specialist_targets,
+                **{
+                    field.name: tuple(
+                        t for t in getattr(original.specialist_targets, field.name) if owned(t)
+                    )
+                    for field in fields(original.specialist_targets)
+                },
+            ),
+            refund_components={
+                k: v
+                for k, v in original.refund_components.items()
+                if k in {o.subject_key for o in obligations}
+            },
+            concession_history=tuple(
+                c
+                for c in original.concession_history
+                if c.subject_key in {o.subject_key for o in obligations}
+            ),
+            return_paths={
+                k: v
+                for k, v in original.return_paths.items()
+                if k in {o.subject_key for o in obligations}
+            },
             measure_events=tuple(
                 e
                 for e in original.measure_events

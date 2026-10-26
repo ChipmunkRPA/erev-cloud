@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from fractions import Fraction
 from types import MappingProxyType
@@ -93,6 +93,9 @@ class Positions:
     targets: tuple[Target, ...]  # net_position per "<group>@<entity>" and period key
     components: Mapping[tuple[str, str], PositionComponents]  # (entity, period key)
     relief: Mapping[tuple[str, str], int]  # (obligation, period key) -> revenue_relief (S10-R-09)
+    member_terms: Mapping[
+        tuple[str, str, str], tuple[tuple[tuple[str | SourceRef, int, int], ...], Mapping[str, int]]
+    ] = field(default_factory=dict)
 
 
 def _invariant(message: str, subject_key: str | None, **detail: str) -> EngineError:
@@ -104,12 +107,16 @@ class _Terms:
 
     def __init__(self) -> None:
         self.items: list[tuple[str | SourceRef, int, int]] = []  # (input, sign, value)
+        self.owner: str | None = None
+        self.members: dict[str, _Terms] = {}
         self.parts = dict.fromkeys(("b_u", "dt", "nc", "ie", "ii", "r_ctl", "rc", "rl"), 0)
 
     def add(self, ref: str | SourceRef, sign: int, value: int, part: str, signed: int) -> None:
         """Cite ``ref`` with ``sign``; ``signed`` is its contribution to component ``part``."""
         self.items.append((ref, sign, value))
         self.parts[part] += signed
+        if self.owner is not None:
+            self.members.setdefault(self.owner, _Terms()).add(ref, sign, value, part, signed)
 
     @property
     def value(self) -> int:
@@ -189,6 +196,7 @@ def measure(
     targets: list[Target] = []
     components: dict[tuple[str, str], PositionComponents] = {}
     relief: dict[tuple[str, str], int] = {}
+    member_terms = {}
     obligations = sorted(st.obligations, key=lambda ob: ob.subject_key)
     for entity in sorted({ob.contracting_entity for ob in obligations}):
         members = sorted({ob.contract_key for ob in obligations if ob.contracting_entity == entity})
@@ -198,6 +206,7 @@ def measure(
             t = period.end_date
             terms = _Terms()
             for contract_key in members:
+                terms.owner = contract_key
                 at_entity = contract_entity_subject_key(contract_key, entity)
                 billed_target = unconditional.get((at_entity, period.period_key))
                 if billed_target is not None:
@@ -227,6 +236,7 @@ def measure(
                 if rc_target is not None:
                     terms.add(rc_target.node_id, -1, rc_target.value, "rc", rc_target.value)
             for ob in own:
+                terms.owner = ob.contract_key
                 found = latest_target(revenue.get(("revenue_cum", ob.subject_key), ()), t)
                 value = 0 if found is None else found.value
                 if found is not None:
@@ -238,6 +248,7 @@ def measure(
                     value + shared + refunds.concession_total(ob.subject_key, t)
                 )
             for component in refunds.components:
+                terms.owner = component.contract_key
                 if component.entity != entity:
                     continue
                 if component.kind == CONCESSION:
@@ -252,6 +263,11 @@ def measure(
                 balance = refunds.balances.get((component.key, period.period_key))
                 if balance is not None:
                     terms.add(balance.node_id, -1, balance.value, "rl", balance.value)
+            for member, own_terms in terms.members.items():
+                member_terms[(member, entity, period.period_key)] = (
+                    tuple(own_terms.items),
+                    MappingProxyType(dict(own_terms.parts)),
+                )
             value = terms.value
             if value != terms.identity:
                 raise _invariant(
@@ -308,6 +324,7 @@ def measure(
         targets=tuple(targets),
         components=MappingProxyType(components),
         relief=MappingProxyType(relief),
+        member_terms=MappingProxyType(member_terms),
     )
 
 

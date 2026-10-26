@@ -156,6 +156,8 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
     "rec.schedule.fixed.v1",
     "rec.scheduled.v1",
     "rec.segment_state.v1",
+    "rec.separation.exact.v1",
+    "rec.separation.progress.v1",
     "rec.step1_net.v1",
     "rec.target_exact.inception.v1",
     "rec.target_exact.prospective.v1",

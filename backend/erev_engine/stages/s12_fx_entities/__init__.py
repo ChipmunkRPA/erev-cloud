@@ -175,6 +175,7 @@ class FxState:
     cutover_disclosure_sources: FxState | None = None
     split_member_shares: tuple[Target, ...] = ()
     split_layer_parents: Mapping[str, str] = field(default_factory=dict)
+    routed_control_flows: tuple[ControlFlow, ...] = ()
 
 
 Flow = ControlFlow | MonetaryFlow | ReceivableFlow
@@ -212,6 +213,7 @@ def run(
     findings: list[Finding] = []
     split_shares: list[Target] = []
     split_parents: dict[str, str] = {}
+    routed_flows: list[ControlFlow] = []
     entities = {flow.entity for flow in flows.control}
     entities |= {flow.entity for flow in flows.monetary}
     entities |= {flow.entity for flow in flows.receivables}
@@ -251,7 +253,7 @@ def run(
             bind(book, allocated, flows.control)
         if (
             ctx.foreign_split_layers
-            and view.functional_currency != ctx.txn_currency
+            and (view.functional_currency != ctx.txn_currency or ctx.specialist_split_continuation)
             and any("prospective_split_destinations" in e.payload for e in allocated.events)
         ):
             from .split_continuation import SplitManager
@@ -275,6 +277,7 @@ def run(
             continue
         split_shares.extend(result.split_member_shares)
         split_parents.update(result.split_layer_parents)
+        routed_flows.extend(result.routed_control_flows)
         movements.extend(result.movements)
         balances.extend(result.balances)
         functional.extend(result.functional_targets)
@@ -292,6 +295,7 @@ def run(
         costs=st,
         split_member_shares=tuple(split_shares),
         split_layer_parents=split_parents,
+        routed_control_flows=tuple(routed_flows),
         billing_disclosure_targets=tuple(billing_disclosure),
         billing_attribution_sources=tuple(billing_sources),
         layer_movements=tuple(movements),

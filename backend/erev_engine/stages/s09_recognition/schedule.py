@@ -242,9 +242,14 @@ def _allocation(
     if path is None or returns.policy(ctx, st, ob, returns.SCOPE_POLICY) != returns.REDUCE:
         return seg.a_posted, seg.x_exact
     state = returns.return_state(ctx, st, evaluator.contract, ob, seg, v, position=position)
-    exact = returns.unit_rate(path, ob, v, st=st, position=position) * (state.Y + state.E)
+    if seg.separation_source_index is not None:
+        from erev_engine.separation_recognition import reduction_exact
+
+        exact = reduction_exact(ctx, st, evaluator.contract, ob, seg, v, state.Y, state.E, position)
+    else:
+        exact = returns.unit_rate(path, ob, v, st=st, position=position) * (state.Y + state.E)
     posted = returns.reduction_from_state(
-        path, ob, state, v, evaluator.mu, st=st, position=position
+        path, ob, state, v, evaluator.mu, st=st, position=position, ctx=ctx
     )  # S09-R-23; D-91
     return seg.a_posted - posted, seg.x_exact - exact
 
@@ -970,7 +975,20 @@ def _emit_endpoint(
             narrative_key=_narrative(EXACT_ENDPOINT_FORMULA),
         )
     inputs: list[str | SourceRef] = []
-    if x.fixed is not None:
+    if x.fixed is not None and x.fixed.continuation is not None:
+        fixed = x.fixed
+        slot = f"endpoint-{side}@{event_key}"
+        native = replace(
+            x,
+            realised=(),
+            royalty=None,
+            value=fixed.posted,
+            segments_value=fixed.posted,
+            exact=fixed.exact,
+        )
+        components._emit_components(tb, ctx, ob, slot, native, set(), "separation_endpoint")
+        inputs.append(f"revenue_target_exact:{ob.subject_key}#FIXED:{slot}")
+    elif x.fixed is not None:
         fixed = x.fixed
         seg = fixed.segment
         progress_id = tb.node(

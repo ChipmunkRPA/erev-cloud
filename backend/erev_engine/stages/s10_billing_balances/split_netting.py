@@ -13,9 +13,10 @@ from erev_engine.stages.s09_recognition import RecognitionState
 from erev_engine.stages.s10_billing_balances.billing import Billed
 from erev_engine.stages.s10_billing_balances.position import latest_target, series
 from erev_engine.stages.state import BookContext, ObligationState, Target
-from erev_engine.trace import TraceBuilder
+from erev_engine.trace import SourceRef, TraceBuilder
 
 if TYPE_CHECKING:
+    from erev_engine.stages.s10_billing_balances.position import Positions
     from erev_engine.stages.s10_billing_balances.reclass import _Point
 
 
@@ -26,8 +27,9 @@ def points(
     own: Sequence[ObligationState],
     point: "_Point",
     trace: TraceBuilder,
+    positions: "Positions | None" = None,
 ) -> list[tuple[Sequence[ObligationState], "_Point"]]:
-    """Retain pre-split points; partition supported fixed service thereafter."""
+    """Retain earlier net positions; partition original member components after separation."""
     state = recognition.allocated
     if not ctx.prospective_split_netting or not any(
         e.event_type == "COMBINATION_CHANGED"
@@ -36,7 +38,7 @@ def points(
         for e in state.events
     ):
         return [(own, point)]
-    if (
+    if not ctx.specialist_split_continuation and (
         (
             ctx.entities[point.parts.entity].functional_currency != ctx.txn_currency
             and not ctx.foreign_split_layers
@@ -90,7 +92,8 @@ def points(
     result: list[tuple[Sequence[ObligationState], _Point]] = []
     for destination in destinations:
         selected = [ob for ob in own if groups[ob.contract_key] == destination]
-        inputs, signs = [], []
+        inputs: list[str | SourceRef] = []
+        signs: list[str] = []
         b = r = 0
         for member in sorted({ob.contract_key for ob in selected}):
             target = billings.get(
@@ -111,11 +114,37 @@ def points(
         subject = group_entity_subject_key(
             f"{state.group_code}/split/{destination}", point.parts.entity
         )
+        specialist_parts = None
+        if ctx.specialist_split_continuation:
+            if positions is None:
+                raise ValueError("Separation lacks original member control-role sources")
+            inputs, signs = [], []
+            specialist_parts = dict.fromkeys(
+                ("b_u", "dt", "nc", "ie", "ii", "r_ctl", "rc", "rl"), 0
+            )
+            for member in sorted({ob.contract_key for ob in selected}):
+                terms, components = positions.member_terms.get(
+                    (member, point.parts.entity, point.period.period_key), ((), {})
+                )
+                for ref, sign, _ in terms:
+                    inputs.append(ref)
+                    signs.append("+" if sign > 0 else "-")
+                for key, amount in components.items():
+                    specialist_parts[key] += amount
+            b, r = specialist_parts["b_u"], specialist_parts["r_ctl"]
+        net = (
+            b - r
+            if specialist_parts is None
+            else (
+                sum(specialist_parts[k] for k in ("b_u", "dt", "nc", "ie"))
+                - sum(specialist_parts[k] for k in ("ii", "r_ctl", "rc", "rl"))
+            )
+        )
         node = trace.node(
             measure="net_position",
             subject_key=subject,
             period_key=point.period.period_key,
-            value=b - r,
+            value=net,
             currency=ctx.txn_currency,
             minor_unit=ctx.currencies[ctx.txn_currency].minor_unit,
             formula_id="pos.net_position.v1",
@@ -131,11 +160,21 @@ def points(
         parts = replace(
             point.parts,
             subject_key=subject,
-            net_position=b - r,
+            net_position=net,
             billed_unconditional=b,
             revenue_relief=r,
             node_id=node,
         )
+        if specialist_parts is not None:
+            parts = replace(
+                parts,
+                deposit_transferred=specialist_parts["dt"],
+                noncash_unconditional=specialist_parts["nc"],
+                interest_expense=specialist_parts["ie"],
+                interest_income=specialist_parts["ii"],
+                receivable_contra=specialist_parts["rc"],
+                refund_liability=specialist_parts["rl"],
+            )
         result.append((selected, replace(point, parts=parts)))
     if sum(p.parts.net_position for _, p in result) != point.parts.net_position:
         raise ValueError("Destination net positions do not reconcile with the original envelope")

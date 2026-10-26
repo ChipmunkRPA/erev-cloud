@@ -1450,12 +1450,14 @@ def test_prospective_split_approval_retains_original_envelope(
     assert again.status_code == 422, again.text
 
 
+@pytest.mark.parametrize("noncash", [False, True])
 def test_foreign_split_persists_reports_and_original_sources(
     app: FastAPI,
     keyring: KeyRing,
     clock: FrozenClock,
     files: LocalFileStore,
     monkeypatch: pytest.MonkeyPatch,
+    noncash: bool,
 ) -> None:
     from erev_api.jobs.context import JobRuntime
     from support import factories
@@ -1500,6 +1502,30 @@ def test_foreign_split_persists_reports_and_original_sources(
             _rate_set(app, world.place.author, kind),
             rates,
             coverage=("2026-01-01", "2026-09-30"),
+        )
+    if noncash:
+        original_booking = booked_contract
+
+        def specialist_booking(place: Any, body: dict[str, Any], **kwargs: Any) -> Any:
+            if body["external_id"] == "SF-ORD-10417":
+                body = {
+                    **body,
+                    "noncash_consideration": [
+                        {
+                            "units": "100",
+                            "fair_value_per_unit": "20",
+                            "measurement_date": "2026-09-01",
+                            "variability": "FORM",
+                            "asset_type": "CUSTOMER_SHARES",
+                        }
+                    ],
+                }
+            return original_booking(place, body, **kwargs)
+
+        monkeypatch.setattr(
+            __import__(__name__, fromlist=["booked_contract"]),
+            "booked_contract",
+            specialist_booking,
         )
     first, second, group_id = _combine(world)
     head = world.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == first))

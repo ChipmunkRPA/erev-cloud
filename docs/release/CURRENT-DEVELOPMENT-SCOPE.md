@@ -62,7 +62,7 @@ validation and presentation details.
   loss-register projections use that independent test. Reporting-currency snapshots use
   retained closing rates, with the period movement at the retained average rate.
 
-## Supported split scope and explicit limits
+## Contract-group separation and explicit limits
 
 - Foreign fixed-service split continuation conserves original layer quantities and carrying
   across each destination. Rates, original source contracts and collection ages survive
@@ -72,7 +72,17 @@ validation and presentation details.
   native member endpoints. Member movements are unallocated; member endpoints remain visible.
   Current liability follows each destination's release layers and is apportioned by member
   liability carrying. Original source evidence and report cell links are retained.
-- Specialist split methods outside the existing fixed-service admission remain unsupported.
+- Contract-group separation also continues existing variable consideration, estimate-based
+  recognition, returns/refunds, breakage, financing and noncash consideration. It preserves
+  earlier revenue, original member ledgers and specialist balances; this does not transfer
+  obligations or introduce new ASC606 treatments. Remaining service uses dated remaining SSP.
+- Historical return entitlements stay with their delivery layers. Only future-delivery
+  consideration enters redistribution; FIFO/pro-rata consumption and successive separation
+  retain their distinct rates. Breakage and measured input/output progress price only remaining
+  service. Cost recovery continues its existing cost cap or approved EAC method.
+- Destination previews and journals use each member's original billing, revenue, refunds,
+  financing and noncash components. Rollforwards include generated control-role movements.
+  Reports retain group movements, member endpoints and original explanation/rerun evidence.
 - Broader performing-agent calendars are not supported by the aligned-period implementation.
 - Unsupported acquisition methods, agent acquisition attribution and broader entity/group
   combinations remain outside the completed reporting lane.

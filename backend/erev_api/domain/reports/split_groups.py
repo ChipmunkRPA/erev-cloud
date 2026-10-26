@@ -157,7 +157,10 @@ def read(
         if (bundle.evidence_revision or 0) < 70:
             continue
         entity = next(e for e in bundle.entities if e.code == row.entity_code)
-        if entity.functional_currency == bundle.group.transaction_currency:
+        if (
+            entity.functional_currency == bundle.group.transaction_currency
+            and (bundle.evidence_revision or 0) < 71
+        ):
             continue
         voided = {e.supersedes_event_key for e in bundle.events if e.event_type == "EVENT_VOIDED"}
         if not any(

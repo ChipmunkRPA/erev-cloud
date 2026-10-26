@@ -3,6 +3,8 @@
 from datetime import date
 from uuid import UUID
 
+from erev_engine.combination_split import prepare
+from erev_engine.errors import EngineError
 from sqlalchemy import select
 
 from erev_api.auth.dependencies import require_for_entity
@@ -18,8 +20,6 @@ from erev_api.schemas.combinations import (
     CombinationSplitPreviewOut,
 )
 from erev_api.uow import UnitOfWork
-from erev_engine.combination_split import prepare
-from erev_engine.errors import EngineError
 
 
 def preview(
@@ -157,7 +157,9 @@ def preview(
                 obligations=[
                     CombinationSplitObligationOut(
                         obligation_key=r.obligation_key,
-                        recognized_minor=r.recognized_minor,
+                        recognized_minor=r.recognized_total_minor
+                        if r.recognized_total_minor is not None
+                        else r.recognized_minor,
                         remaining_before_minor=r.remaining_minor,
                         remaining_after_minor=dict(m.obligation_shares)[r.obligation_key],
                         remaining_ssp=str(r.remaining_ssp),

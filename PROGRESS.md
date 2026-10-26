@@ -20,14 +20,19 @@ under its noncommercial license. Repository completion does not include deployme
   forecasts; the loss register reads original functional tests and reporting rates.
 - Foreign split continuation with conserved destination layers, original rate/source/age,
   explicit gross reclassification and source-bound monthly rollforwards.
+- Contract-group separation continuing existing variable consideration, estimates,
+  returns/refunds, breakage, financing and noncash state. Historical revenue and return
+  entitlements remain with their sources; only remaining service is redistributed.
 - Acquisition reporting for supported calculations, including original monthly mixed-group
   snapshots, signed group changes and separate member endpoint presentation.
 
 ## Completion status
 
-The remaining foreign split, return-asset and loss-provision implementation is complete for
-its documented scope. Focused calculation, journal and report-source checks accompany it.
-The approved foreign split workflow is also verified through persisted PostgreSQL data,
+Contract-group separation now supports the existing specialist accounting treatments as well
+as the completed foreign-layer, return-asset and loss-provision work. Focused checks cover
+native recognition, remaining SSP, return release order, successive separations, RPO,
+balance/journal reconciliation and source-backed reports.
+The approved foreign separation workflow, including noncash consideration, is also verified through persisted PostgreSQL data,
 all three currency views, original trace links, exact retained reruns and functional aging.
 Deployment and independent accounting review remain outside repository development.
 

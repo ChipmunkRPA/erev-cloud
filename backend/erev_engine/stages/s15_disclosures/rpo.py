@@ -555,7 +555,7 @@ def _reduction_points(
         if returns.policy(ctx, st, ob, returns.SCOPE_POLICY) != returns.REDUCE:
             continue
         end = ends[(ob.performing_entity, period_key)]
-        value = returns.reduction_from_state(path, ob, state, end, minor_unit)
+        value = returns.reduction_from_state(path, ob, state, end, minor_unit, st=st, ctx=ctx)
         found.setdefault(subject_key, []).append((end, value))
     return {subject: tuple(sorted(items)) for subject, items in sorted(found.items())}
 

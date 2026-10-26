@@ -3916,6 +3916,17 @@ def _fx_remeasure(formula_id: str) -> Formula:
     return formula
 
 
+def _separation_progress(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    from erev_engine.separation_progress import fraction
+
+    return fraction(inputs, params)
+
+
+def _separation_exact(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    _require_arity(inputs, 2, "rec.separation.exact.v1")
+    return inputs[0] + Fraction(params["delta_exact"]) * inputs[1]
+
+
 def _fx_split_open_txn(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     deltas = _list(params, "transaction_deltas")
     _require_arity(inputs, len(deltas), "fx.split_open_txn.v1")
@@ -4322,6 +4333,8 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "fx.split_quota.v1": _fx_split_quota,
         "fx.split_restore.v1": _fx_split_restore,
         "fx.split_current.v1": _fx_split_current,
+        "rec.separation.progress.v1": _separation_progress,
+        "rec.separation.exact.v1": _separation_exact,
         "fx.cost_recoverable.v1": _fx_cost_recoverable,
         "fx.functional_member.v1": _fx_functional_member,
         "fx.settlement.spot.v1": _fx_settle("fx.settlement.spot.v1"),

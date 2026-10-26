@@ -111,6 +111,16 @@ class FixedPart:
     materials: progress_inputs.Materials | None = None
     findings: tuple[Finding, ...] = ()  # NON_FINITE_AMOUNT of an input measure (§9.4)
     redemption: breakage.RedemptionTarget | None = None  # §9.2.8 measurement (S09-R-27)
+    continuation: SeparationPart | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SeparationPart:
+    source: FixedPart
+    fraction: Fraction
+    sources: tuple[SourceRef, ...]
+    params: Mapping[str, str]
+    expected: returns.Expected | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,6 +326,10 @@ def segment_target(
     A units obligation with returns follows ALG-06 instead (S09-R-23 to S09-R-25): E comes from
     ``returns.target`` and C = ``cumulative_posted``(X, A, E ÷ X).
     """
+    if seg.separation_source_index is not None:
+        from erev_engine.separation_recognition import part
+
+        return part(ctx, st, contract, ob, seg, d, position)
     method = str(ob.recognition_method)
     prog: Progress
     redemption: breakage.RedemptionTarget | None = None
@@ -1011,7 +1025,68 @@ def _emit_components(
                 params=fixed.progress.params,
                 narrative_key=fixed.progress.formula_id.rsplit(".v", 1)[0],
             )
-            if fixed.returns is not None:
+            if fixed.continuation is not None:
+                retained = fixed.continuation
+                alias = replace(
+                    ob, subject_key=ob.subject_key + "~separation~" + str(seg.separation_event_key)
+                )
+                native = replace(
+                    ev,
+                    fixed=retained.source,
+                    realised=(),
+                    royalty=None,
+                    value=retained.source.posted,
+                    segments_value=retained.source.posted,
+                    exact=retained.source.exact,
+                )
+                _emit_components(
+                    tb, ctx, alias, period_key, native, emitted, "separation_source_revenue", st=st
+                )
+                source_exact = f"revenue_target_exact:{alias.subject_key}#FIXED:{period_key}"
+                ratio_inputs: list[str | SourceRef] = list(retained.sources)
+                if retained.params["mode"] == "RATIO":
+                    ratio_inputs = [f"progress_ratio:{alias.subject_key}:{period_key}"]
+                elif retained.expected is not None:
+                    expected_alias = replace(
+                        ob,
+                        subject_key=ob.subject_key
+                        + "~separation-expected~"
+                        + str(seg.separation_event_key),
+                    )
+                    ratio_inputs.append(
+                        returns.emit_expected(tb, expected_alias, period_key, retained.expected)
+                    )
+                ratio = tb.node(
+                    measure="separation_progress",
+                    subject_key=ob.subject_key,
+                    period_key=period_key,
+                    value=retained.fraction,
+                    currency=None,
+                    minor_unit=None,
+                    formula_id="rec.separation.progress.v1",
+                    inputs=ratio_inputs,
+                    params=retained.params,
+                    narrative_key="rec.separation.progress",
+                )
+                exact_id = tb.node(
+                    measure="revenue_target_exact",
+                    subject_key=ob.subject_key + "#FIXED",
+                    period_key=period_key,
+                    value=fixed.exact,
+                    currency=None,
+                    minor_unit=None,
+                    formula_id="rec.separation.exact.v1",
+                    inputs=[source_exact, ratio],
+                    params={
+                        "delta_exact": rational_param(
+                            seg.x_exact - retained.source.segment.x_exact
+                        ),
+                        "as_of": as_of,
+                        "source_event": str(seg.separation_event_key),
+                    },
+                    narrative_key="rec.separation.exact",
+                )
+            elif fixed.returns is not None:
                 exact_id = returns.emit(
                     tb, ob, period_key, fixed.returns, emitted, state=return_state
                 )

@@ -1296,7 +1296,7 @@ def present(
             from .split_netting import aggregate, points
 
             original_point = point
-            partition = points(ctx, recognition, billed, own, point, tb)
+            partition = points(ctx, recognition, billed, own, point, tb, positions)
             start_targets = len(emitter.targets)
             for selected, point in partition:
                 option = ctx.policies.value(

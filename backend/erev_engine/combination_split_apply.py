@@ -75,24 +75,35 @@ def install(
     for ob in state.obligations:
         if ob.contract_key not in destinations:
             continue
-        if (
-            ob.scope_flag != "IN_SCOPE_606"
-            or ob.principal_agent != "PRINCIPAL"
-            or ob.performing_entity != ob.contracting_entity
-            or ob.opening is not None
-            or ob.combined_component_keys
-            or ob.material_right is not None
-            or ob.is_vc_line
-            or ob.recognition_method not in {"TIME_ELAPSED", "UNITS_DELIVERED"}
+        if ob.scope_flag != "IN_SCOPE_606" or (
+            not ctx.specialist_split_continuation
+            and (
+                ob.principal_agent != "PRINCIPAL"
+                or ob.performing_entity != ob.contracting_entity
+                or ob.opening is not None
+                or ob.combined_component_keys
+                or ob.material_right is not None
+                or ob.is_vc_line
+                or ob.recognition_method not in {"TIME_ELAPSED", "UNITS_DELIVERED"}
+            )
         ):
             raise ValueError(
                 "Split application needs a supported original fixed-service obligation"
             )
         row = originals[ob.subject_key]
         segment = segments.in_force(state, ob, event)
-        if segment is None or any(s.component != "FIXED" for s in ob.segments):
+        if segment is None or (
+            not ctx.specialist_split_continuation
+            and any(s.component != "FIXED" for s in ob.segments)
+        ):
             raise ValueError("Split allocation requires a complete fixed-service basis")
-        before = segments.measure(ctx, state, ob, segment, event)
+        from erev_engine.separation import measure, remaining_weight
+
+        before = (
+            measure(ctx, state, ob, segment, event)
+            if ctx.specialist_split_continuation
+            else segments.measure(ctx, state, ob, segment, event)
+        )
         if (
             segment.a_posted,
             before.posted,
@@ -111,6 +122,8 @@ def install(
         weight = (
             None
             if before.progress == 1
+            else remaining_weight(ctx, state, identified, ob, before, event, findings)
+            if ctx.specialist_split_continuation
             else weights.existing(
                 ctx, identified, ob, before, (), event, None, findings, state=state
             )
@@ -130,16 +143,17 @@ def install(
     group_pool = pool.Pool(
         source_group,
         tuple(
-            pool.Member(key, before.segment.a_posted, before.posted)
+            pool.Member(key, before.segment.a_posted - originals[key].retained_minor, before.posted)
             for key, before in sorted(befores.items())
         ),
         0,
         0,
         0,
     )
-    if (
-        group_pool.posted != plan.unrecognized_minor
-        or sum(b.posted for b in befores.values()) != plan.recognized_minor
+    if group_pool.posted + sum(
+        row.retained_minor for row in originals.values()
+    ) != plan.unrecognized_minor or sum(b.posted for b in befores.values()) != sum(
+        row.recognized_minor for row in originals.values()
     ):
         raise ValueError("Split totals differ from the original boundary")
     member_weights = [
@@ -159,7 +173,10 @@ def install(
     if group_pool.posted and not sum((w for _, w in member_weights), Fraction(0)):
         raise ValueError("Nonzero split consideration requires remaining SSP")
     for member in plan.members:
-        if expected[member.contract_key][0] != member.remaining_after_minor:
+        if (
+            expected[member.contract_key][0] + sum(r.retained_minor for r in member.original)
+            != member.remaining_after_minor
+        ):
             raise ValueError("Split member allocation differs from remaining SSP")
     # The group pool is preserved; member adjustments below are internal allocation transfers.
     # Group and contract natural keys can coincide. Reserve a distinct group-pool
@@ -177,11 +194,19 @@ def install(
         keys = sorted(
             obligation_subject_key(member.contract_key, r.obligation_key) for r in member.original
         )
-        old_remaining = sum(befores[key].segment.a_posted - befores[key].posted for key in keys)
+        old_remaining = sum(
+            befores[key].segment.a_posted - befores[key].posted - originals[key].retained_minor
+            for key in keys
+        )
         member_pool = pool.Pool(
             member.contract_key,
             tuple(
-                pool.Member(key, befores[key].segment.a_posted, befores[key].posted) for key in keys
+                pool.Member(
+                    key,
+                    befores[key].segment.a_posted - originals[key].retained_minor,
+                    befores[key].posted,
+                )
+                for key in keys
             ),
             expected[member.contract_key][0] - old_remaining,
             0,
@@ -193,6 +218,7 @@ def install(
             r.obligation_key: shares_before[
                 obligation_subject_key(member.contract_key, r.obligation_key)
             ][0]
+            + r.retained_minor
             for r in member.original
         } != dict(member.obligation_shares):
             raise ValueError("Split obligation allocation differs from remaining SSP")
@@ -202,18 +228,34 @@ def install(
             if ob.subject_key not in shares:
                 continue
             before, share = befores[ob.subject_key], shares[ob.subject_key]
+            reserve = originals[ob.subject_key].retained_minor
+            if reserve and before.progress == 1 and share.posted == 0:
+                continue
             boundary = segments.prospective(
                 ctx,
                 event,
                 before=before,
-                x_exact=Fraction(before.posted, 10**mu) + share.exact,
-                a_posted=before.posted + share.posted,
+                x_exact=Fraction(before.posted + reserve, 10**mu) + share.exact,
+                a_posted=before.posted + reserve + share.posted,
                 totals=replace(before.segment.totals, quantity=before.remaining_quantity),
                 progress_measure=before.segment.progress_measure,
                 weight=selected[ob.subject_key],
                 billing_plan=before.segment.remaining_billing_plan,
                 boundary_no=before.segment.modification_boundary_no + 1,
             )
+            from erev_engine.stages.s09_recognition.breakage import applies
+
+            if ctx.specialist_split_continuation and (
+                ob.subject_key in state.return_paths or applies(ob)
+            ):
+                boundary = replace(
+                    boundary,
+                    separation_source_index=next(
+                        i for i, s in enumerate(ob.segments) if s is before.segment
+                    ),
+                    separation_event_key=event.event_key,
+                    totals=before.segment.totals,
+                )
             changed[ob.subject_key] = replace(ob, segments=(*ob.segments, boundary))
     result = replace(
         state, obligations=tuple(changed.get(ob.subject_key, ob) for ob in state.obligations)
@@ -222,7 +264,11 @@ def install(
         if ob.subject_key not in changed:
             continue
         before = befores[ob.subject_key]
-        after = segments.measure(ctx, result, ob, ob.segments[-1], event)
+        after = (
+            measure(ctx, result, ob, ob.segments[-1], event)
+            if ctx.specialist_split_continuation
+            else segments.measure(ctx, result, ob, ob.segments[-1], event)
+        )
         if after.posted != before.posted:
             raise ValueError("A prospective split cannot change previously recognized revenue")
         segments.emit_catch_up(
@@ -233,7 +279,8 @@ def install(
             before=before,
             after=after,
             share_node=f"mod_share@{event.event_key}:{ob.subject_key}:-",
-            base=before.posted,
+            base=before.posted + originals[ob.subject_key].retained_minor,
+            extra={"retained_historical_amount": str(originals[ob.subject_key].retained_minor)},
         )
     boundary_state.emit(ctx, trace, state, result, event)
     return result

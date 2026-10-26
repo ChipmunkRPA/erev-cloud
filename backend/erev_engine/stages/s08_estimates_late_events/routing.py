@@ -429,6 +429,8 @@ def _modification_boundaries(
                 or promised[0] < boundary.effective_date
                 or (promised[0] == boundary.effective_date and promised[1] < boundary.order_key)
             )
+            if "prospective_split_destinations" in boundary.payload:
+                continue  # Separation keeps the original promise; it creates no new VC promise.
             if promised_before and boundary.order_key < ev.order_key:
                 found[boundary.event_key] = boundary
     return tuple(sorted(found.values(), key=lambda item: item.order_key))

@@ -759,6 +759,13 @@ NARRATIVES: Final[Mapping[str, str]] = MappingProxyType(
             "Signed sum of the foreign-currency differences to the end of {period} = {value}."
         ),
         # ENGINE_SPEC_B §12.5 remeasurement and monetary liabilities (END-2).
+        "rec.separation.progress": (
+            "Remaining service after contract-group separation, "
+            "retaining original events and release order = {value}."
+        ),
+        "rec.separation.exact": (
+            "Original component revenue plus the allocated future-service adjustment = {value}."
+        ),
         "fx.split_open_txn": (
             "Original signed transaction movements establish the open quantity = {value}."
         ),

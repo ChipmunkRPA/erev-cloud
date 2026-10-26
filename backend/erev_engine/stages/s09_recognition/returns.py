@@ -751,6 +751,18 @@ def return_state(
         effect = _posted(ctx, seg, rate * (kept - expected.value)) - _posted(
             ctx, seg, rate * (kept - expected.unexpired)
         )
+        if seg.separation_source_index is not None:
+            from erev_engine.separation_recognition import reduction_exact
+
+            after = reduction_exact(
+                ctx, st, contract, ob, seg, d, counts.returned, expected.value, position
+            )
+            before_reduction = reduction_exact(
+                ctx, st, contract, ob, seg, d, counts.returned, expected.unexpired, position
+            )
+            effect = _posted(ctx, seg, seg.x_exact - after) - _posted(
+                ctx, seg, seg.x_exact - before_reduction
+            )
     return ReturnState(
         N=counts.counted,
         Y=counts.returned,
@@ -847,6 +859,32 @@ def _emit_units(
     )
 
 
+def emit_expected(
+    tb: TraceBuilder, ob: ObligationState, period_key: str, expected: Expected
+) -> str:
+    sources: list[str | SourceRef] = []
+    if expected.pin is not None:
+        base = expected.pin.expected_quantity if expected.base is None else expected.base
+        value = money.format_exact(base)
+        detail = {"member": "expected_quantity", "value": value}
+        if expected.pin.rate is not None:  # a portfolio rate × units transferred (PT-06)
+            detail = {"member": "rate", "rate": money.format_exact(expected.pin.rate)}
+            detail["value"] = value
+        sources.append(SourceRef("estimate_version", expected.pin.version_key, detail))
+    return tb.node(
+        measure="return_expected_units",
+        subject_key=ob.subject_key,
+        period_key=period_key,
+        value=expected.value,
+        currency=None,
+        minor_unit=None,
+        formula_id=EXPECTED_FORMULA,
+        inputs=sources,
+        params=expected.params,
+        narrative_key=EXPECTED_FORMULA.rsplit(".v", 1)[0],
+    )
+
+
 def emit(
     tb: TraceBuilder,
     ob: ObligationState,
@@ -866,27 +904,7 @@ def emit(
     inputs: list[str | SourceRef] = []
     if returns_target.expected is not None:
         expected = returns_target.expected
-        sources: list[str | SourceRef] = []
-        if expected.pin is not None:
-            base = expected.pin.expected_quantity if expected.base is None else expected.base
-            value = money.format_exact(base)
-            detail = {"member": "expected_quantity", "value": value}
-            if expected.pin.rate is not None:  # a portfolio rate × units transferred (PT-06)
-                detail = {"member": "rate", "rate": money.format_exact(expected.pin.rate)}
-                detail["value"] = value
-            sources.append(SourceRef("estimate_version", expected.pin.version_key, detail))
-        expected_id = tb.node(
-            measure="return_expected_units",
-            subject_key=ob.subject_key,
-            period_key=period_key,
-            value=expected.value,
-            currency=None,
-            minor_unit=None,
-            formula_id=EXPECTED_FORMULA,
-            inputs=sources,
-            params=expected.params,
-            narrative_key=EXPECTED_FORMULA.rsplit(".v", 1)[0],
-        )
+        expected_id = emit_expected(tb, ob, period_key, expected)
         inputs.append(expected_id)
         if state is not None:
             _emit_units(tb, ob, period_key, state, expected_id)
@@ -933,6 +951,7 @@ def reduction_from_state(
     *,
     st: AllocatedState | None = None,
     position: Position | None = None,
+    ctx: BookContext | None = None,
 ) -> int:
     """ρ(d) = round(r × (Y + E)) of a ``ReturnState`` measured at ``d``, in minor units (S09-R-23).
 
@@ -940,6 +959,16 @@ def reduction_from_state(
     period ends through this function (ENGINE_SPEC_B S15-R-12 basis; D-91). No formula id: it
     derives values the ``return_expected_units`` and segment nodes already trace.
     """
+    if st is not None and ctx is not None:
+        from erev_engine.separation_recognition import reduction_exact
+        from erev_engine.stages.s09_recognition.components import active_segment
+
+        segment = active_segment(ob, "FIXED", d, st=st, position=position)
+        if segment is not None and segment.separation_source_index is not None:
+            contract = next(c for c in st.contracts if c.header.external_id == ob.contract_key)
+            return money.round_half_up(
+                reduction_exact(ctx, st, contract, ob, segment, d, state.Y, state.E, position), mu
+            )
     return money.round_half_up(
         unit_rate(path, ob, d, st=st, position=position) * (state.Y + state.E), mu
     )
@@ -967,4 +996,6 @@ def reduction(
     if path is None or seg is None or policy(ctx, st, ob, SCOPE_POLICY) != REDUCE:
         return 0
     state = return_state(ctx, st, contract, ob, seg, d, position=position)
-    return reduction_from_state(path, ob, state, d, _minor_unit(ctx), st=st, position=position)
+    return reduction_from_state(
+        path, ob, state, d, _minor_unit(ctx), st=st, position=position, ctx=ctx
+    )

@@ -49,6 +49,7 @@ class SplitManager:
         self.active = state.group_code
         self.before: set[str] = set()
         self.member_shares: list[Target] = []
+        self.applied_flows: list[ControlFlow] = []
         self.applied = False
         self.parents: dict[str, str] = {}
 
@@ -66,6 +67,7 @@ class SplitManager:
         ]
 
     def finish(self, flow: ControlFlow, when: date, pieces: list[Piece]) -> None:
+        self.applied_flows.append(flow)
         self.positions[flow.contract_key] += flow.amount if flow.side == "CREDIT" else -flow.amount
         if pieces:
             self.position_inputs[flow.contract_key].extend(
@@ -507,7 +509,7 @@ class SplitManager:
         self.applied = True
 
     def capture(self, period: dates.PeriodLike) -> None:
-        if not self.applied:
+        if not self.applied or self.book.fn == self.book.txn:
             return
         members = [
             t

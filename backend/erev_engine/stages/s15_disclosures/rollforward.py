@@ -269,7 +269,11 @@ def balance_inputs(
     """The rollforward records of one book from the stage 10 and stage 12 states, the stage 14
     intents and the posted amounts."""
     source = getattr(fx.costs, "fx_flows", None)
-    flows = getattr(source, "control", ())
+    routed_entities = {flow.entity for flow in fx.routed_control_flows}
+    flows = (
+        *fx.routed_control_flows,
+        *(flow for flow in getattr(source, "control", ()) if flow.entity not in routed_entities),
+    )
     starts = {
         (code, period.period_key): period.start_date
         for code, calendar in ctx.entities.items()
@@ -417,7 +421,7 @@ def rollforward_balances(
     )
     split_active = (
         ctx.foreign_split_layers
-        and calendar.functional_currency != ctx.txn_currency
+        and (calendar.functional_currency != ctx.txn_currency or ctx.specialist_split_continuation)
         and any(
             e.event_key in split_sources and e.effective_date <= period.end_date for e in st.events
         )
