@@ -383,6 +383,7 @@ class UsageReportedV1(EventPayload):
     quantity: DecimalStr
     rated_amount: NonNegativeMoney | None = None
     is_royalty_statement: bool | None = None
+    royalty_scope: Literal["COMBINATION", "MEMBERS"] | None = None
 
     @model_validator(mode="after")
     def _period(self) -> Self:

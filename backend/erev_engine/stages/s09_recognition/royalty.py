@@ -160,6 +160,7 @@ def target(
         cutoff=cutoff,
         inclusive=inclusive,
         accrue=_accrues(ctx, ob, d),
+        component_keys=ob.combined_component_keys if ctx.royalty_member_scope else (),
     )
     guarantee = _guarantee(ctx, ob, mu)
     gross = _minor(found.total, mu, ob, "a realised royalty")
@@ -218,14 +219,20 @@ def corrections_during_exit(
             position=Position(key, inclusive=True),
             mu=mu,
         )
-        statements = {(item.start, item.end): item for item in candidate.realisation.statements}
-        accruals = {(item.start, item.end): item for item in candidate.realisation.accruals}
+        statements = {
+            (item.scope, item.start, item.end): item for item in candidate.realisation.statements
+        }
+        accruals = {
+            (item.scope, item.start, item.end): item for item in candidate.realisation.accruals
+        }
         selected_statements = []
         selected_accruals = []
         for original in frozen.realisation.statements:
-            selected_statements.append(statements.get((original.start, original.end), original))
+            selected_statements.append(
+                statements.get((original.scope, original.start, original.end), original)
+            )
         for original_accrual in frozen.realisation.accruals:
-            window = (original_accrual.start, original_accrual.end)
+            window = (original_accrual.scope, original_accrual.start, original_accrual.end)
             if window in statements:
                 selected_statements.append(statements[window])
             else:
@@ -294,17 +301,20 @@ def _corrected_statement(
 ) -> royalties.Statement | None:
     """The latest earlier statement for the same usage period as ``item``, which ``item`` corrects
     (S09-R-32: the latest statement per usage period counts), or None."""
-    earlier = royalties.statements(
+    earlier = royalties.realised(
         st.measure_events,
+        st.estimates,
         ob.contract_key,
         ob.obligation_key,
         ob.subject_key,
         at=_measured_by(item),
         cutoff=item.event.order_key,
         inclusive=False,
-    )
+        accrue=False,
+        component_keys=ob.combined_component_keys if item.scope else (),
+    ).statements
     for found in earlier:
-        if (found.start, found.end) == (item.start, item.end):
+        if (found.scope, found.start, found.end) == (item.scope, item.start, item.end):
             return found
     return None
 
@@ -314,15 +324,23 @@ def _replaced_accruals(
 ) -> tuple[royalties.Accrual, ...]:
     """The accrual versions in force before ``item`` whose usage periods lie within its own
     (S09-R-32), by (start, end)."""
-    replaced = royalties.accruals(
+    replaced = royalties.realised(
+        (),
         st.estimates,
         ob.contract_key,
         ob.obligation_key,
+        ob.subject_key,
         at=_measured_by(item),
         cutoff=item.event.order_key,
         inclusive=False,
+        accrue=True,
+        component_keys=ob.combined_component_keys if item.scope else (),
+    ).accruals
+    return tuple(
+        acc
+        for acc in replaced
+        if acc.scope == item.scope and item.start <= acc.start and acc.end <= item.end
     )
-    return tuple(acc for acc in replaced if item.start <= acc.start and acc.end <= item.end)
 
 
 def _emit_true_ups(
@@ -471,6 +489,7 @@ def coverage_gaps(
         ob.subject_key,
         at=d,
         accrue=True,
+        component_keys=ob.combined_component_keys if ctx.royalty_member_scope else (),
     )
     covered = [(item.start, item.end) for item in found.statements]
     covered.extend((accrual.start, accrual.end) for accrual in found.accruals)

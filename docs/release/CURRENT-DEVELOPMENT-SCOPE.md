@@ -3015,3 +3015,24 @@ lint/type checks pass. Local PostgreSQL is stopped; no deployment.
 This closes the tested singleton cross-entity observation gap, not every acquisition shape.
 Agent acquisitions, mixed ordinary/acquired flow presentation and broader cross-entity group
 combinations are not claimed complete. Pending owner policy choices remain separate.
+
+
+### 2026-10-25 — Owner scope and combined-member royalties
+
+Acquisition work is limited to reporting for supported calculations; no further acquisition
+scenario expansion is authorized. Repository completion continues with necessary tests, direct
+main publication and no deployment. The owner confirmed historical FX split layers allocated
+by destination liability share (preserving rate/source/age), independent functional recoverability
+for foreign costs, explicit complete/nonoverlapping member royalty scope, and supplier liability
+remaining with the contracting entity while only net commission goes to the performer.
+
+Revision 65 implements combined original-member royalty scope. Statement corrections replace
+only their member's same usage period; statements replace accruals only within their scope.
+Complete member populations aggregate, while whole-combination sources remain unsplit. Missing
+scope, incomplete final populations and overlapping group/member periods refuse explicitly.
+Intermediate event positions retain partial causal source sets. Original statements, accruals
+and correction traces remain available; older computation revisions retain their behavior.
+Statement and royalty-estimate entry now expose scope. Usage and royalty inputs share one TP
+trace identity without losing either component. Thirty-seven focused calculation cases, forty
+affected form cases, scoped types/lint pass. API generation produced no committed schema change.
+No deployment. Reporting wrap-up, foreign splits/costs and performing-entity agents remain.

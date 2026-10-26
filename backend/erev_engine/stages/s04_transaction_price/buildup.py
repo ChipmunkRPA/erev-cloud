@@ -84,7 +84,7 @@ class Realised:
     accrued: tuple[tuple[EstimateVersionInput, str, Fraction], ...] = ()
 
 
-def _royalty_bearing(st: PobState, ob: PobDraft) -> bool:
+def _royalty_bearing(st: PobState, ob: PobDraft, *, scoped: bool = False) -> bool:
     """ENGINE_SPEC_B S09-R-01: the obligation carries the ``ROYALTY`` component (the predicate
     stage 05 opens the component with; ``erev_engine.royalties``)."""
     canonical = st.identified.canonical
@@ -95,6 +95,9 @@ def _royalty_bearing(st: PobState, ob: PobDraft) -> bool:
         ob.subject_key,
         canonical.measure_events,
         canonical.estimates,
+        component_keys=tuple(m.obligation_key for m in ob.members)
+        if scoped and ob.lessor_judgement_keys
+        else (),
     )
 
 
@@ -132,7 +135,7 @@ def realised(
     for ob in st.obligations:
         method = ob.recognition_method
         contract = ob.contract_key
-        if ob.lessor_judgement_keys:
+        if ob.lessor_judgement_keys and not ctx.royalty_member_scope:
             # The single-obligation royalty reader cannot yet keep corrections and accrual
             # replacement separate for original combined members. Never silently drop a
             # member's statement or interpret it as a correction of its combined host.
@@ -157,7 +160,12 @@ def realised(
                         detail={"event_key": event.event_key},
                         subject_key=ob.subject_key,
                     )
-        if method in (RecognitionMethod.RIGHT_TO_INVOICE, RecognitionMethod.USAGE):
+        if method in (RecognitionMethod.RIGHT_TO_INVOICE, RecognitionMethod.USAGE) and not (
+            ctx.royalty_member_scope
+            and method == RecognitionMethod.USAGE
+            and ctx.policies.value(usage.TIER_MINIMUM_POLICY, contract=contract)
+            == usage.ESTIMATE_MEASUREMENT_PERIOD_TP
+        ):
             # ENC-6 (S04-R-06; S09-R-01, S09-R-02): the realised amounts of the PERIOD_VC component
             # from the one source rule stage 09 recognises (``erev_engine.usage``, DG-ENG-07): the
             # right to invoice for performance to date (S09-R-18; D-87 L6-5-Q-16), or POL-240
@@ -213,8 +221,9 @@ def realised(
                     ZERO,
                 )
             )
-            continue
-        if not _royalty_bearing(st, ob):
+            if not ctx.royalty_member_scope:
+                continue
+        if not _royalty_bearing(st, ob, scoped=ctx.royalty_member_scope):
             continue
         realisation = royalties.realised(
             measure_events,
@@ -226,6 +235,9 @@ def realised(
             cutoff=None if before is None else before.order_key,
             inclusive=False,
             accrue=_accrues(ctx, st, contract, at),
+            component_keys=tuple(m.obligation_key for m in ob.members)
+            if ctx.royalty_member_scope and ob.lessor_judgement_keys
+            else (),
         )
         amount = realisation.total
         guarantee = ZERO
@@ -243,7 +255,23 @@ def realised(
                 tuple((item.version, item.member, item.amount) for item in realisation.accruals),
             )
         )
-    return tuple(found)
+    # One original TP trace identity per obligation, even when both the ordinary
+    # usage and royalty recognition components have independent source inputs.
+    merged: dict[str, Realised] = {}
+    for item in found:
+        prior = merged.get(item.obligation.subject_key)
+        merged[item.obligation.subject_key] = (
+            item
+            if prior is None
+            else replace(
+                item,
+                amount=prior.amount + item.amount,
+                reported=(*prior.reported, *item.reported),
+                accrued=(*prior.accrued, *item.accrued),
+                guarantee=prior.guarantee + item.guarantee,
+            )
+        )
+    return tuple(merged.values())
 
 
 def royalty_accruals(

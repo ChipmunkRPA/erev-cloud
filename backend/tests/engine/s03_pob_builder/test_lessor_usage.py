@@ -212,3 +212,153 @@ def test_original_member_royalty_statement_cannot_disappear(usage_method):
     # while member correction/coverage semantics are not implemented.
     with pytest.raises(EngineError, match="member-specific correction"):
         compute(value)
+
+
+def scoped_royalty_world():
+    value = usage_world()
+    return replace(
+        value,
+        evidence_revision=65,
+        pob_template_versions=example().pob_template_versions,
+        events=tuple(
+            replace(
+                event,
+                payload={**event.payload, "is_royalty_statement": True, "royalty_scope": "MEMBERS"},
+            )
+            if event.event_type == "USAGE_REPORTED"
+            else event
+            for event in value.events
+        ),
+    )
+
+
+def test_scoped_member_royalties_correct_only_the_original_member():
+    value = scoped_royalty_world()
+    original = compute(value).books[0]
+    corrected_event = bundles.event(
+        CONTRACT,
+        5,
+        "USAGE_REPORTED",
+        JAN_END,
+        {**value.events[-2].payload, "rated_amount": "80"},
+        obligation_keys=["SERVICE"],
+    )
+    changed = replace(value, events=(*value.events, corrected_event))
+    result = compute(changed).books[0]
+    assert original.contract_version.columns["vc_constrained_amount"] == 30000
+    assert result.contract_version.columns["vc_constrained_amount"] == 28000
+    nodes = {n.id: n for n in result.trace.nodes}
+    assert nodes[f"royalty_revenue_cum:{CONTRACT}/SERVICE:FY2026-P01"].value == "280.00"
+    assert (
+        nodes[f"royalty_true_up@{corrected_event.event_key}:{CONTRACT}/SERVICE:-"].value == "-20.00"
+    )
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}
+    assert compute(changed).sha256() == compute(changed).sha256()
+
+
+def test_group_royalty_retains_one_source_without_member_allocation():
+    value = scoped_royalty_world()
+    grouped = replace(
+        value.events[-2],
+        payload={**value.events[-2].payload, "royalty_scope": "COMBINATION", "rated_amount": "300"},
+    )
+    value = replace(value, events=(*value.events[:-2], grouped))
+    result = compute(value).books[0]
+    assert result.contract_version.columns["vc_constrained_amount"] == 30000
+    node = next(
+        n
+        for n in result.trace.nodes
+        if n.id == f"royalty_revenue_cum:{CONTRACT}/SERVICE:FY2026-P01"
+    )
+    assert [s.ref_id for s in node.inputs if isinstance(s, SourceRef)] == [grouped.event_key]
+
+
+@pytest.mark.parametrize("reason", ["missing_member", "overlap", "scope_missing"])
+def test_member_royalty_scope_gaps_and_overlap_refuse(reason):
+    value = scoped_royalty_world()
+    if reason == "missing_member":
+        value = replace(value, events=value.events[:-1])
+    elif reason == "overlap":
+        group = bundles.event(
+            CONTRACT,
+            5,
+            "USAGE_REPORTED",
+            JAN_END,
+            {**value.events[-2].payload, "royalty_scope": "COMBINATION"},
+            obligation_keys=["SERVICE"],
+        )
+        value = replace(value, events=(*value.events, group))
+    else:
+        value = replace(
+            value,
+            events=tuple(
+                replace(e, payload={k: v for k, v in e.payload.items() if k != "royalty_scope"})
+                for e in value.events
+            ),
+        )
+    with pytest.raises(EngineError) as refused:
+        compute(value)
+    assert refused.value.detail["rule"] == "COMBINED_ROYALTY_SCOPE"
+
+
+def test_member_statement_replaces_only_its_own_accrual():
+    from decimal import Decimal
+
+    from support.recognition import estimate_version, event_view
+
+    from erev_engine import royalties
+    from erev_engine.stages.state import EstimatePin, EstimatePins
+
+    versions = [
+        replace(
+            estimate_version(
+                f"{CONTRACT}/ROY-{key}", "ROYALTY_ACCRUAL", 1, date(2026, 1, 1), obligation_key=key
+            ),
+            expected_total_amount=Decimal(amount),
+            parameters={
+                "royalty_scope": "MEMBERS",
+                "usage_period_start_date": "2026-01-01",
+                "usage_period_end_date": "2026-01-31",
+            },
+        )
+        for key, amount in [("SERVICE", "100"), ("LEASE", "200")]
+    ]
+    pins = EstimatePins(
+        {v.estimate_key: (EstimatePin(v, (date(2026, 1, 1), 1, v.version_key)),) for v in versions}
+    )
+    statement = event_view(
+        CONTRACT,
+        10,
+        "USAGE_REPORTED",
+        JAN_END,
+        {
+            "obligation_key": "SERVICE",
+            "is_royalty_statement": True,
+            "royalty_scope": "MEMBERS",
+            "usage_period_start": "2026-01-01",
+            "usage_period_end": "2026-01-31",
+            "rated_amount": "80",
+        },
+        obligation_keys=["SERVICE"],
+    )
+    found = royalties.realised(
+        (statement,),
+        pins,
+        CONTRACT,
+        "SERVICE",
+        f"{CONTRACT}/SERVICE",
+        component_keys=("SERVICE", "LEASE"),
+        at=JAN_END,
+        accrue=True,
+    )
+    assert found.total == 280
+    assert [(s.scope, s.amount) for s in found.statements] == [("SERVICE", 80)]
+    assert [(a.scope, a.amount) for a in found.accruals] == [("LEASE", 200)]
+
+
+def test_combined_usage_method_does_not_drop_explicit_royalty_statements():
+    value = scoped_royalty_world()
+    value = replace(value, pob_template_versions=usage_world().pob_template_versions)
+    result = compute(value).books[0]
+    assert result.contract_version.columns["vc_constrained_amount"] == 30000
+    assert reevaluate(result.trace) == {n.id: n.value for n in result.trace.nodes}

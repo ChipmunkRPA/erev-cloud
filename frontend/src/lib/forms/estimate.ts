@@ -525,6 +525,11 @@ export function versionForm(
       values[member.id] = typedText(member.type, value, currency);
     }
   }
+  if (kind === "ROYALTY_ACCRUAL") {
+    const scope = source?.parameters.royalty_scope;
+    values["parameters.royalty_scope"] =
+      scope === "COMBINATION" || scope === "MEMBERS" ? scope : "";
+  }
   if (kind === "EAC") {
     const scope = source?.parameters.eac_scope;
     values["parameters.eac_scope"] = scope === "COMBINATION" || scope === "MEMBERS" ? scope : "";
@@ -659,6 +664,11 @@ export function buildVersion(
   const columns: Record<string, string | number | null> = {};
   const parameters = new Map<string, unknown>(Object.entries(carried));
   parameters.delete(NO_CHANGE);
+  if (kind === "ROYALTY_ACCRUAL") {
+    const scope = form.values["parameters.royalty_scope"];
+    if (scope === "COMBINATION" || scope === "MEMBERS") parameters.set("royalty_scope", scope);
+    else parameters.delete("royalty_scope");
+  }
   if (kind === "EAC") {
     const scope = form.values["parameters.eac_scope"];
     if (scope === "COMBINATION" || scope === "MEMBERS") parameters.set("eac_scope", scope);

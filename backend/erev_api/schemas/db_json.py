@@ -326,6 +326,7 @@ class VariableConsiderationParameters(_Parameters):
 
 
 class RoyaltyAccrualParameters(_Parameters):
+    royalty_scope: Literal["COMBINATION", "MEMBERS"] | None = None
     usage_period_start_date: date
     usage_period_end_date: date
 

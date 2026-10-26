@@ -798,6 +798,20 @@ export function VersionDrawer({
             ))}
           </fieldset>
         ) : null}
+        {kind === "ROYALTY_ACCRUAL" ? (
+          <RadioGroup<string>
+            legend={t("contracts.drawer.event.royaltyScope")}
+            options={[
+              { value: "", label: t("contracts.estimates.eacScope.unspecified") },
+              { value: "COMBINATION", label: t("contracts.drawer.event.royaltyScope.COMBINATION") },
+              { value: "MEMBERS", label: t("contracts.drawer.event.royaltyScope.MEMBERS") },
+            ]}
+            value={form.values["parameters.royalty_scope"] ?? ""}
+            onChange={(value) =>
+              change({ ...form, values: { ...form.values, "parameters.royalty_scope": value } })
+            }
+          />
+        ) : null}
         {kind === "EAC" ? (
           <div className="flex flex-col gap-2">
             <p className="text-body-sm text-fg-2">{t("contracts.estimates.eacMeasureHelp")}</p>

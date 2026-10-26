@@ -733,7 +733,7 @@ it("submits an explicitly marked royalty statement against the selected obligati
     }),
   );
   const { drawer } = await open("royalty", false, true);
-  expect(within(drawer).queryByText("ORIGINAL · Combined into O1")).toBeNull();
+  select(drawer, /Royalty statement coverage/, "Entire combined obligation");
   fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
   await waitFor(() => expect(captured).toHaveLength(1));
   expect(captured[0]).toMatchObject({
@@ -797,4 +797,28 @@ it("records redemption quantities without fabricating a rated amount", async () 
   expect(built.events?.[0]?.payload).not.toHaveProperty("rated_amount");
   expect(built.events?.[0]?.payload).not.toHaveProperty("is_royalty_statement");
   expect(eventKindsFor({ recognition_method: "REDEMPTION_PATTERN" })).toContain("redemption");
+});
+
+it("requires explicit combined royalty scope and retains the selected original member", () => {
+  const form = {
+    ...emptyEventForm("LEASE"),
+    effectiveDate: "2026-01-31",
+    metric: "sales",
+    quantity: "1",
+    amount: "200.00",
+    usageStart: "2026-01-01",
+    usageEnd: "2026-01-31",
+  };
+  expect(buildEvents("royalty", form, "USD", ["SERVICE", "LEASE"]).errors).toHaveProperty(
+    "royaltyScope",
+  );
+  const result = buildEvents("royalty", { ...form, royaltyScope: "MEMBERS" }, "USD", [
+    "SERVICE",
+    "LEASE",
+  ]);
+  expect(result.errors).toEqual({});
+  expect(result.events?.[0]?.payload).toMatchObject({
+    obligation_key: "LEASE",
+    royalty_scope: "MEMBERS",
+  });
 });

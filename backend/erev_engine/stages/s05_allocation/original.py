@@ -126,6 +126,9 @@ def build(
             draft.subject_key,
             cb.measure_events,
             cb.estimates,
+            component_keys=tuple(m.obligation_key for m in draft.members)
+            if ctx.royalty_member_scope and draft.lessor_judgement_keys
+            else (),
         ):
             # ENGINE_SPEC_B S09-R-01 (ENC-8): the ROYALTY component opens with the obligation as an
             # empty marker segment; stage 09 realises its amounts from the statements and accrual

@@ -110,6 +110,7 @@ export interface EventForm {
   readonly measure: Measure | null;
   readonly progress: string;
   readonly hours: string;
+  readonly royaltyScope: "COMBINATION" | "MEMBERS" | null;
   readonly hoursScope: "COMBINATION" | "MEMBERS" | null;
   readonly memberHours: Readonly<Record<string, string>>;
   readonly milestone: string;
@@ -147,6 +148,7 @@ export function emptyEventForm(obligationKey: string | null): EventForm {
     measure: null,
     progress: "",
     hours: "",
+    royaltyScope: null,
     hoursScope: null,
     memberHours: {},
     milestone: "",
@@ -210,6 +212,8 @@ export function buildEvents(
     case "redemption":
     case "royalty":
     case "usage": {
+      if (kind === "royalty" && combinedKeys.length > 0 && form.royaltyScope === null)
+        errors.royaltyScope = choose;
       const units = decimalText(form.quantity);
       if (units === null) errors.quantity = t("contracts.drawer.event.usageQuantityError");
       if (!form.metric.trim()) errors.metric = t("contracts.drawer.event.metricError");
@@ -234,7 +238,14 @@ export function buildEvents(
           usage_period_start: form.usageStart,
           usage_period_end: form.usageEnd,
           ...(kind === "redemption" ? {} : { rated_amount: { amount: form.amount, currency } }),
-          ...(kind === "royalty" ? { is_royalty_statement: true } : {}),
+          ...(kind === "royalty"
+            ? {
+                is_royalty_statement: true,
+                ...(combinedKeys.length > 0 && form.royaltyScope !== null
+                  ? { royalty_scope: form.royaltyScope }
+                  : {}),
+              }
+            : {}),
         },
       });
       break;
@@ -787,6 +798,7 @@ export function RecordEventDrawer({
   const acceptsOriginalComponents =
     kind === "delivery" ||
     kind === "usage" ||
+    kind === "royalty" ||
     kind === "return" ||
     (kind === "progress" && form.measure === "LABOUR_HOURS") ||
     (kind === "cost" && form.purpose === "PROGRESS_INPUT");
@@ -973,6 +985,19 @@ export function RecordEventDrawer({
         ) : null}
         {kind === "usage" || kind === "royalty" || kind === "redemption" ? (
           <>
+            {kind === "royalty" && combinedKeys.length > 0 ? (
+              <SelectField
+                name="event-royalty-scope"
+                label={t("contracts.drawer.event.royaltyScope")}
+                options={(["COMBINATION", "MEMBERS"] as const).map((value) => ({
+                  value,
+                  label: t(`contracts.drawer.event.royaltyScope.${value}`),
+                }))}
+                value={form.royaltyScope}
+                onChange={(value) => set("royaltyScope", value)}
+                error={shown("royaltyScope")}
+              />
+            ) : null}
             <TextField
               name="event-metric"
               label={t("contracts.drawer.event.metric")}

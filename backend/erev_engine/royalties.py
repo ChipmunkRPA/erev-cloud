@@ -73,6 +73,7 @@ class Statement:
     start: date  # usage_period_start
     end: date  # usage_period_end
     amount: Fraction  # rated_amount, currency units
+    scope: str = ""  # original combined member or COMBINATION
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +85,7 @@ class Accrual:
     end: date  # parameters.usage_period_end_date
     member: str  # the version member that gives the amount
     amount: Fraction  # currency units
+    scope: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +169,8 @@ def bearing(
     subject_key: str,
     measure_events: Iterable[EventView],
     pins: EstimatePins,
+    *,
+    component_keys: Sequence[str] = (),
 ) -> bool:
     """Whether the obligation carries the ``ROYALTY`` recognition component (S09-R-01).
 
@@ -182,12 +186,21 @@ def bearing(
         # component of the obligation a statement happens to name.
         return False
     if any(
-        is_statement(event) and names_obligation(event, contract_key, obligation_key, subject_key)
+        is_statement(event)
+        and (
+            names_obligation(event, contract_key, obligation_key, subject_key)
+            or any(
+                names_obligation(
+                    event, contract_key, key, f"{_encode(contract_key)}/{_encode(key)}"
+                )
+                for key in component_keys
+            )
+        )
         for event in measure_events
     ):
         return True
     return any(
-        _targets(pin.version, contract_key, obligation_key)
+        any(_targets(pin.version, contract_key, key) for key in (obligation_key, *component_keys))
         for versions in pins.pins.values()
         for pin in versions
     )
@@ -311,8 +324,24 @@ def realised(
     cutoff: OrderKey | None = None,
     inclusive: bool = True,
     accrue: bool,
+    component_keys: Sequence[str] = (),
 ) -> Realisation:
     """Statements and, under POL-056 ``ACCRUE_ESTIMATE`` (``accrue``), the uncovered accruals."""
+    if component_keys:
+        from erev_engine.royalty_scope import realised as combined_realised
+
+        return combined_realised(
+            measure_events,
+            pins,
+            contract_key,
+            obligation_key,
+            subject_key,
+            component_keys=component_keys,
+            at=at,
+            cutoff=cutoff,
+            inclusive=inclusive,
+            accrue=accrue,
+        )
     found = statements(
         measure_events,
         contract_key,
