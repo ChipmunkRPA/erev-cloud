@@ -18,32 +18,6 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from fastapi import FastAPI
-from sqlalchemy import func, select
-from support.db import TestDatabase
-from support.factories import (
-    K11World,
-    SeatWorld,
-    activated_contract,
-    booked_contract,
-    computed,
-    k11_body,
-    k11_world,
-    product_with_template,
-    seat_body,
-    seat_line,
-    seat_world,
-)
-from support.interleave import (
-    await_lock_wait,
-    await_lock_waits,
-    backend_pid,
-    observing_checkouts,
-)
-from support.principals import colleague, enrolled
-from support.reference import APPROVALS, approve, assign, fields, get, patch, post, put, slug
-from support.rows import publish_registry_version
-
 from erev_api.approvals.subjects import COMBINATION_AUTHOR_DETAIL
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import RequestContext, system_principal
@@ -72,6 +46,31 @@ from erev_api.enums import RegistryCategory, TenantKind
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from erev_api.uow import unit_of_work
+from fastapi import FastAPI
+from sqlalchemy import func, select
+from support.db import TestDatabase
+from support.factories import (
+    K11World,
+    SeatWorld,
+    activated_contract,
+    booked_contract,
+    computed,
+    k11_body,
+    k11_world,
+    product_with_template,
+    seat_body,
+    seat_line,
+    seat_world,
+)
+from support.interleave import (
+    await_lock_wait,
+    await_lock_waits,
+    backend_pid,
+    observing_checkouts,
+)
+from support.principals import colleague, enrolled
+from support.reference import APPROVALS, approve, assign, fields, get, patch, post, put, slug
+from support.rows import publish_registry_version
 
 GROUPS = "/api/v1/combination-groups"
 SUGGESTIONS = "/api/v1/combination-suggestions"
@@ -1326,9 +1325,8 @@ def test_combined_aging_retains_billing_owner_and_member_adjustments(seats: Seat
         )
     assert set(amounts) == {"SF-ORD-10417", "SF-ORD-10418"}
 
-    from support.worlds import ReportWorld, report_run, run_now
-
     from erev_api.jobs.context import JobRuntime
+    from support.worlds import ReportWorld, report_run, run_now
 
     world = ReportWorld(
         seats.place,
@@ -1450,3 +1448,159 @@ def test_prospective_split_approval_retains_original_envelope(
         },
     )
     assert again.status_code == 422, again.text
+
+
+def test_foreign_split_persists_reports_and_original_sources(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from erev_api.jobs.context import JobRuntime
+    from support import factories
+    from support.worlds import ReportWorld, report_run, run_now
+    from tests.domain.contracts.test_fx_remeasurement_recompute import (
+        _published_version,
+        _rate_set,
+    )
+
+    create_entity = factories.entity
+
+    def foreign_entity(*args: Any, **kwargs: Any) -> Any:
+        return create_entity(*args, **{**kwargs, "functional_currency": "EUR"})
+
+    monkeypatch.setattr(factories, "entity", foreign_entity)
+    chart = (
+        *factories.AVM_US_CHART,
+        ("7200", "Foreign exchange gain or loss", "EXPENSE", "D", "FX_GAIN_LOSS"),
+    )
+    world = factories.seat_world(app, keyring, clock, files, chart=chart, reporting_currency="EUR")
+    pair = {"base_currency": "USD", "quote_currency": "EUR"}
+    for kind in ("spot", "average", "closing"):
+        rates = (
+            [
+                {**pair, "rate": "0.9", "effective_date": "2026-01-01"},
+                {**pair, "rate": "1.15", "effective_date": "2026-09-16"},
+            ]
+            if kind == "spot"
+            else [
+                {
+                    **pair,
+                    "rate": "0.88" if kind == "average" else "0.92",
+                    "period_key": f"FY2026-P{month:02d}",
+                }
+                for month in range(1, 10)
+            ]
+        )
+        _published_version(
+            app,
+            world.place.author,
+            world.marcus,
+            _rate_set(app, world.place.author, kind),
+            rates,
+            coverage=("2026-01-01", "2026-09-30"),
+        )
+    first, second, group_id = _combine(world)
+    head = world.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == first))
+    billed = post(
+        app,
+        EVENTS.format(contract_id=first),
+        world.place.author,
+        {
+            "events": [
+                {
+                    "event_type": "BILLING_RECORDED",
+                    "effective_date": "2026-09-01",
+                    "payload": {
+                        "invoice_number": "FOREIGN-SPLIT",
+                        "line_external_id": "1",
+                        "amount": {"amount": "10000.00", "currency": "USD"},
+                        "issue_date": "2026-09-01",
+                    },
+                }
+            ]
+        },
+        if_match=f'"s{head}"',
+    )
+    assert billed.status_code in (201, 202), billed.text
+    computed(world.place, group_id)
+    path = f"{GROUPS}/{group_id}"
+    shown = get(
+        app,
+        path + "/split-preview",
+        world.place.author,
+        {"effective_date": "2026-09-16", "leave_contract_ids": str(second), "book_code": "ASC606"},
+    )
+    assert shown.status_code == 200, shown.text
+    preview = shown.json()
+    submitted = post(
+        app,
+        path + "/submit",
+        world.place.author,
+        {
+            "split_effective_date": "2026-09-16",
+            "leave_contract_ids": [str(second)],
+            "split_input_sha256": preview["input_sha256"],
+            "split_output_sha256": preview["output_sha256"],
+            "comment": "Separate future service while retaining original foreign layers.",
+        },
+    )
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, submitted.json()["approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    reporter = ReportWorld(
+        world.place,
+        world.priya,
+        world.marcus,
+        JobRuntime(clock=clock, keyring=keyring, files=files),
+        world.entity_id,
+        {},
+    )
+    parameters = {
+        "entity_codes": ["AVM-US"],
+        "book": "ASC606",
+        "from_period_key": "FY2026-P09",
+        "to_period_key": "FY2026-P09",
+    }
+    for view in ("transaction", "functional", "reporting"):
+        run, rows = report_run(
+            reporter, "contract_balance_rollforward", {**parameters, "currency_view": view}
+        )
+        group = next(
+            r for r in rows if (r.get("attribution_scope") or "").startswith("Group movements")
+        )
+        assert group["other"]["amount"] == "0.00"
+        members = [r for r in rows if r["row_key"].startswith("member-endpoints:")]
+        assert len(members) == 2
+        assert all(r["reclassifications"] is None for r in members)
+        explained = get(
+            app,
+            f"/api/v1/explain/report-runs/{run['id']}/cell",
+            world.place.author,
+            {"row_key": group["row_key"], "column_key": "reclassifications"},
+        )
+        assert explained.status_code == 200, explained.text
+        assert explained.json()["contributors"]["items"][0]["source_links"]
+        rerun = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.place.author, {})
+        assert rerun.status_code == 202, rerun.text
+        assert run_now(reporter, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+        repeated = get(
+            app,
+            f"/api/v1/report-runs/{rerun.headers['x-erev-report-run-id']}/data",
+            world.place.author,
+            {"limit": "200"},
+        )
+        assert repeated.status_code == 200, repeated.text
+        assert repeated.json()["items"] == rows
+    _, aging = report_run(
+        reporter,
+        "balance_aging",
+        {
+            "entity_codes": ["AVM-US"],
+            "book": "ASC606",
+            "period_key": "FY2026-P09",
+            "currency_view": "functional",
+        },
+    )
+    assert aging

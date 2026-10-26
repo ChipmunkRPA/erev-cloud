@@ -27,9 +27,11 @@ the close status and revenue by period.*
   a Controller's lock. Journal runs are approved and exported to the general ledger. Reports are stored,
   numbered runs with tie-outs, and an audit log records who did what under a verified hash chain.
 
-This is the release candidate of 1.0. What it does not do is stated row by row in
-[the limits of release 1.0](docs/release/LIMITS-1.0.md); an independent accountant's review of its
-accounting decisions is still outstanding, and nothing is deployed.
+The [current scope](docs/release/CURRENT-DEVELOPMENT-SCOPE.md) describes supported calculations
+and reporting, including the completed foreign split, return-asset and loss-provision work.
+[Release limits](docs/release/LIMITS-1.0.md) summarize the supported boundaries. Repository
+completion covers the software and documentation; deployment and independent accounting
+review are separate activities.
 
 ## How to use it: twelve examples
 

@@ -27,6 +27,8 @@ under its noncommercial license. Repository completion does not include deployme
 
 The remaining foreign split, return-asset and loss-provision implementation is complete for
 its documented scope. Focused calculation, journal and report-source checks accompany it.
+The approved foreign split workflow is also verified through persisted PostgreSQL data,
+all three currency views, original trace links, exact retained reruns and functional aging.
 Deployment and independent accounting review remain outside repository development.
 
 Broader performing-agent calendars and additional acquisition scenarios are outside the
