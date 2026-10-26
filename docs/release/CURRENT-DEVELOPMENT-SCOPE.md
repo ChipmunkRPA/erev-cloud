@@ -55,8 +55,9 @@ validation and presentation details.
 
 ## Remaining engineering work and explicit limits
 
-- Foreign-currency split continuation must preserve each original remaining FX layer's rate,
-  source and collection age while allocating it by destination liability share.
+- The original FX-layer allocation kernel conserves source/destination transaction totals and
+  functional carrying, preserving original rate/source/age. Runtime split continuation and
+  newly exposed gross-balance carry-forward still require completion.
 - Foreign return-asset and loss-provision measurements still require completion of their
   separate historical/assessment-rate treatment rules.
 - Broader performing-agent calendars are not supported by the aligned-period implementation.

@@ -20,7 +20,8 @@ under its noncommercial license. Repository completion does not include deployme
 
 ## Remaining development
 
-1. Foreign-currency split continuation preserving original FX-layer rates, sources and age.
+1. Connect the conserved original FX-layer allocation kernel to foreign split continuation,
+   including the treatment of newly exposed gross balances.
 2. Foreign return-asset and loss-provision measurement completion.
 3. Final repository documentation and release verification for the completed scope.
 
