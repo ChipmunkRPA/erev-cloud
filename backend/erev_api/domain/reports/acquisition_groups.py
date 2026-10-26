@@ -6,8 +6,9 @@ from decimal import Decimal
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from erev_api.uow import UnitOfWork
 from erev_engine.bundle import InputBundle
+
+from erev_api.uow import UnitOfWork
 
 from . import acquisition_evidence, acquisition_native, tie_outs
 from .builders.contract_balance_rollforward import LINES, ContractRollforward
@@ -24,6 +25,7 @@ MAPPING = {
     "OTHER": "OTHER",
     "BUSINESS_COMBINATIONS": "BUSINESS_COMBINATIONS",
     "FX": "FX_REMEASUREMENT",
+    "COMBINATION_SPLITS": "RECLASSIFICATIONS",
     "INCREASES_BILLING": "BILLINGS",
     "DECREASES_CREDIT_MEMO": "BILLINGS",
     "INCREASES_CREDIT_MEMO": "BILLINGS",

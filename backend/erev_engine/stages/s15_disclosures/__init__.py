@@ -263,7 +263,10 @@ def run(
                 from .mixed_acquisition import is_mixed
 
                 own = tuple(ob for ob in allocated.obligations if ob.contracting_entity == entity)
-                if is_mixed(own):
+                if is_mixed(own) or (
+                    ctx.foreign_split_layers
+                    and any("prospective_split_destinations" in e.payload for e in allocated.events)
+                ):
                     # Retain the existing renderer's monthly results. No new cutover
                     # admission, posting calculation or retrospective input rewrite.
                     last = next(p for p in ctx.entities[entity].periods if p.period_key == key)

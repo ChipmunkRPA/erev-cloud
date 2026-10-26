@@ -1,7 +1,7 @@
 # Current development scope
 
-This page describes the public repository's supported behavior and remaining engineering
-work. It is not a certification of accounting compliance or a deployment approval.
+This page describes the public repository's supported behavior and documented engineering
+limits. It is not a certification of accounting compliance or a deployment approval.
 
 ## Repository scope
 
@@ -62,11 +62,17 @@ validation and presentation details.
   loss-register projections use that independent test. Reporting-currency snapshots use
   retained closing rates, with the period movement at the retained average rate.
 
-## Remaining engineering work and explicit limits
+## Supported split scope and explicit limits
 
-- The original FX-layer allocation kernel conserves source/destination transaction totals and
-  functional carrying, preserving original rate/source/age. Runtime split continuation and
-  newly exposed gross-balance carry-forward still require completion.
+- Foreign fixed-service split continuation conserves original layer quantities and carrying
+  across each destination. Rates, original source contracts and collection ages survive
+  successive splits. Newly exposed gross liabilities restore historical credit carrying;
+  monetary assets use split-date spot, with the difference shown as FX.
+- Monthly group rollforwards show split reclassifications and FX separately and reconcile to
+  native member endpoints. Member movements are unallocated; member endpoints remain visible.
+  Current liability follows each destination's release layers and is apportioned by member
+  liability carrying. Original source evidence and report cell links are retained.
+- Specialist split methods outside the existing fixed-service admission remain unsupported.
 - Broader performing-agent calendars are not supported by the aligned-period implementation.
 - Unsupported acquisition methods, agent acquisition attribution and broader entity/group
   combinations remain outside the completed reporting lane.

@@ -20,7 +20,6 @@ from decimal import Decimal
 from fractions import Fraction
 
 import pytest
-
 from erev_engine import ENGINE_VERSION
 from erev_engine.bundle import EntityInput, FxRateInput
 from erev_engine.dates import month_end
@@ -734,6 +733,7 @@ def test_original_obligation_openings_replace_restated_ownership():
 
 def test_original_functional_opening_changes_only_relief_classification():
     from types import SimpleNamespace as NS
+
     from erev_engine.stages.s15_disclosures.functional_pob import classify
 
     ctx = NS(txn_currency="EUR", entities={ENTITY: NS(functional_currency="USD")})
@@ -801,6 +801,7 @@ def test_closing_capture_preserves_obligation_eligibility_without_group_allocati
 
 def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_sources():
     from types import SimpleNamespace as NS
+
     from erev_engine.stages.s15_disclosures.obligation_closing import capture
 
     ctx = NS(txn_currency="EUR", entities={ENTITY: NS(functional_currency="USD")})
@@ -811,7 +812,7 @@ def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_s
         principal_agent=NS(value="PRINCIPAL"),
         opening=None,
     )
-    st = NS(obligations=[own])
+    st = NS(obligations=[own], acquisition_cutover_rights=False)
     period = NS(period_key=APRIL, end_date=date(2026, 4, 30))
     invoice_flow = invoice(1, date(2026, 4, 1), "3.00")
     credit = dataclasses.replace(invoice(2, date(2026, 4, 2), "3.00"), kind="CREDIT_MEMO")
@@ -848,6 +849,7 @@ def test_functional_closing_capture_keeps_zero_transaction_fx_residual_and_all_s
 @pytest.mark.parametrize("multiple_sources", [False, True])
 def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening(multiple_sources):
     from types import SimpleNamespace as NS
+
     from erev_engine.bundle import DisclosureOpeningInput
     from erev_engine.stages.s15_disclosures.frozen_opening import apply
 
@@ -905,6 +907,7 @@ def test_frozen_handoff_accepts_only_proven_new_obligation_zero_opening(multiple
 
 def test_agent_functional_closing_uses_gross_control_targets_not_net_commission():
     from types import SimpleNamespace as NS
+
     from erev_engine.stages.s15_disclosures.obligation_closing import capture
 
     ctx = NS(txn_currency="EUR", entities={ENTITY: NS(functional_currency="USD")})
@@ -916,7 +919,7 @@ def test_agent_functional_closing_uses_gross_control_targets_not_net_commission(
         gross_to_net=NS(basis="FIXED_FEE"),
         opening=None,
     )
-    st = NS(obligations=[own])
+    st = NS(obligations=[own], acquisition_cutover_rights=False)
     period = NS(period_key=APRIL, end_date=date(2026, 4, 30))
     billed = invoice(1, date(2026, 4, 1), "3.00")
     released = on_event(2, date(2026, 4, 2), "1.00", SERVICES)

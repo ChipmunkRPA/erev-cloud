@@ -92,6 +92,7 @@ from fractions import Fraction
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine import billing_identity
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -119,7 +120,6 @@ from erev_api.enums import ContractEventType
 from erev_api.explain import store as trace_store
 from erev_api.registry.resolve import setting
 from erev_api.uow import UnitOfWork
-from erev_engine import billing_identity
 
 CODE: Final = "contract_balance_rollforward"
 LIABILITY: Final = "contract_liability"
@@ -442,6 +442,18 @@ def rollforwards(
         from ..acquisition_flows import read as acquisition_flows
 
         acquisitions = acquisition_flows(
+            uow,
+            params,
+            transaction_ends,
+            periods,
+            book_code,
+            functional=functional,
+            groups=native_groups,
+        )
+    if documents and uow is not None:
+        from ..split_groups import read as split_groups
+
+        split_groups(
             uow,
             params,
             transaction_ends,
@@ -2212,13 +2224,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 for code in acquisition_groups.EXTRA_LINES
             ),
         )
-        control["mixed_acquisition_presentation"] = (
+        control["group_movement_presentation"] = (
             "Group movements; member endpoints are informational and excluded from totals. "
             "Monthly opening revenue and asset settlements keep their original classification."
         )
     from ..acquisition_cells import retain as retain_acquisition_cells
 
     retain_acquisition_cells(params, items, rows, role, rate_evidence)
+    from ..split_cells import retain as retain_split_cells
+
+    retain_split_cells(params, items, rows, role, rate_evidence)
     return ReportData(
         columns=columns,
         rows=tuple(rows),

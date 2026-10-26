@@ -114,6 +114,13 @@ def functional_balance_columns(
         total = carrying.get((entity, period_key), 0)
         for row, share in zip(members, _apportion(total, members, period_key), strict=True):
             liability[(row.subject_key, period_key)] = share
+    liability.update(
+        {
+            (t.subject_key, t.period_key): t.value
+            for t in fx.split_member_shares
+            if t.measure == "split_contract_liability_functional"
+        }
+    )
     out: list[BalanceOut] = []
     for row in rows:
         found = liability.get((row.subject_key, row.period_key))
@@ -522,10 +529,23 @@ def functional_member_targets(
             )
         else:
             shares = largest_remainder(total, weights, [subject for subject, _, _ in group_rows])
+        split = {
+            (t.subject_key, t.period_key): t
+            for t in fx.split_member_shares
+            if t.entity == entity
+            and t.period_key == period_key
+            and t.measure == "split_contract_liability_functional"
+        }
+        if split:
+            if set(split) != {(subject, period_key) for subject, _, _ in group_rows}:
+                raise ValueError("Split functional member population is incomplete")
+            shares = [split[(subject, period_key)].value for subject, _, _ in group_rows]
         currency = functional[entity]
         minor_unit = ctx.currencies[currency].minor_unit
         for (subject, _, _), share in zip(group_rows, shares, strict=True):
-            values: dict[str, tuple[int, list[str]]] = {_LIABILITY: (share, [])}
+            values: dict[str, tuple[int, list[str]]] = {
+                _LIABILITY: (share, [split[(subject, period_key)].node_id] if split else [])
+            }
             for role, name in _PRESENTED.items():
                 values[name] = (
                     presented.get((subject, role, period_key), 0),

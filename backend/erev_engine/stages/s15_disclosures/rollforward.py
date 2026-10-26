@@ -412,7 +412,38 @@ def rollforward_balances(
         [] if mixed and records.capture_acquisition_sources else None
     )
     relief = 0
-    if cutover is None or period.end_date >= cutover:
+    split_sources = frozenset(
+        e.event_key for e in st.events if "prospective_split_destinations" in e.payload
+    )
+    split_active = (
+        ctx.foreign_split_layers
+        and calendar.functional_currency != ctx.txn_currency
+        and any(
+            e.event_key in split_sources and e.effective_date <= period.end_date for e in st.events
+        )
+    )
+    if split_active:
+        for values in lines.values():
+            values["COMBINATION_SPLITS"] = 0
+        if opening_obligations is not None:
+            raise ValueError(
+                "Split rollforward retains group layer sources; POB opening quotas are unavailable"
+            )
+        from .split_rollforward import fill
+
+        relief = fill(
+            ctx,
+            records,
+            entity,
+            unit,
+            period,
+            previous,
+            lines,
+            functional=functional,
+            split_sources=split_sources,
+        )
+        memo = _memo(ctx, records, own, period, None)
+    elif cutover is None or period.end_date >= cutover:
         if functional:
             acquired_sources = (
                 mixed_acquisition.functional_sources(records, own, entity, period.end_date)
@@ -688,6 +719,7 @@ def _functional(
     *,
     acquired_sources: frozenset[tuple[str, str]] = frozenset(),
     acquisition_evidence: list[Mapping[str, object]] | None = None,
+    split_sources: frozenset[str] = frozenset(),
 ) -> int:
     """The lines from the stage 12 layer movements in the functional currency (REQ-FX-007)."""
     fx = records.fx
@@ -720,6 +752,9 @@ def _functional(
         if move.movement_kind == "ASSET_LAYER_CREATED"
     }
 
+    for child, parent in fx.split_layer_parents.items():
+        creators[child] = creators.get(parent)
+
     def role_of(layer_key: str, period_key: str) -> str:
         flow = creators.get(layer_key)
         if flow is None or flow.kind != _REVENUE:
@@ -750,7 +785,24 @@ def _functional(
         before = {role: lines[role][_COMBINATIONS] for role in BALANCES}
         amount = move.amount_functional
         kind = move.movement_kind
-        if kind == "LIABILITY_LAYER_CREATED":
+        split = move.source_key in split_sources and not kind.endswith("REMEASURED")
+        if split:
+            role = (
+                CONTRACT_LIABILITY
+                if move.balance_role == CONTRACT_LIABILITY
+                else role_of(move.layer_key, period_of(ctx, entity, when))
+            )
+            sign = 1 if kind.endswith("CREATED") else -1
+            lines[role]["COMBINATION_SPLITS"] += sign * amount
+            if role != CONTRACT_LIABILITY:
+                asset[role] += sign * amount
+            if sign < 0 and move.layer_key in opening_layers:
+                opening_layers.update(
+                    child
+                    for child, parent in fx.split_layer_parents.items()
+                    if parent == move.layer_key
+                )
+        elif kind == "LIABILITY_LAYER_CREATED":
             flow = _flow_of(by_source, move, _CREDIT)
             if flow is not None:
                 acquired_flow = (flow.source_key, flow.side) in acquired_sources

@@ -79,11 +79,37 @@ def allocate(
         raise ValueError("Split layers require destination liabilities")
     if len({(layer.rate.base, layer.rate.quote) for layer in ordered}) != 1:
         raise ValueError("Split layers must use one original transaction/functional currency pair")
-    matrix = [[layer.txn_open * amount // total for amount in amounts] for layer in ordered]
-    fractions = [[layer.txn_open * amount % total for amount in amounts] for layer in ordered]
-    row_need = [layer.txn_open - sum(row) for layer, row in zip(ordered, matrix, strict=True)]
+    matrix = controlled_matrix([layer.txn_open for layer in ordered], amounts, destinations)
+    result = []
+    for row, original in enumerate(ordered):
+        shares = [matrix[row][col] for col in range(len(destinations))]
+        functional = largest_remainder(
+            original.fn_carrying, [Fraction(v) for v in shares], destinations
+        )
+        for destination, txn, fn in zip(destinations, shares, functional, strict=True):
+            if txn:
+                result.append(LayerShare(original, destination, txn, fn))
+            elif fn:
+                raise ValueError(
+                    "A split FX share cannot carry functional value without transaction quantity"
+                )
+    return tuple(result)
+
+
+def controlled_matrix(
+    row_amounts: Sequence[int], amounts: Sequence[int], destinations: Sequence[str]
+) -> list[list[int]]:
+    """Deterministic floor/ceiling matrix with exact source and destination totals."""
+    total = sum(row_amounts)
+    if total != sum(amounts) or any(type(v) is not int or v < 0 for v in (*row_amounts, *amounts)):
+        raise ValueError("Invalid controlled split matrix totals")
+    if not total:
+        return [[0 for _ in amounts] for _ in row_amounts]
+    matrix = [[quantity * amount // total for amount in amounts] for quantity in row_amounts]
+    fractions = [[quantity * amount % total for amount in amounts] for quantity in row_amounts]
+    row_need = [quantity - sum(row) for quantity, row in zip(row_amounts, matrix, strict=True)]
     col_need = [amount - sum(row[col] for row in matrix) for col, amount in enumerate(amounts)]
-    rounded: list[set[int]] = [set() for _ in ordered]
+    rounded: list[set[int]] = [set() for _ in row_amounts]
     # Deterministic bipartite augmenting paths preserve all floor/ceiling bounds.
     # A full column may move one of its previously rounded cells to another column.
     choices = [
@@ -109,7 +135,7 @@ def allocate(
                     if col_need[col]:
                         terminal = col
                         break
-                    for prior in range(len(ordered)):
+                    for prior in range(len(row_amounts)):
                         if col in rounded[prior] and prior not in visited_rows:
                             visited_rows.add(prior)
                             parent_row[prior] = col
@@ -128,17 +154,7 @@ def allocate(
                 previous = parent_row[row]
                 rounded[row].remove(previous)
                 col = previous
-    result = []
-    for row, original in enumerate(ordered):
-        shares = [matrix[row][col] + int(col in rounded[row]) for col in range(len(destinations))]
-        functional = largest_remainder(
-            original.fn_carrying, [Fraction(v) for v in shares], destinations
-        )
-        for destination, txn, fn in zip(destinations, shares, functional, strict=True):
-            if txn:
-                result.append(LayerShare(original, destination, txn, fn))
-            elif fn:
-                raise ValueError(
-                    "A split FX share cannot carry functional value without transaction quantity"
-                )
-    return tuple(result)
+    return [
+        [amount + int(col in rounded[row]) for col, amount in enumerate(values)]
+        for row, values in enumerate(matrix)
+    ]

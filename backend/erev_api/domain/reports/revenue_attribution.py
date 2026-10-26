@@ -8,6 +8,10 @@ from fractions import Fraction
 from typing import Any
 from uuid import UUID, uuid5
 
+from erev_engine import upgrade
+from erev_engine.canonical import canonical_bytes
+from erev_engine.money import minor_to_decimal
+from erev_engine.trace import SourceRef
 from sqlalchemy import select
 
 from erev_api.db.tables import contract, legal_entity, period, subledger_line
@@ -16,10 +20,6 @@ from erev_api.domain.reports import revenue_roles, revenue_trace
 from erev_api.domain.reports.fx_paid_periods import paid_origins
 from erev_api.explain.store import trace_from_row
 from erev_api.uow import UnitOfWork
-from erev_engine import upgrade
-from erev_engine.canonical import canonical_bytes
-from erev_engine.money import minor_to_decimal
-from erev_engine.trace import SourceRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,7 +222,15 @@ def _read(
             raise ValueError("Revenue layer has no authorized original owner.")
         if values["movement_kind"] in {"LIABILITY_LAYER_CREATED", "ASSET_LAYER_CREATED"}:
             layer_identity = (owner, values["layer_key"])
-            created = date.fromisoformat(values["effective_date"])
+            from .split_sources import original_date
+
+            created = original_date(
+                next(
+                    (n for n in trace.nodes if n.id == item["trace_nodes"]["amount_functional"]),
+                    None,
+                ),
+                date.fromisoformat(values["effective_date"]),
+            )
             if layer_identity in layer_dates and layer_dates[layer_identity] != created:
                 raise ValueError("Revenue layer has conflicting creation dates.")
             layer_dates[layer_identity] = created

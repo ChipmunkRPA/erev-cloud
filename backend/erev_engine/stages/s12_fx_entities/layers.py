@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from fractions import Fraction
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from erev_engine import dates
 from erev_engine.enums import BookCode
@@ -39,8 +39,12 @@ from erev_engine.money import cumulative_posted, largest_remainder
 from erev_engine.stages.s01_canonicalize import group_entity_subject_key
 from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s12_fx_entities.rates import AVERAGE, Rates, RateView, to_functional
-from erev_engine.stages.state import BookContext, Finding
+from erev_engine.stages.state import BookContext, Finding, Target
 from erev_engine.trace import TraceBuilder
+
+if TYPE_CHECKING:
+    from .split_continuation import SplitManager
+
 
 __all__ = [
     "ACCOUNTS_RECEIVABLE",
@@ -315,6 +319,8 @@ class UnitResult:
     findings: tuple[Finding, ...]
     billing_disclosure_targets: tuple[FxTarget, ...] = ()
     billing_attribution_sources: tuple[BillingAttribution, ...] = ()
+    split_member_shares: tuple[Target, ...] = ()
+    split_layer_parents: Mapping[str, str] = field(default_factory=dict)
 
 
 class UnitBook:
@@ -325,6 +331,7 @@ class UnitBook:
     ) -> None:
         if entity not in ctx.entities:
             raise ValueError(f"flows name the entity {entity!r}, absent from the book (CV-45)")
+        self.split_manager: SplitManager | None = None
         self.ctx = ctx
         self.rates = rates
         self.tb = tb
@@ -361,6 +368,8 @@ class UnitBook:
             tuple(self.findings),
             tuple(self.billing_disclosure_targets),
             tuple(self.billing_attribution_sources),
+            () if self.split_manager is None else tuple(self.split_manager.member_shares),
+            {} if self.split_manager is None else dict(self.split_manager.parents),
         )
 
     # --- policies and dates ----------------------------------------------------------------------
@@ -433,6 +442,8 @@ class UnitBook:
         """One control-role flow; the functional pieces it moved (S12-R-03). ``released``: the
         monetary portions a release consumed at spot (D-87 L6-5-Q-26)."""
         period = self.period(when)
+        if self.split_manager is not None:
+            self.split_manager.begin(flow)
         if flow.side == "CREDIT":
             pieces = self.credit(flow, when, period, released)
         else:
@@ -449,7 +460,16 @@ class UnitBook:
             for piece in pieces:
                 running.add(piece, sign)
             self.record_revenue(flow, when, period, pieces, sign)
+        if self.split_manager is not None:
+            self.split_manager.finish(flow, when, pieces)
         return pieces
+
+    def control_layers(self, role: str) -> list[Layer]:
+        if self.split_manager is not None:
+            return self.split_manager.eligible(role)
+        return [
+            layer for layer in self.layers.values() if layer.role == role and layer.txn_open > 0
+        ]
 
     def record_revenue(
         self,
@@ -620,11 +640,7 @@ class UnitBook:
         spot = self.rates.spot(when)
         pieces: list[Piece] = []
         left = flow.amount
-        assets = [
-            layer
-            for layer in self.layers.values()
-            if layer.role == CONTRACT_ASSET and layer.txn_open > 0
-        ]
+        assets = self.control_layers(CONTRACT_ASSET)
         for layer in assets:
             if left == 0:
                 break
@@ -729,11 +745,7 @@ class UnitBook:
     def debit(self, flow: ControlFlow, when: date, period: dates.PeriodLike) -> list[Piece]:
         """S12-R-03 debit: relieve liability layers (POL-161), then an asset layer (S12-R-06)."""
         option = self.policy("fx.cl_layer_consumption", when, _POL_161)
-        open_layers = [
-            layer
-            for layer in self.layers.values()
-            if layer.role == CONTRACT_LIABILITY and layer.txn_open > 0
-        ]
+        open_layers = self.control_layers(CONTRACT_LIABILITY)
         reliefs: list[Piece] = []
         left = flow.amount
         if option == "FIFO":

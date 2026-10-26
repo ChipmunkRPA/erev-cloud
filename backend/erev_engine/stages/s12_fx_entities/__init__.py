@@ -59,7 +59,14 @@ from erev_engine.stages.s12_fx_entities.reporting import (
     ReportingTranslation,
     translate_to_reporting,
 )
-from erev_engine.stages.state import AllocatedState, BookContext, Finding, RateIndex, Target
+from erev_engine.stages.state import (
+    AllocatedState,
+    BookContext,
+    EventView,
+    Finding,
+    RateIndex,
+    Target,
+)
 from erev_engine.trace import TraceBuilder
 
 __all__ = [
@@ -117,6 +124,11 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
     "fx.return_asset.v1",
     "fx.revenue_functional.v1",
     "fx.settlement.spot.v1",
+    "fx.split_current.v1",
+    "fx.split_open_txn.v1",
+    "fx.split_position.v1",
+    "fx.split_quota.v1",
+    "fx.split_restore.v1",
 )
 
 
@@ -161,6 +173,8 @@ class FxState:
     billing_disclosure_targets: tuple[FxTarget, ...] = ()
     billing_attribution_sources: tuple[BillingAttribution, ...] = ()
     cutover_disclosure_sources: FxState | None = None
+    split_member_shares: tuple[Target, ...] = ()
+    split_layer_parents: Mapping[str, str] = field(default_factory=dict)
 
 
 Flow = ControlFlow | MonetaryFlow | ReceivableFlow
@@ -170,7 +184,7 @@ Flow = ControlFlow | MonetaryFlow | ReceivableFlow
 class _Dated:
     when: date
     order: tuple[int, int, str, int, str, str]
-    flow: Flow
+    flow: Flow | EventView
 
 
 def run(
@@ -196,6 +210,8 @@ def run(
     gain_loss: list[FxTarget] = []
     ic_pairs: list[IcPair] = []
     findings: list[Finding] = []
+    split_shares: list[Target] = []
+    split_parents: dict[str, str] = {}
     entities = {flow.entity for flow in flows.control}
     entities |= {flow.entity for flow in flows.monetary}
     entities |= {flow.entity for flow in flows.receivables}
@@ -233,6 +249,14 @@ def run(
             from .opening_attribution import bind
 
             bind(book, allocated, flows.control)
+        if (
+            ctx.foreign_split_layers
+            and view.functional_currency != ctx.txn_currency
+            and any("prospective_split_destinations" in e.payload for e in allocated.events)
+        ):
+            from .split_continuation import SplitManager
+
+            book.split_manager = SplitManager(book, allocated, source_balances)
         pairs = PairBook(ctx, allocated, rates, book, getattr(source_balances, "agent_relief", ()))
         try:
             result = _measure(book, pairs, allocated.inception_date, flows, _attributions(st))
@@ -249,6 +273,8 @@ def run(
                 )
             )
             continue
+        split_shares.extend(result.split_member_shares)
+        split_parents.update(result.split_layer_parents)
         movements.extend(result.movements)
         balances.extend(result.balances)
         functional.extend(result.functional_targets)
@@ -264,6 +290,8 @@ def run(
     state = FxState(
         allocated=allocated,
         costs=st,
+        split_member_shares=tuple(split_shares),
+        split_layer_parents=split_parents,
         billing_disclosure_targets=tuple(billing_disclosure),
         billing_attribution_sources=tuple(billing_sources),
         layer_movements=tuple(movements),
@@ -354,10 +382,39 @@ def _functional_member_balances(
     if ctx.member_current_liability:
         from .current_members import combined
 
+        overrides = {(t.entity, t.period_key) for t in fx.split_member_shares}
         targets = (
             *targets,
-            *combined(ctx, fx, getattr(balances, "current_split", ()), targets, tb),
+            *combined(
+                ctx,
+                fx,
+                tuple(
+                    t
+                    for t in getattr(balances, "current_split", ())
+                    if (t.entity, t.period_key) not in overrides
+                ),
+                targets,
+                tb,
+            ),
         )
+        for t in fx.split_member_shares:
+            if t.measure != "split_contract_liability_current_functional":
+                continue
+            measure = "contract_liability_current_functional"
+            currency = functional[t.entity]
+            node = tb.node(
+                measure=measure,
+                subject_key=t.subject_key,
+                period_key=t.period_key,
+                value=t.value,
+                currency=currency,
+                minor_unit=ctx.currencies[currency].minor_unit,
+                formula_id="rec.activity_sum.v1",
+                inputs=[t.node_id],
+                params={"signs": "+"},
+                narrative_key="rec.activity_sum",
+            )
+            targets = (*targets, dataclasses.replace(t, measure=measure, node_id=node))
     elif ctx.dated_current_liability:
         from .current_members import singleton
 
@@ -427,11 +484,27 @@ def _measure(
         if rflow.entity == book.entity:
             order = _order(rflow.record_seq, rflow.source_key, 2, rflow.invoice_key, rflow.kind)
             items.append(_Dated(rflow.effective_date, order, rflow))
+    if book.split_manager is not None:
+        for event in book.split_manager.state.events:
+            if (
+                event.event_type == "COMBINATION_CHANGED"
+                and "prospective_split_destinations" in event.payload
+            ):
+                items.append(
+                    _Dated(
+                        event.effective_date,
+                        _order(event.record_seq, event.event_key, 1, "", "COMBINATION_CHANGED"),
+                        event,
+                    )
+                )
     items = sorted(
         (item for item in items if item.when <= horizon.end_date),
         key=lambda item: (item.when, item.order),
     )
-    keys = [item.flow.flow_key for item in items]
+    keys = [
+        item.flow.event_key + "#SPLIT" if isinstance(item.flow, EventView) else item.flow.flow_key
+        for item in items
+    ]
     if len(set(keys)) != len(keys):
         raise EngineError(
             "ENGINE_INVARIANT_VIOLATED",
@@ -450,11 +523,19 @@ def _measure(
             try:
                 _dispatch(book, pairs, item)
             except RateMissing as missing:
-                missing.event_key = None if item.flow.record_seq is None else item.flow.source_key
+                missing.event_key = (
+                    item.flow.event_key
+                    if isinstance(item.flow, EventView)
+                    else None
+                    if item.flow.record_seq is None
+                    else item.flow.source_key
+                )
                 raise
             index += 1
         remeasure.period_end(book, period)
         book.close_period(period, flows.positions)
+        if book.split_manager is not None:
+            book.split_manager.capture(period)
         pairs.agent_period(period)
         reclass.close_period(book, period, attributions, reclass_running)
         receivables.close_period(book, period, attributions, billing)
@@ -463,7 +544,10 @@ def _measure(
 
 def _dispatch(book: UnitBook, pairs: PairBook, item: _Dated) -> None:
     flow = item.flow
-    if isinstance(flow, ControlFlow):
+    if isinstance(flow, EventView):
+        assert book.split_manager is not None
+        book.split_manager.split(flow)
+    elif isinstance(flow, ControlFlow):
         pairs.revenue(flow, item.when, book.control(flow, item.when))
     elif isinstance(flow, MonetaryFlow):
         monetary.apply(book, flow, item.when)

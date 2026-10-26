@@ -398,6 +398,7 @@ def _liability_layers(
         movement.balance_role == "CONTRACT_LIABILITY",
         movement.effective_date <= max(period_ends.values()),
     )
+    traces = {}
     grouped: dict[tuple[UUID, UUID, UUID, str, str], tuple[date | None, Decimal]] = {}
     for row in session.execute(statement).mappings():
         owner = (row["contract_id"], row["entity_id"], row["contract_version_id"])
@@ -416,7 +417,15 @@ def _liability_layers(
         created_on, amount = grouped.get(key, (None, ZERO))
         kind = row["movement_kind"]
         if kind == "LIABILITY_LAYER_CREATED":
-            day = row["effective_date"]
+            version = row["contract_version_id"]
+            if version not in traces:
+                trace = store.load_trace(session, version)
+                traces[version] = {} if trace is None else {n.id: n for n in trace.nodes}
+            from ..split_sources import original_date
+
+            day = original_date(
+                traces[version].get(str(row["trace_node_id"])), row["effective_date"]
+            )
             created_on = day if created_on is None else min(created_on, day)
             amount += Decimal(row[field])
         elif kind == "LIABILITY_LAYER_CONSUMED":

@@ -27,7 +27,7 @@ def points(
     point: "_Point",
     trace: TraceBuilder,
 ) -> list[tuple[Sequence[ObligationState], "_Point"]]:
-    """Retain pre-split points; partition supported same-currency fixed service thereafter."""
+    """Retain pre-split points; partition supported fixed service thereafter."""
     state = recognition.allocated
     if not ctx.prospective_split_netting or not any(
         e.event_type == "COMBINATION_CHANGED"
@@ -37,7 +37,10 @@ def points(
     ):
         return [(own, point)]
     if (
-        ctx.entities[point.parts.entity].functional_currency != ctx.txn_currency
+        (
+            ctx.entities[point.parts.entity].functional_currency != ctx.txn_currency
+            and not ctx.foreign_split_layers
+        )
         or any(
             (
                 point.parts.deposit_transferred,
@@ -65,7 +68,9 @@ def points(
         )
     ):
         raise ValueError(
-            "Split posting requires same-currency fixed-service destination continuation"
+            "Split posting requires fixed-service continuation without specialist inputs"
+            if ctx.foreign_split_layers
+            else "Split posting requires same-currency fixed-service destination continuation"
         )
     groups = membership_at(
         state.group_code,

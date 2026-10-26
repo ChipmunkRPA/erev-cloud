@@ -278,6 +278,7 @@ class BookContext:
     acquired_member_current_liability: bool = False
     recomputed_member_current_liability: bool = False
     acquired_member_current_asset: bool = False
+    foreign_split_layers: bool = False  # revision 70: scoped historical FX continuation
     functional_return_loss: bool = False  # revision 69: historical actuals and dated forecasts
     independent_functional_costs: bool = False  # revision 67: functional recoverability
     performing_agent_supplier: bool = False  # revision 66: contractor supplier, net IC

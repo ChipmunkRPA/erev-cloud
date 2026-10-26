@@ -71,6 +71,43 @@ from typing import Any, Final
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from erev_engine import ENGINE_VERSION
+from erev_engine.bundle import (
+    AccountMappingInput,
+    BookInput,
+    BundleComponentInput,
+    ContractInput,
+    EntityInput,
+    EstimateVersionInput,
+    EventInput,
+    FxRateInput,
+    GroupInput,
+    InputBundle,
+    JudgementInput,
+    MappingRuleInput,
+    MaterialRightInput,
+    ModificationInput,
+    NoncashInput,
+    OutputBundle,
+    PayableInput,
+    PaymentPointInput,
+    PeriodInput,
+    PortfolioInput,
+    PostedAmountInput,
+    ProductInput,
+    ResolvedPolicyInput,
+    ssp_range_key,
+)
+from erev_engine.canonical import sha256_hex
+from erev_engine.currencies import ISO_4217
+from erev_engine.money import decimal_to_minor
+from erev_engine.stages.s01_canonicalize import (
+    contract_subject_key,
+    encode_key,
+    group_entity_subject_key,
+    obligation_subject_key,
+)
+from erev_engine.trace import SourceRef
 from sqlalchemy import ColumnElement, Select, and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -130,43 +167,6 @@ from erev_api.events.stream import EventIn
 from erev_api.periods import POSTABLE_STATES
 from erev_api.registry import resolve as registry
 from erev_api.registry.policies import POLICY_PARAMETERS
-from erev_engine import ENGINE_VERSION
-from erev_engine.bundle import (
-    AccountMappingInput,
-    BookInput,
-    BundleComponentInput,
-    ContractInput,
-    EntityInput,
-    EstimateVersionInput,
-    EventInput,
-    FxRateInput,
-    GroupInput,
-    InputBundle,
-    JudgementInput,
-    MappingRuleInput,
-    MaterialRightInput,
-    ModificationInput,
-    NoncashInput,
-    OutputBundle,
-    PayableInput,
-    PaymentPointInput,
-    PeriodInput,
-    PortfolioInput,
-    PostedAmountInput,
-    ProductInput,
-    ResolvedPolicyInput,
-    ssp_range_key,
-)
-from erev_engine.canonical import sha256_hex
-from erev_engine.currencies import ISO_4217
-from erev_engine.money import decimal_to_minor
-from erev_engine.stages.s01_canonicalize import (
-    contract_subject_key,
-    encode_key,
-    group_entity_subject_key,
-    obligation_subject_key,
-)
-from erev_engine.trace import SourceRef
 
 __all__ = [
     "PRODUCT_PINS",
@@ -193,7 +193,7 @@ FORMAT_VERSION: Final = 1
 # Revision 6 requires explicit combined EAC scope; old retained bundles keep legacy selection.
 # Revision 7 retains original actual/expected hour sources without changing progress amounts.
 # Revision 8 retains agent gross-control closing evidence separately from net revenue attribution.
-EVIDENCE_REVISION: Final = 69
+EVIDENCE_REVISION: Final = 70
 BOOK_ORDER: Final = (BookCode.ASC606.value, BookCode.IFRS15.value, BookCode.LEGACY.value)
 LEGACY_BOOK: Final = BookCode.LEGACY.value
 # The states a line posts into (04 DB-07; ``erev_api.periods.POSTABLE_STATES``).

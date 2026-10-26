@@ -379,12 +379,15 @@ def from_pass(
             item["columns"]["contract_key"],
             item["columns"]["layer_key"],
             item["columns"]["balance_role"],
-        ): item["columns"]
+        ): {**item["columns"], "trace_node_id": item["trace_nodes"]["amount_functional"]}
         for item in document["book_output"]["fx_layer_movements"]
         if item["columns"]["entity"] == entity_code
         and item["columns"]["movement_kind"] in {"LIABILITY_LAYER_CREATED", "ASSET_LAYER_CREATED"}
     }
     events = {event.event_key: event for event in bundle.events}
+    from .split_sources import original_date
+
+    nodes = {node.id: node for node in trace.nodes}
     movements = []
     for item in document["book_output"]["fx_layer_movements"]:
         values = item["columns"]
@@ -415,7 +418,10 @@ def from_pass(
                 "record_seq": None if event is None else event.record_seq,
                 "event_type": None if event is None else event.event_type,
                 "effective_date": date.fromisoformat(values["effective_date"]),
-                "created_on": date.fromisoformat(creation["effective_date"]),
+                "created_on": original_date(
+                    nodes.get(str(creation["trace_node_id"])),
+                    date.fromisoformat(creation["effective_date"]),
+                ),
                 "amount_functional": minor_to_decimal(
                     values["amount_functional"], bundle.currencies[currency].minor_unit
                 ),
@@ -451,7 +457,10 @@ def from_pass(
             date.fromisoformat(values["effective_date"]),
             False,
             minor_to_decimal(part.difference_minor, bundle.currencies[currency].minor_unit),
-            date.fromisoformat(creation["effective_date"]),
+            original_date(
+                nodes.get(str(creation["trace_node_id"])),
+                date.fromisoformat(creation["effective_date"]),
+            ),
             "CONTRACT_LIABILITY",
             values["source_key"],
             event.record_seq,

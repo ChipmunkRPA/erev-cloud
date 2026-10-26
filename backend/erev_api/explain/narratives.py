@@ -759,6 +759,21 @@ NARRATIVES: Final[Mapping[str, str]] = MappingProxyType(
             "Signed sum of the foreign-currency differences to the end of {period} = {value}."
         ),
         # ENGINE_SPEC_B §12.5 remeasurement and monetary liabilities (END-2).
+        "fx.split_open_txn": (
+            "Original signed transaction movements establish the open quantity = {value}."
+        ),
+        "fx.split_position": (
+            "The destination net position determines its liability or asset quota = {value}."
+        ),
+        "fx.split_quota": (
+            "Conserved allocation of original open layers to destination balance shares = {value}."
+        ),
+        "fx.split_restore": (
+            "Gross split balances restore original historical credit carrying = {value}."
+        ),
+        "fx.split_current": (
+            "Current liability follows the retained destination layers and release order = {value}."
+        ),
         "fx.return_asset": (
             "Return-asset carrying at {date:as_of} retains original delivery unit costs and "
             "historical FX rates, less recovery costs at the assessment-date rate = {value}."

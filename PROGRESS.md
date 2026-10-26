@@ -18,14 +18,16 @@ under its noncommercial license. Repository completion does not include deployme
 - Foreign return assets retaining delivery cost/rate layers, dated recovery costs and the
   existing release policy. Loss provisions use historical actuals plus dated remaining
   forecasts; the loss register reads original functional tests and reporting rates.
+- Foreign split continuation with conserved destination layers, original rate/source/age,
+  explicit gross reclassification and source-bound monthly rollforwards.
 - Acquisition reporting for supported calculations, including original monthly mixed-group
   snapshots, signed group changes and separate member endpoint presentation.
 
-## Remaining development
+## Completion status
 
-1. Connect the conserved original FX-layer allocation kernel to foreign split continuation,
-   including the treatment of newly exposed gross balances.
-2. Final repository documentation and release verification for the completed scope.
+The remaining foreign split, return-asset and loss-provision implementation is complete for
+its documented scope. Focused calculation, journal and report-source checks accompany it.
+Deployment and independent accounting review remain outside repository development.
 
 Broader performing-agent calendars and additional acquisition scenarios are outside the
 completed implementation. Unsupported calculations and incomplete historical source evidence

@@ -3916,6 +3916,77 @@ def _fx_remeasure(formula_id: str) -> Formula:
     return formula
 
 
+def _fx_split_open_txn(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    deltas = _list(params, "transaction_deltas")
+    _require_arity(inputs, len(deltas), "fx.split_open_txn.v1")
+    return Fraction(sum(int(value) for value in deltas), 10 ** minor_unit_of(params))
+
+
+def _fx_split_position(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    _require_arity(inputs, 1, "fx.split_position.v1")
+    return max(Fraction(0), inputs[0] if params["role"] == "CONTRACT_LIABILITY" else -inputs[0])
+
+
+def _fx_split_quota(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    from erev_engine.split_fx_layers import controlled_matrix
+
+    rows = int(params["rows"])
+    import json
+
+    names = json.loads(params["keys"])
+    _require_arity(inputs, rows + len(names), "fx.split_quota.v1")
+    mu = minor_unit_of(params)
+    values = [_minor_value(value, mu, "fx.split_quota.v1") for value in inputs]
+    matrix = controlled_matrix(values[:rows], values[rows:], names)
+    return Fraction(matrix[int(params["row"])][int(params["column"])], 10**mu)
+
+
+def _fx_split_current(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    import json
+
+    from erev_engine.stages.s12_fx_entities.current_layers import classify
+
+    mu = minor_unit_of(params)
+    count = int(params["quantity_count"])
+    layers = json.loads(params["layers"])
+    # Transaction minor units are retained explicitly when currencies differ.
+    quantity = sum(
+        _minor_value(v, int(params["txn_minor_unit"]), "fx.split_current.v1")
+        for v in inputs[:count]
+    )
+    selected = classify(layers, quantity, policy=params["policy"], minor_unit=mu, monetary=True)
+    takes = {p["layer_key"]: int(p["current_txn"]) for p in selected}
+    value = sum(
+        int(
+            classify(
+                [layer],
+                takes[layer["layer_key"]],
+                policy="FIFO",
+                minor_unit=mu,
+                monetary=layer["monetary"],
+            )[0]["current_functional"]
+        )
+        for layer in layers
+    )
+    return Fraction(value, 10**mu)
+
+
+def _fx_split_restore(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+    _require_arity(inputs, 1, "fx.split_restore.v1")
+    mu = minor_unit_of(params)
+    amount = _minor_value(inputs[0], mu, "fx.split_restore.v1")
+    original, prior, take = (
+        int(params[name]) for name in ("original_quantity", "previous_quantity", "take")
+    )
+    if original <= 0 or not 0 <= prior <= prior + take <= original:
+        raise ValueError("Invalid original historical split credit quantity")
+    return Fraction(
+        cumulative_posted(inputs[0], amount, Fraction(prior + take, original), mu)
+        - cumulative_posted(inputs[0], amount, Fraction(prior, original), mu),
+        10**mu,
+    )
+
+
 def _fx_return_asset(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
     quantities = _list(params, "quantities")
     _require_arity(inputs, 3 + 3 * len(quantities), "fx.return_asset.v1")
@@ -4246,6 +4317,11 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "fx.cost_translate.v1": _fx_cost_translate,
         "fx.loss_forecast.v1": _fx_loss_forecast,
         "fx.return_asset.v1": _fx_return_asset,
+        "fx.split_open_txn.v1": _fx_split_open_txn,
+        "fx.split_position.v1": _fx_split_position,
+        "fx.split_quota.v1": _fx_split_quota,
+        "fx.split_restore.v1": _fx_split_restore,
+        "fx.split_current.v1": _fx_split_current,
         "fx.cost_recoverable.v1": _fx_cost_recoverable,
         "fx.functional_member.v1": _fx_functional_member,
         "fx.settlement.spot.v1": _fx_settle("fx.settlement.spot.v1"),
