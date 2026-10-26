@@ -129,7 +129,8 @@ def calculate(
         detail = (agent_evidence or {}).get(subject, {})
         return (
             str(item["principal_agent"]) == "AGENT"
-            and detail.get("contracting_revenue_entity_id") == str(row.entity_id)
+            and (detail.get("control_entity_id") or detail.get("contracting_revenue_entity_id"))
+            == str(row.entity_id)
             and bool(detail.get("lines"))
         )
 

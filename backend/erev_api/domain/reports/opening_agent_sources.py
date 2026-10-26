@@ -52,7 +52,7 @@ def contracting_enabled(params: ReportParams) -> bool:
     return True
 
 
-def _contracting_policy(uow: UnitOfWork, row: tie_outs.BalanceRow) -> bool:
+def _revenue_policy(uow: UnitOfWork, row: tie_outs.BalanceRow) -> str | None:
     source = uow.session.execute(
         select(contract_version.c.contract_computation_id, contract_version.c.book_code)
         .join(obligation_version, obligation_version.c.contract_version_id == contract_version.c.id)
@@ -66,7 +66,7 @@ def _contracting_policy(uow: UnitOfWork, row: tie_outs.BalanceRow) -> bool:
         .limit(1)
     ).first()
     if source is None:
-        return False
+        return None
     if source.contract_computation_id is None:
         raise tie_outs.invalid("currency_view", "Agent revenue policy lacks original computation.")
     original = computation_sources.read_for_report(
@@ -75,10 +75,12 @@ def _contracting_policy(uow: UnitOfWork, row: tie_outs.BalanceRow) -> bool:
         system_snapshot=uow.principal.kind == PrincipalKind.SYSTEM,
     )
     book = next(b for b in original.bundle.books if b.book_code == source.book_code)
-    return (
-        PolicyResolver(book.policies).value("ic.revenue_entity", entity=row.entity_code)
-        == "CONTRACTING_ENTITY"
-    )
+    mode = PolicyResolver(book.policies).value("ic.revenue_entity", entity=row.entity_code)
+    if mode == "CONTRACTING_ENTITY" or (
+        mode == "PERFORMING_ENTITY" and (original.bundle.evidence_revision or 0) >= 66
+    ):
+        return str(mode)
+    return None
 
 
 def _owners(
@@ -152,7 +154,8 @@ def read(
     if view not in {"transaction", "functional"}:
         raise ValueError("Agent source view must be transaction or functional.")
     allowed_owners = allowed_source_contracts or {row.contract_id}
-    allow_contracting_revenue = allow_contracting_revenue and _contracting_policy(uow, row)
+    revenue_policy = _revenue_policy(uow, row) if allow_contracting_revenue else None
+    allow_contracting_revenue = revenue_policy is not None
     agents = set(
         uow.session.scalars(
             select(obligation_version.c.obligation_key).where(
@@ -346,5 +349,9 @@ def read(
     if allow_contracting_revenue:
         for detail in facts.values():
             if detail["lines"]:
-                detail["contracting_revenue_entity_id"] = str(row.entity_id)
+                detail[
+                    "control_entity_id"
+                    if revenue_policy == "PERFORMING_ENTITY"
+                    else "contracting_revenue_entity_id"
+                ] = str(row.entity_id)
     return Result(tuple(converted), eligible, facts, paid, tuple(opening_entries), unresolved)

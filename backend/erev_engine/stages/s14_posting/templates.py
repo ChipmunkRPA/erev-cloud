@@ -685,6 +685,18 @@ _PARTS: Final = (
         counterparty=PERFORMING,
     ),
     JetPart(
+        "JET-13 contracting agent",
+        "JET-13",
+        "JET-13",
+        "INTERCOMPANY",
+        _one(_CL),
+        _split(Role("INTERCOMPANY_DUE_TO"), Role("BILLING_CLEARING", "AP_SUPPLIER")),
+        CONTRACTING,
+        OBLIGATION,
+        JET_02_TRIGGERS,
+        counterparty=PERFORMING,
+    ),
+    JetPart(
         "JET-13 performing",
         "JET-13",
         "JET-13",

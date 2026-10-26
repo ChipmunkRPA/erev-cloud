@@ -184,6 +184,33 @@ def _read(
     )
     if original.ref_id != expected_ref:
         raise ValueError("Revenue history does not name the original role and posting basis.")
+    if (
+        (bundle.evidence_revision or 0) >= 66
+        and line["entry_kind"] == "INTERCOMPANY"
+        and role == "REVENUE"
+        and any(key.startswith(f"ic_agent_net_functional:{line['subject_key']}:") for key in nodes)
+    ):
+        if not _amounts_only:
+            raise revenue_trace.AmbiguousSplitSource(
+                "Net agent commission retains complete sources, with no per-layer net amounts"
+            )
+        from .performing_agent_sources import proof as agent_proof
+
+        performing_proof = agent_proof(
+            uow,
+            line,
+            document,
+            trace,
+            owners,
+            delta,
+            view=view,
+            active=_active,
+            periods=entity.periods,
+            txn_scale=txn_scale,
+            functional_scale=scale,
+        )
+        amount_cache[line_id] = performing_proof
+        return performing_proof
     raw = []
     layer_dates: dict[tuple[UUID, str], date] = {}
     for item in document["book_output"]["fx_layer_movements"]:
@@ -596,7 +623,7 @@ def _agent_control(
     )
     suppliers = [row for row in entries if revenue_roles.is_supplier(row)]
     if (
-        control["entry_kind"] != "REVENUE_RECOGNITION"
+        control["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
         or len(entries) != (2 if revenue is None else 3)
         or len(suppliers) != 1
     ):

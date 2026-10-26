@@ -229,7 +229,7 @@ def run(
             from .opening_attribution import bind
 
             bind(book, allocated, flows.control)
-        pairs = PairBook(ctx, allocated, rates, book)
+        pairs = PairBook(ctx, allocated, rates, book, getattr(source_balances, "agent_relief", ()))
         try:
             result = _measure(book, pairs, allocated.inception_date, flows, _attributions(st))
         except RateMissing as missing:
@@ -445,6 +445,7 @@ def _measure(
             index += 1
         remeasure.period_end(book, period)
         book.close_period(period, flows.positions)
+        pairs.agent_period(period)
         reclass.close_period(book, period, attributions, reclass_running)
         receivables.close_period(book, period, attributions, billing)
     return book.result()

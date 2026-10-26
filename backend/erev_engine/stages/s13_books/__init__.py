@@ -364,6 +364,7 @@ def book_context(cb: CanonicalBundle, book: BookInput) -> BookContext:
         mapping=book.account_mapping,
         trigger=cb.bundle.trigger,
         tenant_preset=cb.bundle.tenant_preset,
+        performing_agent_supplier=(cb.bundle.evidence_revision or 0) >= 66,
         royalty_member_scope=(cb.bundle.evidence_revision or 0) >= 65,
         contracting_agent_relief=(cb.bundle.evidence_revision or 0) >= 21,
         combined_quantity_reassessment=(cb.bundle.evidence_revision or 0) >= 29,

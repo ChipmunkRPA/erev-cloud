@@ -143,6 +143,7 @@ AMOUNT_CLASSES: Final[Mapping[str, Mapping[str, AmountClass]]] = MappingProxyTyp
         "JET-12": _classes((), _release("ESTIMATE_CHANGED", "COST_INCURRED", "CLOSE_RELEASE")),
         "JET-13 contracting": _REVENUE,
         "JET-13 performing": _REVENUE,
+        "JET-13 contracting agent": _REVENUE,
         "JET-14 promised": _PROMISE,
         "JET-14 after revenue": _PROMISE,
         "JET-14 release": _classes(("BILLING_RECORDED", *JET_02_TRIGGERS)),

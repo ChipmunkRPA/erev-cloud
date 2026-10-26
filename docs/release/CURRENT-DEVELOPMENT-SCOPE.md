@@ -3036,3 +3036,28 @@ Statement and royalty-estimate entry now expose scope. Usage and royalty inputs 
 trace identity without losing either component. Thirty-seven focused calculation cases, forty
 affected form cases, scoped types/lint pass. API generation produced no committed schema change.
 No deployment. Reporting wrap-up, foreign splits/costs and performing-entity agents remain.
+
+
+### 2026-10-26 — Performing-entity agent commission and supplier ownership
+
+Revision 66 implements the owner's election: gross liability relief remains in the contractor,
+supplier payable remains there, and only the net commission forms the intercompany pair and
+performer revenue. Gross functional carrying is split cumulatively using the original net/supplier
+weights, including later commission changes and historical rounding. Both pair sides use the
+same net transaction amount; each entity retains its own functional amount and calendar key.
+Original revisions retain their previous calculations.
+
+Native journals and public contract/POB opening disclosures consume the original three-leg
+control proof. Contractor supplier/control history is retained for recursive correction/rerun
+verification. Performer explanations verify original net targets and paid history while showing
+complete contractor sources without invented per-layer net quotas. Public tests use two advance
+layers, two deliveries, a refund/full return, three currency views, explanations and exact saved
+reruns. The existing source fixture now orders journals by sealed ledger sequence and compares
+the contractor's due-to currency separately from the performer's currency.
+
+Twenty-six focused native/source regressions and a further nonaligned-period refusal pass; the
+populated public workflow passes. Scoped types/lint pass. The supported performing-agent path
+requires aligned period dates; a different calendar must not silently shift income to a later
+period. Broader calendar support is not claimed. Local PostgreSQL is stopped; no deployment.
+Acquisition scenario admission has not been expanded. Acquisition reporting wrap-up, foreign
+splits and remaining foreign-cost measurements are still outstanding.

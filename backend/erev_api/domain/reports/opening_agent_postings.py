@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from erev_api.db.tables import subledger_line
 from erev_api.domain.reports import revenue_attribution, revenue_roles, tie_outs
@@ -31,8 +31,16 @@ def read(
                 subledger_line.c.book_code == book,
                 subledger_line.c.entity_id.in_(params.entity_ids),
                 subledger_line.c.period_id.in_([p.id for ps in periods.values() for p in ps]),
-                subledger_line.c.account_role == "REVENUE",
-                subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                or_(
+                    and_(
+                        subledger_line.c.account_role == "REVENUE",
+                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                    ),
+                    and_(
+                        subledger_line.c.account_role == "INTERCOMPANY_DUE_TO",
+                        subledger_line.c.entry_kind == "INTERCOMPANY",
+                    ),
+                ),
                 tie_outs.line_recorded_by(params, params.known_at),
                 *tie_outs.bound_member_where(params, MEMBERS, subledger_line.c.id),
             )
@@ -85,7 +93,11 @@ def supplier_pair(
         .all()
     )
     suppliers = [row for row in lines if revenue_roles.is_supplier(row)]
-    if len(lines) != 2 or len(suppliers) != 1 or net["account_role"] != "REVENUE":
+    if (
+        len(lines) != 2
+        or len(suppliers) != 1
+        or net["account_role"] not in {"REVENUE", "INTERCOMPANY_DUE_TO"}
+    ):
         raise ValueError("Unmatched agent net posting lacks one original supplier counterpart.")
     supplier = suppliers[0]
     if any(

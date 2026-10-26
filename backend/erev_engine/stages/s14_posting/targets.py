@@ -680,6 +680,11 @@ def _relief(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarge
             for normal in (amounts.get("NORMAL", 0) if target.subject_key in released else 0,)
         )
         part = _relief_part(ob, target.subject_key in counterparties)
+        from erev_engine.stages.state import performing_agent
+
+        paired_agent = performing_agent(ctx, ob) and target.subject_key in counterparties
+        if paired_agent:
+            part = "JET-13 contracting agent"
         time_txn = by_cause.get("NORMAL", 0) if target.subject_key in released else 0
         out.append(
             PartTarget(
@@ -716,6 +721,31 @@ def _relief(ctx: BookContext, st: FxState, inputs: PartInputs) -> list[PartTarge
                         supplier.get((target.entity, target.subject_key, target.period_key), 0),
                     )
                     if part == "JET-02 agent"
+                    else (
+                        (
+                            "INTERCOMPANY_DUE_TO",
+                            Fraction(
+                                target.value
+                                - supplier.get(
+                                    (target.entity, target.subject_key, target.period_key), 0
+                                )
+                            ),
+                        ),
+                        (
+                            _AP_SUPPLIER,
+                            Fraction(
+                                supplier.get(
+                                    (target.entity, target.subject_key, target.period_key), 0
+                                )
+                            ),
+                        ),
+                    )
+                    if paired_agent and target.value
+                    else (
+                        ("INTERCOMPANY_DUE_TO", Fraction(1)),
+                        (_AP_SUPPLIER, Fraction(0)),
+                    )
+                    if paired_agent
                     else ()
                 ),
             )

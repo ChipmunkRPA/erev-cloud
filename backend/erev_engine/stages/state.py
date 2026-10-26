@@ -278,6 +278,7 @@ class BookContext:
     acquired_member_current_liability: bool = False
     recomputed_member_current_liability: bool = False
     acquired_member_current_asset: bool = False
+    performing_agent_supplier: bool = False  # revision 66: contractor supplier, net IC
     royalty_member_scope: bool = False  # revision 65: explicit original-member royalty scope
     acquired_cross_entity_observation: bool = False
     prospective_split_netting: bool = False
@@ -292,11 +293,25 @@ def revenue_calendar_entity(ctx: BookContext, ob: ObligationState) -> str:
         ctx.contracting_agent_calendar
         and ob.principal_agent == PrincipalAgent.AGENT
         and ob.gross_to_net is not None
-        and ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
-        == "CONTRACTING_ENTITY"
+        and (
+            getattr(ctx, "performing_agent_supplier", False)
+            or ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
+            == "CONTRACTING_ENTITY"
+        )
     ):
         return ob.contracting_entity
     return ob.performing_entity
+
+
+def performing_agent(ctx: BookContext, ob: ObligationState) -> bool:
+    """Agent supplier stays with the contractor; only net commission is paired."""
+    return (
+        getattr(ctx, "performing_agent_supplier", False)
+        and ob.principal_agent == PrincipalAgent.AGENT
+        and ob.performing_entity != ob.contracting_entity
+        and ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
+        == "PERFORMING_ENTITY"
+    )
 
 
 # --- Billing mode (POLICIES §1 POL-004, POL-123; ENGINE_SPEC_B S10-R-06; D-91) -------------------

@@ -1536,6 +1536,7 @@ def test_intercompany_due_to_sources_support_progress_reversal(
         ("18000.00", 2, False, "mixed"),
         ("18000.00", 2, False, "cross_contracting"),
         ("18000.00", 2, False, "cross_calendar"),
+        ("18000.00", 2, False, "cross_performing"),
     ],
 )
 def test_agent_supplier_sources_retain_original_paid_history(
@@ -1552,7 +1553,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
         raise error
 
     monkeypatch.setattr(registry, "fail_attempt", fail_immediately)
-    from erev_api.db.tables import account_mapping_rule, judgement_record
+    from erev_api.db.tables import account_mapping_rule, judgement_record, subledger_posting_seal
     from erev_api.domain.reports.revenue_attribution import for_control, read, verify_component
     from sqlalchemy import insert
     from support.reference import gl_account, mapping_published
@@ -1575,6 +1576,14 @@ def test_agent_supplier_sources_retain_original_paid_history(
         }
         for row in fx.place.rows(select(account_mapping_rule))
     ]
+    if opening_deposit == "cross_performing":
+        for role, code, kind, side in (
+            ("INTERCOMPANY_DUE_TO", "2197", "LIABILITY", "C"),
+            ("INTERCOMPANY_DUE_FROM", "1197", "ASSET", "D"),
+        ):
+            account = gl_account(fx.app, fx.maya, code=code, name=role,
+                                 account_type=kind, normal_balance=side)
+            rules.append({"account_role": role, "gl_account_id": account})
     mapping_published(
         fx.app,
         fx.maya,
@@ -1591,7 +1600,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
         ],
     )
     performer = None
-    if opening_deposit in {"cross_contracting", "cross_calendar"}:
+    if opening_deposit in {"cross_contracting", "cross_calendar", "cross_performing"}:
         from dataclasses import replace
 
         from support.factories import open_periods
@@ -1635,7 +1644,8 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 for p in policies(*args, **kwargs)
             )
 
-        monkeypatch.setattr(bundles, "_policies", contracting_policies)
+        if opening_deposit != "cross_performing":
+            monkeypatch.setattr(bundles, "_policies", contracting_policies)
     identity = _gateways(fx, "AGENT-SOURCES", performer=performer)
     with fx.place.uow() as uow:
         uow.session.execute(
@@ -1711,12 +1721,13 @@ def test_agent_supplier_sources_retain_original_paid_history(
         rows = (
             uow.session.execute(
                 select(subledger_line)
+                .join(subledger_posting_seal, subledger_posting_seal.c.subledger_posting_id == subledger_line.c.subledger_posting_id)
                 .where(
                     subledger_line.c.contract_id == identity,
-                    subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                    subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
                     subledger_line.c.book_code == "ASC606",
                 )
-                .order_by(subledger_line.c.recorded_at, subledger_line.c.entry_no)
+                .order_by(subledger_posting_seal.c.chain_seq, subledger_line.c.entry_no)
             )
             .mappings()
             .all()
@@ -1804,7 +1815,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
             reporting,
             "bookings_billings_revenue",
             {
-                "entity_codes": [AVM_UK],
+                "entity_codes": [performer if opening_deposit == "cross_performing" else AVM_UK],
                 "book": "ASC606",
                 "currency_view": "transaction" if combined else "functional",
                 "from_period_key": AUGUST,
@@ -1917,7 +1928,9 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 lambda *a, **k: SimpleNamespace(value="FIFO_WITHIN_POB"),
             )
             net_functional = -sum(
-                (row["amount_functional"] for row in rows if row["account_role"] == "REVENUE"),
+                (row["amount_functional"] for row in rows if row["account_role"] == (
+                    "INTERCOMPANY_DUE_TO" if opening_deposit == "cross_performing" else "REVENUE"
+                )),
                 Decimal(0),
             )
             for view in ("transaction", "functional", "reporting"):
@@ -2029,7 +2042,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
                 uow.session.execute(
                     select(subledger_line).where(
                         subledger_line.c.contract_id == identity,
-                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                        subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
                         subledger_line.c.account_role == "CONTRACT_LIABILITY",
                         subledger_line.c.amount_txn < 0,
                     )
@@ -2053,7 +2066,7 @@ def test_agent_supplier_sources_retain_original_paid_history(
             )
             .where(
                 subledger_line.c.contract_id == identity,
-                subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
                 subledger_line.c.book_code == "ASC606",
             )
             .group_by(subledger_line.c.account_role)
@@ -2062,16 +2075,18 @@ def test_agent_supplier_sources_retain_original_paid_history(
             "REVENUE",
             "CONTRACT_LIABILITY",
             "BILLING_CLEARING",
-        }
+        } | ({"INTERCOMPANY_DUE_TO", "INTERCOMPANY_DUE_FROM"} if opening_deposit == "cross_performing" else set())
         assert all(row["transaction"] == 0 for row in totals), totals
         if combined or opening_deposit:
             # Original funding/prepayment was at .80; the restored own layer is at .84.
             # Only the original prepayment uses .80; mixed receipts have 45,000 at that rate.
             difference = Decimal("1800" if opening_deposit == "mixed" else "3600")
             assert {row["account_role"]: row["functional"] for row in totals} == {
-                "REVENUE": difference,
+                "REVENUE": Decimal(0) if opening_deposit == "cross_performing" else difference,
                 "CONTRACT_LIABILITY": -difference,
                 "BILLING_CLEARING": Decimal(0),
+                **({"INTERCOMPANY_DUE_TO": difference, "INTERCOMPANY_DUE_FROM": Decimal(0)}
+                   if opening_deposit == "cross_performing" else {}),
             }
         else:
             assert all(row["functional"] == 0 for row in totals), totals
@@ -2224,7 +2239,7 @@ def test_scheduled_revenue_and_bonus_reach_public_reports(
             uow.session.execute(
                 select(subledger_line).where(
                     subledger_line.c.contract_id == identity,
-                    subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                    subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
                     subledger_line.c.account_role == "CONTRACT_LIABILITY",
                 )
             )

@@ -38,6 +38,7 @@ from erev_engine.stages.state import (
     LedgerPoint,
     ObligationState,
     Target,
+    performing_agent,
 )
 from erev_engine.trace import SourceRef, TraceBuilder
 
@@ -87,8 +88,11 @@ def is_agent(ob: ObligationState, ctx: BookContext | None = None) -> bool:
             or (
                 ctx is not None
                 and ctx.contracting_agent_relief
-                and ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
-                == "CONTRACTING_ENTITY"
+                and (
+                    performing_agent(ctx, ob)
+                    or ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
+                    == "CONTRACTING_ENTITY"
+                )
             )
         )
     )
@@ -130,6 +134,24 @@ def measure(
             gross_id, gross = _gross(ctx, tb, billed, ob, transfer, end, target.period_key, mu)
             if gross <= target.value:
                 targets.append(dataclasses.replace(target, measure=RELIEF_MEASURE))
+                if performing_agent(ctx, ob):
+                    zero_id = tb.node(
+                        measure=SUPPLIER_MEASURE,
+                        subject_key=ob.subject_key,
+                        period_key=target.period_key,
+                        value=0,
+                        currency=ctx.txn_currency,
+                        minor_unit=mu,
+                        formula_id="rec.activity_sum.v1",
+                        inputs=[],
+                        params={"signs": ""},
+                        narrative_key="rec.activity_sum",
+                    )
+                    targets.append(
+                        dataclasses.replace(
+                            target, measure=SUPPLIER_MEASURE, value=0, exact=None, node_id=zero_id
+                        )
+                    )
                 rows.append((end, 0, None))
                 continue
             supplier_id = tb.node(

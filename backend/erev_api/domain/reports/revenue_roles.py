@@ -9,7 +9,7 @@ HISTORY_ROLES = ("REVENUE", "INTERCOMPANY_DUE_TO", SUPPLIER_ROLE, "CONTRACT_LIAB
 
 def is_supplier(line: Mapping[Any, Any]) -> bool:
     return (
-        line["entry_kind"] == "REVENUE_RECOGNITION"
+        line["entry_kind"] in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
         and line["account_role"] == "BILLING_CLEARING"
         and line.get("clearing_purpose") == "AP_SUPPLIER"
     )
@@ -17,7 +17,8 @@ def is_supplier(line: Mapping[Any, Any]) -> bool:
 
 def allowed(line: Mapping[Any, Any]) -> bool:
     if is_supplier(line) or (
-        line["entry_kind"] == "REVENUE_RECOGNITION" and line["account_role"] == "CONTRACT_LIABILITY"
+        line["entry_kind"] in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
+        and line["account_role"] == "CONTRACT_LIABILITY"
     ):
         return True
     return line["entry_kind"] in {"REVENUE_RECOGNITION", "INTERCOMPANY"} and (

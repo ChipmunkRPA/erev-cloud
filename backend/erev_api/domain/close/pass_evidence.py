@@ -16,10 +16,6 @@ from io import BytesIO
 from typing import Any
 from uuid import UUID
 
-from erev_engine import upgrade
-from erev_engine.bundle import BookOutput, InputBundle
-from erev_engine.canonical import canonical_bytes, sha256_hex
-from erev_engine.trace import TraceNode
 from sqlalchemy import and_, insert, or_, select
 
 from erev_api.db import new_id
@@ -33,6 +29,10 @@ from erev_api.explain.store import MAX_TRACE_BYTES, trace_document, trace_from_r
 from erev_api.files.store import open_file, store_file
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
+from erev_engine import upgrade
+from erev_engine.bundle import BookOutput, InputBundle
+from erev_engine.canonical import canonical_bytes, sha256_hex
+from erev_engine.trace import TraceNode
 
 LINE_FIELDS = (
     "entry_no",
@@ -351,11 +351,11 @@ def capture_posted_lines(
                 or_(
                     subledger_line.c.account_role.in_(("REVENUE", "INTERCOMPANY_DUE_TO")),
                     and_(
-                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                        subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
                         subledger_line.c.account_role == "CONTRACT_LIABILITY",
                     ),
                     and_(
-                        subledger_line.c.entry_kind == "REVENUE_RECOGNITION",
+                        subledger_line.c.entry_kind.in_(("REVENUE_RECOGNITION", "INTERCOMPANY")),
                         subledger_line.c.account_role == "BILLING_CLEARING",
                         subledger_line.c.clearing_purpose == "AP_SUPPLIER",
                     ),

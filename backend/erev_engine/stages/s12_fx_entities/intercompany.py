@@ -34,9 +34,17 @@ from erev_engine import dates
 from erev_engine.enums import BookCode
 from erev_engine.errors import EngineError
 from erev_engine.formulas import rational_param
+from erev_engine.money import largest_remainder
 from erev_engine.stages.s12_fx_entities.layers import ControlFlow, Piece, RateRef, UnitBook
 from erev_engine.stages.s12_fx_entities.rates import AVERAGE, Rates, RateView, to_functional
-from erev_engine.stages.state import AllocatedState, BookContext, ObligationState, RateIndex
+from erev_engine.stages.state import (
+    AllocatedState,
+    BookContext,
+    ObligationState,
+    RateIndex,
+    Target,
+    performing_agent,
+)
 from erev_engine.trace import SourceRef
 
 __all__ = ["IcPair", "PairBook"]
@@ -96,6 +104,9 @@ class _PairFlow:
     rate: RateView  # performing-entity rate
     performing_currency: str
     performing_minor_unit: int
+    contracting_total: int | None = None
+    contracting_node: str | None = None
+    contracting_refs: tuple[RateRef, ...] = ()
 
 
 class PairBook:
@@ -107,6 +118,7 @@ class PairBook:
         allocated: AllocatedState,
         rates: RateIndex | None,
         book: UnitBook,
+        supplier_targets: Sequence[Target] = (),
     ) -> None:
         self.ctx = ctx
         self.book = book
@@ -117,6 +129,10 @@ class PairBook:
         }
         self.flows: list[_PairFlow] = []
         self._rates: dict[str, Rates] = {}
+        self.supplier_targets = {
+            (t.subject_key, t.period_key, t.measure): t for t in supplier_targets
+        }
+        self.agent_previous: dict[str, tuple[int, int, str]] = {}
 
     def revenue(self, flow: ControlFlow, when: date, pieces: Sequence[Piece]) -> None:
         """Record the pair of a revenue flow of an obligation performed by another entity."""
@@ -131,6 +147,8 @@ class PairBook:
                 subject_key=ob.subject_key,
                 detail={"entity": self.book.entity, "rule": "S12-R-14"},
             )
+        if performing_agent(self.ctx, ob):
+            return  # Agent pairs are measured from the complete cumulative split at period end.
         if not self.pairs_performing_entity(ob):
             return  # JET-02 in the contracting entity (S12-R-15)
         performing = self.ctx.entities.get(ob.performing_entity)
@@ -160,6 +178,105 @@ class PairBook:
             )
         )
 
+    def agent_period(self, period: dates.PeriodLike) -> None:
+        """Net commission at original aggregate carrying; no invented per-layer split."""
+        for ob in sorted(self.obligations.values(), key=lambda ob: ob.subject_key):
+            if ob.contracting_entity != self.book.entity or not performing_agent(self.ctx, ob):
+                continue
+            gross = self.supplier_targets.get(
+                (ob.subject_key, period.period_key, "agent_relief_cum")
+            )
+            supplier = self.supplier_targets.get(
+                (ob.subject_key, period.period_key, "supplier_share_cum")
+            )
+            if gross is None or supplier is None:
+                continue
+            running = self.book.functional.get(("revenue_cum", ob.subject_key))
+            if running is None or running.node_id is None:
+                continue
+            net = gross.value - supplier.value
+            if not 0 <= supplier.value <= gross.value:
+                raise ValueError("Agent supplier share exceeds original gross relief")
+            weights = (
+                [Fraction(net), Fraction(supplier.value)]
+                if gross.value
+                else [Fraction(1), Fraction(0)]
+            )
+            keys = ["INTERCOMPANY_DUE_TO", "BILLING_CLEARING:AP_SUPPLIER"]
+            amount = largest_remainder(running.amount_functional, weights, keys)[0]
+            cumulative = self.book.tb.node(
+                measure="ic_agent_net_functional",
+                subject_key=ob.subject_key,
+                period_key=period.period_key,
+                value=amount,
+                currency=self.book.fn,
+                minor_unit=self.book.mu_fn,
+                formula_id="post.role_target.v1",
+                inputs=[running.node_id, gross.node_id, supplier.node_id],
+                params={
+                    "signs": "1|0|0",
+                    "weights": "|".join(rational_param(w) for w in weights),
+                    "keys": "|".join(keys),
+                    "index": "0",
+                    "side": "1",
+                    "minor_unit": str(self.book.mu_fn),
+                },
+                narrative_key="post.role_target",
+            )
+            before_txn, before_fn, before_node = self.agent_previous.get(ob.subject_key, (0, 0, ""))
+            self.agent_previous[ob.subject_key] = (net, amount, cumulative)
+            movement, fn_movement = net - before_txn, amount - before_fn
+            if not movement and not fn_movement:
+                continue
+            node = self.book.tb.node(
+                measure="ic_agent_net_movement",
+                subject_key=ob.subject_key,
+                period_key=period.period_key,
+                value=fn_movement,
+                currency=self.book.fn,
+                minor_unit=self.book.mu_fn,
+                formula_id="fx.gain_loss.sum.v1",
+                inputs=[cumulative, *([before_node] if before_node else [])],
+                params={"signs": "1|-1" if before_node else "1"},
+                narrative_key="fx.gain_loss.sum",
+            )
+            performer = self.ctx.entities[ob.performing_entity]
+            performing_period = dates.period_of(performer, period.end_date)
+            if (performing_period.start_date, performing_period.end_date) != (
+                period.start_date,
+                period.end_date,
+            ):
+                raise EngineError(
+                    "ENGINE_INVARIANT_VIOLATED",
+                    "Performing-entity agent transfers require aligned recognition period dates",
+                    subject_key=ob.subject_key,
+                    detail={"rule": "AGENT_IC_ALIGNED_CALENDARS"},
+                )
+            rate = self.performing_rate(
+                ob.performing_entity, gross, period.end_date, performing_period
+            )
+            mu = self.ctx.currencies[performer.functional_currency].minor_unit
+            converted = to_functional(abs(movement), rate, self.book.mu_txn, mu)
+            self.flows.append(
+                _PairFlow(
+                    obligation=ob.subject_key,
+                    performing_entity=ob.performing_entity,
+                    contracting_period_key=period.period_key,
+                    performing_period_key=performing_period.period_key,
+                    amount=movement,
+                    pieces=(),
+                    performing=converted if movement >= 0 else -converted,
+                    rate=rate,
+                    performing_currency=performer.functional_currency,
+                    performing_minor_unit=mu,
+                    contracting_total=fn_movement,
+                    contracting_node=node,
+                    contracting_refs=tuple(
+                        sorted(running.rates, key=lambda r: (r.rate_key, r.version_key))
+                    ),
+                )
+            )
+
     def pairs_performing_entity(self, ob: ObligationState) -> bool:
         """POL-170 at the contracting entity (pin K) and the FORCED POL-171 (CV-17)."""
         option = self.ctx.policies.value("ic.revenue_entity", entity=ob.contracting_entity)
@@ -171,7 +288,7 @@ class PairBook:
         return option == "PERFORMING_ENTITY"
 
     def performing_rate(
-        self, entity: str, flow: ControlFlow, when: date, period: dates.PeriodLike
+        self, entity: str, flow: ControlFlow | Target, when: date, period: dates.PeriodLike
     ) -> RateView:
         """The POL-162 rate of the performing entity for the flow (ENGINE_SPEC_B §12.2.5)."""
         functional = self.ctx.entities[entity].functional_currency
@@ -235,10 +352,21 @@ class PairBook:
                     txn_currency=self.book.txn,
                     amount_txn=sum(item.amount for item in items),
                     contracting_currency=self.book.fn,
-                    amount_contracting=sum(sign * piece.amount for piece, sign in pieces),
+                    amount_contracting=sum(
+                        item.contracting_total
+                        if item.contracting_total is not None
+                        else sum(sign * p.amount for p, sign in item.pieces)
+                        for item in items
+                    ),
                     performing_currency=items[0].performing_currency,
                     amount_performing=sum(item.performing for item in items),
-                    contracting_rates=_refs(piece.rate for piece, _ in pieces),
+                    contracting_rates=tuple(
+                        sorted(
+                            set(_refs(piece.rate for piece, _ in pieces))
+                            | {ref for item in items for ref in item.contracting_refs},
+                            key=lambda r: (r.rate_key, r.version_key),
+                        )
+                    ),
                     performing_rates=_refs(item.rate for item in items),
                     txn_node_id=txn_nodes[(*head, contracting_period)],
                     contracting_node_id=contracting_nodes[(*head, contracting_period)],
@@ -270,16 +398,25 @@ class PairBook:
             narrative_key="ent.pair",
         )
         pieces = [(piece, sign) for item in items for piece, sign in item.pieces]
+        amounts_fn = [(piece.node_id, sign, sign * piece.amount) for piece, sign in pieces]
+        amounts_fn.extend(
+            (item.contracting_node, 1, item.contracting_total)
+            for item in items
+            if item.contracting_node is not None and item.contracting_total is not None
+        )
         contracting_node = book.tb.node(
             measure="ic_pair_functional_contracting",
             subject_key=subject,
             period_key=period_key,
-            value=sum(sign * piece.amount for piece, sign in pieces),
+            value=sum(amount for _, _, amount in amounts_fn),
             currency=book.fn,
             minor_unit=book.mu_fn,
             formula_id=_PAIR,
-            inputs=[piece.node_id for piece, _ in pieces],
-            params={"output": "CONTRACTING", "signs": "|".join(str(sign) for _, sign in pieces)},
+            inputs=[node for node, _, _ in amounts_fn],
+            params={
+                "output": "CONTRACTING",
+                "signs": "|".join(str(sign) for _, sign, _ in amounts_fn),
+            },
             narrative_key="ent.pair",
         )
         return txn_node, contracting_node
